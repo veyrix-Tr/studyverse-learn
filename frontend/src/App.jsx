@@ -1,13 +1,35 @@
 import React from 'react'
-import './App.css'
 
 function App() {
+  const path = window.location.pathname
+
+  const getPage = () => {
+    switch(path) {
+      case '/': case '/login': return 'login.html'
+      case '/student': return 'freemium-lms.html' 
+      case '/faculty': return 'faculty-lms.html'
+      case '/admin': return 'admin-lms.html'
+      default: return 'login.html'
+    }
+  }
+
   return (
-    <div className="App">
-      <header className="App-header">
-        <h1>Studyverse</h1>
-      </header>
-    </div>
+    <iframe 
+      src={`/src/standalone/${getPage()}`}
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        width: '100%',
+        height: '100%',
+        border: 'none',
+        margin: 0,
+        padding: 0,
+        display: 'block'
+      }}
+    />
   )
 }
 
