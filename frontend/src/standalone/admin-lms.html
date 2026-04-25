@@ -1,0 +1,1310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Studyverse — Admin Panel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,600&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap" rel="stylesheet">
+<style>
+:root{
+  --navy:#0F1F3D;--navy2:#162443;--navy3:#1C2E50;--navy4:#233660;
+  --gold:#E8A830;--gold2:#F5C842;--gd:rgba(232,168,48,0.12);--gb:rgba(232,168,48,0.28);
+  --cream:#FDF8F0;--cream2:#F5F0E6;--cream3:#EDE5D4;
+  --text:#0F1F3D;--text2:#4A5568;--text3:#8896B3;
+  --inv:#FDF8F0;--inv2:rgba(253,248,240,0.72);--inv3:rgba(253,248,240,0.38);
+  --b:rgba(15,31,61,0.08);--bi:rgba(255,255,255,0.08);
+  --green:#22C55E;--gdim:rgba(34,197,94,0.11);
+  --red:#EF4444;--rdim:rgba(239,68,68,0.10);
+  --orange:#F97316;--odim:rgba(249,115,22,0.10);
+  --blue:#3B82F6;--bdim:rgba(59,130,246,0.10);
+  --purple:#8B5CF6;--pdim:rgba(139,92,246,0.10);
+  --fs:'Playfair Display',Georgia,serif;--fb:'DM Sans',sans-serif;
+  --r:10px;--rl:16px;--rxl:22px;
+  --sw:262px;--th:66px;
+  --sh:0 2px 10px rgba(15,31,61,0.07);--shm:0 6px 28px rgba(15,31,61,0.12);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--fb);background:var(--cream2);color:var(--text);font-size:14px;line-height:1.6;min-height:100vh;overflow-x:hidden}
+.app{display:flex;min-height:100vh}
+
+/* ── SIDEBAR ── */
+.sidebar{width:var(--sw);background:var(--navy);position:fixed;top:0;left:0;bottom:0;z-index:100;display:flex;flex-direction:column;border-right:1px solid var(--bi);overflow-y:auto}
+.sb-logo{padding:20px 20px 16px;border-bottom:1px solid var(--bi);display:flex;align-items:center;gap:10px;flex-shrink:0}
+.sb-mark{width:33px;height:33px;flex-shrink:0}
+.sb-w1{font-family:var(--fb);font-weight:700;font-size:14.5px;letter-spacing:.06em;color:var(--inv)}
+.sb-w1 span{color:var(--gold)}
+.sb-w2{font-size:9px;color:var(--gold);letter-spacing:.1em;text-transform:uppercase;font-weight:600}
+
+/* role badge */
+.role-badge{margin:10px 13px 4px;border-radius:9px;padding:9px 12px;display:flex;align-items:center;gap:10px;flex-shrink:0}
+.rb-super{background:linear-gradient(135deg,rgba(139,92,246,0.25),rgba(232,168,48,0.15));border:1px solid rgba(139,92,246,0.4)}
+.rb-admin{background:var(--gd);border:1px solid var(--gb)}
+.rb-av{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--fs);font-size:12px;font-weight:700;flex-shrink:0}
+.rb-av-super{background:rgba(139,92,246,0.25);color:#c4b5fd;border:1.5px solid rgba(139,92,246,0.5)}
+.rb-av-admin{background:var(--gd);color:var(--gold);border:1.5px solid var(--gb)}
+.rb-name{font-size:12px;color:var(--inv);font-weight:500}
+.rb-role-super{font-size:9.5px;color:#c4b5fd;margin-top:1px;font-weight:600}
+.rb-role-admin{font-size:9.5px;color:var(--gold);margin-top:1px;font-weight:600}
+
+/* role switcher */
+.role-switcher{margin:0 13px 6px;display:flex;gap:4px;background:rgba(255,255,255,0.05);border-radius:7px;padding:3px}
+.rs-btn{flex:1;padding:5px 0;border-radius:5px;font-size:11px;font-weight:600;cursor:pointer;text-align:center;color:var(--inv3);transition:all .15s;border:none;background:transparent;font-family:var(--fb)}
+.rs-btn.on{background:rgba(255,255,255,0.12);color:var(--inv)}
+.rs-btn.super-on{background:rgba(139,92,246,0.3);color:#c4b5fd}
+
+.nb{padding:12px 12px 4px;flex-shrink:0}
+.nl{font-size:9px;color:var(--inv3);letter-spacing:.12em;text-transform:uppercase;padding:0 8px;margin-bottom:6px;font-weight:500}
+.ni{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:8px;cursor:pointer;color:var(--inv2);font-size:12.5px;font-weight:400;transition:all .15s;margin-bottom:2px}
+.ni:hover{background:rgba(255,255,255,0.06);color:var(--inv)}
+.ni.on{background:var(--gd);color:var(--gold2)}
+.ni.on .nic{opacity:1;color:var(--gold)}
+.ni.super-on{background:rgba(139,92,246,0.2);color:#c4b5fd}
+.ni.super-on .nic{opacity:1;color:#c4b5fd}
+.nic{width:15px;height:15px;flex-shrink:0;opacity:.6}
+.ni:hover .nic{opacity:1}
+.nbadge{margin-left:auto;font-size:10px;font-weight:700;padding:2px 6px;border-radius:20px}
+.nb-red{background:var(--red);color:#fff}
+.nb-gold{background:var(--gold);color:var(--navy)}
+.nb-dim{background:rgba(255,255,255,0.08);color:var(--inv3)}
+.nb-purple{background:rgba(139,92,246,0.3);color:#c4b5fd}
+
+/* super-admin only items */
+.sa-only{display:none}
+.supermode .sa-only{display:flex}
+.supermode .ni.on{background:rgba(139,92,246,0.2);color:#c4b5fd}
+
+.sb-bottom{margin-top:auto;padding:12px;border-top:1px solid var(--bi);flex-shrink:0}
+.logout-row{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;cursor:pointer;color:var(--inv3);font-size:12px;transition:all .15s}
+.logout-row:hover{background:rgba(255,255,255,0.05);color:var(--inv2)}
+
+/* ── MAIN ── */
+.main{margin-left:var(--sw);flex:1;display:flex;flex-direction:column;min-height:100vh}
+
+/* ── TOPBAR ── */
+.topbar{height:var(--th);background:var(--cream);border-bottom:1px solid var(--b);display:flex;align-items:center;padding:0 28px;gap:14px;position:sticky;top:0;z-index:50;box-shadow:0 1px 4px rgba(15,31,61,0.04)}
+.ph{font-family:var(--fs);font-size:17px;font-weight:600;color:var(--text)}
+.tbr{display:flex;align-items:center;gap:9px;margin-left:auto}
+.super-indicator{background:rgba(139,92,246,0.12);border:1px solid rgba(139,92,246,0.3);color:#7c3aed;font-size:11px;font-weight:700;padding:4px 12px;border-radius:20px;letter-spacing:.04em;display:none}
+.supermode .super-indicator{display:flex;align-items:center;gap:6px}
+.tbb{width:36px;height:36px;border-radius:8px;background:var(--cream2);border:1px solid var(--b);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--text3);transition:all .15s;position:relative}
+.tbb:hover{background:var(--cream3);color:var(--text)}
+.npip{position:absolute;top:7px;right:7px;width:6px;height:6px;border-radius:50%;background:var(--red);border:1.5px solid var(--cream)}
+
+/* ── CONTENT ── */
+.content{padding:28px;flex:1}
+.page{display:none;animation:pi .2s ease}.page.on{display:block}
+@keyframes pi{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── BASE COMPONENTS ── */
+.card{background:var(--cream);border:1px solid var(--b);border-radius:var(--rl);padding:20px 22px;box-shadow:var(--sh)}
+.card-dark{background:var(--navy);border:1px solid var(--bi);border-radius:var(--rl);padding:20px 22px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.mb{margin-bottom:20px}.mbl{margin-bottom:28px}
+.sh{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.sh-t{font-family:var(--fs);font-size:16px;font-weight:600;color:var(--text)}
+.sh-a{font-size:12px;color:var(--gold);cursor:pointer;font-weight:500}
+.sh-a:hover{color:var(--navy)}
+.div{height:1px;background:var(--b);margin:14px 0}
+
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 17px;border-radius:8px;font-family:var(--fb);font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;border:none;letter-spacing:.01em}
+.btn-gold{background:var(--gold);color:var(--navy)}.btn-gold:hover{background:var(--gold2)}
+.btn-navy{background:var(--navy);color:var(--gold2)}.btn-navy:hover{background:var(--navy3)}
+.btn-ghost{background:transparent;color:var(--text2);border:1px solid var(--b)}.btn-ghost:hover{background:var(--cream2)}
+.btn-green{background:var(--green);color:#fff}.btn-green:hover{background:#16a34a}
+.btn-red{background:var(--red);color:#fff}.btn-red:hover{background:#dc2626}
+.btn-purple{background:#7c3aed;color:#fff}.btn-purple:hover{background:#6d28d9}
+.btn-sm{padding:6px 13px;font-size:12px}.btn-full{width:100%;justify-content:center}
+
+.pill{display:inline-flex;align-items:center;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600}
+.pg{background:var(--gd);color:var(--gold);border:1px solid var(--gb)}
+.pn{background:rgba(15,31,61,0.07);color:var(--navy)}
+.pp{background:var(--gdim);color:var(--green)}
+.pr{background:var(--rdim);color:var(--red)}
+.po{background:var(--odim);color:var(--orange)}
+.pb{background:var(--bdim);color:var(--blue)}
+.ppu{background:var(--pdim);color:var(--purple)}
+
+.pbar{height:5px;background:var(--cream2);border-radius:10px;overflow:hidden}
+.pbar-inner{height:100%;border-radius:10px;transition:width .6s ease}
+.pb-gold{background:var(--gold)}.pb-green{background:var(--green)}.pb-red{background:var(--red)}.pb-orange{background:var(--orange)}.pb-navy{background:var(--navy3)}.pb-purple{background:var(--purple)}
+
+/* ── STAT CARDS ── */
+.stat{background:var(--cream);border:1px solid var(--b);border-radius:var(--rl);padding:18px 20px;position:relative;box-shadow:var(--sh)}
+.stat::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:var(--rl) var(--rl) 0 0}
+.sa-gold::before{background:var(--gold)}.sa-green::before{background:var(--green)}.sa-red::before{background:var(--red)}.sa-blue::before{background:var(--blue)}.sa-navy::before{background:var(--navy3)}.sa-purple::before{background:var(--purple)}
+.stat-l{font-size:10.5px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:7px;font-weight:500}
+.stat-v{font-family:var(--fs);font-size:28px;font-weight:700;color:var(--text);line-height:1}
+.stat-n{font-size:11.5px;margin-top:5px;font-weight:500}
+.up{color:var(--green)}.warn{color:var(--orange)}.bad{color:var(--red)}.neu{color:var(--text3)}
+
+/* ── TABLE ── */
+.tbl{width:100%;border-collapse:collapse;font-size:13px}
+.tbl th{text-align:left;padding:9px 14px;font-size:10.5px;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;font-weight:500;border-bottom:1px solid var(--b);background:var(--cream2)}
+.tbl td{padding:12px 14px;border-bottom:1px solid var(--b);color:var(--text2);vertical-align:middle}
+.tbl tr:last-child td{border-bottom:none}
+.tbl tr:hover td{background:var(--cream2)}
+.tbl td:first-child{color:var(--text);font-weight:500}
+
+/* ── AVATAR ── */
+.av{width:30px;height:30px;border-radius:50%;border:1.5px solid var(--gold);background:var(--gd);display:flex;align-items:center;justify-content:center;font-family:var(--fs);font-size:12px;font-weight:700;color:var(--gold);flex-shrink:0}
+.av-lg{width:40px;height:40px;font-size:15px}
+.av-row{display:flex;align-items:center;gap:9px}
+
+/* ── KANBAN PIPELINE ── */
+.pipeline{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:24px;align-items:start}
+.pipe-col{background:var(--cream);border:1px solid var(--b);border-radius:var(--rl);overflow:hidden;box-shadow:var(--sh)}
+.pipe-header{padding:11px 14px;border-bottom:1px solid var(--b);display:flex;align-items:center;justify-content:space-between}
+.pipe-title{font-size:12px;font-weight:700;color:var(--text);text-transform:uppercase;letter-spacing:.05em}
+.pipe-count{font-size:11px;font-weight:700;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+.pipe-cards{padding:10px;display:flex;flex-direction:column;gap:8px;min-height:80px}
+.pipe-card{background:var(--cream2);border:1px solid var(--b);border-radius:var(--r);padding:11px 12px;cursor:pointer;transition:all .15s}
+.pipe-card:hover{border-color:var(--gold);background:var(--cream);box-shadow:var(--sh)}
+.pc-name{font-size:12.5px;font-weight:600;color:var(--text);margin-bottom:3px}
+.pc-exam{font-size:11px;color:var(--text3)}
+.pc-date{font-size:10.5px;color:var(--text3);margin-top:5px}
+.pc-action{font-size:11px;font-weight:600;margin-top:7px;padding:4px 0;border-radius:5px;text-align:center;cursor:pointer;transition:all .15s}
+/* stage colours */
+.stage-enquiry .pipe-header{border-top:3px solid var(--text3)}
+.stage-diag .pipe-header{border-top:3px solid var(--blue)}
+.stage-fit .pipe-header{border-top:3px solid var(--orange)}
+.stage-enrolled .pipe-header{border-top:3px solid var(--gold)}
+.stage-active .pipe-header{border-top:3px solid var(--green)}
+
+/* ── FEE CARD ── */
+.fee-card{background:var(--cream);border:1px solid var(--b);border-radius:var(--rl);padding:16px 18px;box-shadow:var(--sh);margin-bottom:10px}
+.fc-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px}
+.fc-student{font-size:13.5px;font-weight:600;color:var(--text)}
+.fc-plan{font-size:11.5px;color:var(--text3);margin-top:2px}
+.fc-amount{font-family:var(--fs);font-size:20px;font-weight:700}
+.fc-status{font-size:11px;font-weight:700;padding:3px 10px;border-radius:6px}
+.paid{color:var(--green);background:var(--gdim)}.pending{color:var(--orange);background:var(--odim)}.overdue{color:var(--red);background:var(--rdim)}
+.fee-bar{height:4px;background:var(--cream2);border-radius:10px;overflow:hidden;margin-bottom:8px}
+.fee-bar-inner{height:100%;border-radius:10px}
+
+/* ── REVENUE CHART BARS ── */
+.rev-chart{display:flex;align-items:flex-end;gap:8px;height:130px;margin:16px 0 8px}
+.rev-bar-wrap{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px}
+.rev-bar{width:100%;border-radius:4px 4px 0 0;transition:opacity .2s;min-height:4px;cursor:pointer}
+.rev-bar:hover{opacity:.8}
+.rev-label{font-size:10px;color:var(--text3)}
+.rev-val{font-size:10px;font-weight:600;color:var(--text2)}
+
+/* ── MESSAGE COMPOSER ── */
+.msg-compose{background:var(--cream);border:1px solid var(--b);border-radius:var(--rl);padding:20px 22px;margin-bottom:16px;box-shadow:var(--sh)}
+.target-chips{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:12px}
+.chip{padding:5px 13px;border-radius:20px;font-size:12px;font-weight:500;cursor:pointer;border:1.5px solid var(--b);background:var(--cream2);color:var(--text2);transition:all .15s}
+.chip:hover{border-color:var(--gold);color:var(--text)}
+.chip.on{background:var(--gd);border-color:var(--gb);color:var(--gold)}
+
+/* ── PERMISSION TOGGLES ── */
+.perm-row{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--b)}
+.perm-row:last-child{border-bottom:none}
+.perm-label{font-size:13px;font-weight:500;color:var(--text)}
+.perm-desc{font-size:11.5px;color:var(--text3);margin-top:2px}
+.toggle{width:40px;height:22px;border-radius:11px;background:var(--cream3);cursor:pointer;position:relative;transition:background .2s;flex-shrink:0}
+.toggle.on{background:var(--green)}
+.toggle::after{content:'';position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;transition:left .2s;box-shadow:0 1px 3px rgba(0,0,0,0.2)}
+.toggle.on::after{left:21px}
+.toggle-super{width:40px;height:22px;border-radius:11px;background:var(--purple);cursor:pointer;position:relative;flex-shrink:0}
+.toggle-super::after{content:'';position:absolute;top:3px;left:21px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,0.2)}
+
+/* ── ADMIN CARD ── */
+.admin-card{background:var(--cream);border:1px solid var(--b);border-radius:var(--rl);padding:18px 20px;box-shadow:var(--sh);transition:all .2s}
+.admin-card:hover{border-color:var(--gold);box-shadow:var(--shm)}
+.ac-header{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.ac-meta{font-size:12px;color:var(--text3);margin-top:1px}
+.ac-perms{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px}
+.ac-perm-tag{font-size:10.5px;padding:3px 8px;border-radius:5px;font-weight:500}
+.tag-on{background:var(--gdim);color:var(--green)}
+.tag-off{background:var(--rdim);color:var(--red);text-decoration:line-through;opacity:.6}
+
+/* ── APPROVAL ITEMS ── */
+.approval-item{background:var(--cream);border:1px solid var(--b);border-radius:var(--rl);padding:16px 18px;margin-bottom:10px;box-shadow:var(--sh)}
+.ai-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px}
+.ai-title{font-size:13.5px;font-weight:600;color:var(--text)}
+.ai-meta{font-size:12px;color:var(--text3);margin-top:2px}
+.ai-reason{font-size:12.5px;color:var(--text2);background:var(--cream2);border-left:3px solid var(--gold);padding:9px 12px;border-radius:0 var(--r) var(--r) 0;margin-bottom:10px;line-height:1.6}
+.ai-actions{display:flex;gap:8px}
+
+/* ── MODAL ── */
+.overlay{position:fixed;inset:0;background:rgba(15,31,61,0.52);display:none;align-items:center;justify-content:center;z-index:200;backdrop-filter:blur(4px)}
+.overlay.open{display:flex}
+.modal{background:var(--cream);border-radius:var(--rxl);padding:28px;width:500px;max-width:95vw;animation:mi .2s ease;box-shadow:0 20px 60px rgba(15,31,61,0.22);border:1px solid var(--b)}
+@keyframes mi{from{opacity:0;transform:scale(.95)}to{opacity:1;transform:scale(1)}}
+.mt{font-family:var(--fs);font-size:18px;font-weight:700;color:var(--text);margin-bottom:4px}
+.ms{font-size:12.5px;color:var(--text3);margin-bottom:18px}
+.fg{margin-bottom:13px}
+.fg label{display:block;font-size:12px;color:var(--text2);margin-bottom:5px;font-weight:500}
+.fi{width:100%;padding:10px 12px;background:var(--cream2);border:1px solid var(--b);border-radius:8px;color:var(--text);font-family:var(--fb);font-size:13px;outline:none;transition:border-color .2s}
+.fi:focus{border-color:var(--gold)}
+.ma{display:flex;gap:9px;margin-top:18px;justify-content:flex-end}
+
+/* ── TABS ── */
+.tabs{display:flex;gap:2px;background:var(--cream2);border:1px solid var(--b);padding:3px;border-radius:9px;width:fit-content;margin-bottom:18px}
+.tab{padding:7px 16px;border-radius:6px;font-size:13px;font-weight:500;cursor:pointer;color:var(--text3);transition:all .15s}
+.tab.on{background:var(--cream);color:var(--text);box-shadow:0 1px 4px rgba(15,31,61,0.06)}
+
+/* ── TOAST ── */
+.toast{position:fixed;bottom:26px;right:26px;background:var(--navy);border:1px solid var(--gb);border-radius:10px;padding:11px 16px;font-size:13px;color:var(--inv);display:flex;align-items:center;gap:9px;z-index:300;transform:translateY(60px);opacity:0;transition:all .3s ease;box-shadow:0 8px 28px rgba(15,31,61,0.25)}
+.toast.show{transform:translateY(0);opacity:1}
+.tpip{width:7px;height:7px;border-radius:50%;background:var(--gold);flex-shrink:0}
+
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:var(--cream2)}::-webkit-scrollbar-thumb{background:var(--cream3);border-radius:10px}
+@media(max-width:1200px){.pipeline{grid-template-columns:repeat(3,1fr)}.g4{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- ══ SIDEBAR ══ -->
+<aside class="sidebar" id="sidebar">
+  <div class="sb-logo">
+    <svg class="sb-mark" viewBox="0 0 100 100" fill="none">
+      <path d="M50 5L90 28V72L50 95L10 72V28L50 5Z" stroke="#E8A830" stroke-width="6" stroke-linejoin="round"/>
+      <path d="M68 32C68 32 60 25 50 25C40 25 32 32 32 40C32 55 68 50 68 65C68 73 60 80 50 80C40 80 32 73 32 73" stroke="#FDF8F0" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <div>
+      <div class="sb-w1">STUDY<span>VERSE</span></div>
+      <div class="sb-w2">Control Panel</div>
+    </div>
+  </div>
+
+  <!-- Role badge -->
+  <div class="role-badge rb-super" id="role-badge">
+    <div class="rb-av rb-av-super" id="role-av">V</div>
+    <div>
+      <div class="rb-name" id="role-name">Vinay Raj Pareta</div>
+      <div class="rb-role-super" id="role-label">⬡ SUPER ADMIN</div>
+    </div>
+  </div>
+
+  <!-- Role switcher (demo) -->
+  <div class="role-switcher">
+    <button class="rs-btn super-on on" id="rs-super" onclick="setRole('super')">Super Admin</button>
+    <button class="rs-btn" id="rs-admin" onclick="setRole('admin')">Admin View</button>
+  </div>
+
+  <div class="nb">
+    <div class="nl">Overview</div>
+    <div class="ni on" onclick="nav('dashboard',this)">
+      <svg class="nic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+      Dashboard
+    </div>
+    <div class="ni" onclick="nav('pipeline',this)">
+      <svg class="nic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12H3M22 6H3M22 18H3"/></svg>
+      Enrollment Pipeline
+      <span class="nbadge nb-gold">3 New</span>
+    </div>
+    <div class="ni" onclick="nav('revenue',this)">
+      <svg class="nic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+      Revenue & Fees
+      <span class="nbadge nb-red">2 Overdue</span>
+    </div>
+  </div>
+
+  <div class="nb">
+    <div class="nl">People</div>
+    <div class="ni" onclick="nav('students',this)">
+      <svg class="nic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      Students
+      <span class="nbadge nb-dim">12</span>
+    </div>
+    <div class="ni" onclick="nav('faculty',this)">
+      <svg class="nic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 1 0-16 0"/></svg>
+      Faculty
+      <span class="nbadge nb-dim">3</span>
+    </div>
+    <div class="ni" onclick="nav('assign',this)">
+      <svg class="nic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+      Assign Faculty
+    </div>
+  </div>
+
+  <div class="nb">
+    <div class="nl">Controls</div>
+    <div class="ni" onclick="nav('approvals',this)">
+      <svg class="nic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+      Approvals
+      <span class="nbadge nb-red">4</span>
+    </div>
+    <div class="ni" onclick="nav('messages',this)">
+      <svg class="nic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      Messages
+    </div>
+    <!-- Super admin only -->
+    <div class="ni sa-only" onclick="nav('admins',this)">
+      <svg class="nic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      Admin Accounts
+      <span class="nbadge nb-purple">Super</span>
+    </div>
+    <div class="ni sa-only" onclick="nav('settings',this)">
+      <svg class="nic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+      Platform Settings
+      <span class="nbadge nb-purple">Super</span>
+    </div>
+  </div>
+
+  <div class="sb-bottom">
+    <div class="logout-row">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+      Sign Out
+    </div>
+  </div>
+</aside>
+
+<!-- ══ MAIN ══ -->
+<div class="main">
+  <header class="topbar">
+    <div class="ph" id="ph">Dashboard</div>
+    <div class="tbr">
+      <div class="super-indicator" id="super-ind">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        Super Admin Mode
+      </div>
+      <button class="btn btn-gold btn-sm" onclick="openM('enroll-modal')">+ Enroll Student</button>
+      <div class="tbb" onclick="nav('approvals',document.querySelectorAll('.ni')[9])">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        <span class="npip"></span>
+      </div>
+    </div>
+  </header>
+
+  <div class="content">
+
+  <!-- ══════════ DASHBOARD ══════════ -->
+  <div class="page on" id="p-dashboard">
+
+    <div style="margin-bottom:20px;display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+      <div>
+        <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.1em;font-weight:500;margin-bottom:4px;">Wednesday, 15 April 2026</div>
+        <div style="font-family:var(--fs);font-size:23px;font-weight:700;">Good morning, Vinay.</div>
+        <div style="font-size:13.5px;color:var(--text2);margin-top:3px;"><strong style="color:var(--red)">2 fees overdue</strong> · <strong style="color:var(--gold)">3 new enquiries</strong> · <strong style="color:var(--green)">4 approvals pending</strong></div>
+      </div>
+    </div>
+
+    <!-- KPI Stats -->
+    <div class="g4 mb">
+      <div class="stat sa-navy">
+        <div class="stat-l">Active Students</div>
+        <div class="stat-v">12</div>
+        <div class="stat-n up">↑ 2 this month</div>
+      </div>
+      <div class="stat sa-gold">
+        <div class="stat-l">Revenue (April)</div>
+        <div class="stat-v" style="font-size:22px;">₹1.84L</div>
+        <div class="stat-n up">↑ 18% vs March</div>
+      </div>
+      <div class="stat sa-red">
+        <div class="stat-l">Fees Overdue</div>
+        <div class="stat-v">2</div>
+        <div class="stat-n bad">₹28,000 pending</div>
+      </div>
+      <div class="stat sa-green">
+        <div class="stat-l">Avg Improvement</div>
+        <div class="stat-v">+76</div>
+        <div class="stat-n up">marks across cohort</div>
+      </div>
+    </div>
+
+    <div class="g2 mb">
+      <!-- Revenue mini chart -->
+      <div class="card">
+        <div class="sh"><div class="sh-t">Monthly Revenue</div><span class="sh-a" onclick="nav('revenue',document.querySelectorAll('.ni')[2])">Full report →</span></div>
+        <div class="rev-chart" id="dash-chart"></div>
+        <div style="display:flex;justify-content:space-between;padding:0 2px;">
+          <span style="font-size:10px;color:var(--text3)">Nov</span><span style="font-size:10px;color:var(--text3)">Dec</span><span style="font-size:10px;color:var(--text3)">Jan</span><span style="font-size:10px;color:var(--text3)">Feb</span><span style="font-size:10px;color:var(--text3)">Mar</span><span style="font-size:10px;color:var(--text3)">Apr</span>
+        </div>
+      </div>
+
+      <!-- Enrollment pipeline mini -->
+      <div class="card">
+        <div class="sh"><div class="sh-t">Enrollment Pipeline</div><span class="sh-a" onclick="nav('pipeline',document.querySelectorAll('.ni')[1])">Full pipeline →</span></div>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:9px 12px;background:var(--cream2);border-radius:var(--r);border-left:3px solid var(--text3);">
+            <div style="font-size:13px;font-weight:500;">Enquiry Received</div>
+            <div style="display:flex;align-items:center;gap:8px;"><span style="font-family:var(--fs);font-size:16px;font-weight:700;">3</span><button class="btn btn-ghost btn-sm" onclick="nav('pipeline',document.querySelectorAll('.ni')[1])">View →</button></div>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:9px 12px;background:var(--cream2);border-radius:var(--r);border-left:3px solid var(--blue);">
+            <div style="font-size:13px;font-weight:500;">Diagnostic Scheduled</div>
+            <div style="display:flex;align-items:center;gap:8px;"><span style="font-family:var(--fs);font-size:16px;font-weight:700;">2</span><button class="btn btn-ghost btn-sm" onclick="nav('pipeline',document.querySelectorAll('.ni')[1])">View →</button></div>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:9px 12px;background:var(--cream2);border-radius:var(--r);border-left:3px solid var(--orange);">
+            <div style="font-size:13px;font-weight:500;">Program Fit Review</div>
+            <div style="display:flex;align-items:center;gap:8px;"><span style="font-family:var(--fs);font-size:16px;font-weight:700;">1</span><button class="btn btn-ghost btn-sm" onclick="nav('pipeline',document.querySelectorAll('.ni')[1])">Review →</button></div>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:9px 12px;background:var(--cream2);border-radius:var(--r);border-left:3px solid var(--green);">
+            <div style="font-size:13px;font-weight:500;">Active Students</div>
+            <div style="display:flex;align-items:center;gap:8px;"><span style="font-family:var(--fs);font-size:16px;font-weight:700;">12</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pending Approvals -->
+    <div class="sh"><div class="sh-t">Pending Approvals</div><span class="sh-a" onclick="nav('approvals',document.querySelectorAll('.ni')[9])">All approvals →</span></div>
+    <div class="card mb" style="padding:14px 18px;">
+      <div style="display:flex;flex-direction:column;gap:0;">
+        <div style="display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--b);">
+          <div class="av">A</div>
+          <div style="flex:1;"><div style="font-size:13px;font-weight:600;">Test: Electrostatics Targeted — for Rahul Mehta</div><div style="font-size:11.5px;color:var(--text3);">Suggested by Ajay Sharma • Apr 14</div></div>
+          <div style="display:flex;gap:7px;"><button class="btn btn-green btn-sm" onclick="showToast('Test approved and assigned to Rahul ✓')">Approve</button><button class="btn btn-ghost btn-sm">Review</button></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--b);">
+          <div class="av">A</div>
+          <div style="flex:1;"><div style="font-size:13px;font-weight:600;">Resource: PYQ Electrostatics (2018–24) — for Rahul</div><div style="font-size:11.5px;color:var(--text3);">Suggested by Ajay Sharma • Apr 14</div></div>
+          <div style="display:flex;gap:7px;"><button class="btn btn-green btn-sm" onclick="showToast('Resource approved ✓')">Approve</button><button class="btn btn-ghost btn-sm">Review</button></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;padding:11px 0;">
+          <div class="av">A</div>
+          <div style="flex:1;"><div style="font-size:13px;font-weight:600;">Resource: Organic Reactions Cheat Sheet — for Priya</div><div style="font-size:11.5px;color:var(--text3);">Suggested by Ajay Sharma • Apr 13</div></div>
+          <div style="display:flex;gap:7px;"><button class="btn btn-green btn-sm" onclick="showToast('Resource approved ✓')">Approve</button><button class="btn btn-ghost btn-sm">Review</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ ENROLLMENT PIPELINE ══════════ -->
+  <div class="page" id="p-pipeline">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
+      <div style="font-size:13px;color:var(--text2);">Every student starts with an enquiry. Only the right ones reach Active. <span style="color:var(--gold);font-weight:600;">Meaningful guidance cannot exist at scale.</span></div>
+      <button class="btn btn-gold btn-sm" onclick="openM('enroll-modal')">+ New Enquiry</button>
+    </div>
+
+    <div class="pipeline">
+      <!-- Enquiry -->
+      <div class="pipe-col stage-enquiry">
+        <div class="pipe-header">
+          <div class="pipe-title" style="color:var(--text3);">Enquiry</div>
+          <div class="pipe-count" style="background:rgba(15,31,61,0.07);color:var(--text3);">3</div>
+        </div>
+        <div class="pipe-cards">
+          <div class="pipe-card" onclick="openM('student-detail-modal')">
+            <div class="pc-name">Arjun Sharma</div>
+            <div class="pc-exam">JEE Mains 2026 · Delhi</div>
+            <div class="pc-date">Enquired Apr 15</div>
+            <div class="pc-action" style="background:var(--bdim);color:var(--blue);" onclick="event.stopPropagation();showToast('Diagnostic call scheduled for Arjun ✓')">Schedule Diagnostic →</div>
+          </div>
+          <div class="pipe-card">
+            <div class="pc-name">Meera Pillai</div>
+            <div class="pc-exam">NEET 2026 · Chennai</div>
+            <div class="pc-date">Enquired Apr 14</div>
+            <div class="pc-action" style="background:var(--bdim);color:var(--blue);" onclick="showToast('Diagnostic call scheduled ✓')">Schedule Diagnostic →</div>
+          </div>
+          <div class="pipe-card">
+            <div class="pc-name">Rohan Tiwari</div>
+            <div class="pc-exam">JEE Advanced 2026 · Lucknow</div>
+            <div class="pc-date">Enquired Apr 13</div>
+            <div class="pc-action" style="background:var(--bdim);color:var(--blue);" onclick="showToast('Diagnostic call scheduled ✓')">Schedule Diagnostic →</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Diagnostic Scheduled -->
+      <div class="pipe-col stage-diag">
+        <div class="pipe-header">
+          <div class="pipe-title" style="color:var(--blue);">Diagnostic</div>
+          <div class="pipe-count" style="background:var(--bdim);color:var(--blue);">2</div>
+        </div>
+        <div class="pipe-cards">
+          <div class="pipe-card">
+            <div class="pc-name">Ishaan Kapoor</div>
+            <div class="pc-exam">JEE Mains 2026 · Mumbai</div>
+            <div class="pc-date">Call: Apr 17, 3PM</div>
+            <div class="pc-action" style="background:var(--gdim);color:var(--green);" onclick="showToast('Moved to Fit Review ✓')">Mark Done → Fit Review</div>
+          </div>
+          <div class="pipe-card">
+            <div class="pc-name">Tanvi Nair</div>
+            <div class="pc-exam">NEET 2026 · Bangalore</div>
+            <div class="pc-date">Call: Apr 18, 11AM</div>
+            <div class="pc-action" style="background:var(--gdim);color:var(--green);" onclick="showToast('Moved to Fit Review ✓')">Mark Done → Fit Review</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Program Fit Review -->
+      <div class="pipe-col stage-fit">
+        <div class="pipe-header">
+          <div class="pipe-title" style="color:var(--orange);">Fit Review</div>
+          <div class="pipe-count" style="background:var(--odim);color:var(--orange);">1</div>
+        </div>
+        <div class="pipe-cards">
+          <div class="pipe-card" style="border-color:var(--orange);">
+            <div class="pc-name">Devika Rao</div>
+            <div class="pc-exam">JEE Mains 2026 · Hyderabad</div>
+            <div class="pc-date">Diagnostic done Apr 12</div>
+            <div style="font-size:11px;color:var(--text2);margin:6px 0 4px;line-height:1.5;">Score gap: 180 marks. Commitment: high. Fit: strong.</div>
+            <div style="display:flex;gap:5px;">
+              <div class="pc-action" style="flex:1;background:var(--gdim);color:var(--green);font-size:10.5px;" onclick="showToast('Devika enrolled. Assign faculty next. ✓')">Enroll ✓</div>
+              <div class="pc-action" style="flex:1;background:var(--rdim);color:var(--red);font-size:10.5px;" onclick="showToast('Declined with explanation sent.')">Decline</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Enrolled (onboarding) -->
+      <div class="pipe-col stage-enrolled">
+        <div class="pipe-header">
+          <div class="pipe-title" style="color:var(--gold);">Enrolled</div>
+          <div class="pipe-count" style="background:var(--gd);color:var(--gold);">2</div>
+        </div>
+        <div class="pipe-cards">
+          <div class="pipe-card">
+            <div class="pc-name">Vanya Rao</div>
+            <div class="pc-exam">JEE Mains 2026</div>
+            <div class="pc-date">Enrolled Apr 10 · Wk 1</div>
+            <div class="pc-action" style="background:var(--gd);color:var(--gold);" onclick="nav('assign',document.querySelectorAll('.ni')[7])">Assign Faculty →</div>
+          </div>
+          <div class="pipe-card">
+            <div class="pc-name">Siddharth Jain</div>
+            <div class="pc-exam">JEE Mains 2026</div>
+            <div class="pc-date">Enrolled Apr 8 · Wk 2</div>
+            <div class="pc-action" style="background:var(--gdim);color:var(--green);font-size:10.5px;">Faculty: Ajay ✓</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Active -->
+      <div class="pipe-col stage-active">
+        <div class="pipe-header">
+          <div class="pipe-title" style="color:var(--green);">Active</div>
+          <div class="pipe-count" style="background:var(--gdim);color:var(--green);">12</div>
+        </div>
+        <div class="pipe-cards">
+          <div class="pipe-card"><div class="pc-name">Rahul Mehta</div><div class="pc-exam">JEE • Wk 9 • Ajay</div><div style="font-size:11px;color:var(--green);margin-top:4px;">388 → 462 (+74)</div></div>
+          <div class="pipe-card"><div class="pc-name">Sneha Kapoor</div><div class="pc-exam">JEE • Wk 11 • Ajay</div><div style="font-size:11px;color:var(--green);margin-top:4px;">420 → 511 (+91)</div></div>
+          <div class="pipe-card"><div class="pc-name">Priya Desai</div><div class="pc-exam">NEET • Wk 7 • Ajay</div><div style="font-size:11px;color:var(--green);margin-top:4px;">350 → 418 (+68)</div></div>
+          <div class="pipe-card"><div class="pc-name">Kavya Menon</div><div class="pc-exam">NEET • Wk 12 • Ajay</div><div style="font-size:11px;color:var(--green);margin-top:4px;">440 → 548 (+108)</div></div>
+          <div style="font-size:11px;color:var(--text3);text-align:center;padding:8px 0;">+8 more active students</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ REVENUE & FEES ══════════ -->
+  <div class="page" id="p-revenue">
+    <div class="g4 mb">
+      <div class="stat sa-gold"><div class="stat-l">Total Revenue (YTD)</div><div class="stat-v" style="font-size:22px;">₹14.2L</div><div class="stat-n up">↑ 34% vs last year</div></div>
+      <div class="stat sa-green"><div class="stat-l">April Collected</div><div class="stat-v" style="font-size:22px;">₹1.56L</div><div class="stat-n up">85% of target</div></div>
+      <div class="stat sa-red"><div class="stat-l">Overdue Amount</div><div class="stat-v" style="font-size:22px;">₹28K</div><div class="stat-n bad">2 students · 15+ days</div></div>
+      <div class="stat sa-navy"><div class="stat-l">Avg Revenue/Student</div><div class="stat-v" style="font-size:22px;">₹15.3K</div><div class="stat-n neu">per month</div></div>
+    </div>
+
+    <div class="g2 mb">
+      <!-- Monthly chart -->
+      <div class="card">
+        <div class="sh"><div class="sh-t">Revenue — Last 6 Months</div></div>
+        <div class="rev-chart" id="rev-chart"></div>
+        <div style="display:flex;justify-content:space-between;padding:0 2px;">
+          <span style="font-size:10px;color:var(--text3)">Nov</span><span style="font-size:10px;color:var(--text3)">Dec</span><span style="font-size:10px;color:var(--text3)">Jan</span><span style="font-size:10px;color:var(--text3)">Feb</span><span style="font-size:10px;color:var(--text3)">Mar</span><span style="font-size:10px;color:var(--text3)">Apr</span>
+        </div>
+        <div style="display:flex;gap:16px;margin-top:14px;border-top:1px solid var(--b);padding-top:12px;">
+          <div style="text-align:center;flex:1;"><div style="font-family:var(--fs);font-size:16px;font-weight:700;color:var(--text);">₹1.84L</div><div style="font-size:10.5px;color:var(--text3)">Apr target</div></div>
+          <div style="text-align:center;flex:1;"><div style="font-family:var(--fs);font-size:16px;font-weight:700;color:var(--green);">₹1.56L</div><div style="font-size:10.5px;color:var(--text3)">Collected</div></div>
+          <div style="text-align:center;flex:1;"><div style="font-family:var(--fs);font-size:16px;font-weight:700;color:var(--red);">₹28K</div><div style="font-size:10.5px;color:var(--text3)">Remaining</div></div>
+        </div>
+      </div>
+
+      <!-- Plan breakdown -->
+      <div class="card">
+        <div class="sh"><div class="sh-t">Revenue by Plan</div></div>
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <div>
+            <div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:5px;"><span style="font-weight:500;">Full Program (1-to-1)</span><span style="font-weight:700;color:var(--text);">₹1.12L</span></div>
+            <div class="pbar" style="height:8px;"><div class="pbar-inner pb-gold" style="width:72%"></div></div>
+            <div style="font-size:11px;color:var(--text3);margin-top:3px;">8 students · ₹14,000/mo avg</div>
+          </div>
+          <div>
+            <div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:5px;"><span style="font-weight:500;">Unlock Plan</span><span style="font-weight:700;color:var(--text);">₹32K</span></div>
+            <div class="pbar" style="height:8px;"><div class="pbar-inner pb-navy" style="width:21%"></div></div>
+            <div style="font-size:11px;color:var(--text3);margin-top:3px;">4 students · ₹8,000/mo avg</div>
+          </div>
+          <div>
+            <div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:5px;"><span style="font-weight:500;">Single Sessions</span><span style="font-weight:700;color:var(--text);">₹12K</span></div>
+            <div class="pbar" style="height:8px;"><div class="pbar-inner pb-green" style="width:8%"></div></div>
+            <div style="font-size:11px;color:var(--text3);margin-top:3px;">6 sessions booked</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Per-student fee table -->
+    <div class="sh"><div class="sh-t">Student Fee Status</div><button class="btn btn-gold btn-sm" onclick="openM('fee-modal')">Record Payment</button></div>
+    <div class="card" style="padding:0;overflow:hidden;">
+      <table class="tbl">
+        <thead><tr><th>Student</th><th>Plan</th><th>Monthly Fee</th><th>Last Payment</th><th>Next Due</th><th>Status</th><th>Action</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><div class="av-row"><div class="av">R</div>Rahul Mehta</div></td>
+            <td>Full Program</td>
+            <td>₹15,000</td>
+            <td>Apr 1</td>
+            <td>May 1</td>
+            <td><span class="fc-status paid">Paid ✓</span></td>
+            <td><button class="btn btn-ghost btn-sm">History</button></td>
+          </tr>
+          <tr>
+            <td><div class="av-row"><div class="av">S</div>Sneha Kapoor</div></td>
+            <td>Full Program</td>
+            <td>₹15,000</td>
+            <td>Apr 1</td>
+            <td>May 1</td>
+            <td><span class="fc-status paid">Paid ✓</span></td>
+            <td><button class="btn btn-ghost btn-sm">History</button></td>
+          </tr>
+          <tr>
+            <td><div class="av-row"><div class="av">P</div>Priya Desai</div></td>
+            <td>Full Program</td>
+            <td>₹14,000</td>
+            <td>Mar 28</td>
+            <td>Apr 28</td>
+            <td><span class="fc-status overdue">Overdue 18d</span></td>
+            <td><button class="btn btn-gold btn-sm" onclick="showToast('Payment reminder sent to Priya\'s parent ✓')">Send Reminder</button></td>
+          </tr>
+          <tr>
+            <td><div class="av-row"><div class="av">A</div>Arjun Singh</div></td>
+            <td>Full Program</td>
+            <td>₹14,000</td>
+            <td>Apr 5</td>
+            <td>May 5</td>
+            <td><span class="fc-status paid">Paid ✓</span></td>
+            <td><button class="btn btn-ghost btn-sm">History</button></td>
+          </tr>
+          <tr>
+            <td><div class="av-row"><div class="av">V</div>Vanya Rao</div></td>
+            <td>Full Program</td>
+            <td>₹14,000</td>
+            <td>Mar 25</td>
+            <td>Apr 25</td>
+            <td><span class="fc-status overdue">Overdue 21d</span></td>
+            <td><button class="btn btn-gold btn-sm" onclick="showToast('Reminder sent ✓')">Send Reminder</button></td>
+          </tr>
+          <tr>
+            <td><div class="av-row"><div class="av">K</div>Kavya Menon</div></td>
+            <td>Full Program</td>
+            <td>₹16,000</td>
+            <td>Apr 3</td>
+            <td>May 3</td>
+            <td><span class="fc-status paid">Paid ✓</span></td>
+            <td><button class="btn btn-ghost btn-sm">History</button></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ══════════ STUDENTS ══════════ -->
+  <div class="page" id="p-students">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;flex-wrap:wrap;gap:10px;">
+      <div class="tabs" style="margin-bottom:0;">
+        <div class="tab on" onclick="tabSwitch(this)">All (12)</div>
+        <div class="tab" onclick="tabSwitch(this)">JEE (8)</div>
+        <div class="tab" onclick="tabSwitch(this)">NEET (4)</div>
+      </div>
+      <button class="btn btn-gold btn-sm" onclick="openM('enroll-modal')">+ Enroll Student</button>
+    </div>
+    <div class="card" style="padding:0;overflow:hidden;">
+      <table class="tbl">
+        <thead><tr><th>Student</th><th>Exam</th><th>Faculty</th><th>Week</th><th>Score Progress</th><th>Fee</th><th>Actions</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><div class="av-row"><div class="av">R</div>Rahul Mehta</div></td>
+            <td><span class="pill pn">JEE Mains</span></td>
+            <td><div class="av-row"><div class="av" style="background:transparent;border-color:var(--text3);color:var(--text3);">A</div>Ajay Sharma</div></td>
+            <td>Wk 9</td>
+            <td><span style="font-family:var(--fs);color:var(--gold);font-weight:700;">388→462</span> <span style="font-size:11px;color:var(--green);">+74</span></td>
+            <td><span class="fc-status paid">Paid</span></td>
+            <td><div style="display:flex;gap:6px;"><button class="btn btn-ghost btn-sm" onclick="openM('message-modal')">Message</button><button class="btn btn-ghost btn-sm" onclick="openM('assign-modal')">Reassign</button></div></td>
+          </tr>
+          <tr>
+            <td><div class="av-row"><div class="av">S</div>Sneha Kapoor</div></td>
+            <td><span class="pill pn">JEE Mains</span></td>
+            <td><div class="av-row"><div class="av" style="background:transparent;border-color:var(--text3);color:var(--text3);">A</div>Ajay Sharma</div></td>
+            <td>Wk 11</td>
+            <td><span style="font-family:var(--fs);color:var(--gold);font-weight:700;">420→511</span> <span style="font-size:11px;color:var(--green);">+91</span></td>
+            <td><span class="fc-status paid">Paid</span></td>
+            <td><div style="display:flex;gap:6px;"><button class="btn btn-ghost btn-sm" onclick="openM('message-modal')">Message</button><button class="btn btn-ghost btn-sm" onclick="openM('assign-modal')">Reassign</button></div></td>
+          </tr>
+          <tr>
+            <td><div class="av-row"><div class="av">P</div>Priya Desai</div></td>
+            <td><span class="pill pp">NEET</span></td>
+            <td><div class="av-row"><div class="av" style="background:transparent;border-color:var(--text3);color:var(--text3);">A</div>Ajay Sharma</div></td>
+            <td>Wk 7</td>
+            <td><span style="font-family:var(--fs);color:var(--gold);font-weight:700;">350→418</span> <span style="font-size:11px;color:var(--green);">+68</span></td>
+            <td><span class="fc-status overdue">Overdue</span></td>
+            <td><div style="display:flex;gap:6px;"><button class="btn btn-ghost btn-sm" onclick="openM('message-modal')">Message</button><button class="btn btn-gold btn-sm btn-sm" onclick="showToast('Reminder sent ✓')">Remind Fee</button></div></td>
+          </tr>
+          <tr>
+            <td><div class="av-row"><div class="av">K</div>Kavya Menon</div></td>
+            <td><span class="pill pp">NEET</span></td>
+            <td><div class="av-row"><div class="av" style="background:transparent;border-color:var(--text3);color:var(--text3);">A</div>Ajay Sharma</div></td>
+            <td>Wk 12</td>
+            <td><span style="font-family:var(--fs);color:var(--gold);font-weight:700;">440→548</span> <span style="font-size:11px;color:var(--green);">+108</span></td>
+            <td><span class="fc-status paid">Paid</span></td>
+            <td><div style="display:flex;gap:6px;"><button class="btn btn-ghost btn-sm" onclick="openM('message-modal')">Message</button><button class="btn btn-ghost btn-sm">View Profile</button></div></td>
+          </tr>
+          <tr>
+            <td><div class="av-row"><div class="av">A</div>Arjun Singh</div></td>
+            <td><span class="pill pn">JEE Mains</span></td>
+            <td><div class="av-row"><div class="av" style="background:transparent;border-color:var(--text3);color:var(--text3);">A</div>Ajay Sharma</div></td>
+            <td>Wk 8</td>
+            <td><span style="font-family:var(--fs);color:var(--gold);font-weight:700;">410→478</span> <span style="font-size:11px;color:var(--green);">+68</span></td>
+            <td><span class="fc-status paid">Paid</span></td>
+            <td><div style="display:flex;gap:6px;"><button class="btn btn-ghost btn-sm" onclick="openM('message-modal')">Message</button><button class="btn btn-ghost btn-sm">View Profile</button></div></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ══════════ FACULTY ══════════ -->
+  <div class="page" id="p-faculty">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;flex-wrap:wrap;gap:10px;">
+      <div style="font-size:13px;color:var(--text2);">3 active faculty members</div>
+      <button class="btn btn-gold btn-sm" onclick="openM('add-faculty-modal')">+ Add Faculty</button>
+    </div>
+    <div class="g3 mb">
+      <div class="card" style="transition:all .2s;" onmouseover="this.style.borderColor='var(--gold)'" onmouseout="this.style.borderColor='var(--b)'">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;">
+          <div class="av av-lg" style="border-color:var(--gold);color:var(--gold);background:var(--gd);">A</div>
+          <div><div style="font-size:15px;font-weight:700;font-family:var(--fs);">Ajay Sharma</div><div style="font-size:11.5px;color:var(--text3);">JEE &amp; NEET • Head Faculty</div></div>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;">
+          <span class="pill pg">JEE Mains</span><span class="pill pg">JEE Advanced</span><span class="pill pp">NEET</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px;">
+          <div style="text-align:center;padding:8px;background:var(--cream2);border-radius:var(--r);"><div style="font-family:var(--fs);font-size:18px;font-weight:700;">8</div><div style="font-size:10.5px;color:var(--text3);">Students</div></div>
+          <div style="text-align:center;padding:8px;background:var(--cream2);border-radius:var(--r);"><div style="font-family:var(--fs);font-size:18px;font-weight:700;">11</div><div style="font-size:10.5px;color:var(--text3);">Sessions/wk</div></div>
+          <div style="text-align:center;padding:8px;background:var(--cream2);border-radius:var(--r);"><div style="font-family:var(--fs);font-size:18px;font-weight:700;color:var(--gold);">+82</div><div style="font-size:10.5px;color:var(--text3);">Avg gain</div></div>
+        </div>
+        <div style="display:flex;gap:7px;">
+          <button class="btn btn-ghost btn-sm" style="flex:1;justify-content:center;" onclick="openM('assign-modal')">Assign Student</button>
+          <button class="btn btn-gold btn-sm" style="flex:1;justify-content:center;" onclick="openM('message-modal')">Message</button>
+        </div>
+      </div>
+
+      <div class="card" style="transition:all .2s;opacity:.7;" onmouseover="this.style.borderColor='var(--gold)';this.style.opacity='1'" onmouseout="this.style.borderColor='var(--b)';this.style.opacity='.7'">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;">
+          <div class="av av-lg" style="color:var(--blue);border-color:var(--blue);background:var(--bdim);">N</div>
+          <div><div style="font-size:15px;font-weight:700;font-family:var(--fs);">Neha Gupta</div><div style="font-size:11.5px;color:var(--text3);">Biology &amp; Chemistry · NEET</div></div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;"><span class="pill pp">NEET Biology</span><span class="pill pg">Organic Chem</span></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px;">
+          <div style="text-align:center;padding:8px;background:var(--cream2);border-radius:var(--r);"><div style="font-family:var(--fs);font-size:18px;font-weight:700;">3</div><div style="font-size:10.5px;color:var(--text3);">Students</div></div>
+          <div style="text-align:center;padding:8px;background:var(--cream2);border-radius:var(--r);"><div style="font-family:var(--fs);font-size:18px;font-weight:700;">5</div><div style="font-size:10.5px;color:var(--text3);">Sessions/wk</div></div>
+          <div style="text-align:center;padding:8px;background:var(--cream2);border-radius:var(--r);"><div style="font-family:var(--fs);font-size:18px;font-weight:700;color:var(--gold);">+64</div><div style="font-size:10.5px;color:var(--text3);">Avg gain</div></div>
+        </div>
+        <div style="display:flex;gap:7px;">
+          <button class="btn btn-ghost btn-sm" style="flex:1;justify-content:center;" onclick="openM('assign-modal')">Assign Student</button>
+          <button class="btn btn-gold btn-sm" style="flex:1;justify-content:center;" onclick="openM('message-modal')">Message</button>
+        </div>
+      </div>
+
+      <div class="card" style="border:1px dashed var(--b);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;min-height:220px;cursor:pointer;transition:all .2s;" onmouseover="this.style.borderColor='var(--gold)'" onmouseout="this.style.borderColor='var(--b)'" onclick="openM('add-faculty-modal')">
+        <div style="width:48px;height:48px;border-radius:50%;background:var(--cream2);border:1.5px dashed var(--b);display:flex;align-items:center;justify-content:center;font-size:22px;color:var(--text3);">+</div>
+        <div style="font-size:13px;font-weight:500;color:var(--text3);text-align:center;">Add a Faculty Member</div>
+        <div style="font-size:12px;color:var(--text3);text-align:center;max-width:160px;line-height:1.6;">Keep cohort size intentionally small per faculty</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ ASSIGN FACULTY ══════════ -->
+  <div class="page" id="p-assign">
+    <div style="font-size:13px;color:var(--text2);margin-bottom:20px;background:var(--cream);border:1px solid var(--b);padding:12px 16px;border-radius:var(--r);border-left:3px solid var(--gold);">
+      Each student has one dedicated faculty. Reassignment disrupts continuity — only reassign if necessary, and communicate the reason to the student and parent.
+    </div>
+
+    <div class="sh"><div class="sh-t">Current Assignments</div></div>
+    <div class="card mb" style="padding:0;overflow:hidden;">
+      <table class="tbl">
+        <thead><tr><th>Student</th><th>Exam</th><th>Current Faculty</th><th>Since</th><th>Sessions</th><th>Change?</th></tr></thead>
+        <tbody>
+          <tr><td><div class="av-row"><div class="av">R</div>Rahul Mehta</div></td><td>JEE Mains</td><td><div class="av-row"><div class="av" style="color:var(--text2);border-color:var(--text3);background:transparent;font-size:11px;">A</div>Ajay Sharma</div></td><td>Jan 28</td><td>47 sessions</td><td><button class="btn btn-ghost btn-sm" onclick="openM('assign-modal')">Reassign</button></td></tr>
+          <tr><td><div class="av-row"><div class="av">S</div>Sneha Kapoor</div></td><td>JEE Mains</td><td><div class="av-row"><div class="av" style="color:var(--text2);border-color:var(--text3);background:transparent;font-size:11px;">A</div>Ajay Sharma</div></td><td>Feb 2</td><td>52 sessions</td><td><button class="btn btn-ghost btn-sm" onclick="openM('assign-modal')">Reassign</button></td></tr>
+          <tr><td><div class="av-row"><div class="av">P</div>Priya Desai</div></td><td>NEET</td><td><div class="av-row"><div class="av" style="color:var(--text2);border-color:var(--text3);background:transparent;font-size:11px;">A</div>Ajay Sharma</div></td><td>Feb 20</td><td>31 sessions</td><td><button class="btn btn-ghost btn-sm" onclick="openM('assign-modal')">Reassign</button></td></tr>
+          <tr style="background:rgba(232,168,48,0.04);"><td><div class="av-row"><div class="av">V</div>Vanya Rao</div></td><td>JEE Mains</td><td><span style="font-size:12px;color:var(--orange);font-weight:500;">⚠ Not assigned yet</span></td><td>Apr 10</td><td>0 sessions</td><td><button class="btn btn-gold btn-sm" onclick="openM('assign-modal')">Assign Now →</button></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Faculty load -->
+    <div class="sh"><div class="sh-t">Faculty Workload</div><span style="font-size:12px;color:var(--text3);">Keep below 10 students per faculty for quality</span></div>
+    <div class="g2">
+      <div class="card">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+          <div class="av av-lg">A</div>
+          <div><div style="font-weight:600;font-size:14px;">Ajay Sharma</div><div style="font-size:11.5px;color:var(--text3);">JEE &amp; NEET Faculty</div></div>
+          <span class="pill pg" style="margin-left:auto;">8 / 10</span>
+        </div>
+        <div class="pbar" style="height:8px;margin-bottom:8px;"><div class="pbar-inner pb-gold" style="width:80%"></div></div>
+        <div style="font-size:11.5px;color:var(--text3);">80% capacity · 2 slots remaining before overload risk</div>
+      </div>
+      <div class="card">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+          <div class="av av-lg" style="color:var(--blue);border-color:var(--blue);background:var(--bdim);">N</div>
+          <div><div style="font-weight:600;font-size:14px;">Neha Gupta</div><div style="font-size:11.5px;color:var(--text3);">Biology &amp; Chemistry</div></div>
+          <span class="pill pp" style="margin-left:auto;">3 / 10</span>
+        </div>
+        <div class="pbar" style="height:8px;margin-bottom:8px;"><div class="pbar-inner pb-green" style="width:30%"></div></div>
+        <div style="font-size:11.5px;color:var(--text3);">30% capacity · Has availability for 7 more students</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ APPROVALS ══════════ -->
+  <div class="page" id="p-approvals">
+    <div class="tabs">
+      <div class="tab on" onclick="tabSwitch(this)">Pending (4)</div>
+      <div class="tab" onclick="tabSwitch(this)">Approved</div>
+      <div class="tab" onclick="tabSwitch(this)">Declined</div>
+    </div>
+
+    <div class="approval-item">
+      <div class="ai-top">
+        <div><div class="ai-title">Test: Electrostatics Targeted (25Q) — Rahul Mehta</div><div class="ai-meta">Suggested by Ajay Sharma · Apr 14 · 25 questions · Due Apr 18</div></div>
+        <span class="pill po">Test</span>
+      </div>
+      <div class="ai-reason">"Rahul's Gauss's Law accuracy is 31%. This test covers exactly his gap — 15 field line Qs + 10 potential. Needs to do this before our Apr 18 session so I can build on results."</div>
+      <div class="ai-actions">
+        <button class="btn btn-green btn-sm" onclick="approveItem(this,'Test approved. Rahul will see it as Mentor-assigned ✓')">Approve & Assign</button>
+        <button class="btn btn-ghost btn-sm">Request Changes</button>
+        <button class="btn btn-red btn-sm" onclick="approveItem(this,'Item declined.')">Decline</button>
+      </div>
+    </div>
+
+    <div class="approval-item">
+      <div class="ai-top">
+        <div><div class="ai-title">Resource: PYQ Electrostatics 2018–2024 — Rahul Mehta</div><div class="ai-meta">Suggested by Ajay Sharma · Apr 14 · PDF 4.2MB</div></div>
+        <span class="pill pb">Resource</span>
+      </div>
+      <div class="ai-reason">"Rahul's doubt volume on this topic is high. These 40 PYQs map directly to his weak area and will give him exam-pattern familiarity before the Apr 18 session."</div>
+      <div class="ai-actions">
+        <button class="btn btn-green btn-sm" onclick="approveItem(this,'Resource approved. Added to Rahul\'s library ✓')">Approve</button>
+        <button class="btn btn-ghost btn-sm">Request Changes</button>
+        <button class="btn btn-red btn-sm" onclick="approveItem(this,'Item declined.')">Decline</button>
+      </div>
+    </div>
+
+    <div class="approval-item">
+      <div class="ai-top">
+        <div><div class="ai-title">Resource: Organic Reactions Cheat Sheet — Priya Desai</div><div class="ai-meta">Suggested by Ajay Sharma · Apr 13 · PDF 0.8MB</div></div>
+        <span class="pill pb">Resource</span>
+      </div>
+      <div class="ai-reason">"Priya keeps confusing Markovnikov, Aldol, and Cannizzaro under test conditions. A visual one-pager for revision before sessions will help consolidate."</div>
+      <div class="ai-actions">
+        <button class="btn btn-green btn-sm" onclick="approveItem(this,'Resource approved. Added to Priya\'s library ✓')">Approve</button>
+        <button class="btn btn-ghost btn-sm">Request Changes</button>
+        <button class="btn btn-red btn-sm" onclick="approveItem(this,'Item declined.')">Decline</button>
+      </div>
+    </div>
+
+    <div class="approval-item">
+      <div class="ai-top">
+        <div><div class="ai-title">Test: Integration Chapter Test (30Q) — Sneha Kapoor</div><div class="ai-meta">Suggested by Ajay Sharma · Apr 12 · 30 questions · Due Apr 17</div></div>
+        <span class="pill po">Test</span>
+      </div>
+      <div class="ai-reason">"Sneha's substitution method is now solid (68%). Ready to confirm with a full chapter test before moving to definite integrals. This closes the loop on 3 weeks of work."</div>
+      <div class="ai-actions">
+        <button class="btn btn-green btn-sm" onclick="approveItem(this,'Test approved. Sneha will see it as Mentor-assigned ✓')">Approve & Assign</button>
+        <button class="btn btn-ghost btn-sm">Request Changes</button>
+        <button class="btn btn-red btn-sm" onclick="approveItem(this,'Item declined.')">Decline</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ MESSAGES ══════════ -->
+  <div class="page" id="p-messages">
+    <div class="msg-compose mb">
+      <div class="sh"><div class="sh-t">Compose Message</div><span style="font-size:12px;color:var(--text3);">Appears on student's dashboard immediately</span></div>
+      <div style="font-size:12px;color:var(--text2);margin-bottom:10px;font-weight:500;">Send to:</div>
+      <div class="target-chips" id="target-chips">
+        <div class="chip on" onclick="toggleChip(this)">All Students</div>
+        <div class="chip" onclick="toggleChip(this)">JEE Students</div>
+        <div class="chip" onclick="toggleChip(this)">NEET Students</div>
+        <div class="chip" onclick="toggleChip(this)">Rahul Mehta</div>
+        <div class="chip" onclick="toggleChip(this)">Sneha Kapoor</div>
+        <div class="chip" onclick="toggleChip(this)">Priya Desai</div>
+        <div class="chip" onclick="toggleChip(this)">Arjun Singh</div>
+        <div class="chip" onclick="toggleChip(this)">Kavya Menon</div>
+        <div class="chip" onclick="toggleChip(this)">Vanya Rao</div>
+      </div>
+      <div class="fg" style="margin-bottom:12px;"><label>Message Type</label>
+        <select class="fi"><option>Announcement</option><option>Reminder</option><option>Motivational Note</option><option>Schedule Update</option><option>Fee Reminder</option></select>
+      </div>
+      <div class="fg" style="margin-bottom:12px;"><label>Message</label>
+        <textarea class="fi" rows="4" placeholder="Write your message — it will appear as a notification on the student's dashboard..."></textarea>
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:9px;">
+        <button class="btn btn-ghost btn-sm">Save as Draft</button>
+        <button class="btn btn-gold btn-sm" onclick="showToast('Message sent to selected students ✓')">Send Now →</button>
+      </div>
+    </div>
+
+    <!-- Message history -->
+    <div class="sh"><div class="sh-t">Sent Messages</div></div>
+    <div class="card" style="padding:14px 18px;">
+      <div style="display:flex;flex-direction:column;gap:0;">
+        <div style="padding:12px 0;border-bottom:1px solid var(--b);">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;"><div style="font-size:13px;font-weight:600;">Reminder: Holiday Schedule Update</div><div style="font-size:11px;color:var(--text3);">Apr 13 · All Students</div></div>
+          <div style="font-size:12.5px;color:var(--text2);">No sessions on Apr 14 (Sunday). All schedules resume from Apr 15. Doubt desk remains active throughout.</div>
+        </div>
+        <div style="padding:12px 0;border-bottom:1px solid var(--b);">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;"><div style="font-size:13px;font-weight:600;">JEE Mains April Result — Important</div><div style="font-size:11px;color:var(--text3);">Apr 10 · JEE Students</div></div>
+          <div style="font-size:12.5px;color:var(--text2);">Results will be declared next week. Stay focused on current preparation — results don't change the plan.</div>
+        </div>
+        <div style="padding:12px 0;">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;"><div style="font-size:13px;font-weight:600;">Week 10 — Keep the momentum</div><div style="font-size:11px;color:var(--text3);">Apr 6 · All Students</div></div>
+          <div style="font-size:12.5px;color:var(--text2);">You're past the halfway mark. The work you do in the next 8 weeks matters most. Trust the process.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ ADMIN ACCOUNTS (SUPER ADMIN ONLY) ══════════ -->
+  <div class="page" id="p-admins">
+    <div style="background:rgba(139,92,246,0.08);border:1px solid rgba(139,92,246,0.25);border-radius:var(--rl);padding:14px 18px;margin-bottom:20px;display:flex;align-items:center;gap:12px;">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      <div style="font-size:13px;color:#5b21b6;font-weight:500;">Super Admin view only. You can create admins, toggle their permissions, and deactivate accounts.</div>
+    </div>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
+      <div class="sh-t">Admin Accounts</div>
+      <button class="btn btn-purple btn-sm" onclick="openM('add-admin-modal')">+ Create Admin</button>
+    </div>
+
+    <div class="g2 mb">
+      <!-- Admin 1 -->
+      <div class="admin-card">
+        <div class="ac-header">
+          <div class="av av-lg" style="color:var(--gold);border-color:var(--gold);">M</div>
+          <div style="flex:1;">
+            <div style="font-size:14px;font-weight:600;color:var(--text);">Meera Krishnan</div>
+            <div class="ac-meta">Operations Admin · Active since Jan 2026</div>
+          </div>
+          <span class="pill pp">Active</span>
+        </div>
+        <div style="font-size:11.5px;color:var(--text3);margin-bottom:10px;font-weight:500;text-transform:uppercase;letter-spacing:.06em;">Permissions</div>
+        <div class="ac-perms">
+          <span class="ac-perm-tag tag-on">View Students</span>
+          <span class="ac-perm-tag tag-on">Enroll Students</span>
+          <span class="ac-perm-tag tag-on">Assign Faculty</span>
+          <span class="ac-perm-tag tag-on">Approve Tests/Resources</span>
+          <span class="ac-perm-tag tag-on">Send Messages</span>
+          <span class="ac-perm-tag tag-off">View Revenue</span>
+          <span class="ac-perm-tag tag-off">Manage Fees</span>
+          <span class="ac-perm-tag tag-off">Add/Remove Faculty</span>
+        </div>
+        <div style="display:flex;gap:7px;margin-top:12px;padding-top:12px;border-top:1px solid var(--b);">
+          <button class="btn btn-ghost btn-sm" style="flex:1;justify-content:center;" onclick="openM('edit-admin-modal')">Edit Permissions</button>
+          <button class="btn btn-red btn-sm" onclick="showToast('Account deactivated')">Deactivate</button>
+        </div>
+      </div>
+
+      <!-- Admin 2 -->
+      <div class="admin-card">
+        <div class="ac-header">
+          <div class="av av-lg" style="color:var(--blue);border-color:var(--blue);background:var(--bdim);">S</div>
+          <div style="flex:1;">
+            <div style="font-size:14px;font-weight:600;color:var(--text);">Sanjay Pillai</div>
+            <div class="ac-meta">Finance Admin · Active since Feb 2026</div>
+          </div>
+          <span class="pill pp">Active</span>
+        </div>
+        <div style="font-size:11.5px;color:var(--text3);margin-bottom:10px;font-weight:500;text-transform:uppercase;letter-spacing:.06em;">Permissions</div>
+        <div class="ac-perms">
+          <span class="ac-perm-tag tag-on">View Students</span>
+          <span class="ac-perm-tag tag-off">Enroll Students</span>
+          <span class="ac-perm-tag tag-off">Assign Faculty</span>
+          <span class="ac-perm-tag tag-off">Approve Tests/Resources</span>
+          <span class="ac-perm-tag tag-on">Send Messages</span>
+          <span class="ac-perm-tag tag-on">View Revenue</span>
+          <span class="ac-perm-tag tag-on">Manage Fees</span>
+          <span class="ac-perm-tag tag-off">Add/Remove Faculty</span>
+        </div>
+        <div style="display:flex;gap:7px;margin-top:12px;padding-top:12px;border-top:1px solid var(--b);">
+          <button class="btn btn-ghost btn-sm" style="flex:1;justify-content:center;" onclick="openM('edit-admin-modal')">Edit Permissions</button>
+          <button class="btn btn-red btn-sm" onclick="showToast('Account deactivated')">Deactivate</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ PLATFORM SETTINGS (SUPER ADMIN) ══════════ -->
+  <div class="page" id="p-settings">
+    <div style="background:rgba(139,92,246,0.08);border:1px solid rgba(139,92,246,0.25);border-radius:var(--rl);padding:14px 18px;margin-bottom:20px;display:flex;align-items:center;gap:12px;">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      <div style="font-size:13px;color:#5b21b6;font-weight:500;">Platform-level settings. Changes apply across all dashboards immediately.</div>
+    </div>
+
+    <div class="g2">
+      <div>
+        <div class="card mb">
+          <div class="sh-t" style="margin-bottom:14px;">Platform Controls</div>
+          <div class="perm-row"><div><div class="perm-label">Free tier diagnostic enabled</div><div class="perm-desc">Students without enrollment can access the free diagnostic</div></div><div class="toggle on" onclick="togglePerm(this)"></div></div>
+          <div class="perm-row"><div><div class="perm-label">New enrollments open</div><div class="perm-desc">Pipeline accepts new enquiries</div></div><div class="toggle on" onclick="togglePerm(this)"></div></div>
+          <div class="perm-row"><div><div class="perm-label">Parent reports automated</div><div class="perm-desc">Send Sunday reports automatically when faculty marks "Ready"</div></div><div class="toggle on" onclick="togglePerm(this)"></div></div>
+          <div class="perm-row"><div><div class="perm-label">Payment reminders auto-send</div><div class="perm-desc">Send automatic reminders 3 days before due date</div></div><div class="toggle on" onclick="togglePerm(this)"></div></div>
+          <div class="perm-row" style="border:none;"><div><div class="perm-label">Free tier habit tracker</div><div class="perm-desc">Non-enrolled students can access the habit tracker</div></div><div class="toggle on" onclick="togglePerm(this)"></div></div>
+        </div>
+        <div class="card">
+          <div class="sh-t" style="margin-bottom:14px;">Cohort Limits</div>
+          <div class="perm-row"><div><div class="perm-label">Max students per faculty</div><div class="perm-desc">Warn admin when a faculty exceeds this</div></div><div style="font-family:var(--fs);font-size:18px;font-weight:700;color:var(--gold);">10</div></div>
+          <div class="perm-row" style="border:none;"><div><div class="perm-label">Max total active enrollments</div><div class="perm-desc">Platform alert when this threshold is reached</div></div><div style="font-family:var(--fs);font-size:18px;font-weight:700;color:var(--gold);">30</div></div>
+        </div>
+      </div>
+      <div>
+        <div class="card mb">
+          <div class="sh-t" style="margin-bottom:14px;">Approval Workflow</div>
+          <div class="perm-row"><div><div class="perm-label">Faculty can assign tests</div><div class="perm-desc">Require admin approval before tests appear to students</div></div><div class="toggle on" onclick="togglePerm(this)"></div></div>
+          <div class="perm-row"><div><div class="perm-label">Faculty can assign resources</div><div class="perm-desc">Require admin approval before resources appear</div></div><div class="toggle on" onclick="togglePerm(this)"></div></div>
+          <div class="perm-row" style="border:none;"><div><div class="perm-label">Parent feedback visible to faculty</div><div class="perm-desc">Faculty can read parent feedback about their sessions</div></div><div class="toggle on" onclick="togglePerm(this)"></div></div>
+        </div>
+        <div class="card">
+          <div class="sh-t" style="margin-bottom:14px;">Super Admin Access Log</div>
+          <div style="display:flex;flex-direction:column;gap:0;">
+            <div style="padding:9px 0;border-bottom:1px solid var(--b);font-size:12.5px;"><span style="color:var(--text);">Vinay</span> <span style="color:var(--text3);">approved 2 resources</span> <span style="color:var(--text3);margin-left:auto;float:right;font-size:11px;">2h ago</span></div>
+            <div style="padding:9px 0;border-bottom:1px solid var(--b);font-size:12.5px;"><span style="color:var(--text);">Vinay</span> <span style="color:var(--text3);">updated Meera's permissions</span> <span style="color:var(--text3);margin-left:auto;float:right;font-size:11px;">Apr 13</span></div>
+            <div style="padding:9px 0;font-size:12.5px;"><span style="color:var(--text);">Vinay</span> <span style="color:var(--text3);">created admin: Sanjay Pillai</span> <span style="color:var(--text3);margin-left:auto;float:right;font-size:11px;">Feb 3</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+</div><!-- /app -->
+
+<!-- MODALS -->
+<div class="overlay" id="enroll-modal" onclick="closeMbg(event,'enroll-modal')">
+  <div class="modal">
+    <div class="mt">Enroll a New Student</div>
+    <div class="ms">This creates their profile and moves them into the Enrolled stage.</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div class="fg"><label>Student Name</label><input class="fi" type="text" placeholder="Full name"></div>
+      <div class="fg"><label>Parent Name</label><input class="fi" type="text" placeholder="Parent's name"></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div class="fg"><label>Parent Mobile</label><input class="fi" type="tel" placeholder="+91 XXXXX XXXXX"></div>
+      <div class="fg"><label>City</label><input class="fi" type="text" placeholder="City"></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div class="fg"><label>Target Exam</label><select class="fi"><option>JEE Mains 2026</option><option>JEE Advanced 2026</option><option>NEET 2026</option><option>JEE 2027</option><option>NEET 2027</option></select></div>
+      <div class="fg"><label>Plan</label><select class="fi"><option>Full Program</option><option>Unlock Plan</option><option>Single Sessions</option></select></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div class="fg"><label>Monthly Fee (₹)</label><input class="fi" type="number" placeholder="e.g. 15000"></div>
+      <div class="fg"><label>Assign Faculty</label><select class="fi"><option>Ajay Sharma</option><option>Neha Gupta</option><option>Assign later</option></select></div>
+    </div>
+    <div class="fg"><label>Diagnostic Score (Baseline)</label><input class="fi" type="number" placeholder="e.g. 380 — from diagnostic call"></div>
+    <div class="ma">
+      <button class="btn btn-ghost btn-sm" onclick="closeM('enroll-modal')">Cancel</button>
+      <button class="btn btn-gold btn-sm" onclick="closeM('enroll-modal');showToast('Student enrolled. Faculty notified. Dashboard created ✓')">Enroll Student →</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="assign-modal" onclick="closeMbg(event,'assign-modal')">
+  <div class="modal">
+    <div class="mt">Assign / Reassign Faculty</div>
+    <div class="ms">This will notify both the student and the new faculty member.</div>
+    <div class="fg"><label>Student</label><select class="fi"><option>Vanya Rao (unassigned)</option><option>Rahul Mehta (Ajay Sharma)</option><option>Priya Desai (Ajay Sharma)</option></select></div>
+    <div class="fg"><label>Assign to Faculty</label><select class="fi"><option>Ajay Sharma — 8 students (80% capacity)</option><option>Neha Gupta — 3 students (30% capacity)</option></select></div>
+    <div class="fg"><label>Reason for assignment / change</label><textarea class="fi" rows="2" placeholder="Optional — will be logged"></textarea></div>
+    <div style="background:var(--odim);border:1px solid rgba(249,115,22,0.25);border-radius:var(--r);padding:10px 12px;font-size:12px;color:var(--orange);margin-top:4px;">Note: Student and parent will be notified. Faculty workload will update immediately.</div>
+    <div class="ma">
+      <button class="btn btn-ghost btn-sm" onclick="closeM('assign-modal')">Cancel</button>
+      <button class="btn btn-gold btn-sm" onclick="closeM('assign-modal');showToast('Faculty assigned. Student and faculty notified ✓')">Confirm Assignment →</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="message-modal" onclick="closeMbg(event,'message-modal')">
+  <div class="modal">
+    <div class="mt">Send Message to Student</div>
+    <div class="ms">Appears as a notification on their dashboard immediately.</div>
+    <div class="fg"><label>Student</label><select class="fi"><option>Rahul Mehta</option><option>Sneha Kapoor</option><option>Priya Desai</option><option>All Students</option></select></div>
+    <div class="fg"><label>Type</label><select class="fi"><option>Announcement</option><option>Reminder</option><option>Motivational Note</option><option>Fee Reminder</option><option>Schedule Update</option></select></div>
+    <div class="fg"><label>Message</label><textarea class="fi" rows="4" placeholder="Write message..."></textarea></div>
+    <div class="ma">
+      <button class="btn btn-ghost btn-sm" onclick="closeM('message-modal')">Cancel</button>
+      <button class="btn btn-gold btn-sm" onclick="closeM('message-modal');showToast('Message sent to student dashboard ✓')">Send →</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="fee-modal" onclick="closeMbg(event,'fee-modal')">
+  <div class="modal">
+    <div class="mt">Record a Payment</div>
+    <div class="ms">Mark a fee as received and update the student's payment status.</div>
+    <div class="fg"><label>Student</label><select class="fi"><option>Priya Desai (₹14,000 overdue)</option><option>Vanya Rao (₹14,000 overdue)</option><option>Rahul Mehta</option></select></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div class="fg"><label>Amount Received (₹)</label><input class="fi" type="number" placeholder="14000"></div>
+      <div class="fg"><label>Date Received</label><input class="fi" type="date"></div>
+    </div>
+    <div class="fg"><label>Payment Mode</label><select class="fi"><option>UPI / Bank Transfer</option><option>Cash</option><option>Cheque</option><option>Card</option></select></div>
+    <div class="fg"><label>Transaction Reference (optional)</label><input class="fi" type="text" placeholder="UPI ref or transaction ID"></div>
+    <div class="ma">
+      <button class="btn btn-ghost btn-sm" onclick="closeM('fee-modal')">Cancel</button>
+      <button class="btn btn-gold btn-sm" onclick="closeM('fee-modal');showToast('Payment recorded. Status updated to Paid ✓')">Record Payment →</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="add-admin-modal" onclick="closeMbg(event,'add-admin-modal')">
+  <div class="modal">
+    <div class="mt">Create Admin Account</div>
+    <div class="ms">Set their permissions carefully. They can only do what you allow.</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div class="fg"><label>Full Name</label><input class="fi" type="text" placeholder="Admin's name"></div>
+      <div class="fg"><label>Email</label><input class="fi" type="email" placeholder="admin@studyverse.in"></div>
+    </div>
+    <div style="font-size:12px;font-weight:500;color:var(--text2);margin-bottom:10px;">Permissions</div>
+    <div style="display:flex;flex-direction:column;gap:0;">
+      <div class="perm-row"><div><div class="perm-label" style="font-size:12.5px;">View & manage students</div></div><div class="toggle on" onclick="togglePerm(this)"></div></div>
+      <div class="perm-row"><div><div class="perm-label" style="font-size:12.5px;">Enroll new students</div></div><div class="toggle on" onclick="togglePerm(this)"></div></div>
+      <div class="perm-row"><div><div class="perm-label" style="font-size:12.5px;">Assign faculty to students</div></div><div class="toggle on" onclick="togglePerm(this)"></div></div>
+      <div class="perm-row"><div><div class="perm-label" style="font-size:12.5px;">Approve tests & resources</div></div><div class="toggle on" onclick="togglePerm(this)"></div></div>
+      <div class="perm-row"><div><div class="perm-label" style="font-size:12.5px;">Send messages to students</div></div><div class="toggle on" onclick="togglePerm(this)"></div></div>
+      <div class="perm-row"><div><div class="perm-label" style="font-size:12.5px;">View revenue & fees</div></div><div class="toggle" onclick="togglePerm(this)"></div></div>
+      <div class="perm-row"><div><div class="perm-label" style="font-size:12.5px;">Record & manage payments</div></div><div class="toggle" onclick="togglePerm(this)"></div></div>
+      <div class="perm-row" style="border:none;"><div><div class="perm-label" style="font-size:12.5px;">Add / remove faculty</div></div><div class="toggle" onclick="togglePerm(this)"></div></div>
+    </div>
+    <div class="ma">
+      <button class="btn btn-ghost btn-sm" onclick="closeM('add-admin-modal')">Cancel</button>
+      <button class="btn btn-purple btn-sm" onclick="closeM('add-admin-modal');showToast('Admin account created. Login credentials sent ✓')">Create Account →</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="edit-admin-modal" onclick="closeMbg(event,'edit-admin-modal')">
+  <div class="modal">
+    <div class="mt">Edit Permissions — Meera Krishnan</div>
+    <div class="ms">Toggle access on or off. Changes take effect immediately.</div>
+    <div style="display:flex;flex-direction:column;gap:0;">
+      <div class="perm-row"><div><div class="perm-label" style="font-size:12.5px;">View & manage students</div></div><div class="toggle on" onclick="togglePerm(this)"></div></div>
+      <div class="perm-row"><div><div class="perm-label" style="font-size:12.5px;">Enroll new students</div></div><div class="toggle on" onclick="togglePerm(this)"></div></div>
+      <div class="perm-row"><div><div class="perm-label" style="font-size:12.5px;">Assign faculty to students</div></div><div class="toggle on" onclick="togglePerm(this)"></div></div>
+      <div class="perm-row"><div><div class="perm-label" style="font-size:12.5px;">Approve tests & resources</div></div><div class="toggle on" onclick="togglePerm(this)"></div></div>
+      <div class="perm-row"><div><div class="perm-label" style="font-size:12.5px;">Send messages to students</div></div><div class="toggle on" onclick="togglePerm(this)"></div></div>
+      <div class="perm-row"><div><div class="perm-label" style="font-size:12.5px;">View revenue & fees</div></div><div class="toggle" onclick="togglePerm(this)"></div></div>
+      <div class="perm-row"><div><div class="perm-label" style="font-size:12.5px;">Record & manage payments</div></div><div class="toggle" onclick="togglePerm(this)"></div></div>
+      <div class="perm-row" style="border:none;"><div><div class="perm-label" style="font-size:12.5px;">Add / remove faculty</div></div><div class="toggle" onclick="togglePerm(this)"></div></div>
+    </div>
+    <div class="ma">
+      <button class="btn btn-ghost btn-sm" onclick="closeM('edit-admin-modal')">Cancel</button>
+      <button class="btn btn-purple btn-sm" onclick="closeM('edit-admin-modal');showToast('Permissions updated for Meera Krishnan ✓')">Save Changes →</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="add-faculty-modal" onclick="closeMbg(event,'add-faculty-modal')">
+  <div class="modal">
+    <div class="mt">Add Faculty Member</div>
+    <div class="ms">Keep cohort size intentionally small. Only add when there's genuine capacity.</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div class="fg"><label>Full Name</label><input class="fi" type="text" placeholder="Faculty name"></div>
+      <div class="fg"><label>Phone</label><input class="fi" type="tel" placeholder="+91 XXXXX XXXXX"></div>
+    </div>
+    <div class="fg"><label>Specialisation</label><input class="fi" type="text" placeholder="e.g. JEE Advanced — Physics & Mathematics"></div>
+    <div class="fg"><label>Exams they can teach</label>
+      <select class="fi" multiple style="height:80px;"><option selected>JEE Mains</option><option>JEE Advanced</option><option>NEET</option></select>
+    </div>
+    <div class="fg"><label>Max students (suggested)</label><input class="fi" type="number" value="10" max="15"></div>
+    <div class="ma">
+      <button class="btn btn-ghost btn-sm" onclick="closeM('add-faculty-modal')">Cancel</button>
+      <button class="btn btn-gold btn-sm" onclick="closeM('add-faculty-modal');showToast('Faculty added. Login credentials sent ✓')">Add Faculty →</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="t"><div class="tpip"></div><span id="tmsg">Done</span></div>
+
+<script>
+const ptitles={dashboard:'Dashboard',pipeline:'Enrollment Pipeline',revenue:'Revenue & Fees',students:'Students',faculty:'Faculty',assign:'Assign Faculty',approvals:'Approvals',messages:'Messages',admins:'Admin Accounts',settings:'Platform Settings'};
+let superMode=true;
+
+function nav(page,el){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
+  document.querySelectorAll('.ni').forEach(n=>n.classList.remove('on'));
+  const p=document.getElementById('p-'+page);
+  if(p)p.classList.add('on');
+  if(el)el.classList.add('on');
+  document.getElementById('ph').textContent=ptitles[page]||page;
+  if(page==='revenue'||page==='dashboard')buildCharts();
+}
+
+function setRole(role){
+  superMode=(role==='super');
+  const body=document.getElementById('sidebar');
+  const badge=document.getElementById('role-badge');
+  const ind=document.getElementById('super-ind');
+  const rsSuper=document.getElementById('rs-super');
+  const rsAdmin=document.getElementById('rs-admin');
+  if(superMode){
+    body.classList.add('supermode');
+    badge.className='role-badge rb-super';
+    document.getElementById('role-av').className='rb-av rb-av-super';
+    document.getElementById('role-name').textContent='Vinay Raj Pareta';
+    document.getElementById('role-label').textContent='⬡ SUPER ADMIN';
+    rsSuper.classList.add('on','super-on');rsAdmin.classList.remove('on','super-on');
+  } else {
+    body.classList.remove('supermode');
+    badge.className='role-badge rb-admin';
+    document.getElementById('role-av').className='rb-av rb-av-admin';
+    document.getElementById('role-name').textContent='Meera Krishnan';
+    document.getElementById('role-label').textContent='◈ ADMIN';
+    rsAdmin.classList.add('on');rsAdmin.classList.remove('super-on');rsSuper.classList.remove('on','super-on');
+  }
+}
+
+function buildCharts(){
+  const vals=[95,112,128,142,156,184];
+  const max=Math.max(...vals);
+  ['dash-chart','rev-chart'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(!el||el.children.length>0)return;
+    vals.forEach((v,i)=>{
+      const h=Math.round((v/max)*118);
+      const isLast=(i===vals.length-1);
+      const w=document.createElement('div');
+      w.className='rev-bar-wrap';
+      w.innerHTML=`<div class="rev-val">₹${v}K</div><div class="rev-bar" style="height:${h}px;background:${isLast?'var(--gold)':'var(--navy3)'};"></div>`;
+      el.appendChild(w);
+    });
+  });
+}
+
+function tabSwitch(el){
+  el.closest('.tabs').querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
+  el.classList.add('on');
+}
+function togglePerm(el){el.classList.toggle('on')}
+function toggleChip(el){el.classList.toggle('on')}
+
+function approveItem(btn,msg){
+  const item=btn.closest('.approval-item');
+  item.style.opacity='0.4';item.style.pointerEvents='none';
+  showToast(msg);
+}
+
+function openM(id){document.getElementById(id).classList.add('open')}
+function closeM(id){document.getElementById(id).classList.remove('open')}
+function closeMbg(e,id){if(e.target.classList.contains('overlay'))closeM(id)}
+
+let tid;
+function showToast(msg){
+  const t=document.getElementById('t');
+  document.getElementById('tmsg').textContent=msg;
+  t.classList.add('show');clearTimeout(tid);
+  tid=setTimeout(()=>t.classList.remove('show'),3200);
+}
+
+// build charts on load
+window.addEventListener('load',buildCharts);
+</script>
+</body>
+</html>

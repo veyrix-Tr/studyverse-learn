@@ -1,0 +1,1461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Studyverse — Free Personalised JEE Prep</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,600&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy:#0F1F3D; --navy2:#162443; --navy3:#1C2E50;
+  --gold:#E8A830; --gold2:#F5C842;
+  --gold-dim:rgba(232,168,48,0.12); --gold-b:rgba(232,168,48,0.28);
+  --cream:#FDF8F0; --cream2:#F5F0E6; --cream3:#EDE5D4;
+  --text:#0F1F3D; --text2:#4A5568; --text3:#8896B3;
+  --inv:#FDF8F0; --inv2:rgba(253,248,240,0.7); --inv3:rgba(253,248,240,0.38);
+  --b:rgba(15,31,61,0.08); --bi:rgba(255,255,255,0.08);
+  --green:#22C55E; --green-dim:rgba(34,197,94,0.1);
+  --red:#EF4444; --red-dim:rgba(239,68,68,0.1);
+  --orange:#F97316; --orange-dim:rgba(249,115,22,0.1);
+  --fs:'Playfair Display',Georgia,serif; --fb:'DM Sans',sans-serif;
+  --r:10px; --rl:16px; --rxl:22px;
+  --sw:268px; --th:66px;
+  --sh:0 2px 10px rgba(15,31,61,0.07);
+  --shm:0 6px 24px rgba(15,31,61,0.11);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:var(--fb);background:var(--cream2);color:var(--text);font-size:14px;line-height:1.6;min-height:100vh;overflow-x:hidden}
+
+/* ── LAYOUT ── */
+.app{display:flex;min-height:100vh}
+
+/* ── SIDEBAR ── */
+.sidebar{width:var(--sw);background:var(--navy);position:fixed;top:0;left:0;bottom:0;z-index:100;display:flex;flex-direction:column;border-right:1px solid var(--bi)}
+.sb-logo{padding:22px 22px 18px;border-bottom:1px solid var(--bi);display:flex;align-items:center;gap:11px}
+.sb-mark{width:36px;height:36px;flex-shrink:0}
+.sb-words .w1{font-family:var(--fb);font-weight:700;font-size:15px;letter-spacing:.06em;color:var(--inv)}
+.sb-words .w1 span{color:var(--gold)}
+.sb-words .w2{font-size:9.5px;color:var(--gold);letter-spacing:.11em;text-transform:uppercase;font-weight:600}
+
+.nb{padding:16px 14px 6px}
+.nl{font-size:9.5px;color:var(--inv3);letter-spacing:.12em;text-transform:uppercase;padding:0 8px;margin-bottom:7px;font-weight:500}
+.ni{display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:8px;cursor:pointer;color:var(--inv2);font-size:13px;font-weight:400;transition:all .15s;margin-bottom:2px;position:relative;text-decoration:none}
+.ni:hover{background:rgba(255,255,255,0.06);color:var(--inv)}
+.ni.on{background:var(--gold-dim);color:var(--gold2)}
+.ni.on .nic{opacity:1;color:var(--gold)}
+.nic{width:16px;height:16px;flex-shrink:0;opacity:.65}
+.ni:hover .nic{opacity:1}
+.nbadge{margin-left:auto;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px}
+.nbadge.gold{background:var(--gold);color:var(--navy)}
+.nbadge.free{background:var(--green-dim);color:var(--green);border:1px solid rgba(34,197,94,0.25)}
+.nbadge.lock{background:rgba(255,255,255,0.08);color:var(--inv3);font-size:9px}
+
+/* TIER BADGE in sidebar */
+.tier-strip{margin:12px 14px;background:var(--gold-dim);border:1px solid var(--gold-b);border-radius:9px;padding:10px 12px}
+.tier-label{font-size:9.5px;color:var(--inv3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:3px}
+.tier-name{font-size:13px;font-weight:600;color:var(--gold)}
+.tier-cta{font-size:11px;color:var(--inv2);margin-top:4px;text-decoration:underline;cursor:pointer;transition:color .15s}
+.tier-cta:hover{color:var(--gold)}
+
+.sb-bottom{margin-top:auto;padding:14px;border-top:1px solid var(--bi)}
+.sb-user{display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:9px;background:rgba(255,255,255,0.04);border:1px solid var(--bi);cursor:pointer;transition:background .15s}
+.sb-user:hover{background:rgba(255,255,255,0.07)}
+.sb-av{width:34px;height:34px;border-radius:50%;border:2px solid var(--gold);background:var(--gold-dim);display:flex;align-items:center;justify-content:center;font-family:var(--fs);font-size:13px;font-weight:700;color:var(--gold);flex-shrink:0}
+.sb-uname{font-size:12.5px;color:var(--inv);font-weight:500}
+.sb-uexam{font-size:10.5px;color:var(--inv3);margin-top:1px}
+
+/* ── MAIN ── */
+.main{margin-left:var(--sw);flex:1;display:flex;flex-direction:column;min-height:100vh}
+
+/* ── TOPBAR ── */
+.topbar{height:var(--th);background:var(--cream);border-bottom:1px solid var(--b);display:flex;align-items:center;padding:0 30px;gap:16px;position:sticky;top:0;z-index:50;box-shadow:0 1px 4px rgba(15,31,61,0.04)}
+.ph{font-family:var(--fs);font-size:17px;font-weight:600;color:var(--text)}
+.tbr{display:flex;align-items:center;gap:9px;margin-left:auto}
+.srch{display:flex;align-items:center;gap:7px;background:var(--cream2);border:1px solid var(--b);border-radius:8px;padding:7px 13px;width:230px;transition:border-color .2s}
+.srch:focus-within{border-color:var(--gold)}
+.srch input{background:none;border:none;outline:none;font-family:var(--fb);font-size:13px;color:var(--text);width:100%}
+.srch input::placeholder{color:var(--text3)}
+.tbb{width:36px;height:36px;border-radius:8px;background:var(--cream2);border:1px solid var(--b);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--text3);transition:all .15s;position:relative}
+.tbb:hover{background:var(--cream3);color:var(--text)}
+.npip{position:absolute;top:7px;right:7px;width:6px;height:6px;border-radius:50%;background:var(--gold);border:1.5px solid var(--cream)}
+
+/* ── CONTENT ── */
+.content{padding:30px;flex:1}
+.page{display:none;animation:pi .2s ease}
+.page.on{display:block}
+@keyframes pi{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── COMPONENTS ── */
+.card{background:var(--cream);border:1px solid var(--b);border-radius:var(--rl);padding:22px 24px;box-shadow:var(--sh)}
+.card-dark{background:var(--navy);border:1px solid var(--bi);border-radius:var(--rl);padding:22px 24px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.mb{margin-bottom:22px}
+.mbl{margin-bottom:30px}
+
+.sh{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:15px}
+.sh-t{font-family:var(--fs);font-size:16px;font-weight:600;color:var(--text)}
+.sh-a{font-size:12px;color:var(--gold);cursor:pointer;font-weight:500;transition:color .15s}
+.sh-a:hover{color:var(--navy)}
+
+.btn{display:inline-flex;align-items:center;gap:7px;padding:9px 20px;border-radius:8px;font-family:var(--fb);font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;border:none;letter-spacing:.01em}
+.btn-gold{background:var(--gold);color:var(--navy)}
+.btn-gold:hover{background:var(--gold2)}
+.btn-navy{background:var(--navy);color:var(--gold2)}
+.btn-navy:hover{background:var(--navy3)}
+.btn-ghost{background:transparent;color:var(--text2);border:1px solid var(--b)}
+.btn-ghost:hover{background:var(--cream2);color:var(--text)}
+.btn-sm{padding:6px 14px;font-size:12px}
+.btn-full{width:100%;justify-content:center}
+
+.pill{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;letter-spacing:.03em}
+.pg{background:var(--gold-dim);color:var(--gold);border:1px solid var(--gold-b)}
+.pn{background:rgba(15,31,61,0.07);color:var(--navy)}
+.pp{background:var(--green-dim);color:var(--green)}
+.pr{background:var(--red-dim);color:var(--red)}
+.po{background:var(--orange-dim);color:var(--orange)}
+
+.pbar{height:6px;background:var(--cream2);border-radius:10px;overflow:hidden}
+.pbar-inner{height:100%;border-radius:10px;transition:width .6s ease}
+.pb-gold{background:var(--gold)}
+.pb-green{background:var(--green)}
+.pb-red{background:var(--red)}
+.pb-navy{background:var(--navy3)}
+.pb-orange{background:var(--orange)}
+
+.div{height:1px;background:var(--b);margin:16px 0}
+
+/* ── LOCK OVERLAY (for locked features) ── */
+.lock-wrap{position:relative}
+.lock-blur{filter:blur(3px);pointer-events:none;user-select:none;opacity:.5}
+.lock-overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;z-index:10;border-radius:var(--rl)}
+.lock-box{background:var(--cream);border:1px solid var(--gold-b);border-radius:var(--rl);padding:20px 26px;text-align:center;box-shadow:var(--shm);max-width:280px}
+.lock-icon{font-size:24px;margin-bottom:8px}
+.lock-title{font-family:var(--fs);font-size:15px;font-weight:700;color:var(--text);margin-bottom:4px}
+.lock-sub{font-size:12px;color:var(--text3);margin-bottom:14px;line-height:1.6}
+
+/* ── UPGRADE BANNER ── */
+.upgrade-banner{background:linear-gradient(135deg,var(--navy) 0%,var(--navy3) 100%);border:1px solid var(--gold-b);border-radius:var(--rl);padding:20px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:22px}
+.ub-text .ub-label{font-size:10px;color:var(--gold);text-transform:uppercase;letter-spacing:.1em;font-weight:600;margin-bottom:4px}
+.ub-text .ub-title{font-family:var(--fs);font-size:17px;font-weight:700;color:var(--inv);margin-bottom:3px}
+.ub-text .ub-sub{font-size:12px;color:var(--inv2)}
+.ub-actions{display:flex;gap:9px;flex-shrink:0}
+
+/* ── STAT CARDS ── */
+.stat{background:var(--cream);border:1px solid var(--b);border-radius:var(--rl);padding:18px 20px;position:relative;box-shadow:var(--sh)}
+.stat::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:var(--rl) var(--rl) 0 0}
+.sa-gold::before{background:var(--gold)}
+.sa-green::before{background:var(--green)}
+.sa-red::before{background:var(--red)}
+.sa-navy::before{background:var(--navy3)}
+.stat-l{font-size:10.5px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:7px;font-weight:500}
+.stat-v{font-family:var(--fs);font-size:28px;font-weight:700;color:var(--text);line-height:1}
+.stat-n{font-size:11.5px;margin-top:5px;font-weight:500}
+.stat-n.up{color:var(--green)}
+.stat-n.warn{color:var(--orange)}
+.stat-n.neu{color:var(--text3)}
+
+/* ── TOPIC CARDS ── */
+.topic-card{background:var(--cream);border:1px solid var(--b);border-radius:var(--rl);padding:16px 18px;cursor:pointer;transition:all .2s;box-shadow:var(--sh)}
+.topic-card:hover{border-color:var(--gold);transform:translateY(-1px)}
+.tc-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px}
+.tc-name{font-size:13.5px;font-weight:600;color:var(--text)}
+.tc-sub{font-size:11px;color:var(--text3);margin-top:2px}
+.tc-rating{font-size:20px}
+.tc-bar{margin-top:10px}
+.tc-score{display:flex;justify-content:space-between;font-size:11px;color:var(--text3);margin-bottom:4px}
+
+/* ── DIAGNOSTIC ── */
+.diag-step{display:none}
+.diag-step.on{display:block;animation:pi .25s ease}
+.rating-row{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin:12px 0}
+.rating-btn{padding:10px 6px;border-radius:8px;border:1.5px solid var(--b);background:var(--cream2);cursor:pointer;text-align:center;font-size:12px;font-weight:500;color:var(--text2);transition:all .15s}
+.rating-btn:hover{border-color:var(--gold);background:var(--gold-dim)}
+.rating-btn.sel{border-color:var(--gold);background:var(--gold-dim);color:var(--gold)}
+.rb-emoji{font-size:18px;display:block;margin-bottom:3px}
+
+.mcq-card{background:var(--cream2);border:1px solid var(--b);border-radius:var(--rl);padding:20px 22px;margin-bottom:16px}
+.mcq-q{font-size:14px;font-weight:500;color:var(--text);margin-bottom:14px;line-height:1.7}
+.mcq-opts{display:flex;flex-direction:column;gap:8px}
+.mcq-opt{padding:10px 14px;border-radius:8px;border:1.5px solid var(--b);background:var(--cream);cursor:pointer;font-size:13px;color:var(--text2);transition:all .15s}
+.mcq-opt:hover{border-color:var(--gold);background:var(--gold-dim);color:var(--text)}
+.mcq-opt.correct{border-color:var(--green);background:var(--green-dim);color:var(--green)}
+.mcq-opt.wrong{border-color:var(--red);background:var(--red-dim);color:var(--red)}
+.mcq-opt.sel-opt{border-color:var(--navy);background:rgba(15,31,61,0.06);color:var(--navy)}
+.mcq-opt:disabled,.mcq-opt.done{pointer-events:none}
+
+.progress-track{background:var(--cream2);border-radius:20px;height:8px;margin-bottom:24px;overflow:hidden}
+.progress-fill{height:100%;background:var(--gold);border-radius:20px;transition:width .4s ease}
+
+/* ── HABIT TRACKER ── */
+.habit-row{display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-bottom:1px solid var(--b)}
+.habit-row:last-child{border-bottom:none}
+.habit-left{display:flex;align-items:center;gap:12px}
+.habit-icon{font-size:18px;width:36px;height:36px;border-radius:9px;background:var(--cream2);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.habit-name{font-size:13.5px;font-weight:500;color:var(--text)}
+.habit-desc{font-size:11.5px;color:var(--text3);margin-top:2px}
+.habit-toggle{display:flex;gap:8px}
+.ht-yes,.ht-no{padding:6px 16px;border-radius:7px;font-size:12px;font-weight:600;border:1.5px solid;cursor:pointer;transition:all .15s}
+.ht-yes{border-color:rgba(34,197,94,0.3);color:var(--green);background:transparent}
+.ht-yes:hover,.ht-yes.active{background:var(--green-dim);border-color:var(--green)}
+.ht-no{border-color:rgba(239,68,68,0.25);color:var(--red);background:transparent}
+.ht-no:hover,.ht-no.active{background:var(--red-dim);border-color:var(--red)}
+
+/* habit history dots */
+.habit-history{display:flex;gap:4px;margin-top:6px}
+.hd{width:10px;height:10px;border-radius:3px;background:var(--cream3)}
+.hd.y{background:var(--green)}
+.hd.n{background:var(--red-dim)}
+.hd.t{background:var(--gold)}
+
+/* weekly habit summary */
+.habit-week-score{font-family:var(--fs);font-size:38px;font-weight:700}
+
+/* ── TOPIC MAP ── */
+.topic-map{display:flex;flex-direction:column;gap:10px}
+.tm-subject{border-radius:var(--rl);overflow:hidden;border:1px solid var(--b);background:var(--cream);box-shadow:var(--sh)}
+.tms-header{display:flex;align-items:center;gap:12px;padding:14px 18px;cursor:pointer;border-bottom:1px solid var(--b);background:var(--cream);transition:background .15s}
+.tms-header:hover{background:var(--cream2)}
+.tms-icon{font-size:20px;width:36px;height:36px;border-radius:9px;background:var(--cream2);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.tms-name{font-family:var(--fs);font-size:15px;font-weight:600;color:var(--text);flex:1}
+.tms-score{font-family:var(--fs);font-size:16px;font-weight:700}
+.tms-arrow{transition:transform .2s;color:var(--text3)}
+.tms-body{padding:0 18px;max-height:0;overflow:hidden;transition:max-height .35s ease,padding .35s ease}
+.tms-body.open{max-height:600px;padding:14px 18px}
+.chapter-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--b)}
+.chapter-row:last-child{border-bottom:none}
+.cr-name{flex:1;font-size:13px;color:var(--text2)}
+.cr-bar{width:100px;flex-shrink:0}
+.cr-pct{font-size:12px;font-weight:600;width:36px;text-align:right;flex-shrink:0}
+.cr-tag{font-size:10px;font-weight:600;padding:2px 8px;border-radius:5px;flex-shrink:0;width:58px;text-align:center}
+.weak-tag{background:var(--red-dim);color:var(--red)}
+.ok-tag{background:var(--orange-dim);color:var(--orange)}
+.good-tag{background:var(--green-dim);color:var(--green)}
+
+/* ── GUIDANCE CARDS ── */
+.guide-card{background:var(--cream);border:1px solid var(--b);border-radius:var(--rl);padding:18px 20px;margin-bottom:10px;box-shadow:var(--sh)}
+.gc-top{display:flex;align-items:flex-start;gap:12px;margin-bottom:10px}
+.gc-icon{font-size:18px;flex-shrink:0;margin-top:2px}
+.gc-title{font-size:13.5px;font-weight:600;color:var(--text);margin-bottom:2px}
+.gc-body{font-size:12.5px;color:var(--text2);line-height:1.7}
+.gc-priority{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;margin-top:8px}
+.gp-high{background:var(--red-dim);color:var(--red)}
+.gp-mid{background:var(--orange-dim);color:var(--orange)}
+.gp-low{background:var(--green-dim);color:var(--green)}
+
+/* ── SESSIONS (locked) ── */
+.session-teaser{background:var(--cream);border:1px solid var(--b);border-radius:var(--rl);padding:18px 20px;margin-bottom:10px;position:relative;overflow:hidden;box-shadow:var(--sh)}
+.st-faculty{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.st-av{width:40px;height:40px;border-radius:50%;border:2px solid var(--gold);background:var(--gold-dim);display:flex;align-items:center;justify-content:center;font-family:var(--fs);font-size:15px;font-weight:700;color:var(--gold);flex-shrink:0}
+.st-name{font-size:13px;font-weight:600;color:var(--text)}
+.st-creds{font-size:11px;color:var(--text3)}
+.st-price-badge{position:absolute;top:16px;right:16px;background:var(--navy);color:var(--gold);font-size:11px;font-weight:700;padding:4px 12px;border-radius:6px;border:1px solid var(--gold-b)}
+
+/* ── RESOURCE ROWS ── */
+.res-row{display:flex;align-items:center;gap:14px;padding:13px 16px;border-radius:var(--r);background:var(--cream);border:1px solid var(--b);margin-bottom:9px;box-shadow:var(--sh)}
+.rr-icon{width:38px;height:38px;border-radius:9px;background:var(--gold-dim);border:1px solid var(--gold-b);display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
+.rr-name{flex:1;font-size:13px;font-weight:500;color:var(--text)}
+.rr-meta{font-size:11.5px;color:var(--text3);margin-top:2px}
+
+/* ── MODAL ── */
+.overlay{position:fixed;inset:0;background:rgba(15,31,61,0.52);display:none;align-items:center;justify-content:center;z-index:200;backdrop-filter:blur(4px)}
+.overlay.open{display:flex}
+.modal{background:var(--cream);border-radius:var(--rxl);padding:30px;width:480px;max-width:94vw;animation:mi .2s ease;box-shadow:0 20px 60px rgba(15,31,61,0.22);border:1px solid var(--b)}
+@keyframes mi{from{opacity:0;transform:scale(.95) translateY(8px)}to{opacity:1;transform:scale(1) translateY(0)}}
+.mt{font-family:var(--fs);font-size:19px;font-weight:700;color:var(--text);margin-bottom:4px}
+.ms{font-size:12.5px;color:var(--text3);margin-bottom:20px}
+.fg{margin-bottom:14px}
+.fg label{display:block;font-size:12px;color:var(--text2);margin-bottom:5px;font-weight:500}
+.fi{width:100%;padding:10px 12px;background:var(--cream2);border:1px solid var(--b);border-radius:8px;color:var(--text);font-family:var(--fb);font-size:13px;outline:none;transition:border-color .2s}
+.fi:focus{border-color:var(--gold)}
+.ma{display:flex;gap:9px;margin-top:20px;justify-content:flex-end}
+
+/* ── PRICING CARDS ── */
+.pricing-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-bottom:22px}
+.price-card{background:var(--cream);border:1px solid var(--b);border-radius:var(--rxl);padding:24px;text-align:center;position:relative;box-shadow:var(--sh);transition:all .2s}
+.price-card:hover{transform:translateY(-2px);box-shadow:var(--shm)}
+.price-card.featured{border:2px solid var(--gold);background:var(--navy)}
+.price-card.featured .pc-name,.price-card.featured .pc-price,.price-card.featured .pc-feat{color:var(--inv)}
+.price-card.featured .pc-sub{color:var(--inv2)}
+.pc-badge{position:absolute;top:-1px;left:50%;transform:translateX(-50%);background:var(--gold);color:var(--navy);font-size:10px;font-weight:700;padding:3px 14px;border-radius:0 0 8px 8px;letter-spacing:.05em}
+.pc-name{font-family:var(--fs);font-size:18px;font-weight:700;color:var(--text);margin-bottom:4px}
+.pc-price{font-family:var(--fs);font-size:32px;font-weight:700;color:var(--text);margin:12px 0 2px}
+.pc-sub{font-size:12px;color:var(--text3);margin-bottom:18px}
+.pc-feats{text-align:left;margin-bottom:18px;display:flex;flex-direction:column;gap:8px}
+.pc-feat{font-size:12.5px;color:var(--text2);display:flex;align-items:flex-start;gap:7px}
+.pc-feat::before{content:'✓';color:var(--green);font-weight:700;flex-shrink:0;margin-top:1px}
+.pc-feat.no::before{content:'✗';color:var(--red)}
+.pc-feat.no{color:var(--text3)}
+
+/* ── TOAST ── */
+.toast{position:fixed;bottom:26px;right:26px;background:var(--navy);border:1px solid var(--gold-b);border-radius:10px;padding:11px 17px;font-size:13px;color:var(--inv);display:flex;align-items:center;gap:9px;z-index:300;transform:translateY(60px);opacity:0;transition:all .3s ease;box-shadow:0 8px 28px rgba(15,31,61,0.25)}
+.toast.show{transform:translateY(0);opacity:1}
+.tpip{width:7px;height:7px;border-radius:50%;background:var(--gold);flex-shrink:0}
+
+/* ── TABS ── */
+.tabs{display:flex;gap:2px;background:var(--cream2);border:1px solid var(--b);padding:4px;border-radius:9px;width:fit-content;margin-bottom:20px}
+.tab{padding:7px 17px;border-radius:6px;font-size:13px;font-weight:500;cursor:pointer;color:var(--text3);transition:all .15s}
+.tab.on{background:var(--cream);color:var(--text);box-shadow:0 1px 4px rgba(15,31,61,0.06)}
+.tab:hover:not(.on){color:var(--text)}
+
+@media(max-width:1100px){.g4{grid-template-columns:1fr 1fr}.g3{grid-template-columns:1fr 1fr}.pricing-grid{grid-template-columns:1fr}}
+::-webkit-scrollbar{width:5px}
+::-webkit-scrollbar-track{background:var(--cream2)}
+::-webkit-scrollbar-thumb{background:var(--cream3);border-radius:10px}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- ══ SIDEBAR ══ -->
+<aside class="sidebar">
+  <div class="sb-logo">
+    <svg class="sb-mark" viewBox="0 0 100 100" fill="none">
+      <path d="M50 5L90 28V72L50 95L10 72V28L50 5Z" stroke="#E8A830" stroke-width="6" stroke-linejoin="round"/>
+      <path d="M68 32C68 32 60 25 50 25C40 25 32 32 32 40C32 55 68 50 68 65C68 73 60 80 50 80C40 80 32 73 32 73" stroke="#FDF8F0" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <div class="sb-words">
+      <div class="w1">STUDY<span>VERSE</span></div>
+      <div class="w2">JEE &amp; NEET</div>
+    </div>
+  </div>
+
+  <!-- Tier badge -->
+  <div class="tier-strip">
+    <div class="tier-label">Current Plan</div>
+    <div class="tier-name">Free Explorer</div>
+    <div class="tier-cta" onclick="nav('plans',null)">Upgrade for more →</div>
+  </div>
+
+  <div class="nb">
+    <div class="nl">My Learning</div>
+    <div class="ni on" onclick="nav('home',this)">
+      <svg class="nic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+      Dashboard
+    </div>
+    <div class="ni" onclick="nav('diagnostic',this)">
+      <svg class="nic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+      Diagnostic Test
+      <span class="nbadge free">Free</span>
+    </div>
+    <div class="ni" onclick="nav('topics',this)">
+      <svg class="nic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+      Topic Map
+      <span class="nbadge free">Free</span>
+    </div>
+    <div class="ni" onclick="nav('guidance',this)">
+      <svg class="nic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+      Study Guidance
+      <span class="nbadge free">Free</span>
+    </div>
+    <div class="ni" onclick="nav('habits',this)">
+      <svg class="nic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm.31-8.86c-1.77-.45-2.34-.94-2.34-1.67 0-.84.79-1.43 2.1-1.43 1.38 0 1.9.66 1.94 1.64h1.71c-.05-1.34-.87-2.57-2.49-2.97V5H10.9v1.69c-1.51.32-2.72 1.3-2.72 2.81 0 1.79 1.49 2.69 3.66 3.21 1.95.46 2.34 1.15 2.34 1.86 0 .53-.39 1.39-2.1 1.39-1.6 0-2.23-.72-2.32-1.64H8.04c.1 1.7 1.36 2.66 2.86 2.97V19h2.34v-1.67c1.52-.29 2.72-1.16 2.73-2.77-.01-2.2-1.9-2.96-3.66-3.42z"/></svg>
+      Habit Tracker
+      <span class="nbadge free">Free</span>
+    </div>
+  </div>
+
+  <div class="nb">
+    <div class="nl">Unlock More</div>
+    <div class="ni" onclick="nav('questions',this)">
+      <svg class="nic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M12 17h.01"/></svg>
+      Question Bank
+      <span class="nbadge lock">🔒 Unlock</span>
+    </div>
+    <div class="ni" onclick="nav('sessions',this)">
+      <svg class="nic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      Book a Session
+      <span class="nbadge lock">🔒 Paid</span>
+    </div>
+    <div class="ni" onclick="nav('resources',this)">
+      <svg class="nic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      Resources
+      <span class="nbadge lock">🔒 Unlock</span>
+    </div>
+    <div class="ni" onclick="nav('plans',this)">
+      <svg class="nic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+      See All Plans
+      <span class="nbadge gold">Upgrade</span>
+    </div>
+  </div>
+
+  <div class="sb-bottom">
+    <div class="sb-user">
+      <div class="sb-av">S</div>
+      <div>
+        <div class="sb-uname">Student</div>
+        <div class="sb-uexam">JEE Mains 2026 • Free Plan</div>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<!-- ══ MAIN ══ -->
+<div class="main">
+  <header class="topbar">
+    <div class="ph" id="ph">Dashboard</div>
+    <div class="tbr">
+      <div class="srch">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input type="text" placeholder="Search topics...">
+      </div>
+      <div class="tbb" onclick="nav('notif',null)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        <span class="npip"></span>
+      </div>
+    </div>
+  </header>
+
+  <div class="content">
+
+  <!-- ══════════ HOME / DASHBOARD ══════════ -->
+  <div class="page on" id="p-home">
+
+    <!-- Welcome -->
+    <div style="margin-bottom:22px;display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+      <div>
+        <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.1em;font-weight:500;margin-bottom:5px;">Wednesday, 15 April 2026</div>
+        <div style="font-family:var(--fs);font-size:24px;font-weight:700;color:var(--text);">Welcome to Studyverse.</div>
+        <div style="font-size:13.5px;color:var(--text2);margin-top:4px;">You're on the <strong style="color:var(--text)">Free Plan</strong>. Your personalised JEE guidance is ready.</div>
+      </div>
+      <button class="btn btn-gold" onclick="nav('diagnostic',document.querySelectorAll('.ni')[2])">Start Diagnostic →</button>
+    </div>
+
+    <!-- Diagnostic CTA if not done -->
+    <div style="background:linear-gradient(135deg,var(--navy) 0%,var(--navy3) 100%);border-radius:var(--rxl);padding:26px 28px;margin-bottom:22px;display:flex;align-items:center;gap:24px;border:1px solid var(--gold-b);">
+      <div style="font-size:44px;flex-shrink:0;">🎯</div>
+      <div style="flex:1;">
+        <div style="font-family:var(--fs);font-size:19px;font-weight:700;color:var(--inv);margin-bottom:5px;">Take your free diagnostic first</div>
+        <div style="font-size:13px;color:var(--inv2);line-height:1.7;">Rate yourself on each topic, confirm with a quick MCQ round — and we'll map exactly where you stand and what to fix first. Free. No login required.</div>
+      </div>
+      <div style="flex-shrink:0;">
+        <button class="btn btn-gold" onclick="nav('diagnostic',document.querySelectorAll('.ni')[2])">Begin Now →</button>
+        <div style="font-size:10.5px;color:var(--inv3);text-align:center;margin-top:6px;">~10 minutes</div>
+      </div>
+    </div>
+
+    <div class="g4 mb">
+      <div class="stat sa-gold">
+        <div class="stat-l">Diagnostic</div>
+        <div class="stat-v" style="font-size:20px;color:var(--text3)">Not done</div>
+        <div class="stat-n warn">→ Start now</div>
+      </div>
+      <div class="stat sa-green">
+        <div class="stat-l">Habits This Week</div>
+        <div class="stat-v">3/5</div>
+        <div class="stat-n up">↑ Keep going</div>
+      </div>
+      <div class="stat sa-navy">
+        <div class="stat-l">Topics Identified</div>
+        <div class="stat-v">—</div>
+        <div class="stat-n neu">After diagnostic</div>
+      </div>
+      <div class="stat sa-red">
+        <div class="stat-l">Weak Areas</div>
+        <div class="stat-v">—</div>
+        <div class="stat-n neu">After diagnostic</div>
+      </div>
+    </div>
+
+    <!-- What you get free -->
+    <div class="sh"><div class="sh-t">What's free on Studyverse</div></div>
+    <div class="g3 mb">
+      <div class="card" style="border-top:3px solid var(--green);">
+        <div style="font-size:28px;margin-bottom:10px;">🩺</div>
+        <div style="font-family:var(--fs);font-size:15px;font-weight:600;color:var(--text);margin-bottom:6px;">Personalised Diagnostic</div>
+        <div style="font-size:12.5px;color:var(--text2);line-height:1.7;">Self-rate each topic → confirm with MCQs → get a precise weakness map. No guesswork.</div>
+        <div style="margin-top:12px;"><span class="pill pp">Free forever</span></div>
+      </div>
+      <div class="card" style="border-top:3px solid var(--gold);">
+        <div style="font-size:28px;margin-bottom:10px;">🗺️</div>
+        <div style="font-family:var(--fs);font-size:15px;font-weight:600;color:var(--text);margin-bottom:6px;">Topic Weakness Map</div>
+        <div style="font-size:12.5px;color:var(--text2);line-height:1.7;">See your exact weak chapters across Physics, Chemistry, and Maths — prioritised by JEE weight.</div>
+        <div style="margin-top:12px;"><span class="pill pp">Free forever</span></div>
+      </div>
+      <div class="card" style="border-top:3px solid var(--navy3);">
+        <div style="font-size:28px;margin-bottom:10px;">📋</div>
+        <div style="font-family:var(--fs);font-size:15px;font-weight:600;color:var(--text);margin-bottom:6px;">Study Guidance</div>
+        <div style="font-size:12.5px;color:var(--text2);line-height:1.7;">Exactly which topics to study, in which order, and how much time to give each — based on your diagnostic.</div>
+        <div style="margin-top:12px;"><span class="pill pp">Free forever</span></div>
+      </div>
+      <div class="card" style="border-top:3px solid var(--green);">
+        <div style="font-size:28px;margin-bottom:10px;">✅</div>
+        <div style="font-family:var(--fs);font-size:15px;font-weight:600;color:var(--text);margin-bottom:6px;">Daily Habit Tracker</div>
+        <div style="font-size:12.5px;color:var(--text2);line-height:1.7;">5 habits every serious JEE student needs. Check in daily. Build the discipline that separates rankers.</div>
+        <div style="margin-top:12px;"><span class="pill pp">Free forever</span></div>
+      </div>
+      <div class="card" style="border-top:3px solid var(--gold);opacity:.7;">
+        <div style="font-size:28px;margin-bottom:10px;">📝</div>
+        <div style="font-family:var(--fs);font-size:15px;font-weight:600;color:var(--text);margin-bottom:6px;">Custom Question Bank</div>
+        <div style="font-size:12.5px;color:var(--text2);line-height:1.7;">Questions matched to your weak topics, difficulty level, and exam pattern.</div>
+        <div style="margin-top:12px;display:flex;align-items:center;justify-content:space-between;"><span class="pill po">Unlock</span><button class="btn btn-sm btn-gold" onclick="openM('upgrade-modal')">Get Access</button></div>
+      </div>
+      <div class="card" style="border-top:3px solid var(--navy3);opacity:.7;">
+        <div style="font-size:28px;margin-bottom:10px;">👨‍🏫</div>
+        <div style="font-family:var(--fs);font-size:15px;font-weight:600;color:var(--text);margin-bottom:6px;">1-to-1 Faculty Session</div>
+        <div style="font-size:12.5px;color:var(--text2);line-height:1.7;">Book a single session with Ajay Sharma. Get your doubts resolved, weak topics explained.</div>
+        <div style="margin-top:12px;display:flex;align-items:center;justify-content:space-between;"><span class="pill po">Pay per session</span><button class="btn btn-sm btn-navy" onclick="nav('sessions',null)">Book Now</button></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ══════════ DIAGNOSTIC ══════════ -->
+  <div class="page" id="p-diagnostic">
+
+    <!-- Step indicator -->
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:24px;flex-wrap:wrap;">
+      <div id="step-ind-1" style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:20px;background:var(--navy);color:var(--gold);font-size:12px;font-weight:600;">
+        <span>①</span> Self-Rating
+      </div>
+      <div style="width:24px;height:1px;background:var(--b);flex-shrink:0;"></div>
+      <div id="step-ind-2" style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:20px;background:var(--cream2);color:var(--text3);font-size:12px;font-weight:600;">
+        <span>②</span> Confirm with MCQs
+      </div>
+      <div style="width:24px;height:1px;background:var(--b);flex-shrink:0;"></div>
+      <div id="step-ind-3" style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:20px;background:var(--cream2);color:var(--text3);font-size:12px;font-weight:600;">
+        <span>③</span> Your Results
+      </div>
+    </div>
+
+    <!-- STEP 1: Self Rating -->
+    <div class="diag-step on" id="ds-1">
+      <div class="card mb">
+        <div style="font-family:var(--fs);font-size:18px;font-weight:700;color:var(--text);margin-bottom:4px;">How confident are you in each topic?</div>
+        <div style="font-size:13px;color:var(--text3);margin-bottom:20px;">Be honest — this helps us find your real gaps. Nobody sees this except you.</div>
+
+        <!-- Subject: Mathematics -->
+        <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.1em;font-weight:600;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--b);">📐 Mathematics</div>
+        <div id="sr-topics">
+          <!-- Each topic row -->
+          <div style="margin-bottom:14px;">
+            <div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:6px;">Limits &amp; Continuity</div>
+            <div class="rating-row" data-topic="limits">
+              <div class="rating-btn" onclick="rate(this,'limits',1)"><span class="rb-emoji">😟</span>Very Weak</div>
+              <div class="rating-btn" onclick="rate(this,'limits',2)"><span class="rb-emoji">😕</span>Weak</div>
+              <div class="rating-btn" onclick="rate(this,'limits',3)"><span class="rb-emoji">😐</span>Average</div>
+              <div class="rating-btn" onclick="rate(this,'limits',4)"><span class="rb-emoji">🙂</span>Good</div>
+              <div class="rating-btn" onclick="rate(this,'limits',5)"><span class="rb-emoji">😎</span>Strong</div>
+            </div>
+          </div>
+          <div style="margin-bottom:14px;">
+            <div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:6px;">Integration</div>
+            <div class="rating-row" data-topic="integration">
+              <div class="rating-btn" onclick="rate(this,'integration',1)"><span class="rb-emoji">😟</span>Very Weak</div>
+              <div class="rating-btn" onclick="rate(this,'integration',2)"><span class="rb-emoji">😕</span>Weak</div>
+              <div class="rating-btn" onclick="rate(this,'integration',3)"><span class="rb-emoji">😐</span>Average</div>
+              <div class="rating-btn" onclick="rate(this,'integration',4)"><span class="rb-emoji">🙂</span>Good</div>
+              <div class="rating-btn" onclick="rate(this,'integration',5)"><span class="rb-emoji">😎</span>Strong</div>
+            </div>
+          </div>
+          <div style="margin-bottom:18px;">
+            <div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:6px;">Coordinate Geometry</div>
+            <div class="rating-row" data-topic="coordinate">
+              <div class="rating-btn" onclick="rate(this,'coordinate',1)"><span class="rb-emoji">😟</span>Very Weak</div>
+              <div class="rating-btn" onclick="rate(this,'coordinate',2)"><span class="rb-emoji">😕</span>Weak</div>
+              <div class="rating-btn" onclick="rate(this,'coordinate',3)"><span class="rb-emoji">😐</span>Average</div>
+              <div class="rating-btn" onclick="rate(this,'coordinate',4)"><span class="rb-emoji">🙂</span>Good</div>
+              <div class="rating-btn" onclick="rate(this,'coordinate',5)"><span class="rb-emoji">😎</span>Strong</div>
+            </div>
+          </div>
+
+          <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.1em;font-weight:600;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--b);margin-top:4px;">⚡ Physics</div>
+          <div style="margin-bottom:14px;">
+            <div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:6px;">Mechanics (Newton's Laws, Work-Energy)</div>
+            <div class="rating-row" data-topic="mechanics">
+              <div class="rating-btn" onclick="rate(this,'mechanics',1)"><span class="rb-emoji">😟</span>Very Weak</div>
+              <div class="rating-btn" onclick="rate(this,'mechanics',2)"><span class="rb-emoji">😕</span>Weak</div>
+              <div class="rating-btn" onclick="rate(this,'mechanics',3)"><span class="rb-emoji">😐</span>Average</div>
+              <div class="rating-btn" onclick="rate(this,'mechanics',4)"><span class="rb-emoji">🙂</span>Good</div>
+              <div class="rating-btn" onclick="rate(this,'mechanics',5)"><span class="rb-emoji">😎</span>Strong</div>
+            </div>
+          </div>
+          <div style="margin-bottom:18px;">
+            <div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:6px;">Electrostatics &amp; Current Electricity</div>
+            <div class="rating-row" data-topic="electro">
+              <div class="rating-btn" onclick="rate(this,'electro',1)"><span class="rb-emoji">😟</span>Very Weak</div>
+              <div class="rating-btn" onclick="rate(this,'electro',2)"><span class="rb-emoji">😕</span>Weak</div>
+              <div class="rating-btn" onclick="rate(this,'electro',3)"><span class="rb-emoji">😐</span>Average</div>
+              <div class="rating-btn" onclick="rate(this,'electro',4)"><span class="rb-emoji">🙂</span>Good</div>
+              <div class="rating-btn" onclick="rate(this,'electro',5)"><span class="rb-emoji">😎</span>Strong</div>
+            </div>
+          </div>
+
+          <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.1em;font-weight:600;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--b);margin-top:4px;">⚛️ Chemistry</div>
+          <div style="margin-bottom:14px;">
+            <div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:6px;">Physical Chemistry (Mole Concept, Equilibrium)</div>
+            <div class="rating-row" data-topic="physical-chem">
+              <div class="rating-btn" onclick="rate(this,'physical-chem',1)"><span class="rb-emoji">😟</span>Very Weak</div>
+              <div class="rating-btn" onclick="rate(this,'physical-chem',2)"><span class="rb-emoji">😕</span>Weak</div>
+              <div class="rating-btn" onclick="rate(this,'physical-chem',3)"><span class="rb-emoji">😐</span>Average</div>
+              <div class="rating-btn" onclick="rate(this,'physical-chem',4)"><span class="rb-emoji">🙂</span>Good</div>
+              <div class="rating-btn" onclick="rate(this,'physical-chem',5)"><span class="rb-emoji">😎</span>Strong</div>
+            </div>
+          </div>
+          <div style="margin-bottom:8px;">
+            <div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:6px;">Organic Chemistry (Reactions, Mechanisms)</div>
+            <div class="rating-row" data-topic="organic">
+              <div class="rating-btn" onclick="rate(this,'organic',1)"><span class="rb-emoji">😟</span>Very Weak</div>
+              <div class="rating-btn" onclick="rate(this,'organic',2)"><span class="rb-emoji">😕</span>Weak</div>
+              <div class="rating-btn" onclick="rate(this,'organic',3)"><span class="rb-emoji">😐</span>Average</div>
+              <div class="rating-btn" onclick="rate(this,'organic',4)"><span class="rb-emoji">🙂</span>Good</div>
+              <div class="rating-btn" onclick="rate(this,'organic',5)"><span class="rb-emoji">😎</span>Strong</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-top:20px;display:flex;justify-content:flex-end;">
+          <button class="btn btn-gold" onclick="goStep2()">Confirm with MCQs →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 2: MCQ Confirmation -->
+    <div class="diag-step" id="ds-2">
+      <div class="card mb">
+        <div style="font-family:var(--fs);font-size:18px;font-weight:700;color:var(--text);margin-bottom:4px;">Confirm your level — 6 quick questions</div>
+        <div style="font-size:13px;color:var(--text3);margin-bottom:16px;">Based on your self-rating, we picked topics to verify. Attempt honestly.</div>
+        <div class="progress-track"><div class="progress-fill" id="mcq-prog" style="width:0%"></div></div>
+
+        <div id="mcq-container">
+          <!-- Q1 -->
+          <div class="mcq-card" id="mcq-1">
+            <div class="mcq-q">Q1. If f(x) = x² – 3x + 2, find lim<sub>x→2</sub> [f(x)/(x–2)]</div>
+            <div class="mcq-opts">
+              <div class="mcq-opt" onclick="answerMCQ(this,1,'A','B')">A. 0</div>
+              <div class="mcq-opt" onclick="answerMCQ(this,1,'B','B')">B. 1</div>
+              <div class="mcq-opt" onclick="answerMCQ(this,1,'C','B')">C. 2</div>
+              <div class="mcq-opt" onclick="answerMCQ(this,1,'D','B')">D. Doesn't exist</div>
+            </div>
+          </div>
+          <!-- Q2 -->
+          <div class="mcq-card" id="mcq-2" style="display:none">
+            <div class="mcq-q">Q2. ∫(2x + 3)dx equals:</div>
+            <div class="mcq-opts">
+              <div class="mcq-opt" onclick="answerMCQ(this,2,'A','A')">A. x² + 3x + C</div>
+              <div class="mcq-opt" onclick="answerMCQ(this,2,'B','A')">B. 2x² + 3 + C</div>
+              <div class="mcq-opt" onclick="answerMCQ(this,2,'C','A')">C. x + 3 + C</div>
+              <div class="mcq-opt" onclick="answerMCQ(this,2,'D','A')">D. 2 + C</div>
+            </div>
+          </div>
+          <!-- Q3 -->
+          <div class="mcq-card" id="mcq-3" style="display:none">
+            <div class="mcq-q">Q3. A body of mass 5 kg is moving at 10 m/s. What is its kinetic energy?</div>
+            <div class="mcq-opts">
+              <div class="mcq-opt" onclick="answerMCQ(this,3,'A','C')">A. 50 J</div>
+              <div class="mcq-opt" onclick="answerMCQ(this,3,'B','C')">B. 100 J</div>
+              <div class="mcq-opt" onclick="answerMCQ(this,3,'C','C')">C. 250 J</div>
+              <div class="mcq-opt" onclick="answerMCQ(this,3,'D','C')">D. 500 J</div>
+            </div>
+          </div>
+          <!-- Q4 -->
+          <div class="mcq-card" id="mcq-4" style="display:none">
+            <div class="mcq-q">Q4. Two charges of +2μC and –2μC are placed 0.1m apart. The force between them is: (k = 9×10⁹)</div>
+            <div class="mcq-opts">
+              <div class="mcq-opt" onclick="answerMCQ(this,4,'A','A')">A. 3.6 N (attractive)</div>
+              <div class="mcq-opt" onclick="answerMCQ(this,4,'B','A')">B. 3.6 N (repulsive)</div>
+              <div class="mcq-opt" onclick="answerMCQ(this,4,'C','A')">C. 36 N (attractive)</div>
+              <div class="mcq-opt" onclick="answerMCQ(this,4,'D','A')">D. 0.36 N</div>
+            </div>
+          </div>
+          <!-- Q5 -->
+          <div class="mcq-card" id="mcq-5" style="display:none">
+            <div class="mcq-q">Q5. The number of moles in 44g of CO₂ (M = 44 g/mol) is:</div>
+            <div class="mcq-opts">
+              <div class="mcq-opt" onclick="answerMCQ(this,5,'A','A')">A. 1 mol</div>
+              <div class="mcq-opt" onclick="answerMCQ(this,5,'B','A')">B. 2 mol</div>
+              <div class="mcq-opt" onclick="answerMCQ(this,5,'C','A')">C. 0.5 mol</div>
+              <div class="mcq-opt" onclick="answerMCQ(this,5,'D','A')">D. 44 mol</div>
+            </div>
+          </div>
+          <!-- Q6 -->
+          <div class="mcq-card" id="mcq-6" style="display:none">
+            <div class="mcq-q">Q6. In a nucleophilic substitution (SN2) reaction, the attacking nucleophile approaches from:</div>
+            <div class="mcq-opts">
+              <div class="mcq-opt" onclick="answerMCQ(this,6,'A','B')">A. The same side as the leaving group</div>
+              <div class="mcq-opt" onclick="answerMCQ(this,6,'B','B')">B. The back side (180° to leaving group)</div>
+              <div class="mcq-opt" onclick="answerMCQ(this,6,'C','B')">C. The top face only</div>
+              <div class="mcq-opt" onclick="answerMCQ(this,6,'D','B')">D. Any side — no preference</div>
+            </div>
+          </div>
+        </div>
+
+        <div id="mcq-done" style="display:none;text-align:center;padding:20px 0;">
+          <div style="font-size:32px;margin-bottom:10px;">✅</div>
+          <div style="font-family:var(--fs);font-size:17px;font-weight:600;color:var(--text);margin-bottom:6px;">All 6 questions done!</div>
+          <div style="font-size:13px;color:var(--text3);margin-bottom:18px;">Generating your personalised weakness map...</div>
+          <button class="btn btn-gold" onclick="goStep3()">See My Results →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 3: Results -->
+    <div class="diag-step" id="ds-3">
+      <div class="card-dark" style="border-radius:var(--rxl);padding:28px;margin-bottom:20px;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:22px;flex-wrap:wrap;gap:12px;">
+          <div>
+            <div style="font-family:var(--fs);font-size:21px;font-weight:700;color:var(--inv);margin-bottom:4px;">Your Diagnostic Results</div>
+            <div style="font-size:13px;color:var(--inv2);">Based on your self-rating + MCQ performance • JEE Mains pattern</div>
+          </div>
+          <span class="pill pp" style="font-size:11px;">Completed ✓</span>
+        </div>
+        <div class="g3" style="margin-bottom:0;">
+          <div style="background:rgba(255,255,255,0.06);border:1px solid var(--bi);border-radius:var(--rl);padding:16px;text-align:center;">
+            <div style="font-size:11px;color:var(--inv3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;">Mathematics</div>
+            <div style="font-family:var(--fs);font-size:28px;font-weight:700;color:var(--orange);">54%</div>
+            <div style="font-size:11px;color:var(--orange);margin-top:3px;">Needs Work</div>
+          </div>
+          <div style="background:rgba(255,255,255,0.06);border:1px solid var(--bi);border-radius:var(--rl);padding:16px;text-align:center;">
+            <div style="font-size:11px;color:var(--inv3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;">Physics</div>
+            <div style="font-family:var(--fs);font-size:28px;font-weight:700;color:var(--red);">41%</div>
+            <div style="font-size:11px;color:var(--red);margin-top:3px;">Critical Gap</div>
+          </div>
+          <div style="background:rgba(255,255,255,0.06);border:1px solid var(--bi);border-radius:var(--rl);padding:16px;text-align:center;">
+            <div style="font-size:11px;color:var(--inv3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;">Chemistry</div>
+            <div style="font-family:var(--fs);font-size:28px;font-weight:700;color:var(--gold);">67%</div>
+            <div style="font-size:11px;color:var(--gold);margin-top:3px;">Average</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="g2 mb">
+        <div class="card">
+          <div class="sh-t" style="margin-bottom:14px;">Your Weak Topics (Priority Order)</div>
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--red-dim);border-radius:var(--r);border:1px solid rgba(239,68,68,0.2);">
+              <span style="font-size:16px;">⚡</span>
+              <div style="flex:1;"><div style="font-size:13px;font-weight:600;color:var(--text);">Electrostatics</div><div style="font-size:11px;color:var(--text3);">Physics • Very weak — 6–8 questions in JEE Mains</div></div>
+              <span class="cr-tag weak-tag">#1 Fix</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--red-dim);border-radius:var(--r);border:1px solid rgba(239,68,68,0.2);">
+              <span style="font-size:16px;">⚙️</span>
+              <div style="flex:1;"><div style="font-size:13px;font-weight:600;color:var(--text);">Mechanics</div><div style="font-size:11px;color:var(--text3);">Physics • Weak — highest weightage in JEE</div></div>
+              <span class="cr-tag weak-tag">#2 Fix</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--orange-dim);border-radius:var(--r);border:1px solid rgba(249,115,22,0.2);">
+              <span style="font-size:16px;">∫</span>
+              <div style="flex:1;"><div style="font-size:13px;font-weight:600;color:var(--text);">Integration</div><div style="font-size:11px;color:var(--text3);">Maths • Below average — 4–5 questions guaranteed</div></div>
+              <span class="cr-tag ok-tag">#3 Fix</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--orange-dim);border-radius:var(--r);border:1px solid rgba(249,115,22,0.2);">
+              <span style="font-size:16px;">🧪</span>
+              <div style="flex:1;"><div style="font-size:13px;font-weight:600;color:var(--text);">Organic Reactions</div><div style="font-size:11px;color:var(--text3);">Chemistry • Average but improvable fast</div></div>
+              <span class="cr-tag ok-tag">#4 Fix</span>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="sh-t" style="margin-bottom:14px;">What to do next</div>
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <div style="padding:12px 14px;background:var(--green-dim);border-radius:var(--r);border:1px solid rgba(34,197,94,0.2);">
+              <div style="font-size:12px;font-weight:600;color:var(--green);margin-bottom:3px;">✓ Free — View your Topic Map</div>
+              <div style="font-size:12px;color:var(--text2);">See exactly where each chapter stands across all subjects.</div>
+              <button class="btn btn-sm btn-ghost" style="margin-top:8px;" onclick="nav('topics',null)">View Topic Map →</button>
+            </div>
+            <div style="padding:12px 14px;background:var(--green-dim);border-radius:var(--r);border:1px solid rgba(34,197,94,0.2);">
+              <div style="font-size:12px;font-weight:600;color:var(--green);margin-bottom:3px;">✓ Free — Get Study Guidance</div>
+              <div style="font-size:12px;color:var(--text2);">A day-by-day plan based on your results.</div>
+              <button class="btn btn-sm btn-ghost" style="margin-top:8px;" onclick="nav('guidance',null)">See My Plan →</button>
+            </div>
+            <div style="padding:12px 14px;background:var(--gold-dim);border-radius:var(--r);border:1px solid var(--gold-b);">
+              <div style="font-size:12px;font-weight:600;color:var(--gold);margin-bottom:3px;">🔒 Unlock — Practice questions on your weak topics</div>
+              <div style="font-size:12px;color:var(--text2);">Questions matched to electrostatics, mechanics &amp; integration.</div>
+              <button class="btn btn-sm btn-gold" style="margin-top:8px;" onclick="openM('upgrade-modal')">Unlock Questions →</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ══════════ TOPIC MAP ══════════ -->
+  <div class="page" id="p-topics">
+    <div style="font-size:13px;color:var(--text2);margin-bottom:20px;background:var(--cream);border:1px solid var(--b);border-radius:var(--r);padding:12px 16px;">
+      📊 Based on your diagnostic results. Chapters marked <span class="cr-tag weak-tag" style="display:inline;">Weak</span> need immediate attention — these are your score multipliers.
+    </div>
+
+    <div class="topic-map mb">
+
+      <!-- Physics -->
+      <div class="tm-subject">
+        <div class="tms-header" onclick="toggleSubj(this)">
+          <div class="tms-icon">⚡</div>
+          <div class="tms-name">Physics</div>
+          <div class="pbar" style="width:120px;flex-shrink:0;"><div class="pbar-inner pb-red" style="width:41%"></div></div>
+          <div class="tms-score" style="color:var(--red);width:40px;text-align:right;">41%</div>
+          <svg class="tms-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+        </div>
+        <div class="tms-body open">
+          <div class="chapter-row"><div class="cr-name">Mechanics — Laws of Motion</div><div class="cr-bar"><div class="pbar"><div class="pbar-inner pb-red" style="width:38%"></div></div></div><div class="cr-pct" style="color:var(--red)">38%</div><div class="cr-tag weak-tag">Weak</div></div>
+          <div class="chapter-row"><div class="cr-name">Work, Energy &amp; Power</div><div class="cr-bar"><div class="pbar"><div class="pbar-inner pb-red" style="width:44%"></div></div></div><div class="cr-pct" style="color:var(--red)">44%</div><div class="cr-tag weak-tag">Weak</div></div>
+          <div class="chapter-row"><div class="cr-name">Electrostatics</div><div class="cr-bar"><div class="pbar"><div class="pbar-inner pb-red" style="width:31%"></div></div></div><div class="cr-pct" style="color:var(--red)">31%</div><div class="cr-tag weak-tag">Weak</div></div>
+          <div class="chapter-row"><div class="cr-name">Current Electricity</div><div class="cr-bar"><div class="pbar"><div class="pbar-inner pb-orange" style="width:55%"></div></div></div><div class="cr-pct" style="color:var(--orange)">55%</div><div class="cr-tag ok-tag">Avg</div></div>
+          <div class="chapter-row"><div class="cr-name">Waves &amp; Optics</div><div class="cr-bar"><div class="pbar"><div class="pbar-inner pb-green" style="width:72%"></div></div></div><div class="cr-pct" style="color:var(--green)">72%</div><div class="cr-tag good-tag">Good</div></div>
+        </div>
+      </div>
+
+      <!-- Maths -->
+      <div class="tm-subject">
+        <div class="tms-header" onclick="toggleSubj(this)">
+          <div class="tms-icon">📐</div>
+          <div class="tms-name">Mathematics</div>
+          <div class="pbar" style="width:120px;flex-shrink:0;"><div class="pbar-inner pb-orange" style="width:54%"></div></div>
+          <div class="tms-score" style="color:var(--orange);width:40px;text-align:right;">54%</div>
+          <svg class="tms-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+        </div>
+        <div class="tms-body">
+          <div class="chapter-row"><div class="cr-name">Limits &amp; Continuity</div><div class="cr-bar"><div class="pbar"><div class="pbar-inner pb-orange" style="width:50%"></div></div></div><div class="cr-pct" style="color:var(--orange)">50%</div><div class="cr-tag ok-tag">Avg</div></div>
+          <div class="chapter-row"><div class="cr-name">Integration</div><div class="cr-bar"><div class="pbar"><div class="pbar-inner pb-red" style="width:42%"></div></div></div><div class="cr-pct" style="color:var(--red)">42%</div><div class="cr-tag weak-tag">Weak</div></div>
+          <div class="chapter-row"><div class="cr-name">Coordinate Geometry</div><div class="cr-bar"><div class="pbar"><div class="pbar-inner pb-orange" style="width:58%"></div></div></div><div class="cr-pct" style="color:var(--orange)">58%</div><div class="cr-tag ok-tag">Avg</div></div>
+          <div class="chapter-row"><div class="cr-name">Trigonometry</div><div class="cr-bar"><div class="pbar"><div class="pbar-inner pb-green" style="width:74%"></div></div></div><div class="cr-pct" style="color:var(--green)">74%</div><div class="cr-tag good-tag">Good</div></div>
+          <div class="chapter-row"><div class="cr-name">Permutation &amp; Combination</div><div class="cr-bar"><div class="pbar"><div class="pbar-inner pb-green" style="width:69%"></div></div></div><div class="cr-pct" style="color:var(--green)">69%</div><div class="cr-tag good-tag">Good</div></div>
+        </div>
+      </div>
+
+      <!-- Chemistry -->
+      <div class="tm-subject">
+        <div class="tms-header" onclick="toggleSubj(this)">
+          <div class="tms-icon">⚛️</div>
+          <div class="tms-name">Chemistry</div>
+          <div class="pbar" style="width:120px;flex-shrink:0;"><div class="pbar-inner pb-gold" style="width:67%"></div></div>
+          <div class="tms-score" style="color:var(--gold);width:40px;text-align:right;">67%</div>
+          <svg class="tms-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+        </div>
+        <div class="tms-body">
+          <div class="chapter-row"><div class="cr-name">Mole Concept</div><div class="cr-bar"><div class="pbar"><div class="pbar-inner pb-green" style="width:78%"></div></div></div><div class="cr-pct" style="color:var(--green)">78%</div><div class="cr-tag good-tag">Good</div></div>
+          <div class="chapter-row"><div class="cr-name">Chemical Equilibrium</div><div class="cr-bar"><div class="pbar"><div class="pbar-inner pb-orange" style="width:60%"></div></div></div><div class="cr-pct" style="color:var(--orange)">60%</div><div class="cr-tag ok-tag">Avg</div></div>
+          <div class="chapter-row"><div class="cr-name">Organic Reactions</div><div class="cr-bar"><div class="pbar"><div class="pbar-inner pb-orange" style="width:55%"></div></div></div><div class="cr-pct" style="color:var(--orange)">55%</div><div class="cr-tag ok-tag">Avg</div></div>
+          <div class="chapter-row"><div class="cr-name">Atomic Structure</div><div class="cr-bar"><div class="pbar"><div class="pbar-inner pb-green" style="width:71%"></div></div></div><div class="cr-pct" style="color:var(--green)">71%</div><div class="cr-tag good-tag">Good</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Upgrade nudge -->
+    <div class="upgrade-banner">
+      <div class="ub-text">
+        <div class="ub-label">Unlock Feature</div>
+        <div class="ub-title">Practice questions matched to your weak chapters</div>
+        <div class="ub-sub">Electrostatics, Mechanics, Integration — questions at exactly your level, from previous JEE papers.</div>
+      </div>
+      <div class="ub-actions">
+        <button class="btn btn-gold" onclick="openM('upgrade-modal')">Unlock Question Bank</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ STUDY GUIDANCE ══════════ -->
+  <div class="page" id="p-guidance">
+    <div style="background:var(--cream);border:1px solid var(--b);border-radius:var(--rl);padding:18px 22px;margin-bottom:22px;display:flex;align-items:flex-start;gap:14px;box-shadow:var(--sh);">
+      <div style="font-size:24px;flex-shrink:0;">📋</div>
+      <div>
+        <div style="font-family:var(--fs);font-size:15px;font-weight:700;color:var(--text);margin-bottom:3px;">Your Personalised Study Plan</div>
+        <div style="font-size:12.5px;color:var(--text2);line-height:1.7;">Built from your diagnostic. Based on JEE Mains 2026 pattern — topics are ordered by <strong>impact per hour</strong>: what will gain you the most marks the fastest.</div>
+      </div>
+    </div>
+
+    <div class="sh"><div class="sh-t">This Week — Priority Order</div><span class="pill pp">Free</span></div>
+
+    <div class="guide-card">
+      <div class="gc-top">
+        <div class="gc-icon">⚡</div>
+        <div>
+          <div class="gc-title">Start with Electrostatics — 3 days</div>
+          <div class="gc-body">This is your lowest-scoring topic with the highest JEE Mains frequency (6–8 questions). Even moving from 31% to 55% here adds approximately 8–10 marks. Begin with Coulomb's Law → Electric Field → Gauss's Law. Study NCERT first, then attempt previous year questions.</div>
+        </div>
+      </div>
+      <span class="gc-priority gp-high">🔴 Highest Priority</span>
+    </div>
+
+    <div class="guide-card">
+      <div class="gc-top">
+        <div class="gc-icon">⚙️</div>
+        <div>
+          <div class="gc-title">Mechanics — Newton's Laws &amp; Energy — 2 days</div>
+          <div class="gc-body">Mechanics is the backbone of JEE Physics. You're at 38% — this chapter rewards practice more than theory. After Electrostatics, spend 2 focused days on Free Body Diagrams and Energy Conservation. These are directly connected to your integration weakness too.</div>
+        </div>
+      </div>
+      <span class="gc-priority gp-high">🔴 High Priority</span>
+    </div>
+
+    <div class="guide-card">
+      <div class="gc-top">
+        <div class="gc-icon">∫</div>
+        <div>
+          <div class="gc-title">Integration — 2 days in parallel with Maths revision</div>
+          <div class="gc-body">You're at 42% in Integration. Don't skip this — it bleeds into 4-5 guaranteed questions. Study substitution method, then integration by parts. Use NCERT examples first. This is fixable in 2 focused sessions.</div>
+        </div>
+      </div>
+      <span class="gc-priority gp-mid">🟠 Medium Priority</span>
+    </div>
+
+    <div class="guide-card">
+      <div class="gc-top">
+        <div class="gc-icon">🧪</div>
+        <div>
+          <div class="gc-title">Organic Reactions — Keep it light this week (1 day)</div>
+          <div class="gc-body">You're at 55% in Organic — not critical yet. Spend 1 day revising key named reactions (Aldol, Cannizzaro, Markovnikov) and mechanism logic. Do not go deep here until Physics improves.</div>
+        </div>
+      </div>
+      <span class="gc-priority gp-low">🟢 Lower Priority</span>
+    </div>
+
+    <div class="sh" style="margin-top:8px;"><div class="sh-t">Your Strong Topics — Don't Ignore</div></div>
+    <div class="card mb" style="padding:16px 20px;">
+      <div style="font-size:13px;color:var(--text2);line-height:1.8;">
+        You're doing well in <strong>Trigonometry (74%)</strong>, <strong>Mole Concept (78%)</strong>, and <strong>Waves &amp; Optics (72%)</strong>. Spend 30 minutes every 3 days keeping these warm — don't let them slip while you rebuild weak areas. These are your <strong style="color:var(--green)">guaranteed marks</strong>.
+      </div>
+    </div>
+
+    <!-- Upgrade nudge for session -->
+    <div class="upgrade-banner">
+      <div class="ub-text">
+        <div class="ub-label">Next Level</div>
+        <div class="ub-title">Get Ajay Sharma to walk you through Electrostatics personally</div>
+        <div class="ub-sub">1 session. Your specific doubts. Cleared in 60 minutes. Pay only for what you need.</div>
+      </div>
+      <div class="ub-actions">
+        <button class="btn btn-gold" onclick="nav('sessions',null)">Book a Session</button>
+        <button class="btn" style="background:rgba(255,255,255,0.1);color:var(--inv);font-size:13px;" onclick="openM('upgrade-modal')">See All Plans</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ HABIT TRACKER ══════════ -->
+  <div class="page" id="p-habits">
+
+    <div class="g2 mb">
+      <div class="card">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:6px;">
+          <div>
+            <div style="font-family:var(--fs);font-size:16px;font-weight:700;color:var(--text);">Today's Check-in</div>
+            <div style="font-size:12px;color:var(--text3);">Wednesday, 15 April 2026</div>
+          </div>
+          <span class="pill pp">Free</span>
+        </div>
+        <div style="font-size:12.5px;color:var(--text2);margin-bottom:18px;line-height:1.6;">5 habits. Yes or No. Honest answers only — this is for you, not anyone else.</div>
+
+        <div id="habit-list">
+          <div class="habit-row">
+            <div class="habit-left">
+              <div class="habit-icon">🌙</div>
+              <div>
+                <div class="habit-name">Slept before midnight</div>
+                <div class="habit-desc">Your brain consolidates memory during sleep. 11 PM is the target.</div>
+              </div>
+            </div>
+            <div class="habit-toggle">
+              <div class="ht-yes" onclick="logHabit(this,'sleep','yes')">Yes</div>
+              <div class="ht-no" onclick="logHabit(this,'sleep','no')">No</div>
+            </div>
+          </div>
+          <div class="habit-row">
+            <div class="habit-left">
+              <div class="habit-icon">📖</div>
+              <div>
+                <div class="habit-name">Studied for at least 4 hours</div>
+                <div class="habit-desc">Focused study, not just sitting with a book.</div>
+              </div>
+            </div>
+            <div class="habit-toggle">
+              <div class="ht-yes" onclick="logHabit(this,'study','yes')">Yes</div>
+              <div class="ht-no" onclick="logHabit(this,'study','no')">No</div>
+            </div>
+          </div>
+          <div class="habit-row">
+            <div class="habit-left">
+              <div class="habit-icon">🔁</div>
+              <div>
+                <div class="habit-name">Revised yesterday's topics</div>
+                <div class="habit-desc">Revision within 24h improves retention by 80%.</div>
+              </div>
+            </div>
+            <div class="habit-toggle">
+              <div class="ht-yes" onclick="logHabit(this,'revision','yes')">Yes</div>
+              <div class="ht-no" onclick="logHabit(this,'revision','no')">No</div>
+            </div>
+          </div>
+          <div class="habit-row">
+            <div class="habit-left">
+              <div class="habit-icon">📵</div>
+              <div>
+                <div class="habit-name">No social media during study hours</div>
+                <div class="habit-desc">Even 5-minute breaks break your flow completely.</div>
+              </div>
+            </div>
+            <div class="habit-toggle">
+              <div class="ht-yes" onclick="logHabit(this,'phone','yes')">Yes</div>
+              <div class="ht-no" onclick="logHabit(this,'phone','no')">No</div>
+            </div>
+          </div>
+          <div class="habit-row">
+            <div class="habit-left">
+              <div class="habit-icon">❓</div>
+              <div>
+                <div class="habit-name">Solved at least 10 problems</div>
+                <div class="habit-desc">JEE is a problem-solving exam. Read less, solve more.</div>
+              </div>
+            </div>
+            <div class="habit-toggle">
+              <div class="ht-yes" onclick="logHabit(this,'problems','yes')">Yes</div>
+              <div class="ht-no" onclick="logHabit(this,'problems','no')">No</div>
+            </div>
+          </div>
+        </div>
+
+        <div id="habit-save" style="display:none;margin-top:16px;text-align:right;">
+          <button class="btn btn-gold" onclick="saveHabits()">Save Today's Check-in ✓</button>
+        </div>
+      </div>
+
+      <!-- Weekly summary -->
+      <div class="card">
+        <div class="sh-t" style="margin-bottom:14px;">This Week</div>
+        <div style="text-align:center;padding:16px 0 20px;">
+          <div class="habit-week-score" id="week-score" style="color:var(--gold);">3</div>
+          <div style="font-size:13px;color:var(--text3);">habits completed today</div>
+        </div>
+        <div class="div"></div>
+        <div style="font-size:12px;color:var(--text3);margin-bottom:10px;font-weight:500;text-transform:uppercase;letter-spacing:.07em;">Last 14 days</div>
+        <div style="display:flex;flex-direction:column;gap:8px;" id="habit-history-grid">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div style="font-size:11px;color:var(--text3);width:60px;">Sleep</div>
+            <div class="habit-history">
+              <div class="hd y"></div><div class="hd y"></div><div class="hd n"></div><div class="hd y"></div><div class="hd y"></div>
+              <div class="hd n"></div><div class="hd y"></div><div class="hd y"></div><div class="hd y"></div><div class="hd n"></div>
+              <div class="hd y"></div><div class="hd y"></div><div class="hd y"></div><div class="hd t"></div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div style="font-size:11px;color:var(--text3);width:60px;">Study 4h</div>
+            <div class="habit-history">
+              <div class="hd y"></div><div class="hd n"></div><div class="hd y"></div><div class="hd y"></div><div class="hd n"></div>
+              <div class="hd y"></div><div class="hd y"></div><div class="hd n"></div><div class="hd y"></div><div class="hd y"></div>
+              <div class="hd y"></div><div class="hd n"></div><div class="hd y"></div><div class="hd t"></div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div style="font-size:11px;color:var(--text3);width:60px;">Revision</div>
+            <div class="habit-history">
+              <div class="hd n"></div><div class="hd y"></div><div class="hd y"></div><div class="hd n"></div><div class="hd y"></div>
+              <div class="hd y"></div><div class="hd n"></div><div class="hd y"></div><div class="hd y"></div><div class="hd y"></div>
+              <div class="hd n"></div><div class="hd y"></div><div class="hd y"></div><div class="hd t"></div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div style="font-size:11px;color:var(--text3);width:60px;">No phone</div>
+            <div class="habit-history">
+              <div class="hd y"></div><div class="hd y"></div><div class="hd n"></div><div class="hd n"></div><div class="hd y"></div>
+              <div class="hd y"></div><div class="hd y"></div><div class="hd y"></div><div class="hd n"></div><div class="hd n"></div>
+              <div class="hd y"></div><div class="hd y"></div><div class="hd y"></div><div class="hd t"></div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div style="font-size:11px;color:var(--text3);width:60px;">10 probs</div>
+            <div class="habit-history">
+              <div class="hd y"></div><div class="hd n"></div><div class="hd n"></div><div class="hd y"></div><div class="hd y"></div>
+              <div class="hd y"></div><div class="hd y"></div><div class="hd n"></div><div class="hd y"></div><div class="hd y"></div>
+              <div class="hd y"></div><div class="hd y"></div><div class="hd n"></div><div class="hd t"></div>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:12px;">
+          <div style="display:flex;align-items:center;gap:5px;font-size:10.5px;color:var(--text3);"><div class="hd y"></div>Done</div>
+          <div style="display:flex;align-items:center;gap:5px;font-size:10.5px;color:var(--text3);"><div class="hd n"></div>Missed</div>
+          <div style="display:flex;align-items:center;gap:5px;font-size:10.5px;color:var(--text3);"><div class="hd t"></div>Today</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="background:var(--navy);border-color:var(--bi);">
+      <div style="font-family:var(--fs);font-size:15px;font-weight:600;color:var(--inv);margin-bottom:6px;">Why habits matter more than you think</div>
+      <div style="font-size:13px;color:var(--inv2);line-height:1.8;">The difference between a 120-scorer and a 160-scorer in JEE Mains is rarely intelligence. It's the student who slept well, revised consistently, and solved problems every single day — vs. the one who studied 8 hours randomly. <strong style="color:var(--gold)">Consistency is the actual exam strategy.</strong></div>
+    </div>
+  </div>
+
+  <!-- ══════════ QUESTION BANK (locked) ══════════ -->
+  <div class="page" id="p-questions">
+    <div class="lock-wrap">
+      <div class="lock-blur">
+        <div class="card mb">
+          <div class="sh-t" style="margin-bottom:14px;">Electrostatics — Weak Area Questions</div>
+          <div class="mcq-card"><div class="mcq-q">Q1. A charge of 4μC is placed at the origin. What is the electric field at a point 2m away?</div><div class="mcq-opts"><div class="mcq-opt">A. 4500 N/C</div><div class="mcq-opt">B. 9000 N/C</div><div class="mcq-opt">C. 18000 N/C</div><div class="mcq-opt">D. 2250 N/C</div></div></div>
+          <div class="mcq-card"><div class="mcq-q">Q2. The work done in moving a charge of 3C from A to B across a potential difference of 12V is:</div><div class="mcq-opts"><div class="mcq-opt">A. 4 J</div><div class="mcq-opt">B. 36 J</div><div class="mcq-opt">C. 0.25 J</div><div class="mcq-opt">D. 15 J</div></div></div>
+        </div>
+      </div>
+      <div class="lock-overlay">
+        <div class="lock-box">
+          <div class="lock-icon">🔒</div>
+          <div class="lock-title">Unlock Question Bank</div>
+          <div class="lock-sub">Get questions matched exactly to your weak topics — Electrostatics, Mechanics, Integration — from JEE Mains papers. Sorted by difficulty.</div>
+          <button class="btn btn-gold btn-full" onclick="openM('upgrade-modal')">Unlock Access</button>
+          <div style="font-size:11px;color:var(--text3);margin-top:10px;">Or book a single session to get them explained by Ajay</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ BOOK SESSION ══════════ -->
+  <div class="page" id="p-sessions">
+    <div style="font-family:var(--fs);font-size:18px;font-weight:700;color:var(--text);margin-bottom:4px;">Book a Session with Ajay Sharma</div>
+    <div style="font-size:13px;color:var(--text3);margin-bottom:22px;">Pay only for the session you need. No subscription required.</div>
+
+    <div class="g2 mb">
+      <div class="session-teaser">
+        <div class="st-faculty">
+          <div class="st-av">A</div>
+          <div>
+            <div class="st-name">Ajay Sharma</div>
+            <div class="st-creds">JEE Mains &amp; Advanced • NEET UG • 10+ Years • 500+ Students</div>
+          </div>
+        </div>
+        <div style="font-size:12.5px;color:var(--text2);line-height:1.7;margin-bottom:14px;">
+          A focused 60-minute session on exactly what you need. Come with your doubts from the diagnostic. Ajay will build your understanding from where you actually are — not from a standard slide deck.
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
+          <span class="pill pn">Electrostatics</span>
+          <span class="pill pn">Mechanics</span>
+          <span class="pill pn">Integration</span>
+          <span class="pill pn">Organic Chem</span>
+          <span class="pill pn">Any topic</span>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding-top:12px;border-top:1px solid var(--b);">
+          <div><div style="font-family:var(--fs);font-size:22px;font-weight:700;color:var(--text);">₹ XX</div><div style="font-size:11px;color:var(--text3);">per 60-minute session</div></div>
+          <button class="btn btn-gold" onclick="openM('book-modal')">Book Now →</button>
+        </div>
+        <div class="st-price-badge">Pay per session</div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:14px;">
+        <div class="card">
+          <div style="font-family:var(--fs);font-size:15px;font-weight:600;margin-bottom:12px;">What happens in a session</div>
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <div style="display:flex;gap:10px;"><div style="width:22px;height:22px;border-radius:50%;background:var(--navy);color:var(--gold);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;">1</div><div style="font-size:12.5px;color:var(--text2);">Ajay reviews your diagnostic results before the call</div></div>
+            <div style="display:flex;gap:10px;"><div style="width:22px;height:22px;border-radius:50%;background:var(--navy);color:var(--gold);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;">2</div><div style="font-size:12.5px;color:var(--text2);">60 minutes on your chosen topic — your pace, your doubts</div></div>
+            <div style="display:flex;gap:10px;"><div style="width:22px;height:22px;border-radius:50%;background:var(--navy);color:var(--gold);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;">3</div><div style="font-size:12.5px;color:var(--text2);">You leave with a clear next-step plan for that topic</div></div>
+            <div style="display:flex;gap:10px;"><div style="width:22px;height:22px;border-radius:50%;background:var(--navy);color:var(--gold);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;">4</div><div style="font-size:12.5px;color:var(--text2);">Optional: continue with the full program if it's the right fit</div></div>
+          </div>
+        </div>
+        <div class="card" style="background:var(--navy);border-color:var(--bi);">
+          <div style="font-size:12.5px;color:var(--inv2);line-height:1.75;font-style:italic;">"If a single session makes you feel like you finally understand the topic — that's the entire point. We don't need to sell you anything. You'll know."</div>
+          <div style="font-size:11px;color:var(--inv3);margin-top:10px;">— Studyverse</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Full program upsell -->
+    <div style="background:linear-gradient(135deg,var(--navy) 0%,#1a2f5e 100%);border:1px solid var(--gold-b);border-radius:var(--rxl);padding:28px;display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;">
+      <div>
+        <div style="font-size:10px;color:var(--gold);text-transform:uppercase;letter-spacing:.1em;font-weight:600;margin-bottom:6px;">Full Program</div>
+        <div style="font-family:var(--fs);font-size:20px;font-weight:700;color:var(--inv);margin-bottom:6px;">Enroll in the complete personalised program</div>
+        <div style="font-size:13px;color:var(--inv2);max-width:500px;">Dedicated mentor, weekly sessions, parent reports, full journey tracking — everything built around you personally. For students serious about cracking JEE Mains 2026.</div>
+        <div style="display:flex;gap:16px;margin-top:14px;">
+          <div style="text-align:center;"><div style="font-family:var(--fs);font-size:20px;font-weight:700;color:var(--gold);">1-to-1</div><div style="font-size:10px;color:var(--inv3);">Dedicated Mentor</div></div>
+          <div style="text-align:center;"><div style="font-family:var(--fs);font-size:20px;font-weight:700;color:var(--gold);">Weekly</div><div style="font-size:10px;color:var(--inv3);">Parent Reports</div></div>
+          <div style="text-align:center;"><div style="font-family:var(--fs);font-size:20px;font-weight:700;color:var(--gold);">100%</div><div style="font-size:10px;color:var(--inv3);">Personalised</div></div>
+        </div>
+      </div>
+      <button class="btn btn-gold" style="font-size:14px;padding:13px 26px;" onclick="openM('enroll-modal')">Talk to Us About Enrollment →</button>
+    </div>
+  </div>
+
+  <!-- ══════════ RESOURCES (locked) ══════════ -->
+  <div class="page" id="p-resources">
+    <div class="res-row" style="cursor:pointer;" onclick="showToast('Downloading...')">
+      <div class="rr-icon">📕</div>
+      <div><div class="rr-name">NCERT Chemistry Class XI</div><div class="rr-meta">PDF • 18.4 MB • Free</div></div>
+      <button class="btn btn-sm btn-ghost" style="margin-left:auto;flex-shrink:0;">↓ Download</button>
+    </div>
+    <div class="res-row" style="cursor:pointer;" onclick="showToast('Downloading...')">
+      <div class="rr-icon">📗</div>
+      <div><div class="rr-name">NCERT Mathematics Class XII</div><div class="rr-meta">PDF • 22.1 MB • Free</div></div>
+      <button class="btn btn-sm btn-ghost" style="margin-left:auto;flex-shrink:0;">↓ Download</button>
+    </div>
+    <!-- locked -->
+    <div class="lock-wrap" style="margin-top:4px;">
+      <div class="lock-blur">
+        <div class="res-row"><div class="rr-icon">📘</div><div><div class="rr-name">H.C. Verma — Concepts of Physics Vol 1 &amp; 2</div><div class="rr-meta">PDF • Curated by Ajay</div></div></div>
+        <div class="res-row"><div class="rr-icon">📑</div><div><div class="rr-name">JEE Mains 2023 &amp; 2024 — Papers + Solutions</div><div class="rr-meta">PDF • 4 papers with detailed solutions</div></div></div>
+        <div class="res-row"><div class="rr-icon">📄</div><div><div class="rr-name">Formula Sheet — All 3 Subjects (Ajay's Edition)</div><div class="rr-meta">PDF • Mentor-curated, JEE pattern</div></div></div>
+        <div class="res-row"><div class="rr-icon">🗒️</div><div><div class="rr-name">Electrostatics &amp; Mechanics — Concept Notes</div><div class="rr-meta">PDF • Matched to your weak areas</div></div></div>
+      </div>
+      <div class="lock-overlay">
+        <div class="lock-box">
+          <div class="lock-icon">🔒</div>
+          <div class="lock-title">Unlock Premium Resources</div>
+          <div class="lock-sub">HC Verma PDFs, PYQ papers with solutions, and Ajay's personal formula sheets — matched to your weak topics.</div>
+          <button class="btn btn-gold btn-full" onclick="openM('upgrade-modal')">Unlock Resources</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ PLANS ══════════ -->
+  <div class="page" id="p-plans">
+    <div style="text-align:center;margin-bottom:28px;">
+      <div style="font-family:var(--fs);font-size:26px;font-weight:700;color:var(--text);margin-bottom:6px;">Simple, honest pricing</div>
+      <div style="font-size:13.5px;color:var(--text2);">Start free. Upgrade when it makes sense for you.</div>
+    </div>
+    <div class="pricing-grid">
+      <!-- Free -->
+      <div class="price-card">
+        <div class="pc-name">Free Explorer</div>
+        <div class="pc-price">₹0</div>
+        <div class="pc-sub">No card. No login needed.</div>
+        <div class="pc-feats">
+          <div class="pc-feat">Personalised diagnostic (self-rate + MCQs)</div>
+          <div class="pc-feat">Full topic weakness map</div>
+          <div class="pc-feat">Study guidance (prioritised plan)</div>
+          <div class="pc-feat">Daily habit tracker (5 habits)</div>
+          <div class="pc-feat">Basic NCERT resources</div>
+          <div class="pc-feat no">Custom question bank</div>
+          <div class="pc-feat no">Faculty sessions</div>
+          <div class="pc-feat no">Advanced PYQ resources</div>
+        </div>
+        <button class="btn btn-ghost btn-full">Current Plan</button>
+      </div>
+      <!-- Unlock -->
+      <div class="price-card featured">
+        <div class="pc-badge">MOST USEFUL</div>
+        <div class="pc-name">Unlock</div>
+        <div class="pc-price" style="color:var(--gold);">₹ XX</div>
+        <div class="pc-sub">One-time or monthly</div>
+        <div class="pc-feats">
+          <div class="pc-feat">Everything in Free</div>
+          <div class="pc-feat">Question bank matched to your weak topics</div>
+          <div class="pc-feat">Full diagnostic with detailed score report</div>
+          <div class="pc-feat">Premium resources (HC Verma, PYQs, formula sheets)</div>
+          <div class="pc-feat">Progress tracking over time</div>
+          <div class="pc-feat no">1-to-1 faculty sessions</div>
+          <div class="pc-feat no">Dedicated mentor</div>
+        </div>
+        <button class="btn btn-gold btn-full" onclick="openM('upgrade-modal')">Get Access</button>
+      </div>
+      <!-- Full Program -->
+      <div class="price-card" style="border:1px solid var(--b);">
+        <div class="pc-name">Full Program</div>
+        <div class="pc-price">₹ XX</div>
+        <div class="pc-sub">Per month · Personalised</div>
+        <div class="pc-feats">
+          <div class="pc-feat">Everything in Unlock</div>
+          <div class="pc-feat">Dedicated 1-to-1 mentor (Ajay Sharma)</div>
+          <div class="pc-feat">Weekly live sessions (personalised)</div>
+          <div class="pc-feat">Weekly parent reports every Sunday</div>
+          <div class="pc-feat">Your personal Score Journey arc</div>
+          <div class="pc-feat">Doubt desk (mentor replies within 4h)</div>
+          <div class="pc-feat">Mentor-assigned tests based on your gaps</div>
+        </div>
+        <button class="btn btn-navy btn-full" onclick="openM('enroll-modal')">Talk to Us →</button>
+      </div>
+    </div>
+    <!-- Pay per session note -->
+    <div style="background:var(--cream);border:1px solid var(--gold-b);border-radius:var(--rl);padding:18px 22px;text-align:center;box-shadow:var(--sh);">
+      <div style="font-family:var(--fs);font-size:15px;font-weight:600;margin-bottom:4px;">Not ready to commit? That's fine.</div>
+      <div style="font-size:13px;color:var(--text2);margin-bottom:14px;">Book a single session with Ajay for <strong>₹ XX</strong>. No subscription. Pay only for the session you need. If it helps, you'll know.</div>
+      <button class="btn btn-gold" onclick="nav('sessions',null)">Book a Single Session →</button>
+    </div>
+  </div>
+
+  <!-- ══════════ NOTIFICATIONS ══════════ -->
+  <div class="page" id="p-notif">
+    <div class="card">
+      <div class="sh"><div class="sh-t">Notifications</div><span class="sh-a" onclick="showToast('All marked as read')">Mark all read</span></div>
+      <div style="display:flex;gap:12px;padding:13px 0;border-bottom:1px solid var(--b);"><div style="width:7px;height:7px;border-radius:50%;background:var(--gold);flex-shrink:0;margin-top:5px;"></div><div><div style="font-size:13px;color:var(--text2);"><strong style="color:var(--text)">Diagnostic Ready</strong> — Your topic weakness map has been generated. See your results.</div><div style="font-size:11px;color:var(--text3);margin-top:3px;">Just now</div></div></div>
+      <div style="display:flex;gap:12px;padding:13px 0;border-bottom:1px solid var(--b);"><div style="width:7px;height:7px;border-radius:50%;background:var(--text3);flex-shrink:0;margin-top:5px;"></div><div><div style="font-size:13px;color:var(--text2);"><strong style="color:var(--text)">Habit Check-in</strong> — You haven't logged today's habits yet.</div><div style="font-size:11px;color:var(--text3);margin-top:3px;">2 hours ago</div></div></div>
+      <div style="display:flex;gap:12px;padding:13px 0;"><div style="width:7px;height:7px;border-radius:50%;background:var(--text3);flex-shrink:0;margin-top:5px;"></div><div><div style="font-size:13px;color:var(--text2);"><strong style="color:var(--text)">Study Tip</strong> — Electrostatics is your #1 weak area. Even 90 minutes today moves the needle.</div><div style="font-size:11px;color:var(--text3);margin-top:3px;">Yesterday</div></div></div>
+    </div>
+  </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+</div><!-- /app -->
+
+<!-- UPGRADE MODAL -->
+<div class="overlay" id="upgrade-modal" onclick="closeMbg(event,'upgrade-modal')">
+  <div class="modal">
+    <div class="mt">Unlock Full Access</div>
+    <div class="ms">Get the question bank, premium resources, and full diagnostic report.</div>
+    <div style="background:var(--gold-dim);border:1px solid var(--gold-b);border-radius:var(--rl);padding:16px 18px;margin-bottom:18px;">
+      <div style="font-family:var(--fs);font-size:22px;font-weight:700;color:var(--text);margin-bottom:2px;">₹ XX <span style="font-size:13px;font-weight:400;color:var(--text3);">/ one-time or monthly</span></div>
+      <div style="font-size:12px;color:var(--text2);">Questions matched to your weak topics • PYQ papers • HC Verma • Formula sheets</div>
+    </div>
+    <div class="fg"><label>Your Name</label><input class="fi" type="text" placeholder="Full name"></div>
+    <div class="fg"><label>Phone Number</label><input class="fi" type="tel" placeholder="+91 XXXXX XXXXX"></div>
+    <div class="fg"><label>What are you preparing for?</label>
+      <select class="fi"><option>JEE Mains 2026</option><option>JEE Advanced 2026</option><option>NEET 2026</option><option>JEE 2027</option><option>NEET 2027</option></select>
+    </div>
+    <div class="ma">
+      <button class="btn btn-ghost" onclick="closeM('upgrade-modal')">Cancel</button>
+      <button class="btn btn-gold" onclick="closeM('upgrade-modal');showToast('Request received! We'll contact you within 24h.')">Get Access →</button>
+    </div>
+  </div>
+</div>
+
+<!-- BOOK SESSION MODAL -->
+<div class="overlay" id="book-modal" onclick="closeMbg(event,'book-modal')">
+  <div class="modal">
+    <div class="mt">Book a Session with Ajay Sharma</div>
+    <div class="ms">Tell us your topic and preferred time. Ajay will confirm within 24 hours.</div>
+    <div class="fg"><label>Your Name</label><input class="fi" type="text" placeholder="Full name"></div>
+    <div class="fg"><label>Phone Number</label><input class="fi" type="tel" placeholder="+91 XXXXX XXXXX"></div>
+    <div class="fg"><label>Topic / Subject</label><input class="fi" type="text" placeholder="e.g. Electrostatics — Gauss's Law"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div class="fg"><label>Preferred Date</label><input class="fi" type="date"></div>
+      <div class="fg"><label>Preferred Time</label><select class="fi"><option>Morning (9–12 AM)</option><option>Afternoon (12–4 PM)</option><option>Evening (4–8 PM)</option><option>Night (8–10 PM)</option></select></div>
+    </div>
+    <div class="ma">
+      <button class="btn btn-ghost" onclick="closeM('book-modal')">Cancel</button>
+      <button class="btn btn-gold" onclick="closeM('book-modal');showToast('Session request sent! Ajay will confirm within 24h. 🎉')">Send Request →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ENROLL MODAL -->
+<div class="overlay" id="enroll-modal" onclick="closeMbg(event,'enroll-modal')">
+  <div class="modal">
+    <div class="mt">Full Program Enquiry</div>
+    <div class="ms">Tell us about yourself. The team will reach out within 24 hours to discuss fit.</div>
+    <div class="fg"><label>Student Name</label><input class="fi" type="text" placeholder="Full name"></div>
+    <div class="fg"><label>Parent Mobile Number</label><input class="fi" type="tel" placeholder="+91 XXXXX XXXXX"></div>
+    <div class="fg"><label>Preparing For</label><select class="fi"><option>JEE Mains 2026</option><option>JEE Advanced 2026</option><option>NEET 2026</option><option>JEE 2027</option></select></div>
+    <div class="fg"><label>Biggest challenge right now</label><textarea class="fi" rows="2" placeholder="What's your child struggling with most?"></textarea></div>
+    <div class="ma">
+      <button class="btn btn-ghost" onclick="closeM('enroll-modal')">Cancel</button>
+      <button class="btn btn-gold" onclick="closeM('enroll-modal');showToast('Enquiry submitted! We\\'ll call you within 24 hours.')">Submit Enquiry →</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="t"><div class="tpip"></div><span id="tmsg">Done</span></div>
+
+<script>
+const ptitles = {home:'Dashboard',diagnostic:'Diagnostic Test',topics:'Topic Map',guidance:'Study Guidance',habits:'Habit Tracker',questions:'Question Bank',sessions:'Book a Session',resources:'Resources',plans:'Plans & Pricing',notif:'Notifications'};
+
+function nav(page, el) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('on'));
+  document.querySelectorAll('.ni').forEach(n => n.classList.remove('on'));
+  const p = document.getElementById('p-' + page);
+  if (p) p.classList.add('on');
+  if (el) el.classList.add('on');
+  document.getElementById('ph').textContent = ptitles[page] || page;
+}
+
+// ── DIAGNOSTIC ──
+const ratings = {};
+let mcqCurrent = 1, mcqScore = 0;
+
+function rate(el, topic, val) {
+  const row = el.closest('.rating-row');
+  row.querySelectorAll('.rating-btn').forEach(b => b.classList.remove('sel'));
+  el.classList.add('sel');
+  ratings[topic] = val;
+}
+
+function goStep2() {
+  document.getElementById('ds-1').classList.remove('on');
+  document.getElementById('ds-2').classList.add('on');
+  document.getElementById('step-ind-1').style.background = 'rgba(34,197,94,0.15)';
+  document.getElementById('step-ind-1').style.color = 'var(--green)';
+  document.getElementById('step-ind-2').style.background = 'var(--navy)';
+  document.getElementById('step-ind-2').style.color = 'var(--gold)';
+  updateMCQProgress();
+}
+
+function answerMCQ(el, qNum, chosen, correct) {
+  const card = document.getElementById('mcq-' + qNum);
+  card.querySelectorAll('.mcq-opt').forEach(o => { o.classList.add('done'); });
+  el.classList.add('sel-opt');
+  const isCorrect = chosen === correct;
+  if (isCorrect) { el.classList.add('correct'); mcqScore++; }
+  else { el.classList.add('wrong'); card.querySelectorAll('.mcq-opt').forEach(o => { if (o.textContent.trim().startsWith(correct + '.')) o.classList.add('correct'); }); }
+  setTimeout(() => {
+    card.style.display = 'none';
+    mcqCurrent++;
+    if (mcqCurrent <= 6) {
+      document.getElementById('mcq-' + mcqCurrent).style.display = 'block';
+      updateMCQProgress();
+    } else {
+      document.getElementById('mcq-done').style.display = 'block';
+      updateMCQProgress(100);
+    }
+  }, 1200);
+}
+
+function updateMCQProgress(override) {
+  const pct = override !== undefined ? override : ((mcqCurrent - 1) / 6 * 100);
+  document.getElementById('mcq-prog').style.width = Math.round(pct) + '%';
+}
+
+function goStep3() {
+  document.getElementById('ds-2').classList.remove('on');
+  document.getElementById('ds-3').classList.add('on');
+  document.getElementById('step-ind-2').style.background = 'rgba(34,197,94,0.15)';
+  document.getElementById('step-ind-2').style.color = 'var(--green)';
+  document.getElementById('step-ind-3').style.background = 'var(--navy)';
+  document.getElementById('step-ind-3').style.color = 'var(--gold)';
+}
+
+// ── HABITS ──
+const habitState = {};
+let habitCount = 0;
+
+function logHabit(el, habit, val) {
+  const row = el.closest('.habit-row');
+  row.querySelectorAll('.ht-yes,.ht-no').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  const prev = habitState[habit];
+  habitState[habit] = val;
+  if (!prev) habitCount++;
+  document.getElementById('week-score').textContent = habitCount;
+  const allDone = Object.keys(habitState).length >= 5;
+  document.getElementById('habit-save').style.display = allDone ? 'block' : 'none';
+}
+
+function saveHabits() {
+  document.getElementById('habit-save').style.display = 'none';
+  showToast('Check-in saved for today ✓');
+  const dots = document.querySelectorAll('.hd.t');
+  dots.forEach((d,i) => {
+    const keys = Object.keys(habitState);
+    if (keys[i]) d.className = 'hd ' + (habitState[keys[i]] === 'yes' ? 'y' : 'n');
+  });
+}
+
+// ── TOPIC MAP ──
+function toggleSubj(hdr) {
+  const body = hdr.nextElementSibling;
+  const arrow = hdr.querySelector('.tms-arrow');
+  const isOpen = body.classList.toggle('open');
+  arrow.style.transform = isOpen ? 'rotate(180deg)' : '';
+}
+
+// ── MODAL ──
+function openM(id) { document.getElementById(id).classList.add('open'); }
+function closeM(id) { document.getElementById(id).classList.remove('open'); }
+function closeMbg(e, id) { if (e.target.classList.contains('overlay')) closeM(id); }
+
+// ── TOAST ──
+let tid;
+function showToast(msg) {
+  const t = document.getElementById('t');
+  document.getElementById('tmsg').textContent = msg;
+  t.classList.add('show');
+  clearTimeout(tid);
+  tid = setTimeout(() => t.classList.remove('show'), 3200);
+}
+
+// ── WEEKLY REPORT ACCORDION (re-used from enrolled LMS) ──
+function toggleWR(hdr) {
+  const body = hdr.nextElementSibling;
+  if (!body) return;
+  body.classList.toggle('open');
+  const arrow = hdr.querySelector('svg:last-child');
+  if (arrow) arrow.style.transform = body.classList.contains('open') ? 'rotate(180deg)' : '';
+}
+</script>
+</body>
+</html>

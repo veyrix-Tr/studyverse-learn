@@ -1,0 +1,1296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Studyverse — Faculty Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,600&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy:#0F1F3D; --navy2:#162443; --navy3:#1C2E50; --navy4:#233660;
+  --gold:#E8A830; --gold2:#F5C842; --gold-dim:rgba(232,168,48,0.12); --gold-b:rgba(232,168,48,0.28);
+  --cream:#FDF8F0; --cream2:#F5F0E6; --cream3:#EDE5D4;
+  --text:#0F1F3D; --text2:#4A5568; --text3:#8896B3;
+  --inv:#FDF8F0; --inv2:rgba(253,248,240,0.72); --inv3:rgba(253,248,240,0.38);
+  --b:rgba(15,31,61,0.08); --bi:rgba(255,255,255,0.08);
+  --green:#22C55E; --gdim:rgba(34,197,94,0.11);
+  --red:#EF4444; --rdim:rgba(239,68,68,0.10);
+  --orange:#F97316; --odim:rgba(249,115,22,0.10);
+  --blue:#3B82F6; --bdim:rgba(59,130,246,0.10);
+  --fs:'Playfair Display',Georgia,serif; --fb:'DM Sans',sans-serif;
+  --r:10px; --rl:16px; --rxl:22px;
+  --sw:264px; --th:66px;
+  --sh:0 2px 10px rgba(15,31,61,0.07);
+  --shm:0 6px 28px rgba(15,31,61,0.12);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--fb);background:var(--cream2);color:var(--text);font-size:14px;line-height:1.6;min-height:100vh;overflow-x:hidden}
+.app{display:flex;min-height:100vh}
+
+/* ── SIDEBAR ── */
+.sidebar{width:var(--sw);background:var(--navy);position:fixed;top:0;left:0;bottom:0;z-index:100;display:flex;flex-direction:column;border-right:1px solid var(--bi)}
+.sb-logo{padding:20px 22px 17px;border-bottom:1px solid var(--bi);display:flex;align-items:center;gap:11px}
+.sb-mark{width:34px;height:34px;flex-shrink:0}
+.sb-words .w1{font-family:var(--fb);font-weight:700;font-size:15px;letter-spacing:.06em;color:var(--inv)}
+.sb-words .w1 span{color:var(--gold)}
+.sb-words .w2{font-size:9px;color:var(--gold);letter-spacing:.1em;text-transform:uppercase;font-weight:600}
+
+/* faculty badge */
+.faculty-strip{margin:12px 13px 2px;background:rgba(232,168,48,0.1);border:1px solid var(--gold-b);border-radius:9px;padding:9px 12px;display:flex;align-items:center;gap:10px}
+.fac-av{width:32px;height:32px;border-radius:50%;border:2px solid var(--gold);background:var(--gold-dim);display:flex;align-items:center;justify-content:center;font-family:var(--fs);font-size:13px;font-weight:700;color:var(--gold);flex-shrink:0}
+.fac-name{font-size:12.5px;color:var(--inv);font-weight:500}
+.fac-role{font-size:10px;color:var(--gold);margin-top:1px}
+
+.nb{padding:14px 13px 6px}
+.nl{font-size:9.5px;color:var(--inv3);letter-spacing:.12em;text-transform:uppercase;padding:0 8px;margin-bottom:7px;font-weight:500}
+.ni{display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:8px;cursor:pointer;color:var(--inv2);font-size:13px;font-weight:400;transition:all .15s;margin-bottom:2px;position:relative}
+.ni:hover{background:rgba(255,255,255,0.06);color:var(--inv)}
+.ni.on{background:var(--gold-dim);color:var(--gold2)}
+.ni.on .nic{opacity:1;color:var(--gold)}
+.nic{width:15px;height:15px;flex-shrink:0;opacity:.6}
+.ni:hover .nic{opacity:1}
+.nbadge{margin-left:auto;font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px}
+.nbadge.red{background:var(--red);color:#fff}
+.nbadge.gold{background:var(--gold);color:var(--navy)}
+.nbadge.dim{background:rgba(255,255,255,0.08);color:var(--inv3)}
+
+.sb-bottom{margin-top:auto;padding:13px;border-top:1px solid var(--bi)}
+.logout-btn{display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:8px;cursor:pointer;color:var(--inv3);font-size:12.5px;transition:all .15s}
+.logout-btn:hover{background:rgba(255,255,255,0.05);color:var(--inv2)}
+
+/* ── MAIN ── */
+.main{margin-left:var(--sw);flex:1;display:flex;flex-direction:column;min-height:100vh}
+
+/* ── TOPBAR ── */
+.topbar{height:var(--th);background:var(--cream);border-bottom:1px solid var(--b);display:flex;align-items:center;padding:0 28px;gap:14px;position:sticky;top:0;z-index:50;box-shadow:0 1px 4px rgba(15,31,61,0.04)}
+.ph{font-family:var(--fs);font-size:17px;font-weight:600;color:var(--text)}
+.tbr{display:flex;align-items:center;gap:9px;margin-left:auto}
+
+/* Live session button */
+.join-btn{display:flex;align-items:center;gap:8px;background:var(--green);color:#fff;padding:9px 18px;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;transition:all .2s;border:none;font-family:var(--fb)}
+.join-btn:hover{background:#16a34a;transform:scale(1.02)}
+.join-btn .live-dot{width:7px;height:7px;border-radius:50%;background:#fff;animation:pulse 1.2s infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.6;transform:scale(1.3)}}
+
+.tbb{width:36px;height:36px;border-radius:8px;background:var(--cream2);border:1px solid var(--b);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--text3);transition:all .15s;position:relative}
+.tbb:hover{background:var(--cream3);color:var(--text)}
+.npip{position:absolute;top:7px;right:7px;width:6px;height:6px;border-radius:50%;background:var(--red);border:1.5px solid var(--cream)}
+
+/* ── CONTENT ── */
+.content{padding:28px;flex:1}
+.page{display:none;animation:pi .2s ease}
+.page.on{display:block}
+@keyframes pi{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── COMPONENTS ── */
+.card{background:var(--cream);border:1px solid var(--b);border-radius:var(--rl);padding:20px 22px;box-shadow:var(--sh)}
+.card-dark{background:var(--navy);border:1px solid var(--bi);border-radius:var(--rl);padding:20px 22px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.mb{margin-bottom:20px}
+.mbl{margin-bottom:28px}
+
+.sh{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.sh-t{font-family:var(--fs);font-size:16px;font-weight:600;color:var(--text)}
+.sh-a{font-size:12px;color:var(--gold);cursor:pointer;font-weight:500;transition:color .15s}
+.sh-a:hover{color:var(--navy)}
+
+.btn{display:inline-flex;align-items:center;gap:7px;padding:9px 18px;border-radius:8px;font-family:var(--fb);font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;border:none;letter-spacing:.01em}
+.btn-gold{background:var(--gold);color:var(--navy)}.btn-gold:hover{background:var(--gold2)}
+.btn-navy{background:var(--navy);color:var(--gold2)}.btn-navy:hover{background:var(--navy3)}
+.btn-ghost{background:transparent;color:var(--text2);border:1px solid var(--b)}.btn-ghost:hover{background:var(--cream2)}
+.btn-green{background:var(--green);color:#fff}.btn-green:hover{background:#16a34a}
+.btn-red{background:var(--red);color:#fff}.btn-red:hover{background:#dc2626}
+.btn-sm{padding:6px 13px;font-size:12px}
+.btn-full{width:100%;justify-content:center}
+
+.pill{display:inline-flex;align-items:center;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600;letter-spacing:.03em}
+.pg{background:var(--gold-dim);color:var(--gold);border:1px solid var(--gold-b)}
+.pn{background:rgba(15,31,61,0.07);color:var(--navy)}
+.pp{background:var(--gdim);color:var(--green)}
+.pr{background:var(--rdim);color:var(--red)}
+.po{background:var(--odim);color:var(--orange)}
+.pb{background:var(--bdim);color:var(--blue)}
+
+.pbar{height:5px;background:var(--cream2);border-radius:10px;overflow:hidden}
+.pbar-inner{height:100%;border-radius:10px;transition:width .6s ease}
+.pb-gold{background:var(--gold)} .pb-green{background:var(--green)} .pb-red{background:var(--red)} .pb-orange{background:var(--orange)} .pb-navy{background:var(--navy3)}
+
+.div{height:1px;background:var(--b);margin:14px 0}
+
+/* ── STAT CARDS ── */
+.stat{background:var(--cream);border:1px solid var(--b);border-radius:var(--rl);padding:17px 20px;position:relative;box-shadow:var(--sh)}
+.stat::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:var(--rl) var(--rl) 0 0}
+.sa-gold::before{background:var(--gold)} .sa-green::before{background:var(--green)} .sa-red::before{background:var(--red)} .sa-blue::before{background:var(--blue)} .sa-navy::before{background:var(--navy3)}
+.stat-l{font-size:10.5px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:7px;font-weight:500}
+.stat-v{font-family:var(--fs);font-size:28px;font-weight:700;color:var(--text);line-height:1}
+.stat-n{font-size:11.5px;margin-top:5px;font-weight:500}
+.stat-n.up{color:var(--green)} .stat-n.warn{color:var(--orange)} .stat-n.neu{color:var(--text3)} .stat-n.bad{color:var(--red)}
+
+/* ── TODAY'S SCHEDULE ── */
+.sched-item{display:flex;align-items:center;gap:13px;padding:13px 15px;border-radius:var(--r);border:1px solid var(--b);background:var(--cream);margin-bottom:9px;transition:all .15s;cursor:pointer}
+.sched-item:hover{border-color:var(--gold);box-shadow:var(--sh)}
+.sched-time{font-family:var(--fs);font-size:13px;font-weight:600;color:var(--text3);width:58px;flex-shrink:0;text-align:right}
+.sched-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.sched-info{flex:1;min-width:0}
+.sched-name{font-size:13.5px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sched-meta{font-size:11.5px;color:var(--text3);margin-top:1px}
+.sched-status{font-size:11px;font-weight:600;padding:3px 10px;border-radius:6px;flex-shrink:0}
+.s-live{background:rgba(34,197,94,0.12);color:var(--green)}
+.s-up{background:var(--gold-dim);color:var(--gold)}
+.s-done{background:rgba(15,31,61,0.06);color:var(--text3)}
+
+/* ── STUDENT CASE FILE CARD ── */
+.student-card{background:var(--cream);border:1px solid var(--b);border-radius:var(--rl);overflow:hidden;box-shadow:var(--sh);transition:all .2s;cursor:pointer}
+.student-card:hover{border-color:var(--gold);transform:translateY(-2px);box-shadow:var(--shm)}
+.sc-header{background:var(--navy);padding:14px 16px;display:flex;align-items:center;gap:12px}
+.sc-av{width:38px;height:38px;border-radius:50%;border:2px solid var(--gold);background:var(--gold-dim);display:flex;align-items:center;justify-content:center;font-family:var(--fs);font-size:15px;font-weight:700;color:var(--gold);flex-shrink:0}
+.sc-name{font-size:14px;font-weight:600;color:var(--inv)}
+.sc-exam{font-size:11px;color:var(--inv3);margin-top:1px}
+.sc-body{padding:14px 16px}
+.sc-delta{display:flex;align-items:baseline;gap:6px;margin-bottom:10px}
+.sc-baseline{font-size:12px;color:var(--text3)}
+.sc-arrow{color:var(--gold);font-size:13px}
+.sc-current{font-family:var(--fs);font-size:20px;font-weight:700;color:var(--gold)}
+.sc-gain{font-size:11.5px;font-weight:600;color:var(--green)}
+.sc-subjects{display:flex;flex-direction:column;gap:7px;margin-bottom:12px}
+.sc-subj-row{display:flex;align-items:center;gap:8px}
+.sc-subj-name{font-size:11.5px;color:var(--text3);width:34px;flex-shrink:0}
+.sc-subj-bar{flex:1}
+.sc-subj-pct{font-size:11.5px;font-weight:600;width:32px;text-align:right;flex-shrink:0}
+.sc-footer{display:flex;align-items:center;justify-content:space-between;padding-top:10px;border-top:1px solid var(--b)}
+.sc-next{font-size:11px;color:var(--text3)}
+.sc-next strong{color:var(--text);font-weight:500}
+.sc-flags{display:flex;gap:5px}
+
+/* ── DOUBT QUEUE ── */
+.doubt-item{background:var(--cream);border:1px solid var(--b);border-radius:var(--rl);padding:16px 18px;margin-bottom:10px;box-shadow:var(--sh);transition:border-color .15s}
+.doubt-item:hover{border-color:var(--gold)}
+.doubt-item.urgent{border-left:3px solid var(--red)}
+.doubt-item.medium{border-left:3px solid var(--orange)}
+.doubt-item.low{border-left:3px solid var(--text3)}
+.di-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px;gap:10px}
+.di-student{display:flex;align-items:center;gap:8px}
+.di-av{width:28px;height:28px;border-radius:50%;border:1.5px solid var(--gold);background:var(--gold-dim);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--gold);flex-shrink:0}
+.di-name{font-size:12.5px;font-weight:600;color:var(--text)}
+.di-time{font-size:11px;color:var(--text3)}
+.di-q{font-size:13.5px;font-weight:500;color:var(--text);margin-bottom:8px;line-height:1.6}
+.di-meta{display:flex;align-items:center;gap:10px}
+.di-actions{display:flex;gap:7px;margin-top:10px}
+
+/* ── REPLY AREA ── */
+.reply-box{margin-top:12px;display:none}
+.reply-box.open{display:block}
+.reply-textarea{width:100%;padding:10px 12px;background:var(--cream2);border:1px solid var(--b);border-radius:8px;color:var(--text);font-family:var(--fb);font-size:13px;outline:none;resize:vertical;transition:border-color .2s}
+.reply-textarea:focus{border-color:var(--gold)}
+.reply-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:8px}
+
+/* ── RESOURCES REVIEW ── */
+.res-review-item{background:var(--cream);border:1px solid var(--b);border-radius:var(--rl);padding:16px 18px;margin-bottom:10px;box-shadow:var(--sh)}
+.rri-top{display:flex;align-items:flex-start;gap:13px;margin-bottom:10px}
+.rri-icon{width:40px;height:40px;border-radius:9px;background:var(--gold-dim);border:1px solid var(--gold-b);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.rri-name{font-size:14px;font-weight:600;color:var(--text);margin-bottom:2px}
+.rri-meta{font-size:12px;color:var(--text3)}
+.rri-request{font-size:12.5px;color:var(--text2);background:var(--cream2);border-radius:var(--r);padding:10px 12px;margin-bottom:10px;border-left:3px solid var(--gold)}
+.pending-badge{background:var(--odim);color:var(--orange);font-size:10px;font-weight:700;padding:3px 9px;border-radius:5px}
+.approved-badge{background:var(--gdim);color:var(--green);font-size:10px;font-weight:700;padding:3px 9px;border-radius:5px}
+
+/* ── PARENT FEEDBACK ── */
+.feedback-item{background:var(--cream);border:1px solid var(--b);border-radius:var(--rl);padding:18px 20px;margin-bottom:10px;box-shadow:var(--sh)}
+.fi-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px}
+.fi-parent{font-size:12px;color:var(--text3)}
+.fi-student{font-size:13.5px;font-weight:600;color:var(--text)}
+.fi-stars{color:var(--gold);font-size:14px;letter-spacing:2px}
+.fi-quote{font-size:13px;color:var(--text2);font-style:italic;line-height:1.75;border-left:3px solid var(--gold);padding-left:13px}
+.fi-date{font-size:11px;color:var(--text3);margin-top:8px}
+
+/* ── SESSION NOTE ── */
+.session-note-box{background:var(--cream2);border:1px solid var(--b);border-radius:var(--rl);padding:16px 18px;margin-top:10px}
+.sn-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.sn-title{font-size:13px;font-weight:600;color:var(--text)}
+.sn-textarea{width:100%;padding:10px 12px;background:var(--cream);border:1px solid var(--b);border-radius:8px;color:var(--text);font-family:var(--fb);font-size:13px;outline:none;resize:none;transition:border-color .2s;min-height:80px}
+.sn-textarea:focus{border-color:var(--gold)}
+.sn-hint{font-size:11px;color:var(--text3);margin-top:6px}
+
+/* ── STUDENT DETAIL PANEL ── */
+.detail-panel{position:fixed;top:0;right:0;bottom:0;width:480px;background:var(--cream);border-left:1px solid var(--b);z-index:150;transform:translateX(100%);transition:transform .3s ease;box-shadow:-8px 0 30px rgba(15,31,61,0.12);overflow-y:auto;display:flex;flex-direction:column}
+.detail-panel.open{transform:translateX(0)}
+.dp-header{background:var(--navy);padding:20px 24px;flex-shrink:0}
+.dp-close{position:absolute;top:18px;right:20px;width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--inv2);transition:background .15s}
+.dp-close:hover{background:rgba(255,255,255,0.2)}
+.dp-content{padding:22px 24px;flex:1}
+
+/* journey arc in detail panel */
+.journey-mini{background:var(--navy);border-radius:var(--rl);padding:18px;margin-bottom:16px}
+.jm-scores{display:flex;gap:0;margin-top:12px}
+.jm-point{flex:1;text-align:center;position:relative}
+.jm-point::after{content:'→';position:absolute;right:-6px;top:50%;transform:translateY(-50%);color:var(--inv3);font-size:12px}
+.jm-point:last-child::after{display:none}
+.jm-val{font-family:var(--fs);font-size:18px;font-weight:700}
+.jm-label{font-size:10px;color:var(--inv3);margin-top:2px}
+
+/* ── ASSIGN MODAL ── */
+.overlay{position:fixed;inset:0;background:rgba(15,31,61,0.52);display:none;align-items:center;justify-content:center;z-index:200;backdrop-filter:blur(4px)}
+.overlay.open{display:flex}
+.modal{background:var(--cream);border-radius:var(--rxl);padding:28px;width:480px;max-width:94vw;animation:mi .2s ease;box-shadow:0 20px 60px rgba(15,31,61,0.22);border:1px solid var(--b)}
+@keyframes mi{from{opacity:0;transform:scale(.95)}to{opacity:1;transform:scale(1)}}
+.mt{font-family:var(--fs);font-size:18px;font-weight:700;color:var(--text);margin-bottom:4px}
+.ms{font-size:12.5px;color:var(--text3);margin-bottom:18px}
+.fg{margin-bottom:13px}
+.fg label{display:block;font-size:12px;color:var(--text2);margin-bottom:5px;font-weight:500}
+.finput{width:100%;padding:10px 12px;background:var(--cream2);border:1px solid var(--b);border-radius:8px;color:var(--text);font-family:var(--fb);font-size:13px;outline:none;transition:border-color .2s}
+.finput:focus{border-color:var(--gold)}
+.ma{display:flex;gap:9px;margin-top:18px;justify-content:flex-end}
+
+/* pending approval notice */
+.approval-notice{background:var(--odim);border:1px solid rgba(249,115,22,0.25);border-radius:var(--r);padding:10px 13px;font-size:12px;color:var(--orange);display:flex;align-items:center;gap:8px;margin-top:10px}
+
+/* ── REPORT BUILDER ── */
+.report-section{background:var(--cream);border:1px solid var(--b);border-radius:var(--rl);padding:18px 20px;margin-bottom:12px;box-shadow:var(--sh)}
+.rs-student{display:flex;align-items:center;gap:12px;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--b)}
+.week-report-row{display:flex;align-items:flex-start;gap:14px;padding:12px 0;border-bottom:1px solid var(--b)}
+.week-report-row:last-child{border-bottom:none}
+.wr-label{font-size:12px;font-weight:600;color:var(--text3);width:120px;flex-shrink:0;margin-top:1px}
+.wr-val{flex:1;font-size:13px;color:var(--text2)}
+
+/* ── TABS ── */
+.tabs{display:flex;gap:2px;background:var(--cream2);border:1px solid var(--b);padding:3px;border-radius:9px;width:fit-content;margin-bottom:18px}
+.tab{padding:7px 16px;border-radius:6px;font-size:13px;font-weight:500;cursor:pointer;color:var(--text3);transition:all .15s}
+.tab.on{background:var(--cream);color:var(--text);box-shadow:0 1px 4px rgba(15,31,61,0.06)}
+
+/* ── TOAST ── */
+.toast{position:fixed;bottom:26px;right:26px;background:var(--navy);border:1px solid var(--gold-b);border-radius:10px;padding:11px 16px;font-size:13px;color:var(--inv);display:flex;align-items:center;gap:9px;z-index:300;transform:translateY(60px);opacity:0;transition:all .3s ease;box-shadow:0 8px 28px rgba(15,31,61,0.25)}
+.toast.show{transform:translateY(0);opacity:1}
+.tpip{width:7px;height:7px;border-radius:50%;background:var(--gold);flex-shrink:0}
+
+/* ── MISC ── */
+.tbl{width:100%;border-collapse:collapse;font-size:13px}
+.tbl th{text-align:left;padding:9px 14px;font-size:10.5px;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;font-weight:500;border-bottom:1px solid var(--b);background:var(--cream2)}
+.tbl td{padding:12px 14px;border-bottom:1px solid var(--b);color:var(--text2);vertical-align:middle}
+.tbl tr:last-child td{border-bottom:none}
+.tbl tr:hover td{background:var(--cream2)}
+.tbl td:first-child{color:var(--text);font-weight:500}
+::-webkit-scrollbar{width:5px}
+::-webkit-scrollbar-track{background:var(--cream2)}
+::-webkit-scrollbar-thumb{background:var(--cream3);border-radius:10px}
+@media(max-width:1100px){.g4{grid-template-columns:1fr 1fr}.g3{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- ══ SIDEBAR ══ -->
+<aside class="sidebar">
+  <div class="sb-logo">
+    <svg class="sb-mark" viewBox="0 0 100 100" fill="none">
+      <path d="M50 5L90 28V72L50 95L10 72V28L50 5Z" stroke="#E8A830" stroke-width="6" stroke-linejoin="round"/>
+      <path d="M68 32C68 32 60 25 50 25C40 25 32 32 32 40C32 55 68 50 68 65C68 73 60 80 50 80C40 80 32 73 32 73" stroke="#FDF8F0" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <div class="sb-words">
+      <div class="w1">STUDY<span>VERSE</span></div>
+      <div class="w2">Faculty Portal</div>
+    </div>
+  </div>
+
+  <div class="faculty-strip">
+    <div class="fac-av">A</div>
+    <div>
+      <div class="fac-name">Ajay Sharma</div>
+      <div class="fac-role">JEE &amp; NEET Faculty</div>
+    </div>
+  </div>
+
+  <div class="nb">
+    <div class="nl">Overview</div>
+    <div class="ni on" onclick="nav('dashboard',this)">
+      <svg class="nic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+      Dashboard
+    </div>
+    <div class="ni" onclick="nav('schedule',this)">
+      <svg class="nic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+      Schedule
+      <span class="nbadge gold">2 Today</span>
+    </div>
+    <div class="ni" onclick="nav('students',this)">
+      <svg class="nic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      My Students
+      <span class="nbadge dim">8</span>
+    </div>
+  </div>
+
+  <div class="nb">
+    <div class="nl">Action Items</div>
+    <div class="ni" onclick="nav('doubts',this)">
+      <svg class="nic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      Doubt Queue
+      <span class="nbadge red">5</span>
+    </div>
+    <div class="ni" onclick="nav('resources',this)">
+      <svg class="nic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      Resources
+      <span class="nbadge dim">Assign</span>
+    </div>
+    <div class="ni" onclick="nav('tests',this)">
+      <svg class="nic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+      Assign Tests
+      <span class="nbadge dim">Suggest</span>
+    </div>
+    <div class="ni" onclick="nav('reports',this)">
+      <svg class="nic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+      Weekly Reports
+      <span class="nbadge gold">Due Sun</span>
+    </div>
+    <div class="ni" onclick="nav('feedback',this)">
+      <svg class="nic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+      Parent Feedback
+      <span class="nbadge dim">3</span>
+    </div>
+  </div>
+
+  <div class="sb-bottom">
+    <div class="logout-btn">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+      Sign Out
+    </div>
+  </div>
+</aside>
+
+<!-- ══ MAIN ══ -->
+<div class="main">
+  <header class="topbar">
+    <div class="ph" id="ph">Dashboard</div>
+    <div class="tbr">
+      <!-- Live session - most prominent action -->
+      <button class="join-btn" onclick="showToast('Launching session: Atomic Structure with Rahul...')">
+        <span class="live-dot"></span>
+        Join Live Session
+      </button>
+      <div class="tbb" onclick="nav('doubts',document.querySelectorAll('.ni')[4])">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        <span class="npip"></span>
+      </div>
+      <div class="tbb" onclick="openM('quick-note-modal')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+      </div>
+    </div>
+  </header>
+
+  <div class="content">
+
+  <!-- ══════════ DASHBOARD ══════════ -->
+  <div class="page on" id="p-dashboard">
+
+    <!-- Welcome -->
+    <div style="margin-bottom:20px;display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+      <div>
+        <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.1em;font-weight:500;margin-bottom:4px;">Wednesday, 15 April 2026</div>
+        <div style="font-family:var(--fs);font-size:23px;font-weight:700;color:var(--text);">Good morning, Ajay.</div>
+        <div style="font-size:13.5px;color:var(--text2);margin-top:3px;">You have <strong style="color:var(--text)">2 sessions</strong> today and <strong style="color:var(--red)">5 doubts</strong> pending reply.</div>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-ghost btn-sm" onclick="nav('reports',document.querySelectorAll('.ni')[7])">Weekly Report Due Sunday →</button>
+        <button class="btn btn-gold btn-sm" onclick="openM('schedule-modal')">+ Schedule Session</button>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="g4 mb">
+      <div class="stat sa-navy">
+        <div class="stat-l">Active Students</div>
+        <div class="stat-v">8</div>
+        <div class="stat-n neu">2 new this month</div>
+      </div>
+      <div class="stat sa-red">
+        <div class="stat-l">Doubts Pending</div>
+        <div class="stat-v">5</div>
+        <div class="stat-n bad">Oldest: 18h ago</div>
+      </div>
+      <div class="stat sa-gold">
+        <div class="stat-l">Sessions This Week</div>
+        <div class="stat-v">11</div>
+        <div class="stat-n up">↑ vs 9 last week</div>
+      </div>
+      <div class="stat sa-green">
+        <div class="stat-l">Avg Improvement</div>
+        <div class="stat-v">+74</div>
+        <div class="stat-n up">marks across cohort</div>
+      </div>
+    </div>
+
+    <div class="g2 mb">
+      <!-- Today's Schedule -->
+      <div class="card">
+        <div class="sh">
+          <div class="sh-t">Today's Sessions</div>
+          <span class="sh-a" onclick="nav('schedule',document.querySelectorAll('.ni')[1])">Full schedule →</span>
+        </div>
+        <div class="sched-item">
+          <div class="sched-time">2:00 PM</div>
+          <div class="sched-dot" style="background:var(--green);box-shadow:0 0 0 3px rgba(34,197,94,0.2)"></div>
+          <div class="sched-info">
+            <div class="sched-name">Rahul M. — Atomic Structure</div>
+            <div class="sched-meta">Chemistry • 60 min • JEE Mains</div>
+          </div>
+          <div class="sched-status s-live">● Live Now</div>
+        </div>
+        <div class="sched-item">
+          <div class="sched-time">4:00 PM</div>
+          <div class="sched-dot" style="background:var(--gold)"></div>
+          <div class="sched-info">
+            <div class="sched-name">Sneha K. — Integration (By Parts)</div>
+            <div class="sched-meta">Mathematics • 75 min • JEE Mains</div>
+          </div>
+          <div class="sched-status s-up">Upcoming</div>
+        </div>
+        <div style="padding:10px 0 2px;font-size:12px;color:var(--text3);text-align:center;">No more sessions today</div>
+      </div>
+
+      <!-- Urgent Doubts Preview -->
+      <div class="card">
+        <div class="sh">
+          <div class="sh-t">Doubts Needing Reply</div>
+          <span class="sh-a" onclick="nav('doubts',document.querySelectorAll('.ni')[4])">Reply all →</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:var(--rdim);border-radius:var(--r);border:1px solid rgba(239,68,68,0.2);cursor:pointer;" onclick="nav('doubts',document.querySelectorAll('.ni')[4])">
+            <div class="di-av">R</div>
+            <div>
+              <div style="font-size:12.5px;font-weight:600;color:var(--text);">Rahul M. <span style="color:var(--red);font-size:10px;font-weight:400;">18h ago</span></div>
+              <div style="font-size:12.5px;color:var(--text2);">How does Gauss's law apply when charge is outside the surface?</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:var(--odim);border-radius:var(--r);border:1px solid rgba(249,115,22,0.2);cursor:pointer;" onclick="nav('doubts',document.querySelectorAll('.ni')[4])">
+            <div class="di-av">S</div>
+            <div>
+              <div style="font-size:12.5px;font-weight:600;color:var(--text);">Sneha K. <span style="color:var(--orange);font-size:10px;font-weight:400;">6h ago</span></div>
+              <div style="font-size:12.5px;color:var(--text2);">Integration by parts — when to choose u and v?</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:var(--cream2);border-radius:var(--r);border:1px solid var(--b);cursor:pointer;" onclick="nav('doubts',document.querySelectorAll('.ni')[4])">
+            <div class="di-av">P</div>
+            <div>
+              <div style="font-size:12.5px;font-weight:600;color:var(--text);">Priya D. <span style="color:var(--text3);font-size:10px;font-weight:400;">2h ago</span></div>
+              <div style="font-size:12.5px;color:var(--text2);">Markovnikov vs anti-Markovnikov — explain with example</div>
+            </div>
+          </div>
+          <div style="font-size:11.5px;color:var(--text3);text-align:center;padding-top:4px;">+2 more doubts pending</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Student Snapshot — case files -->
+    <div class="sh">
+      <div class="sh-t">Student Snapshot</div>
+      <span class="sh-a" onclick="nav('students',document.querySelectorAll('.ni')[2])">All students →</span>
+    </div>
+    <div class="g3 mb">
+      <!-- Student 1 -->
+      <div class="student-card" onclick="openStudentDetail('Rahul Mehta','R','JEE Mains 2026','Chemistry','Atomic Structure',388,462,74)">
+        <div class="sc-header">
+          <div class="sc-av">R</div>
+          <div><div class="sc-name">Rahul Mehta</div><div class="sc-exam">JEE Mains 2026 • Week 9</div></div>
+          <div style="margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;gap:4px;"><span class="sched-status s-live" style="font-size:10px;">Live</span></div>
+        </div>
+        <div class="sc-body">
+          <div class="sc-delta">
+            <span class="sc-baseline">388</span>
+            <span class="sc-arrow">→</span>
+            <span class="sc-current">462</span>
+            <span class="sc-gain">+74 marks</span>
+          </div>
+          <div class="sc-subjects">
+            <div class="sc-subj-row"><div class="sc-subj-name">Chem</div><div class="sc-subj-bar"><div class="pbar"><div class="pbar-inner pb-gold" style="width:72%"></div></div></div><div class="sc-subj-pct" style="color:var(--gold)">72%</div></div>
+            <div class="sc-subj-row"><div class="sc-subj-name">Maths</div><div class="sc-subj-bar"><div class="pbar"><div class="pbar-inner pb-green" style="width:80%"></div></div></div><div class="sc-subj-pct" style="color:var(--green)">80%</div></div>
+            <div class="sc-subj-row"><div class="sc-subj-name">Phys</div><div class="sc-subj-bar"><div class="pbar"><div class="pbar-inner pb-orange" style="width:58%"></div></div></div><div class="sc-subj-pct" style="color:var(--orange)">58%</div></div>
+          </div>
+          <div class="sc-footer">
+            <div class="sc-next">Next: <strong>Today 4PM</strong></div>
+            <div class="sc-flags"><span class="pill pr" style="font-size:10px;">Phys weak</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Student 2 -->
+      <div class="student-card" onclick="openStudentDetail('Sneha Kapoor','S','JEE Mains 2026','Mathematics','Integration',420,511,91)">
+        <div class="sc-header">
+          <div class="sc-av">S</div>
+          <div><div class="sc-name">Sneha Kapoor</div><div class="sc-exam">JEE Mains 2026 • Week 11</div></div>
+          <div style="margin-left:auto;"><span class="sched-status s-up">Today 4PM</span></div>
+        </div>
+        <div class="sc-body">
+          <div class="sc-delta">
+            <span class="sc-baseline">420</span>
+            <span class="sc-arrow">→</span>
+            <span class="sc-current">511</span>
+            <span class="sc-gain">+91 marks</span>
+          </div>
+          <div class="sc-subjects">
+            <div class="sc-subj-row"><div class="sc-subj-name">Chem</div><div class="sc-subj-bar"><div class="pbar"><div class="pbar-inner pb-green" style="width:81%"></div></div></div><div class="sc-subj-pct" style="color:var(--green)">81%</div></div>
+            <div class="sc-subj-row"><div class="sc-subj-name">Maths</div><div class="sc-subj-bar"><div class="pbar"><div class="pbar-inner pb-green" style="width:86%"></div></div></div><div class="sc-subj-pct" style="color:var(--green)">86%</div></div>
+            <div class="sc-subj-row"><div class="sc-subj-name">Phys</div><div class="sc-subj-bar"><div class="pbar"><div class="pbar-inner pb-gold" style="width:68%"></div></div></div><div class="sc-subj-pct" style="color:var(--gold)">68%</div></div>
+          </div>
+          <div class="sc-footer">
+            <div class="sc-next">Next: <strong>Today 4PM</strong></div>
+            <div class="sc-flags"><span class="pill pp" style="font-size:10px;">On track</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Student 3 -->
+      <div class="student-card" onclick="openStudentDetail('Priya Desai','P','NEET 2026','Chemistry','Organic Mechanisms',350,418,68)">
+        <div class="sc-header">
+          <div class="sc-av">P</div>
+          <div><div class="sc-name">Priya Desai</div><div class="sc-exam">NEET 2026 • Week 7</div></div>
+          <div style="margin-left:auto;"><span class="sched-status s-done" style="font-size:10px;">Apr 17</span></div>
+        </div>
+        <div class="sc-body">
+          <div class="sc-delta">
+            <span class="sc-baseline">350</span>
+            <span class="sc-arrow">→</span>
+            <span class="sc-current">418</span>
+            <span class="sc-gain">+68 marks</span>
+          </div>
+          <div class="sc-subjects">
+            <div class="sc-subj-row"><div class="sc-subj-name">Chem</div><div class="sc-subj-bar"><div class="pbar"><div class="pbar-inner pb-orange" style="width:62%"></div></div></div><div class="sc-subj-pct" style="color:var(--orange)">62%</div></div>
+            <div class="sc-subj-row"><div class="sc-subj-name">Bio</div><div class="sc-subj-bar"><div class="pbar"><div class="pbar-inner pb-green" style="width:77%"></div></div></div><div class="sc-subj-pct" style="color:var(--green)">77%</div></div>
+            <div class="sc-subj-row"><div class="sc-subj-name">Phys</div><div class="sc-subj-bar"><div class="pbar"><div class="pbar-inner pb-red" style="width:44%"></div></div></div><div class="sc-subj-pct" style="color:var(--red)">44%</div></div>
+          </div>
+          <div class="sc-footer">
+            <div class="sc-next">Next: <strong>Apr 17</strong></div>
+            <div class="sc-flags"><span class="pill pr" style="font-size:10px;">Phys critical</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ══════════ SCHEDULE ══════════ -->
+  <div class="page" id="p-schedule">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
+      <div class="tabs" style="margin-bottom:0;">
+        <div class="tab on" onclick="tabSwitch(this)">Today</div>
+        <div class="tab" onclick="tabSwitch(this)">This Week</div>
+        <div class="tab" onclick="tabSwitch(this)">All</div>
+      </div>
+      <button class="btn btn-gold btn-sm" onclick="openM('schedule-modal')">+ Schedule Session</button>
+    </div>
+
+    <div class="card mb">
+      <table class="tbl">
+        <thead><tr><th>Student</th><th>Topic</th><th>Subject</th><th>Time</th><th>Duration</th><th>Status</th><th>Actions</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><div style="display:flex;align-items:center;gap:8px;"><div class="di-av">R</div>Rahul Mehta</div></td>
+            <td>Atomic Structure — Quantum Numbers</td>
+            <td><span class="pill pg">Chemistry</span></td>
+            <td>Today, 2:00 PM</td>
+            <td>60 min</td>
+            <td><span class="sched-status s-live">● Live Now</span></td>
+            <td><button class="btn btn-green btn-sm" onclick="showToast('Launching session...')">Join</button></td>
+          </tr>
+          <tr>
+            <td><div style="display:flex;align-items:center;gap:8px;"><div class="di-av">S</div>Sneha Kapoor</div></td>
+            <td>Integration — By Parts</td>
+            <td><span class="pill pn">Mathematics</span></td>
+            <td>Today, 4:00 PM</td>
+            <td>75 min</td>
+            <td><span class="sched-status s-up">Upcoming</span></td>
+            <td><div style="display:flex;gap:6px;"><button class="btn btn-ghost btn-sm" onclick="openM('session-note-modal')">Add Note</button><button class="btn btn-gold btn-sm" onclick="showToast('Reminder set!')">Remind</button></div></td>
+          </tr>
+          <tr>
+            <td><div style="display:flex;align-items:center;gap:8px;"><div class="di-av">P</div>Priya Desai</div></td>
+            <td>Organic Chemistry — Reaction Mechanisms</td>
+            <td><span class="pill pg">Chemistry</span></td>
+            <td>Apr 17, 3:00 PM</td>
+            <td>90 min</td>
+            <td><span class="sched-status s-up">Upcoming</span></td>
+            <td><button class="btn btn-ghost btn-sm">Details</button></td>
+          </tr>
+          <tr>
+            <td><div style="display:flex;align-items:center;gap:8px;"><div class="di-av">A</div>Arjun Singh</div></td>
+            <td>Electrostatics — Gauss's Law</td>
+            <td><span class="pill pn">Physics</span></td>
+            <td>Apr 18, 5:00 PM</td>
+            <td>60 min</td>
+            <td><span class="sched-status s-up">Upcoming</span></td>
+            <td><button class="btn btn-ghost btn-sm">Details</button></td>
+          </tr>
+          <tr>
+            <td><div style="display:flex;align-items:center;gap:8px;"><div class="di-av">V</div>Vanya Rao</div></td>
+            <td>Limits &amp; Continuity — L'Hôpital's Rule</td>
+            <td><span class="pill pn">Mathematics</span></td>
+            <td>Apr 19, 6:00 PM</td>
+            <td>60 min</td>
+            <td><span class="sched-status s-up">Upcoming</span></td>
+            <td><button class="btn btn-ghost btn-sm">Details</button></td>
+          </tr>
+          <tr>
+            <td><div style="display:flex;align-items:center;gap:8px;"><div class="di-av">R</div>Rahul Mehta</div></td>
+            <td>Chemical Bonding — VSEPR Theory</td>
+            <td><span class="pill pg">Chemistry</span></td>
+            <td>Apr 12, 2:00 PM</td>
+            <td>60 min</td>
+            <td><span class="sched-status s-done">Completed</span></td>
+            <td><button class="btn btn-ghost btn-sm" onclick="openM('session-note-modal')">View Notes</button></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- After-session notes section -->
+    <div class="sh"><div class="sh-t">Recent Session Notes</div><span style="font-size:12px;color:var(--text3);">These feed into weekly parent reports</span></div>
+    <div class="card" style="padding:14px 18px;">
+      <div style="display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid var(--b);">
+        <div class="di-av">R</div>
+        <div style="flex:1;">
+          <div style="display:flex;justify-content:space-between;"><div style="font-size:13px;font-weight:600;color:var(--text);">Rahul Mehta — Chemical Bonding</div><div style="font-size:11px;color:var(--text3);">Apr 12</div></div>
+          <div style="font-size:12.5px;color:var(--text2);margin-top:5px;line-height:1.7;font-style:italic;">"Good session. VSEPR shapes are now clear. Struggled with bond angle exceptions in NH₃ vs H₂O — covered thoroughly. Next: quantum numbers and orbital filling."</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:flex-start;gap:12px;padding:12px 0;">
+        <div class="di-av">S</div>
+        <div style="flex:1;">
+          <div style="display:flex;justify-content:space-between;"><div style="font-size:13px;font-weight:600;color:var(--text);">Sneha Kapoor — Integration Substitution</div><div style="font-size:11px;color:var(--text3);">Apr 11</div></div>
+          <div style="font-size:12.5px;color:var(--text2);margin-top:5px;line-height:1.7;font-style:italic;">"Excellent session. Accuracy moved to 68%. Substitution method is now solid. Moving to integration by parts next — she's ready for it."</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ MY STUDENTS ══════════ -->
+  <div class="page" id="p-students">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
+      <div style="font-size:13px;color:var(--text2);">8 active students • All 1-to-1 or small groups</div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-ghost btn-sm">Filter by Exam</button>
+        <button class="btn btn-gold btn-sm" onclick="openM('schedule-modal')">+ New Session</button>
+      </div>
+    </div>
+
+    <div class="g3 mb">
+      <div class="student-card" onclick="openStudentDetail('Rahul Mehta','R','JEE Mains 2026','Chemistry','Atomic Structure',388,462,74)">
+        <div class="sc-header"><div class="sc-av">R</div><div><div class="sc-name">Rahul Mehta</div><div class="sc-exam">JEE Mains 2026 • Wk 9</div></div><div style="margin-left:auto;"><span class="sched-status s-live" style="font-size:10px;">● Live</span></div></div>
+        <div class="sc-body">
+          <div class="sc-delta"><span class="sc-baseline">388</span><span class="sc-arrow">→</span><span class="sc-current">462</span><span class="sc-gain">+74</span></div>
+          <div class="sc-subjects">
+            <div class="sc-subj-row"><div class="sc-subj-name">Chem</div><div class="sc-subj-bar"><div class="pbar"><div class="pbar-inner pb-gold" style="width:72%"></div></div></div><div class="sc-subj-pct" style="color:var(--gold)">72%</div></div>
+            <div class="sc-subj-row"><div class="sc-subj-name">Maths</div><div class="sc-subj-bar"><div class="pbar"><div class="pbar-inner pb-green" style="width:80%"></div></div></div><div class="sc-subj-pct" style="color:var(--green)">80%</div></div>
+            <div class="sc-subj-row"><div class="sc-subj-name">Phys</div><div class="sc-subj-bar"><div class="pbar"><div class="pbar-inner pb-orange" style="width:58%"></div></div></div><div class="sc-subj-pct" style="color:var(--orange)">58%</div></div>
+          </div>
+          <div class="sc-footer"><div class="sc-next">Next: <strong>Today 2PM</strong></div><div class="sc-flags"><span class="pill pr" style="font-size:10px;">Phys weak</span></div></div>
+        </div>
+      </div>
+
+      <div class="student-card" onclick="openStudentDetail('Sneha Kapoor','S','JEE Mains 2026','Mathematics','Integration',420,511,91)">
+        <div class="sc-header"><div class="sc-av">S</div><div><div class="sc-name">Sneha Kapoor</div><div class="sc-exam">JEE Mains 2026 • Wk 11</div></div><div style="margin-left:auto;"><span class="sched-status s-up" style="font-size:10px;">Today 4PM</span></div></div>
+        <div class="sc-body">
+          <div class="sc-delta"><span class="sc-baseline">420</span><span class="sc-arrow">→</span><span class="sc-current">511</span><span class="sc-gain">+91</span></div>
+          <div class="sc-subjects">
+            <div class="sc-subj-row"><div class="sc-subj-name">Chem</div><div class="sc-subj-bar"><div class="pbar"><div class="pbar-inner pb-green" style="width:81%"></div></div></div><div class="sc-subj-pct" style="color:var(--green)">81%</div></div>
+            <div class="sc-subj-row"><div class="sc-subj-name">Maths</div><div class="sc-subj-bar"><div class="pbar"><div class="pbar-inner pb-green" style="width:86%"></div></div></div><div class="sc-subj-pct" style="color:var(--green)">86%</div></div>
+            <div class="sc-subj-row"><div class="sc-subj-name">Phys</div><div class="sc-subj-bar"><div class="pbar"><div class="pbar-inner pb-gold" style="width:68%"></div></div></div><div class="sc-subj-pct" style="color:var(--gold)">68%</div></div>
+          </div>
+          <div class="sc-footer"><div class="sc-next">Next: <strong>Today 4PM</strong></div><div class="sc-flags"><span class="pill pp" style="font-size:10px;">On track</span></div></div>
+        </div>
+      </div>
+
+      <div class="student-card" onclick="openStudentDetail('Priya Desai','P','NEET 2026','Chemistry','Organic Mechanisms',350,418,68)">
+        <div class="sc-header"><div class="sc-av">P</div><div><div class="sc-name">Priya Desai</div><div class="sc-exam">NEET 2026 • Wk 7</div></div></div>
+        <div class="sc-body">
+          <div class="sc-delta"><span class="sc-baseline">350</span><span class="sc-arrow">→</span><span class="sc-current">418</span><span class="sc-gain">+68</span></div>
+          <div class="sc-subjects">
+            <div class="sc-subj-row"><div class="sc-subj-name">Chem</div><div class="sc-subj-bar"><div class="pbar"><div class="pbar-inner pb-orange" style="width:62%"></div></div></div><div class="sc-subj-pct" style="color:var(--orange)">62%</div></div>
+            <div class="sc-subj-row"><div class="sc-subj-name">Bio</div><div class="sc-subj-bar"><div class="pbar"><div class="pbar-inner pb-green" style="width:77%"></div></div></div><div class="sc-subj-pct" style="color:var(--green)">77%</div></div>
+            <div class="sc-subj-row"><div class="sc-subj-name">Phys</div><div class="sc-subj-bar"><div class="pbar"><div class="pbar-inner pb-red" style="width:44%"></div></div></div><div class="sc-subj-pct" style="color:var(--red)">44%</div></div>
+          </div>
+          <div class="sc-footer"><div class="sc-next">Next: <strong>Apr 17</strong></div><div class="sc-flags"><span class="pill pr" style="font-size:10px;">Phys critical</span></div></div>
+        </div>
+      </div>
+
+      <div class="student-card" onclick="openStudentDetail('Arjun Singh','A','JEE Mains 2026','Physics','Electrostatics',410,478,68)">
+        <div class="sc-header"><div class="sc-av">A</div><div><div class="sc-name">Arjun Singh</div><div class="sc-exam">JEE Mains 2026 • Wk 8</div></div></div>
+        <div class="sc-body">
+          <div class="sc-delta"><span class="sc-baseline">410</span><span class="sc-arrow">→</span><span class="sc-current">478</span><span class="sc-gain">+68</span></div>
+          <div class="sc-subjects">
+            <div class="sc-subj-row"><div class="sc-subj-name">Chem</div><div class="sc-subj-bar"><div class="pbar"><div class="pbar-inner pb-green" style="width:75%"></div></div></div><div class="sc-subj-pct" style="color:var(--green)">75%</div></div>
+            <div class="sc-subj-row"><div class="sc-subj-name">Maths</div><div class="sc-subj-bar"><div class="pbar"><div class="pbar-inner pb-orange" style="width:62%"></div></div></div><div class="sc-subj-pct" style="color:var(--orange)">62%</div></div>
+            <div class="sc-subj-row"><div class="sc-subj-name">Phys</div><div class="sc-subj-bar"><div class="pbar"><div class="pbar-inner pb-orange" style="width:66%"></div></div></div><div class="sc-subj-pct" style="color:var(--orange)">66%</div></div>
+          </div>
+          <div class="sc-footer"><div class="sc-next">Next: <strong>Apr 18</strong></div><div class="sc-flags"><span class="pill po" style="font-size:10px;">Maths dip</span></div></div>
+        </div>
+      </div>
+
+      <div class="student-card">
+        <div class="sc-header"><div class="sc-av">V</div><div><div class="sc-name">Vanya Rao</div><div class="sc-exam">JEE Mains 2026 • Wk 5</div></div></div>
+        <div class="sc-body">
+          <div class="sc-delta"><span class="sc-baseline">360</span><span class="sc-arrow">→</span><span class="sc-current">402</span><span class="sc-gain">+42</span></div>
+          <div class="sc-subjects">
+            <div class="sc-subj-row"><div class="sc-subj-name">Chem</div><div class="sc-subj-bar"><div class="pbar"><div class="pbar-inner pb-orange" style="width:58%"></div></div></div><div class="sc-subj-pct" style="color:var(--orange)">58%</div></div>
+            <div class="sc-subj-row"><div class="sc-subj-name">Maths</div><div class="sc-subj-bar"><div class="pbar"><div class="pbar-inner pb-orange" style="width:61%"></div></div></div><div class="sc-subj-pct" style="color:var(--orange)">61%</div></div>
+            <div class="sc-subj-row"><div class="sc-subj-name">Phys</div><div class="sc-subj-bar"><div class="pbar"><div class="pbar-inner pb-red" style="width:48%"></div></div></div><div class="sc-subj-pct" style="color:var(--red)">48%</div></div>
+          </div>
+          <div class="sc-footer"><div class="sc-next">Next: <strong>Apr 19</strong></div><div class="sc-flags"><span class="pill pr" style="font-size:10px;">Early stage</span></div></div>
+        </div>
+      </div>
+
+      <div class="student-card">
+        <div class="sc-header"><div class="sc-av">K</div><div><div class="sc-name">Kavya Menon</div><div class="sc-exam">NEET 2026 • Wk 12</div></div></div>
+        <div class="sc-body">
+          <div class="sc-delta"><span class="sc-baseline">440</span><span class="sc-arrow">→</span><span class="sc-current">548</span><span class="sc-gain">+108</span></div>
+          <div class="sc-subjects">
+            <div class="sc-subj-row"><div class="sc-subj-name">Chem</div><div class="sc-subj-bar"><div class="pbar"><div class="pbar-inner pb-green" style="width:88%"></div></div></div><div class="sc-subj-pct" style="color:var(--green)">88%</div></div>
+            <div class="sc-subj-row"><div class="sc-subj-name">Bio</div><div class="sc-subj-bar"><div class="pbar"><div class="pbar-inner pb-green" style="width:91%"></div></div></div><div class="sc-subj-pct" style="color:var(--green)">91%</div></div>
+            <div class="sc-subj-row"><div class="sc-subj-name">Phys</div><div class="sc-subj-bar"><div class="pbar"><div class="pbar-inner pb-gold" style="width:74%"></div></div></div><div class="sc-subj-pct" style="color:var(--gold)">74%</div></div>
+          </div>
+          <div class="sc-footer"><div class="sc-next">Next: <strong>Apr 20</strong></div><div class="sc-flags"><span class="pill pp" style="font-size:10px;">Excellent</span></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ DOUBT QUEUE ══════════ -->
+  <div class="page" id="p-doubts">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;flex-wrap:wrap;gap:10px;">
+      <div style="font-size:13px;color:var(--text2);"><span style="color:var(--red);font-weight:600;">5 unanswered</span> • Oldest: 18 hours ago. Aim to reply within 4 hours.</div>
+      <div class="tabs" style="margin-bottom:0;">
+        <div class="tab on" onclick="tabSwitch(this)">Pending (5)</div>
+        <div class="tab" onclick="tabSwitch(this)">Answered</div>
+        <div class="tab" onclick="tabSwitch(this)">All</div>
+      </div>
+    </div>
+
+    <div class="doubt-item urgent">
+      <div class="di-top">
+        <div class="di-student"><div class="di-av">R</div><div><div class="di-name">Rahul Mehta</div><div class="di-time">18 hours ago</div></div></div>
+        <div style="display:flex;gap:6px;align-items:center;"><span class="pill pg">Chemistry</span><span class="pill pr">Overdue</span></div>
+      </div>
+      <div class="di-q">How does Gauss's law apply when the charge is placed outside the Gaussian surface? The net flux should be zero but the field isn't — I'm confused.</div>
+      <div class="di-actions">
+        <button class="btn btn-gold btn-sm" onclick="toggleReply(this)">Reply →</button>
+        <button class="btn btn-ghost btn-sm" onclick="showToast('Marked for session discussion')">Discuss in session</button>
+        <button class="btn btn-ghost btn-sm" onclick="openM('assign-test-modal')">Assign practice Q</button>
+      </div>
+      <div class="reply-box">
+        <textarea class="reply-textarea" rows="3" placeholder="Type your reply — Rahul will see this immediately..."></textarea>
+        <div class="reply-actions">
+          <button class="btn btn-ghost btn-sm" onclick="toggleReply(this.closest('.doubt-item').querySelector('.btn-gold'))">Cancel</button>
+          <button class="btn btn-gold btn-sm" onclick="markReplied(this)">Send Reply ✓</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="doubt-item medium">
+      <div class="di-top">
+        <div class="di-student"><div class="di-av">S</div><div><div class="di-name">Sneha Kapoor</div><div class="di-time">6 hours ago</div></div></div>
+        <div style="display:flex;gap:6px;align-items:center;"><span class="pill pn">Mathematics</span></div>
+      </div>
+      <div class="di-q">Integration by parts — I get the formula ∫u dv = uv − ∫v du, but I don't know when to choose u and when to choose dv. Is there a rule?</div>
+      <div class="di-actions">
+        <button class="btn btn-gold btn-sm" onclick="toggleReply(this)">Reply →</button>
+        <button class="btn btn-ghost btn-sm" onclick="showToast('Flagged for today\'s 4PM session')">Flag for today's session</button>
+      </div>
+      <div class="reply-box">
+        <textarea class="reply-textarea" rows="3" placeholder="Tip: mention the ILATE rule — Sneha will appreciate the mnemonic..."></textarea>
+        <div class="reply-actions">
+          <button class="btn btn-ghost btn-sm" onclick="toggleReply(this.closest('.doubt-item').querySelector('.btn-gold'))">Cancel</button>
+          <button class="btn btn-gold btn-sm" onclick="markReplied(this)">Send Reply ✓</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="doubt-item medium">
+      <div class="di-top">
+        <div class="di-student"><div class="di-av">P</div><div><div class="di-name">Priya Desai</div><div class="di-time">2 hours ago</div></div></div>
+        <div style="display:flex;gap:6px;align-items:center;"><span class="pill pg">Chemistry</span></div>
+      </div>
+      <div class="di-q">Can you explain the difference between Markovnikov and anti-Markovnikov addition with a real example? I keep mixing them up in tests.</div>
+      <div class="di-actions">
+        <button class="btn btn-gold btn-sm" onclick="toggleReply(this)">Reply →</button>
+        <button class="btn btn-ghost btn-sm" onclick="showToast('Assigned practice question')">Assign practice Q</button>
+      </div>
+      <div class="reply-box">
+        <textarea class="reply-textarea" rows="3" placeholder="Write reply..."></textarea>
+        <div class="reply-actions">
+          <button class="btn btn-ghost btn-sm" onclick="toggleReply(this.closest('.doubt-item').querySelector('.btn-gold'))">Cancel</button>
+          <button class="btn btn-gold btn-sm" onclick="markReplied(this)">Send Reply ✓</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="doubt-item low">
+      <div class="di-top">
+        <div class="di-student"><div class="di-av">A</div><div><div class="di-name">Arjun Singh</div><div class="di-time">1 hour ago</div></div></div>
+        <div style="display:flex;gap:6px;align-items:center;"><span class="pill pb">Physics</span></div>
+      </div>
+      <div class="di-q">In the potential energy diagram for SHM, at mean position why is KE maximum but PE minimum? The formula says PE = ½kx² — so at x=0, PE=0, that makes sense but I want to understand it intuitively.</div>
+      <div class="di-actions">
+        <button class="btn btn-gold btn-sm" onclick="toggleReply(this)">Reply →</button>
+        <button class="btn btn-ghost btn-sm" onclick="showToast('Marked for session discussion')">Discuss in session</button>
+      </div>
+      <div class="reply-box">
+        <textarea class="reply-textarea" rows="3" placeholder="Write reply..."></textarea>
+        <div class="reply-actions">
+          <button class="btn btn-ghost btn-sm" onclick="toggleReply(this.closest('.doubt-item').querySelector('.btn-gold'))">Cancel</button>
+          <button class="btn btn-gold btn-sm" onclick="markReplied(this)">Send Reply ✓</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="doubt-item low">
+      <div class="di-top">
+        <div class="di-student"><div class="di-av">V</div><div><div class="di-name">Vanya Rao</div><div class="di-time">30 min ago</div></div></div>
+        <div style="display:flex;gap:6px;align-items:center;"><span class="pill pn">Mathematics</span></div>
+      </div>
+      <div class="di-q">Is there a shortcut to find limits using L'Hôpital's rule only, or do I have to always check the 0/0 form first?</div>
+      <div class="di-actions">
+        <button class="btn btn-gold btn-sm" onclick="toggleReply(this)">Reply →</button>
+      </div>
+      <div class="reply-box">
+        <textarea class="reply-textarea" rows="3" placeholder="Write reply..."></textarea>
+        <div class="reply-actions">
+          <button class="btn btn-ghost btn-sm" onclick="toggleReply(this.closest('.doubt-item').querySelector('.btn-gold'))">Cancel</button>
+          <button class="btn btn-gold btn-sm" onclick="markReplied(this)">Send Reply ✓</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ RESOURCES ══════════ -->
+  <div class="page" id="p-resources">
+    <div style="font-size:13px;color:var(--text2);margin-bottom:18px;background:var(--cream);border:1px solid var(--b);border-radius:var(--r);padding:11px 14px;">
+      📌 Suggest a resource for a specific student → it goes to admin for approval before appearing in their library.
+    </div>
+
+    <div class="sh"><div class="sh-t">Suggest a Resource</div><button class="btn btn-gold btn-sm" onclick="openM('suggest-res-modal')">+ Suggest Resource</button></div>
+
+    <div style="margin-bottom:22px;">
+      <div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;font-weight:500;margin-bottom:10px;">Pending Admin Approval</div>
+      <div class="res-review-item">
+        <div class="rri-top">
+          <div class="rri-icon">📑</div>
+          <div style="flex:1;">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;"><div class="rri-name">Electrostatics — Previous Year Questions (2018–2024)</div><span class="pending-badge">Pending</span></div>
+            <div class="rri-meta">PDF • For: Rahul Mehta • Suggested Apr 14</div>
+          </div>
+        </div>
+        <div class="rri-request">Suggested reason: "Rahul needs targeted PYQ practice on Gauss's Law and field lines — his doubt volume on this topic is high. These 40 questions map directly to his weak area."</div>
+        <div style="font-size:11.5px;color:var(--text3);">Admin will approve and notify student within 24h</div>
+      </div>
+      <div class="res-review-item">
+        <div class="rri-top">
+          <div class="rri-icon">📄</div>
+          <div style="flex:1;">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;"><div class="rri-name">Organic Chemistry — Named Reactions Cheat Sheet</div><span class="pending-badge">Pending</span></div>
+            <div class="rri-meta">PDF • For: Priya Desai • Suggested Apr 13</div>
+          </div>
+        </div>
+        <div class="rri-request">Suggested reason: "Priya confuses Markovnikov, Aldol, and Cannizzaro. This one-pager with reaction conditions side by side will help her revise faster."</div>
+        <div style="font-size:11.5px;color:var(--text3);">Admin will approve and notify student within 24h</div>
+      </div>
+    </div>
+
+    <div>
+      <div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;font-weight:500;margin-bottom:10px;">Recently Approved</div>
+      <div class="res-review-item" style="opacity:.8;">
+        <div class="rri-top">
+          <div class="rri-icon">📘</div>
+          <div style="flex:1;">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;"><div class="rri-name">HC Verma — Electrostatics Chapter (Vol 2, Ch 29)</div><span class="approved-badge">Approved ✓</span></div>
+            <div class="rri-meta">PDF • For: Arjun Singh • Approved Apr 12 • Student notified</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ ASSIGN TESTS ══════════ -->
+  <div class="page" id="p-tests">
+    <div style="font-size:13px;color:var(--text2);margin-bottom:18px;background:var(--cream);border:1px solid var(--b);border-radius:var(--r);padding:11px 14px;">
+      📌 Suggest a test for a student → goes to admin for approval. Student sees it as "Mentor-assigned" once approved.
+    </div>
+
+    <div class="sh"><div class="sh-t">Suggest a Test for a Student</div><button class="btn btn-gold btn-sm" onclick="openM('assign-test-modal')">+ Suggest Test</button></div>
+
+    <div style="margin-bottom:22px;">
+      <div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;font-weight:500;margin-bottom:10px;">Pending Admin Approval</div>
+      <div class="card mb" style="padding:16px 18px;">
+        <div style="display:flex;align-items:flex-start;gap:12px;">
+          <div class="di-av">R</div>
+          <div style="flex:1;">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;">
+              <div><div style="font-size:13.5px;font-weight:600;color:var(--text);">Rahul Mehta — Electrostatics Targeted Test</div><div style="font-size:12px;color:var(--text3);margin-top:2px;">25 questions • 45 min • Suggested Apr 14</div></div>
+              <span class="pending-badge">Pending Admin</span>
+            </div>
+            <div style="font-size:12.5px;color:var(--text2);margin-top:8px;background:var(--cream2);padding:9px 11px;border-radius:var(--r);border-left:3px solid var(--gold);">Reason: "Rahul's Gauss's Law accuracy is at 31%. This test covers exactly his gap — 15 questions on field lines + 10 on potential. Needs to do this before our Apr 18 session."</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div style="font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;font-weight:500;margin-bottom:10px;">Recently Approved & Student Results</div>
+      <div class="card" style="padding:14px 18px;">
+        <table class="tbl">
+          <thead><tr><th>Student</th><th>Test</th><th>Assigned</th><th>Completed</th><th>Score</th><th>vs Target</th></tr></thead>
+          <tbody>
+            <tr><td><div style="display:flex;align-items:center;gap:7px;"><div class="di-av">S</div>Sneha Kapoor</div></td><td>Integration — Substitution Test</td><td>Apr 10</td><td>Apr 11</td><td><strong style="color:var(--green)">68%</strong></td><td><span class="pill pp">+11%</span></td></tr>
+            <tr><td><div style="display:flex;align-items:center;gap:7px;"><div class="di-av">P</div>Priya Desai</div></td><td>Organic Chemistry — Reactions</td><td>Apr 9</td><td>Apr 10</td><td><strong style="color:var(--orange)">55%</strong></td><td><span class="pill po">Needs work</span></td></tr>
+            <tr><td><div style="display:flex;align-items:center;gap:7px;"><div class="di-av">A</div>Arjun Singh</div></td><td>Electrostatics — Full Chapter</td><td>Apr 8</td><td>Apr 9</td><td><strong style="color:var(--gold)">66%</strong></td><td><span class="pill pg">+8%</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ WEEKLY REPORTS ══════════ -->
+  <div class="page" id="p-reports">
+    <div style="background:var(--gold-dim);border:1px solid var(--gold-b);border-radius:var(--rl);padding:14px 18px;margin-bottom:20px;display:flex;align-items:center;gap:12px;">
+      <span style="font-size:18px;">📅</span>
+      <div>
+        <div style="font-size:13px;font-weight:600;color:var(--text);">Weekly reports are due this Sunday (Apr 20)</div>
+        <div style="font-size:12px;color:var(--text2);">3 of 8 reports drafted. Parents receive these every Sunday morning — your notes from sessions feed directly into them.</div>
+      </div>
+      <button class="btn btn-gold btn-sm" style="margin-left:auto;flex-shrink:0;" onclick="showToast('Sending all completed reports...')">Send All Ready</button>
+    </div>
+
+    <!-- Report builder for one student -->
+    <div class="sh"><div class="sh-t">Draft: Rahul Mehta — Week 9 Report</div><span class="pill po">In Progress</span></div>
+
+    <div class="report-section">
+      <div class="rs-student">
+        <div class="di-av" style="width:40px;height:40px;font-size:15px;">R</div>
+        <div>
+          <div style="font-size:14px;font-weight:600;color:var(--text);">Rahul Mehta</div>
+          <div style="font-size:12px;color:var(--text3);">JEE Mains 2026 • Parent: Mr. Suresh Mehta</div>
+        </div>
+        <div style="margin-left:auto;text-align:right;">
+          <div style="font-size:11px;color:var(--text3);">Score this week</div>
+          <div style="font-family:var(--fs);font-size:22px;font-weight:700;color:var(--gold);">462 <span style="font-size:14px;color:var(--green);">+18</span></div>
+        </div>
+      </div>
+
+      <div class="week-report-row"><div class="wr-label">Sessions done</div><div class="wr-val">4 of 4 scheduled • 100% attendance</div></div>
+      <div class="week-report-row"><div class="wr-label">Topics covered</div><div class="wr-val">Chemical Bonding, VSEPR Theory, Atomic Structure (Bohr), Quantum Numbers</div></div>
+      <div class="week-report-row">
+        <div class="wr-label">Subject scores</div>
+        <div class="wr-val">
+          <div style="display:flex;flex-direction:column;gap:6px;">
+            <div style="display:flex;align-items:center;gap:10px;"><span style="width:60px;font-size:12px;color:var(--text3);">Chemistry</span><div class="pbar" style="width:140px;"><div class="pbar-inner pb-gold" style="width:72%"></div></div><span style="font-size:12px;font-weight:600;color:var(--gold);margin-left:6px;">72% <span style="color:var(--green);font-size:11px;">+8%</span></span></div>
+            <div style="display:flex;align-items:center;gap:10px;"><span style="width:60px;font-size:12px;color:var(--text3);">Mathematics</span><div class="pbar" style="width:140px;"><div class="pbar-inner pb-green" style="width:80%"></div></div><span style="font-size:12px;font-weight:600;color:var(--green);margin-left:6px;">80% <span style="color:var(--green);font-size:11px;">+4%</span></span></div>
+            <div style="display:flex;align-items:center;gap:10px;"><span style="width:60px;font-size:12px;color:var(--text3);">Physics</span><div class="pbar" style="width:140px;"><div class="pbar-inner pb-orange" style="width:58%"></div></div><span style="font-size:12px;font-weight:600;color:var(--orange);margin-left:6px;">58% <span style="color:var(--red);font-size:11px;">−2%</span></span></div>
+          </div>
+        </div>
+      </div>
+      <div class="week-report-row">
+        <div class="wr-label">Mentor's note</div>
+        <div class="wr-val">
+          <textarea class="sn-textarea" style="width:100%;min-height:90px;" id="mentor-note-rahul" placeholder="Write your note for Rahul's parents — be honest and specific. This is what they're paying for...">Rahul had a strong week in Chemistry — quantum numbers are now well-understood and atomic structure is becoming a strength. Mathematics is progressing steadily. The area needing attention is Physics: electrostatics accuracy dropped slightly this week due to confusion around Gauss's Law applications. We have scheduled a targeted session on Apr 18 specifically to address this. Overall trajectory remains on track.</textarea>
+          <div class="sn-hint">This will be sent to Rahul's parents on Sunday morning.</div>
+        </div>
+      </div>
+      <div class="week-report-row">
+        <div class="wr-label">Next week plan</div>
+        <div class="wr-val">
+          <textarea class="sn-textarea" style="width:100%;min-height:60px;" placeholder="What will next week focus on? Parents appreciate knowing what's coming...">Electrostatics deep-dive (Apr 18) • Continue Atomic Structure • Begin Chemical Equilibrium basics</textarea>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px;">
+        <button class="btn btn-ghost btn-sm">Save Draft</button>
+        <button class="btn btn-gold btn-sm" onclick="showToast('Report queued for Sunday delivery to Mr. Suresh Mehta ✓')">Mark Ready to Send</button>
+      </div>
+    </div>
+
+    <!-- Other students report status -->
+    <div class="sh" style="margin-top:8px;"><div class="sh-t">All Students — Report Status</div></div>
+    <div class="card" style="padding:14px 18px;">
+      <table class="tbl">
+        <thead><tr><th>Student</th><th>Exam</th><th>Score This Week</th><th>Report Status</th><th></th></tr></thead>
+        <tbody>
+          <tr><td><div style="display:flex;align-items:center;gap:7px;"><div class="di-av">R</div>Rahul Mehta</div></td><td>JEE Mains</td><td><span style="color:var(--gold);font-weight:600;">462 <span style="color:var(--green);font-size:11px;">+18</span></span></td><td><span class="pill po">In Progress</span></td><td><button class="btn btn-ghost btn-sm">Edit</button></td></tr>
+          <tr><td><div style="display:flex;align-items:center;gap:7px;"><div class="di-av">S</div>Sneha Kapoor</div></td><td>JEE Mains</td><td><span style="color:var(--green);font-weight:600;">511 <span style="color:var(--green);font-size:11px;">+25</span></span></td><td><span class="pill pp">Ready ✓</span></td><td><button class="btn btn-ghost btn-sm">Review</button></td></tr>
+          <tr><td><div style="display:flex;align-items:center;gap:7px;"><div class="di-av">P</div>Priya Desai</div></td><td>NEET</td><td><span style="color:var(--orange);font-weight:600;">418 <span style="color:var(--green);font-size:11px;">+12</span></span></td><td><span class="pill pp">Ready ✓</span></td><td><button class="btn btn-ghost btn-sm">Review</button></td></tr>
+          <tr><td><div style="display:flex;align-items:center;gap:7px;"><div class="di-av">A</div>Arjun Singh</div></td><td>JEE Mains</td><td><span style="color:var(--orange);font-weight:600;">478 <span style="color:var(--green);font-size:11px;">+8</span></span></td><td><span class="pill pn">Not started</span></td><td><button class="btn btn-gold btn-sm" onclick="showToast('Opening report for Arjun...')">Draft Now</button></td></tr>
+          <tr><td><div style="display:flex;align-items:center;gap:7px;"><div class="di-av">V</div>Vanya Rao</div></td><td>JEE Mains</td><td><span style="color:var(--orange);font-weight:600;">402 <span style="color:var(--green);font-size:11px;">+14</span></span></td><td><span class="pill pn">Not started</span></td><td><button class="btn btn-gold btn-sm" onclick="showToast('Opening report for Vanya...')">Draft Now</button></td></tr>
+          <tr><td><div style="display:flex;align-items:center;gap:7px;"><div class="di-av">K</div>Kavya Menon</div></td><td>NEET</td><td><span style="color:var(--green);font-weight:600;">548 <span style="color:var(--green);font-size:11px;">+18</span></span></td><td><span class="pill pn">Not started</span></td><td><button class="btn btn-gold btn-sm" onclick="showToast('Opening report for Kavya...')">Draft Now</button></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ══════════ PARENT FEEDBACK ══════════ -->
+  <div class="page" id="p-feedback">
+    <div style="font-size:13px;color:var(--text2);margin-bottom:18px;">Parent feedback collected after each weekly report. Read them — they tell you what matters most to each family.</div>
+
+    <div class="feedback-item">
+      <div class="fi-top">
+        <div>
+          <div class="fi-student">Rahul Mehta's Parents</div>
+          <div class="fi-parent">Mr. Suresh Mehta • Apr 13, after Week 8 report</div>
+        </div>
+        <div style="text-align:right;"><div class="fi-stars">★★★★★</div><div style="font-size:10px;color:var(--text3);margin-top:2px;">5 / 5</div></div>
+      </div>
+      <div class="fi-quote">"Ajay's weekly notes are the most useful thing about this program. We finally understand exactly where Rahul stands each week — not just a number, but what actually happened in the sessions. The Physics gap you flagged early helped us have a real conversation with Rahul at home. Thank you."</div>
+      <div class="fi-date">Week 8 • Received Apr 13</div>
+    </div>
+
+    <div class="feedback-item">
+      <div class="fi-top">
+        <div>
+          <div class="fi-student">Sneha Kapoor's Parents</div>
+          <div class="fi-parent">Mrs. Anita Kapoor • Apr 13, after Week 10 report</div>
+        </div>
+        <div style="text-align:right;"><div class="fi-stars">★★★★★</div><div style="font-size:10px;color:var(--text3);margin-top:2px;">5 / 5</div></div>
+      </div>
+      <div class="fi-quote">"Sneha has gone from dreading Maths to looking forward to her sessions. I asked her what changed and she said 'Ajay explains it like it makes sense.' The score going from 420 to 511 in 11 weeks is proof. We are extremely happy."</div>
+      <div class="fi-date">Week 10 • Received Apr 13</div>
+    </div>
+
+    <div class="feedback-item">
+      <div class="fi-top">
+        <div>
+          <div class="fi-student">Priya Desai's Parents</div>
+          <div class="fi-parent">Mr. Nilesh Desai • Apr 6, after Week 6 report</div>
+        </div>
+        <div style="text-align:right;"><div class="fi-stars">★★★★☆</div><div style="font-size:10px;color:var(--text3);margin-top:2px;">4 / 5</div></div>
+      </div>
+      <div class="fi-quote">"Progress in Biology and Chemistry is clear. Physics is still a concern for us — Priya mentioned she finds it hard to follow when the pace increases. Can the Physics sessions be slightly slower in the beginning? She understands when given time."</div>
+      <div class="fi-date">Week 6 • Received Apr 6</div>
+      <div style="margin-top:12px;background:var(--gold-dim);border:1px solid var(--gold-b);border-radius:var(--r);padding:10px 12px;font-size:12.5px;color:var(--text2);"><strong style="color:var(--text);">Action taken:</strong> Reduced Physics pace for Priya — spending more time on intuition building before formula application. Will note in Week 7 report.</div>
+    </div>
+  </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+</div><!-- /app -->
+
+<!-- STUDENT DETAIL PANEL -->
+<div class="detail-panel" id="detail-panel">
+  <div class="dp-header" style="position:relative;">
+    <div class="dp-close" onclick="closeDetail()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg>
+    </div>
+    <div style="display:flex;align-items:center;gap:14px;">
+      <div class="sc-av" id="dp-av" style="width:48px;height:48px;font-size:19px;"></div>
+      <div>
+        <div style="font-family:var(--fs);font-size:18px;font-weight:700;color:var(--inv);" id="dp-name"></div>
+        <div style="font-size:12px;color:var(--inv3);" id="dp-exam"></div>
+      </div>
+    </div>
+  </div>
+  <div class="dp-content">
+    <div class="journey-mini">
+      <div style="font-size:11px;color:var(--inv3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;font-weight:500;">Score Journey</div>
+      <div class="jm-scores">
+        <div class="jm-point"><div class="jm-val" id="dp-base" style="color:var(--inv2)"></div><div class="jm-label">Day 1</div></div>
+        <div class="jm-point"><div class="jm-val" id="dp-curr" style="color:var(--gold)"></div><div class="jm-label">Today</div></div>
+        <div class="jm-point"><div class="jm-val" id="dp-gain" style="color:var(--green)"></div><div class="jm-label">Gained</div></div>
+      </div>
+    </div>
+
+    <div class="card mb" style="padding:14px 16px;">
+      <div style="font-size:12px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px;">Current Focus</div>
+      <div id="dp-focus" style="font-size:13.5px;font-weight:500;color:var(--text);"></div>
+      <div id="dp-subject" style="font-size:12px;color:var(--text3);margin-top:3px;"></div>
+    </div>
+
+    <div class="card mb" style="padding:14px 16px;">
+      <div style="font-size:12px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:12px;">Quick Actions</div>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <button class="btn btn-gold btn-full" onclick="openM('schedule-modal');closeDetail()">+ Schedule Session</button>
+        <button class="btn btn-navy btn-full" onclick="openM('assign-test-modal');closeDetail()">Suggest a Test</button>
+        <button class="btn btn-ghost btn-full" onclick="openM('suggest-res-modal');closeDetail()">Suggest Resource</button>
+        <button class="btn btn-ghost btn-full" onclick="nav('reports',document.querySelectorAll('.ni')[7]);closeDetail()">Draft Weekly Report</button>
+      </div>
+    </div>
+
+    <div class="card" style="padding:14px 16px;">
+      <div style="font-size:12px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px;">Session Note</div>
+      <textarea class="sn-textarea" rows="3" placeholder="Quick note after this student's last session — feeds into their weekly report..."></textarea>
+      <button class="btn btn-gold btn-sm" style="margin-top:8px;width:100%;justify-content:center;" onclick="showToast('Note saved ✓');closeDetail()">Save Note</button>
+    </div>
+  </div>
+</div>
+<div id="detail-overlay" style="position:fixed;inset:0;background:rgba(15,31,61,0.3);display:none;z-index:140;" onclick="closeDetail()"></div>
+
+<!-- SCHEDULE MODAL -->
+<div class="overlay" id="schedule-modal" onclick="closeMbg(event,'schedule-modal')">
+  <div class="modal">
+    <div class="mt">Schedule a Session</div>
+    <div class="ms">Set the time, topic, and student. Student will be notified automatically.</div>
+    <div class="fg"><label>Student</label>
+      <select class="finput"><option>Rahul Mehta</option><option>Sneha Kapoor</option><option>Priya Desai</option><option>Arjun Singh</option><option>Vanya Rao</option><option>Kavya Menon</option></select>
+    </div>
+    <div class="fg"><label>Topic</label><input class="finput" type="text" placeholder="e.g. Electrostatics — Gauss's Law"></div>
+    <div class="fg"><label>Subject</label>
+      <select class="finput"><option>Chemistry</option><option>Mathematics</option><option>Physics</option><option>Biology</option></select>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div class="fg"><label>Date</label><input class="finput" type="date"></div>
+      <div class="fg"><label>Time</label><input class="finput" type="time"></div>
+    </div>
+    <div class="fg"><label>Duration</label>
+      <select class="finput"><option>45 minutes</option><option>60 minutes</option><option>75 minutes</option><option>90 minutes</option></select>
+    </div>
+    <div class="ma">
+      <button class="btn btn-ghost btn-sm" onclick="closeM('schedule-modal')">Cancel</button>
+      <button class="btn btn-gold btn-sm" onclick="closeM('schedule-modal');showToast('Session scheduled. Student notified ✓')">Schedule →</button>
+    </div>
+  </div>
+</div>
+
+<!-- QUICK NOTE MODAL -->
+<div class="overlay" id="quick-note-modal" onclick="closeMbg(event,'quick-note-modal')">
+  <div class="modal">
+    <div class="mt">Quick Session Note</div>
+    <div class="ms">Notes feed into weekly parent reports. Be specific — vague notes make weak reports.</div>
+    <div class="fg"><label>Student</label>
+      <select class="finput"><option>Rahul Mehta</option><option>Sneha Kapoor</option><option>Priya Desai</option><option>Arjun Singh</option></select>
+    </div>
+    <div class="fg"><label>Session Note</label>
+      <textarea class="finput" rows="4" placeholder="What happened in the session? What clicked, what didn't, what's next?"></textarea>
+    </div>
+    <div class="ma">
+      <button class="btn btn-ghost btn-sm" onclick="closeM('quick-note-modal')">Cancel</button>
+      <button class="btn btn-gold btn-sm" onclick="closeM('quick-note-modal');showToast('Note saved. Will appear in Sunday report ✓')">Save Note →</button>
+    </div>
+  </div>
+</div>
+
+<!-- SESSION NOTE MODAL -->
+<div class="overlay" id="session-note-modal" onclick="closeMbg(event,'session-note-modal')">
+  <div class="modal">
+    <div class="mt">Session Notes — Sneha Kapoor</div>
+    <div class="ms">Integration — By Parts • Today, 4:00 PM</div>
+    <div class="fg"><label>What was covered</label>
+      <input class="finput" type="text" value="Integration — By Parts &amp; ILATE Rule">
+    </div>
+    <div class="fg"><label>What went well</label>
+      <textarea class="finput" rows="2" placeholder="What clicked for the student?">Substitution method now solid. ILATE rule understood quickly.</textarea>
+    </div>
+    <div class="fg"><label>What needs work</label>
+      <textarea class="finput" rows="2" placeholder="What needs reinforcement?">Choosing u vs dv in non-standard forms — needs more practice.</textarea>
+    </div>
+    <div class="fg"><label>Next session plan</label>
+      <input class="finput" type="text" placeholder="What will you cover next?" value="Integration — Definite Integrals and limits applications">
+    </div>
+    <div class="ma">
+      <button class="btn btn-ghost btn-sm" onclick="closeM('session-note-modal')">Cancel</button>
+      <button class="btn btn-gold btn-sm" onclick="closeM('session-note-modal');showToast('Session notes saved ✓')">Save Notes →</button>
+    </div>
+  </div>
+</div>
+
+<!-- SUGGEST RESOURCE MODAL -->
+<div class="overlay" id="suggest-res-modal" onclick="closeMbg(event,'suggest-res-modal')">
+  <div class="modal">
+    <div class="mt">Suggest a Resource</div>
+    <div class="ms">Your suggestion goes to admin for review before the student sees it.</div>
+    <div class="fg"><label>Student</label>
+      <select class="finput"><option>Rahul Mehta</option><option>Sneha Kapoor</option><option>Priya Desai</option><option>Arjun Singh</option><option>All students</option></select>
+    </div>
+    <div class="fg"><label>Resource Name</label><input class="finput" type="text" placeholder="e.g. HC Verma — Chapter 29 Electrostatics"></div>
+    <div class="fg"><label>Resource Type</label>
+      <select class="finput"><option>PDF / Notes</option><option>Practice Questions</option><option>PYQ Paper</option><option>Formula Sheet</option><option>Video Link</option></select>
+    </div>
+    <div class="fg"><label>Why does this student need this?</label>
+      <textarea class="finput" rows="3" placeholder="Be specific — admin needs your reasoning to approve quickly..."></textarea>
+    </div>
+    <div class="approval-notice">⏳ Admin will review and approve within 24h. Student notified on approval.</div>
+    <div class="ma">
+      <button class="btn btn-ghost btn-sm" onclick="closeM('suggest-res-modal')">Cancel</button>
+      <button class="btn btn-gold btn-sm" onclick="closeM('suggest-res-modal');showToast('Resource suggestion sent for admin approval ✓')">Send for Approval →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ASSIGN TEST MODAL -->
+<div class="overlay" id="assign-test-modal" onclick="closeMbg(event,'assign-test-modal')">
+  <div class="modal">
+    <div class="mt">Suggest a Test</div>
+    <div class="ms">Your suggestion goes to admin. Once approved it appears as a "Mentor-assigned" test for the student.</div>
+    <div class="fg"><label>Student</label>
+      <select class="finput"><option>Rahul Mehta</option><option>Sneha Kapoor</option><option>Priya Desai</option><option>Arjun Singh</option></select>
+    </div>
+    <div class="fg"><label>Test Topic / Name</label><input class="finput" type="text" placeholder="e.g. Electrostatics — Targeted 25Q Test"></div>
+    <div class="fg"><label>Why is this test needed now?</label>
+      <textarea class="finput" rows="3" placeholder="Admin needs your reasoning — what gap does this test address?"></textarea>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div class="fg"><label>No. of Questions</label><input class="finput" type="number" placeholder="e.g. 25"></div>
+      <div class="fg"><label>Suggested Deadline</label><input class="finput" type="date"></div>
+    </div>
+    <div class="approval-notice">⏳ Admin will review and approve within 24h.</div>
+    <div class="ma">
+      <button class="btn btn-ghost btn-sm" onclick="closeM('assign-test-modal')">Cancel</button>
+      <button class="btn btn-gold btn-sm" onclick="closeM('assign-test-modal');showToast('Test suggestion sent for admin approval ✓')">Send for Approval →</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="t"><div class="tpip"></div><span id="tmsg">Done</span></div>
+
+<script>
+const ptitles={dashboard:'Dashboard',schedule:'Schedule',students:'My Students',doubts:'Doubt Queue',resources:'Resources',tests:'Assign Tests',reports:'Weekly Reports',feedback:'Parent Feedback'};
+
+function nav(page,el){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
+  document.querySelectorAll('.ni').forEach(n=>n.classList.remove('on'));
+  const p=document.getElementById('p-'+page);
+  if(p)p.classList.add('on');
+  if(el)el.classList.add('on');
+  document.getElementById('ph').textContent=ptitles[page]||page;
+}
+
+function tabSwitch(el){
+  el.closest('.tabs').querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
+  el.classList.add('on');
+}
+
+function openStudentDetail(name,init,exam,subject,topic,base,curr,gain){
+  document.getElementById('dp-av').textContent=init;
+  document.getElementById('dp-name').textContent=name;
+  document.getElementById('dp-exam').textContent=exam;
+  document.getElementById('dp-base').textContent=base;
+  document.getElementById('dp-curr').textContent=curr;
+  document.getElementById('dp-gain').textContent='+'+gain;
+  document.getElementById('dp-focus').textContent=topic;
+  document.getElementById('dp-subject').textContent=subject;
+  document.getElementById('detail-panel').classList.add('open');
+  document.getElementById('detail-overlay').style.display='block';
+}
+function closeDetail(){
+  document.getElementById('detail-panel').classList.remove('open');
+  document.getElementById('detail-overlay').style.display='none';
+}
+
+function toggleReply(btn){
+  const item=btn.closest('.doubt-item');
+  const box=item.querySelector('.reply-box');
+  box.classList.toggle('open');
+}
+function markReplied(btn){
+  const item=btn.closest('.doubt-item');
+  item.style.opacity='0.5';
+  item.style.pointerEvents='none';
+  showToast('Reply sent ✓ Doubt marked as answered');
+}
+
+function openM(id){document.getElementById(id).classList.add('open')}
+function closeM(id){document.getElementById(id).classList.remove('open')}
+function closeMbg(e,id){if(e.target.classList.contains('overlay'))closeM(id)}
+
+let tid;
+function showToast(msg){
+  const t=document.getElementById('t');
+  document.getElementById('tmsg').textContent=msg;
+  t.classList.add('show');
+  clearTimeout(tid);
+  tid=setTimeout(()=>t.classList.remove('show'),3200);
+}
+</script>
+</body>
+</html>
