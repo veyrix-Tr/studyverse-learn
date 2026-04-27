@@ -1,23 +1,30 @@
 import React from 'react'
+import Login from './pages/Login'
 
 function App() {
   const path = window.location.pathname
 
   const getPage = () => {
     switch(path) {
-      case '/': case '/login': return 'login.html'
+      case '/': case '/login': return 'login'
       case '/student': return 'freemium-lms.html' 
       case '/student-v2': return 'lms-v2.html'
       case '/faculty': return 'faculty-lms.html'
       case '/admin': return 'admin-lms.html'
       case '/signup': return 'signup.html'
-      default: return 'login.html'
+      default: return 'login'
     }
+  }
+
+  const page = getPage()
+
+  if (page === 'login') {
+    return <Login />
   }
 
   return (
     <iframe 
-      src={`/src/standalone/${getPage()}`}
+      src={`/src/standalone/${page}`}
       style={{
         position: 'fixed',
         top: 0,
