@@ -15,7 +15,7 @@ const StudentCard = ({ av, name, exam, week, statusBadge, base, curr, gain, gain
     <div className="sc-header">
       <div className="sc-av">{av}</div>
       <div><div className="sc-name">{name}</div><div className="sc-exam">{exam} • {week}</div></div>
-      {statusBadge && <div style={{ marginLeft: 'auto' }}>{statusBadge}</div>}
+      {statusBadge && <div style={{ marginLeft: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>{statusBadge}</div>}
     </div>
     <div className="sc-body">
       <div className="sc-delta">
@@ -563,7 +563,7 @@ const FacultyContent = ({ activePage, onOpenModal, onOpenStudentDetail, onNav, o
           <div className="week-report-row">
             <div className="wr-label">Mentor's note</div>
             <div className="wr-val">
-              <textarea className="sn-textarea" style={{ width: '100%', minHeight: '90px' }} defaultValue="Rahul had a strong week in Chemistry — quantum numbers are now well-understood and atomic structure is becoming a strength. Mathematics is progressing steadily. The area needing attention is Physics: electrostatics accuracy dropped slightly this week due to confusion around Gauss's Law applications. We have scheduled a targeted session on Apr 18 specifically to address this. Overall trajectory remains on track." />
+              <textarea className="sn-textarea" id="mentor-note-rahul" style={{ width: '100%', minHeight: '90px' }} placeholder="Write your note for Rahul's parents — be honest and specific. This is what they're paying for..." defaultValue="Rahul had a strong week in Chemistry — quantum numbers are now well-understood and atomic structure is becoming a strength. Mathematics is progressing steadily. The area needing attention is Physics: electrostatics accuracy dropped slightly this week due to confusion around Gauss's Law applications. We have scheduled a targeted session on Apr 18 specifically to address this. Overall trajectory remains on track." />
               <div className="sn-hint">This will be sent to Rahul's parents on Sunday morning.</div>
             </div>
           </div>
