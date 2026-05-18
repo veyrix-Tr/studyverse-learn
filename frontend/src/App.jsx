@@ -1,6 +1,6 @@
-import React from 'react'
 import Login from './pages/Login'
 import AdminLMS from './pages/AdminLMS'
+import FacultyLMS from './pages/FacultyLMS'
 
 function App() {
   const path = window.location.pathname
@@ -9,9 +9,9 @@ function App() {
     switch(path) {
       case '/': case '/login': return 'login'
       case '/admin': return 'admin'
+      case '/faculty': return 'faculty'
       case '/student': return 'freemium-lms.html'
       case '/student-v2': return 'lms-v2.html'
-      case '/faculty': return 'faculty-lms.html'
       case '/signup': return 'signup.html'
       default: return 'login'
     }
@@ -25,6 +25,10 @@ function App() {
 
   if (page === 'admin') {
     return <AdminLMS />
+  }
+
+  if (page === 'faculty') {
+    return <FacultyLMS />
   }
 
   return (
