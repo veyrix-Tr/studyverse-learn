@@ -1,5 +1,6 @@
 import React from 'react'
 import Login from './pages/Login'
+import AdminLMS from './pages/AdminLMS'
 
 function App() {
   const path = window.location.pathname
@@ -7,10 +8,10 @@ function App() {
   const getPage = () => {
     switch(path) {
       case '/': case '/login': return 'login'
-      case '/student': return 'freemium-lms.html' 
+      case '/admin': return 'admin'
+      case '/student': return 'freemium-lms.html'
       case '/student-v2': return 'lms-v2.html'
       case '/faculty': return 'faculty-lms.html'
-      case '/admin': return 'admin-lms.html'
       case '/signup': return 'signup.html'
       default: return 'login'
     }
@@ -22,8 +23,12 @@ function App() {
     return <Login />
   }
 
+  if (page === 'admin') {
+    return <AdminLMS />
+  }
+
   return (
-    <iframe 
+    <iframe
       src={`/src/standalone/${page}`}
       style={{
         position: 'fixed',
