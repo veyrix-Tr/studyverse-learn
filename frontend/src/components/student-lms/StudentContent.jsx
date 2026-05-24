@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 
 const ArcTrack = ({ height = 120, viewBox = '0 0 800 110', solidPath, dashedPath, fillPath, nodes }) => (
-  <div className="arc-track" style={{ height }}>
-    <svg className="arc-svg" viewBox={viewBox} preserveAspectRatio="none">
+  <div className="arc-track" style={{ height, position: 'relative', margin: '0 0 24px' }}>
+    <svg className="arc-svg" viewBox={viewBox} preserveAspectRatio="none" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}>
       <path d={solidPath} stroke="#E8A830" strokeWidth="2.5" fill="none" strokeLinecap="round" opacity="0.8"/>
       <path d={dashedPath} stroke="rgba(253,248,240,0.2)" strokeWidth="2" fill="none" strokeLinecap="round" strokeDasharray="6 4"/>
       {fillPath && <path d={fillPath} fill="rgba(232,168,48,0.06)"/>}
     </svg>
-    <div className="arc-milestones" style={{ alignItems: 'flex-end' }}>
+    <div className="arc-milestones" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', padding: '0 8px' }}>
       {nodes.map((n, i) => (
         <div key={i} className={`arc-node ${n.type}`} style={{ paddingBottom: n.pb }}>
           <div className={`arc-dot ${n.type}`}></div>
@@ -52,7 +52,7 @@ const WeeklyReport = ({ week, meta, score, change, changeClass, isOpen, onToggle
         )}
       </div>
     </div>
-    {children && <div className={`wr-body${isOpen ? ' open' : ''}`}>{children}</div>}
+    {onToggle && <div className={`wr-body${isOpen ? ' open' : ''}`}>{children}</div>}
   </div>
 );
 
@@ -97,13 +97,13 @@ const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast }) => {
 
       {/* ══════════ DASHBOARD ══════════ */}
       <div className={p('dashboard')}>
-        <div style={{ marginBottom: '24px', display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
+        <div style={{ marginBottom: '24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}>
           <div>
             <div style={{ fontSize: '12px', color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 500, marginBottom: '6px' }}>Wednesday, 15 April 2026</div>
             <div style={{ fontFamily: 'var(--font-serif)', fontSize: '26px', fontWeight: 700, color: 'var(--text)' }}>Good morning, Aryan.</div>
             <div style={{ fontSize: '14px', color: 'var(--text2)', marginTop: '4px' }}>You have <strong style={{ color: 'var(--text)' }}>2 sessions</strong> today. JEE Advanced is in <strong style={{ color: 'var(--gold)' }}>187 days</strong>.</div>
           </div>
-          <button className="btn btn-primary" onClick={() => onNav('journey')}>View My Journey →</button>
+          <button className="btn btn-primary" style={{ flexShrink: 0, width: 'fit-content' }} onClick={() => onNav('journey')}>View My Journey →</button>
         </div>
 
         <div className="journey-container mb">
@@ -314,9 +314,13 @@ const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast }) => {
           {[
             { emoji: '⚛️', name: 'Physical Chemistry', pill: 'JEE', meta: '36 of 48 lectures • Baseline: 54% → Now: 68%', pct: 74, pbarClass: 'pbar-gold', goVideo: true },
             { emoji: '📐', name: 'Calculus & Algebra', pill: 'JEE', meta: '51 of 62 lectures • Baseline: 60% → Now: 82%', pct: 82, pbarClass: 'pbar-green' },
-            { emoji: '⚡', name: 'Mechanics & Electrostatics', pill: 'JEE', meta: '34 of 55 lectures • Baseline: 52% → Now: 61%', pct: 61, pbarStyle: { background: 'var(--navy3)' } },
+            { emoji: '⚡', name: 'Mechanics & Electrostatics', pill: 'JEE', meta: '34 of 55 lectures • Baseline: 52% → Now: 61%', pct: 61, pctText: '62', pbarStyle: { background: 'var(--navy3)' } },
           ].map((c, i) => (
-            <div key={i} className="card" style={{ cursor: 'pointer' }} onClick={c.goVideo ? () => onNav('video') : undefined}>
+            <div key={i} className="card"
+              style={{ cursor: 'pointer', transition: 'all 0.2s' }}
+              onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--gold)'}
+              onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}
+              onClick={c.goVideo ? () => onNav('video') : undefined}>
               <div style={{ background: 'var(--navy)', borderRadius: '10px', height: '100px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '36px', marginBottom: '16px' }}>{c.emoji}</div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
                 <div style={{ fontFamily: 'var(--font-serif)', fontSize: '15px', fontWeight: 600 }}>{c.name}</div>
@@ -324,7 +328,7 @@ const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast }) => {
               </div>
               <div style={{ fontSize: '12px', color: 'var(--text3)', marginBottom: '14px' }}>{c.meta}</div>
               <div className="pbar"><div className={`pbar-inner${c.pbarClass ? ' ' + c.pbarClass : ''}`} style={{ width: `${c.pct}%`, ...(c.pbarStyle || {}) }}></div></div>
-              <div style={{ fontSize: '11px', color: 'var(--text3)', marginTop: '5px', marginBottom: '14px' }}>{c.pct}% complete</div>
+              <div style={{ fontSize: '11px', color: 'var(--text3)', marginTop: '5px', marginBottom: '14px' }}>{c.pctText || c.pct}% complete</div>
               <button className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }} onClick={c.goVideo ? (e) => { e.stopPropagation(); onNav('video'); } : undefined}>▶ Continue</button>
             </div>
           ))}
@@ -556,7 +560,7 @@ const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast }) => {
             <div style={{ fontFamily: 'var(--font-serif)', fontSize: '20px', fontWeight: 700, color: 'var(--text-inv)', marginBottom: '4px' }}>Parent Dashboard</div>
             <div style={{ fontSize: '13px', color: 'var(--text-inv2)' }}>Weekly report sent every Sunday • Next report: Apr 20</div>
           </div>
-          <button className="btn btn-primary" onClick={() => onShowToast('Report downloaded!')}>↓ Download Full Report</button>
+          <button className="btn btn-primary" style={{ flexShrink: 0, width: 'fit-content' }} onClick={() => onShowToast('Report downloaded!')}>↓ Download Full Report</button>
         </div>
 
         <div className="g2 mb">

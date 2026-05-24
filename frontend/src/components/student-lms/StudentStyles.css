@@ -9,7 +9,12 @@ body.student-mode {
 
 body.student-mode #root {
   width: 100% !important;
+  max-width: 100% !important;
+  margin: 0 !important;
   display: block !important;
+  text-align: left !important;
+  min-height: unset !important;
+  border-inline: none !important;
 }
 
 body.student-mode {
@@ -489,6 +494,19 @@ body.student-mode .res-meta { font-size: 12px; color: var(--text3); }
 
 /* ── MENTOR ── */
 body.student-mode .cred { font-size: 10px; font-weight: 600; padding: 3px 9px; border-radius: 20px; background: var(--gold-dim); color: var(--gold); border: 1px solid var(--border-gold); }
+
+body.student-mode .mentor-card { background: var(--cream); border: 1px solid var(--border); border-radius: var(--r-lg); overflow: hidden; box-shadow: var(--shadow); transition: all 0.2s; }
+body.student-mode .mentor-card:hover { border-color: var(--gold); box-shadow: var(--shadow-md); }
+body.student-mode .mentor-banner { height: 80px; background: var(--navy); position: relative; overflow: hidden; }
+body.student-mode .mentor-avatar-big { position: absolute; bottom: -24px; left: 20px; width: 48px; height: 48px; border-radius: 50%; border: 3px solid var(--gold); background: rgba(232,168,48,0.15); display: flex; align-items: center; justify-content: center; font-family: var(--font-serif); font-size: 18px; font-weight: 700; color: var(--gold); z-index: 1; }
+body.student-mode .mentor-body { padding: 36px 20px 20px; }
+body.student-mode .mentor-name { font-family: var(--font-serif); font-size: 16px; font-weight: 700; color: var(--text); }
+body.student-mode .mentor-spec { font-size: 12px; color: var(--text3); margin-bottom: 12px; }
+body.student-mode .mentor-creds { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+body.student-mode .mentor-stats-row { display: flex; gap: 18px; padding: 12px 0; border-top: 1px solid var(--border); margin-top: 10px; }
+body.student-mode .mstat { text-align: center; flex: 1; }
+body.student-mode .mstat-val { font-family: var(--font-serif); font-weight: 700; font-size: 16px; color: var(--text); }
+body.student-mode .mstat-lbl { font-size: 10px; color: var(--text3); }
 
 /* ── NOTIF ── */
 body.student-mode .notif-row { display: flex; gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--border); align-items: flex-start; cursor: pointer; }

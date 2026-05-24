@@ -2,6 +2,7 @@ import Login from './pages/Login'
 import AdminLMS from './pages/AdminLMS'
 import FacultyLMS from './pages/FacultyLMS'
 import StudentLMS from './pages/StudentLMS'
+import FreeLMS from './pages/FreeLMS'
 
 function App() {
   const path = window.location.pathname
@@ -11,8 +12,8 @@ function App() {
       case '/': case '/login': return 'login'
       case '/admin': return 'admin'
       case '/faculty': return 'faculty'
-      case '/student-v2': return 'student'
-      case '/student': return 'freemium-lms.html'
+      case '/student-premium': return 'student'
+      case '/student': return 'free'
       case '/signup': return 'signup.html'
       default: return 'login'
     }
@@ -34,6 +35,10 @@ function App() {
 
   if (page === 'student') {
     return <StudentLMS />
+  }
+
+  if (page === 'free') {
+    return <FreeLMS />
   }
 
   return (
