@@ -25,6 +25,10 @@ app.get('/health', (req, res) => {
   });
 });
 
+// User routes — /api/users
+const userRoutes = require('./routes/userRoutes');
+app.use('/api/users', userRoutes);
+
 // Start server
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
