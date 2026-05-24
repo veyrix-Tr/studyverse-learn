@@ -17,19 +17,14 @@ app.get('/', (req, res) => {
   });
 });
 
-// Health check
-app.get('/health', (req, res) => {
-  res.json({
-    status: 'OK',
-    timestamp: new Date().toISOString()
-  });
-});
 
-// User routes — /api/users
+
 const userRoutes = require('./routes/userRoutes');
 app.use('/api/users', userRoutes);
 
-// Start server
+const authRoutes = require('./routes/authRoutes');
+app.use('/api/auth', authRoutes);
+
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
