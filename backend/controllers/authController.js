@@ -5,27 +5,33 @@ const prisma = require('../lib/prisma');
 // POST /api/auth/register
 const register = async (req, res) => {
   try {
-    const { name, email, password, role = 'student' } = req.body;
+    const { name, email, password, examTarget, targetYear, grade, phone } = req.body;
 
     if (!name || !email || !password) {
       return res.status(400).json({ error: 'name, email, and password are required' });
     }
 
-    // Hash the password before saving (never store plain text)
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Create user with the right profile based on role
-    const profileData = {};
-    if (role === 'student')      profileData.studentProfile = { create: {} };
-    else if (role === 'faculty') profileData.facultyProfile = { create: {} };
-    else if (role === 'admin')   profileData.adminProfile   = { create: {} };
-
     const user = await prisma.user.create({
-      data: { name, email, password: hashedPassword, role, ...profileData },
+      data: {
+        name,
+        email,
+        password: hashedPassword,
+        role: 'student',
+        studentProfile: {
+          create: {
+            examTarget:  examTarget  || null,
+            targetYear:  targetYear  || null,
+            grade:       grade       || null,
+            parentPhone: phone       || null,
+          },
+        },
+      },
       select: { id: true, name: true, email: true, role: true },
     });
 
-    res.status(201).json({ message: 'User registered successfully', user });
+    res.status(201).json({ message: 'Account created successfully', user });
   } catch (error) {
     if (error.code === 'P2002') {
       return res.status(409).json({ error: 'Email already exists' });
@@ -44,8 +50,11 @@ const login = async (req, res) => {
       return res.status(400).json({ error: 'email and password are required' });
     }
 
-    // Find user by email
-    const user = await prisma.user.findUnique({ where: { email } });
+    // Find user by email, include student profile to know free/premium
+    const user = await prisma.user.findUnique({
+      where: { email },
+      include: { studentProfile: true },
+    });
     if (!user) {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
@@ -66,7 +75,13 @@ const login = async (req, res) => {
     res.json({
       message: 'Login successful',
       token,
-      user: { id: user.id, name: user.name, email: user.email, role: user.role },
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        plan: user.studentProfile?.plan || null,
+      },
     });
   } catch (error) {
     console.error(error);

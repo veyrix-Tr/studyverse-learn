@@ -1,7 +1,11 @@
 const { PrismaClient } = require('@prisma/client');
+const bcrypt = require('bcrypt');
 const prisma = new PrismaClient();
 
 async function main() {
+  const studentPass = await bcrypt.hash('test1234', 10);
+  const adminPass   = await bcrypt.hash('admin1234', 10);
+
   // Clear existing data first (order matters due to foreign keys)
   await prisma.studentProfile.deleteMany();
   await prisma.facultyProfile.deleteMany();
@@ -13,7 +17,7 @@ async function main() {
     data: {
       name: 'Aarav Sharma',
       email: 'aarav@test.com',
-      password: 'test1234',
+      password: studentPass,
       role: 'student',
       studentProfile: {
         create: {
@@ -30,7 +34,7 @@ async function main() {
     data: {
       name: 'Priya Mehta',
       email: 'priya@test.com',
-      password: 'test1234',
+      password: studentPass,
       role: 'student',
       studentProfile: {
         create: {
@@ -49,7 +53,7 @@ async function main() {
     data: {
       name: 'Rohan Verma',
       email: 'rohan@test.com',
-      password: 'test1234',
+      password: studentPass,
       role: 'student',
       studentProfile: {
         create: {
@@ -67,7 +71,7 @@ async function main() {
     data: {
       name: 'Dr. Kavita Rao',
       email: 'kavita@test.com',
-      password: 'test1234',
+      password: studentPass,
       role: 'faculty',
       facultyProfile: {
         create: {
@@ -83,7 +87,7 @@ async function main() {
     data: {
       name: 'Amit Joshi',
       email: 'amit@test.com',
-      password: 'test1234',
+      password: studentPass,
       role: 'faculty',
       facultyProfile: {
         create: {
@@ -100,7 +104,7 @@ async function main() {
     data: {
       name: 'Chirag Goyal',
       email: 'admin@studyverse.com',
-      password: 'admin1234',
+      password: adminPass,
       role: 'admin',
       adminProfile: {
         create: {
