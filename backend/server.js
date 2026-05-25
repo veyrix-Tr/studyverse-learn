@@ -25,6 +25,9 @@ app.use('/api/users', userRoutes);
 const authRoutes = require('./routes/authRoutes');
 app.use('/api/auth', authRoutes);
 
+const otpRoutes = require('./routes/otpRoutes');
+app.use('/api/otp', otpRoutes);
+
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });

@@ -13,7 +13,6 @@ const EyeIcon = ({ crossed }) => crossed ? (
   </svg>
 );
 
-const HARDCODED_OTP = '123456';
 const isValidEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email);
 
 const RegisterForm = ({ onSwitchToLogin }) => {
@@ -38,20 +37,43 @@ const RegisterForm = ({ onSwitchToLogin }) => {
   };
 
   // ── Step 1 ──────────────────────────────────────────
-  const handleSendOtp = () => {
+  const handleSendOtp = async () => {
     if (!formData.name.trim() || !formData.email.trim()) {
       showToast('Please enter your name and email');
       return;
     }
-    setOtpSent(true);
-    showToast('OTP sent! (use 123456 for now)');
+    showToast('Sending OTP...');
+    try {
+      const res = await fetch('http://localhost:5000/api/otp/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: formData.email }),
+      });
+      const data = await res.json();
+      if (!res.ok) { showToast(data.error || 'Failed to send OTP'); return; }
+      setOtpSent(true);
+      showToast('OTP sent! Check your email.');
+    } catch {
+      showToast('Cannot connect to server');
+    }
   };
 
-  const handleStep1 = () => {
+  const handleStep1 = async () => {
     if (!otpSent) { showToast('Please send OTP first'); return; }
     if (formData.otp.length !== 6) { showToast('Enter a 6-digit OTP'); return; }
-    if (formData.otp !== HARDCODED_OTP) { showToast('Incorrect OTP'); return; }
-    setStep(2);
+
+    try {
+      const res = await fetch('http://localhost:5000/api/otp/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: formData.email, otp: formData.otp }),
+      });
+      const data = await res.json();
+      if (!res.ok) { showToast(data.error || 'Incorrect OTP'); return; }
+      setStep(2);
+    } catch {
+      showToast('Cannot connect to server');
+    }
   };
 
   // ── Step 2 ──────────────────────────────────────────
@@ -80,7 +102,6 @@ const RegisterForm = ({ onSwitchToLogin }) => {
           email:      formData.email,
           password:   formData.password,
           examTarget: formData.exam,
-          targetYear: formData.grade,
           grade:      formData.grade,
           city:       formData.city,
         }),
