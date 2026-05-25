@@ -15,16 +15,16 @@ const EyeIcon = ({ crossed }) => crossed ? (
 
 const isValidEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email);
 
-const RegisterForm = ({ onSwitchToLogin }) => {
+const RegisterForm = ({ onSwitchToLogin, googleName = '', googleEmail = '', isGoogle = false }) => {
   const [step, setStep]                               = useState(1);
   const [otpSent, setOtpSent]                         = useState(false);
   const [showPassword, setShowPassword]               = useState(false);
   const [showConfirm, setShowConfirm]                 = useState(false);
-  const [done, setDone]                               = useState(false);
+
   const [toast, setToast]                             = useState('');
 
   const [formData, setFormData] = useState({
-    name: '', email: '', otp: '',
+    name: googleName, email: googleEmail, otp: '',
     password: '', confirm: '',
     exam: '', city: '', grade: '',
   });
@@ -36,10 +36,29 @@ const RegisterForm = ({ onSwitchToLogin }) => {
     setTimeout(() => setToast(''), 3000);
   };
 
+  const emailAlreadyExists = async (email) => {
+    try {
+      const res = await fetch('http://localhost:5000/api/auth/check-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json();
+      return data.exists;
+    } catch {
+      return false;
+    }
+  };
+
   // ── Step 1 ──────────────────────────────────────────
   const handleSendOtp = async () => {
     if (!formData.name.trim() || !formData.email.trim()) {
       showToast('Please enter your name and email');
+      return;
+    }
+    const exists = await emailAlreadyExists(formData.email);
+    if (exists) {
+      showToast('This email is already registered. Please sign in.');
       return;
     }
     showToast('Sending OTP...');
@@ -59,6 +78,17 @@ const RegisterForm = ({ onSwitchToLogin }) => {
   };
 
   const handleStep1 = async () => {
+    if (isGoogle) {
+      const exists = await emailAlreadyExists(formData.email);
+      if (exists) {
+        showToast('This email is already registered. Please sign in.');
+        return;
+      }
+      setStep(2);
+      return;
+    }
+    const alreadyExists = await emailAlreadyExists(formData.email);
+    if (alreadyExists) { showToast('This email is already registered. Please sign in.'); return; }
     if (!otpSent) { showToast('Please send OTP first'); return; }
     if (formData.otp.length !== 6) { showToast('Enter a 6-digit OTP'); return; }
 
@@ -109,7 +139,24 @@ const RegisterForm = ({ onSwitchToLogin }) => {
 
       const data = await res.json();
       if (!res.ok) { showToast(data.error || 'Registration failed'); return; }
-      setDone(true);
+
+      // Auto-login after registration
+      const loginRes = await fetch('http://localhost:5000/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: formData.email, password: formData.password }),
+      });
+      const loginData = await loginRes.json();
+
+      if (loginRes.ok) {
+        localStorage.setItem('token', loginData.token);
+        localStorage.setItem('user', JSON.stringify(loginData.user));
+        const plan = loginData.user?.plan;
+        window.location.href = plan === 'premium' ? '/student-v2' : '/student';
+      } else {
+        // Login failed for some reason — fall back to sign-in page
+        window.location.href = '/login';
+      }
     } catch {
       showToast('Cannot connect to server');
     }
@@ -137,27 +184,6 @@ const RegisterForm = ({ onSwitchToLogin }) => {
     </div>
   );
 
-  // ── Success ─────────────────────────────────────────
-  if (done) return (
-    <div className="reg-success">
-      <div className="reg-success-icon">
-        <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-          <circle cx="16" cy="16" r="15" stroke="#E8A830" strokeWidth="2"/>
-          <path d="M9 16.5l5 5 9-9" stroke="#E8A830" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-        </svg>
-      </div>
-      <div className="reg-success-title">You're all set!</div>
-      <div className="reg-success-sub">Your free account is ready. Sign in to start your preparation.</div>
-      <button className="btn-primary" style={{ marginTop: '24px' }} onClick={onSwitchToLogin}>
-        Go to Sign In
-        <div className="btn-arrow">
-          <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-            <path d="M2 5h6M5.5 2.5L8 5l-2.5 2.5" stroke="#0F1F3D" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-        </div>
-      </button>
-    </div>
-  );
 
   return (
     <>
@@ -174,43 +200,64 @@ const RegisterForm = ({ onSwitchToLogin }) => {
           <div className="form-group">
             <label className="form-label">Full Name</label>
             <div className="input-wrap">
-              <svg className="input-icon" viewBox="0 0 20 20" fill="none">
+              <svg className="input-icon" viewBox="0 0 20 20" fill="none" style={isGoogle ? { color: '#4A5568' } : undefined}>
                 <circle cx="10" cy="7" r="3" stroke="currentColor" strokeWidth="1.5"/>
                 <path d="M3 17c0-3.314 3.134-6 7-6s7 2.686 7 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
               </svg>
-              <input type="text" className="form-input" placeholder="Your full name" value={formData.name} onChange={e => update('name', e.target.value)} />
+              <input
+                type="text"
+                className="form-input"
+                placeholder="Your full name"
+                value={formData.name}
+                readOnly={isGoogle}
+                onChange={isGoogle ? undefined : e => update('name', e.target.value)}
+                style={isGoogle ? { cursor: 'default', background: '#f4f5f7', borderColor: 'rgba(15,31,61,0.15)', color: '#4A5568' } : undefined}
+              />
             </div>
           </div>
 
           <div className="form-group">
             <label className="form-label">Email Address</label>
-            <div className="input-wrap input-wrap--btn">
-              <svg className="input-icon" viewBox="0 0 20 20" fill="none">
+            <div className={`input-wrap${isGoogle ? '' : ' input-wrap--btn'}`}>
+              <svg className="input-icon" viewBox="0 0 20 20" fill="none" style={isGoogle ? { color: '#4A5568' } : undefined}>
                 <path d="M2.5 5.833A1.667 1.667 0 014.167 4.167h11.666A1.667 1.667 0 0117.5 5.833v8.334a1.667 1.667 0 01-1.667 1.666H4.167A1.667 1.667 0 012.5 14.167V5.833z" stroke="currentColor" strokeWidth="1.5"/>
                 <path d="M2.5 6.667l7.5 5 7.5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
               </svg>
               <input
                 type="email"
-                className={`form-input form-input--has-action ${formData.email && isValidEmail(formData.email) ? 'form-input--valid' : formData.email ? 'form-input--error' : ''}`}
+                className={`form-input${isGoogle ? '' : ` form-input--has-action ${formData.email && isValidEmail(formData.email) ? 'form-input--valid' : formData.email ? 'form-input--error' : ''}`}`}
                 placeholder="you@example.com"
                 value={formData.email}
-                onChange={e => update('email', e.target.value)}
+                readOnly={isGoogle}
+                onChange={isGoogle ? undefined : e => update('email', e.target.value)}
+                style={isGoogle ? { cursor: 'default', background: '#f4f5f7', borderColor: 'rgba(15,31,61,0.15)', color: '#4A5568' } : undefined}
               />
-              {formData.email && isValidEmail(formData.email) && (
+              {isGoogle ? (
                 <span className="input-valid-check">
                   <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                    <circle cx="7" cy="7" r="6" fill="#22c55e"/>
+                    <circle cx="7" cy="7" r="6" fill="#9ca3af"/>
                     <path d="M4 7l2 2 4-4" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>
                 </span>
+              ) : (
+                <>
+                  {formData.email && isValidEmail(formData.email) && (
+                    <span className="input-valid-check">
+                      <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                        <circle cx="7" cy="7" r="6" fill="#22c55e"/>
+                        <path d="M4 7l2 2 4-4" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    </span>
+                  )}
+                  <button type="button" className="input-action-btn" onClick={handleSendOtp} disabled={!isValidEmail(formData.email)}>
+                    {otpSent ? 'Resend' : 'Send OTP'}
+                  </button>
+                </>
               )}
-              <button type="button" className="input-action-btn" onClick={handleSendOtp} disabled={!isValidEmail(formData.email)}>
-                {otpSent ? 'Resend' : 'Send OTP'}
-              </button>
             </div>
           </div>
 
-          {otpSent && (
+          {!isGoogle && otpSent && (
             <div className="form-group">
               <label className="form-label">Enter OTP</label>
               <div className="input-wrap">
@@ -232,28 +279,43 @@ const RegisterForm = ({ onSwitchToLogin }) => {
             </div>
           )}
 
-          <button className="btn-primary" style={{ marginTop: '8px' }} onClick={handleStep1}>
-            Continue →
+          {isGoogle && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '9px 14px', background: '#f0fdf4', borderRadius: '8px', border: '1px solid #bbf7d0', marginBottom: '14px', marginTop: '29px' }}>
+              <svg width="12" height="12" viewBox="0 0 18 18" fill="none" style={{ flexShrink: 0 }}>
+                <path d="M17.64 9.205c0-.639-.057-1.252-.164-1.841H9v3.481h4.844a4.14 4.14 0 01-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
+                <path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 009 18z" fill="#34A853"/>
+                <path d="M3.964 10.71A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 000 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/>
+                <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
+              </svg>
+              <span style={{ fontSize: '13px', color: '#15803cd3', fontWeight: 500 }}>Email verified with Google — details auto-filled</span>
+            </div>
+          )}
+
+          <button className="btn-primary" style={{ marginTop: isGoogle ? '0' : '8px' }} onClick={handleStep1}>
+            Next →
           </button>
 
-          <div className="divider" style={{ margin: '18px 0' }}><span>or</span></div>
-
-          <button className="social-btn" onClick={() => showToast('Google sign-in coming soon!')}>
-            <svg className="social-icon" viewBox="0 0 18 18" fill="none">
-              <path d="M17.64 9.205c0-.639-.057-1.252-.164-1.841H9v3.481h4.844a4.14 4.14 0 01-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
-              <path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 009 18z" fill="#34A853"/>
-              <path d="M3.964 10.71A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 000 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/>
-              <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
-            </svg>
-            Continue with Google
-          </button>
+          {!isGoogle && (
+            <>
+              <div className="divider" style={{ margin: '18px 0' }}><span>or</span></div>
+              <button className="social-btn" onClick={() => window.location.href = 'http://localhost:5000/api/auth/google'}>
+                <svg className="social-icon" viewBox="0 0 18 18" fill="none">
+                  <path d="M17.64 9.205c0-.639-.057-1.252-.164-1.841H9v3.481h4.844a4.14 4.14 0 01-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
+                  <path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 009 18z" fill="#34A853"/>
+                  <path d="M3.964 10.71A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 000 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/>
+                  <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
+                </svg>
+                Continue with Google
+              </button>
+            </>
+          )}
         </div>
       )}
 
       {/* ── STEP 2 ── */}
       {step === 2 && (
         <div className="step-content">
-          <div className="step-hint">Set a strong password for <strong>{formData.email}</strong></div>
+          <div className="step-hint">Set your Studyverse password for <strong>{formData.email}</strong></div>
 
           <div className="form-group">
             <label className="form-label">Password</label>
@@ -279,7 +341,7 @@ const RegisterForm = ({ onSwitchToLogin }) => {
             </div>
           </div>
 
-          <div className="step-nav">
+          <div className="step-nav" style={{ marginTop: '32px' }}>
             <button className="btn-back" onClick={() => setStep(1)}>← Back</button>
             <button className="btn-primary btn-primary--grow" onClick={handleStep2}>Save Password →</button>
           </div>
@@ -337,7 +399,7 @@ const RegisterForm = ({ onSwitchToLogin }) => {
             </div>
           </div>
 
-          <div className="step-nav">
+          <div className="step-nav" style={{ marginTop: '13px' }}>
             <button className="btn-back" onClick={() => setStep(2)}>← Back</button>
             <button className="btn-primary btn-primary--grow" onClick={handleStep3}>Create Account →</button>
           </div>
