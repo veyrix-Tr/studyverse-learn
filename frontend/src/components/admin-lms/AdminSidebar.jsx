@@ -2,6 +2,8 @@ import React from 'react';
 
 const AdminSidebar = ({ activePage, superMode, onNav, onSetRole, onShowToast }) => {
   const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
     onShowToast('Signing out...');
     setTimeout(() => { window.location.href = '/'; }, 1000);
   };

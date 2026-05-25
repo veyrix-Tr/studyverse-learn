@@ -4,6 +4,8 @@ const FreeSidebar = ({ activePage, onNav }) => {
   const ni = (page) => `ni${activePage === page ? ' on' : ''}`;
 
   const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
     window.location.href = '/';
   };
 

@@ -12,7 +12,7 @@ function App() {
       case '/': case '/login': return 'login'
       case '/admin': return 'admin'
       case '/faculty': return 'faculty'
-      case '/student-premium': return 'student'
+      case '/student-v2': return 'student'
       case '/student': return 'free'
       case '/signup': return 'signup.html'
       default: return 'login'
