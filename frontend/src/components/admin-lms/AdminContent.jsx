@@ -19,7 +19,10 @@ const RevenueChart = () => (
   </div>
 );
 
-const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast }) => {
+const getGreeting = () => { const h = new Date().getHours(); if (h < 12) return 'Good morning'; if (h < 17) return 'Good afternoon'; return 'Good evening'; };
+
+const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile }) => {
+  const firstName = profile?.name?.split(' ')[0] || 'there';
   const [studentsTab, setStudentsTab] = useState(0);
   const [approvalsTab, setApprovalsTab] = useState(0);
   const [dismissedApprovals, setDismissedApprovals] = useState(new Set());
@@ -103,8 +106,8 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast }) => {
       <div className={pg('dashboard')} id="p-dashboard">
         <div style={{ marginBottom: '20px', display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
           <div>
-            <div style={{ fontSize: '11px', color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '.1em', fontWeight: '500', marginBottom: '4px' }}>Wednesday, 15 April 2026</div>
-            <div style={{ fontFamily: 'var(--fs)', fontSize: '23px', fontWeight: '700' }}>Good morning, Vinay.</div>
+            <div style={{ fontSize: '11px', color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '.1em', fontWeight: '500', marginBottom: '4px' }}>{new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</div>
+            <div style={{ fontFamily: 'var(--fs)', fontSize: '23px', fontWeight: '700' }}>{getGreeting()}, {firstName}.</div>
             <div style={{ fontSize: '13.5px', color: 'var(--text2)', marginTop: '3px' }}>
               <strong style={{ color: 'var(--red)' }}>2 fees overdue</strong> · <strong style={{ color: 'var(--gold)' }}>3 new enquiries</strong> · <strong style={{ color: 'var(--green)' }}>4 approvals pending</strong>
             </div>

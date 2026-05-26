@@ -1,6 +1,10 @@
 import React from 'react';
 
-const FacultySidebar = ({ activePage, onNav, onShowToast }) => {
+const FacultySidebar = ({ activePage, onNav, onShowToast, profile }) => {
+  const name = profile?.name || 'Faculty';
+  const initial = name.charAt(0).toUpperCase();
+  const subject = profile?.facultyProfile?.subject || '';
+
   return (
     <aside className="sidebar">
       <div className="sb-logo">
@@ -15,10 +19,10 @@ const FacultySidebar = ({ activePage, onNav, onShowToast }) => {
       </div>
 
       <div className="faculty-strip">
-        <div className="fac-av">A</div>
+        <div className="fac-av">{initial}</div>
         <div>
-          <div className="fac-name">Ajay Sharma</div>
-          <div className="fac-role">JEE &amp; NEET Faculty</div>
+          <div className="fac-name">{name}</div>
+          <div className="fac-role">{subject ? `${subject} Faculty` : 'Faculty'}</div>
         </div>
       </div>
 

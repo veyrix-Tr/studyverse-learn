@@ -57,7 +57,10 @@ const DoubtItem = ({ priority, av, name, time, pills, question, placeholder, ext
   </div>
 );
 
-const FacultyContent = ({ activePage, onOpenModal, onOpenStudentDetail, onNav, onShowToast }) => {
+const getGreeting = () => { const h = new Date().getHours(); if (h < 12) return 'Good morning'; if (h < 17) return 'Good afternoon'; return 'Good evening'; };
+
+const FacultyContent = ({ activePage, onOpenModal, onOpenStudentDetail, onNav, onShowToast, profile }) => {
+  const firstName = profile?.name?.split(' ').find(p => !p.startsWith('Dr')) || profile?.name?.split(' ')[0] || 'there';
   const [scheduleTab, setScheduleTab] = useState(0);
   const [doubtsTab, setDoubtsTab] = useState(0);
   const [openReplies, setOpenReplies] = useState(new Set());
@@ -113,14 +116,14 @@ const FacultyContent = ({ activePage, onOpenModal, onOpenStudentDetail, onNav, o
 
       {/* ══════════ DASHBOARD ══════════ */}
       <div className={`page${activePage === 'dashboard' ? ' on' : ''}`}>
-        <div style={{ marginBottom: '20px', display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+        <div className="db-welcome">
           <div>
-            <div style={{ fontSize: '11px', color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '.1em', fontWeight: 500, marginBottom: '4px' }}>Wednesday, 15 April 2026</div>
-            <div style={{ fontFamily: 'var(--fs)', fontSize: '23px', fontWeight: 700, color: 'var(--text)' }}>Good morning, Ajay.</div>
-            <div style={{ fontSize: '13.5px', color: 'var(--text2)', marginTop: '3px' }}>You have <strong style={{ color: 'var(--text)' }}>2 sessions</strong> today and <strong style={{ color: 'var(--red)' }}>5 doubts</strong> pending reply.</div>
+            <div className="db-date">{new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</div>
+            <div className="db-greeting">{getGreeting()}, {firstName}.</div>
+            <div className="db-sub">You have <strong>2 sessions</strong> today &nbsp;·&nbsp; <span className="db-red">5 doubts</span> pending reply</div>
           </div>
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <button className="btn btn-ghost btn-sm" onClick={() => onNav('reports')}>Weekly Report Due Sunday →</button>
+          <div className="db-actions">
+            <button className="btn btn-ghost-inv btn-sm" onClick={() => onNav('reports')}>Weekly Report Due Sunday →</button>
             <button className="btn btn-gold btn-sm" onClick={() => onOpenModal('schedule-modal')}>+ Schedule Session</button>
           </div>
         </div>

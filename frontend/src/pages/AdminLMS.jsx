@@ -10,6 +10,7 @@ const AdminLMS = () => {
   const [superMode, setSuperMode] = useState(true);
   const [openModal, setOpenModal] = useState(null);
   const [toast, setToast] = useState({ show: false, msg: '' });
+  const [profile, setProfile] = useState(null);
   const toastTimer = useRef(null);
 
   useEffect(() => {
@@ -19,6 +20,15 @@ const AdminLMS = () => {
       document.documentElement.classList.remove('admin-mode');
       document.body.classList.remove('admin-mode');
     };
+  }, []);
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    fetch('http://localhost:5000/api/admin/me', { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data && !data.error) setProfile(data); })
+      .catch(() => {});
   }, []);
 
   const showToast = (msg) => {
@@ -39,6 +49,7 @@ const AdminLMS = () => {
         onNav={setActivePage}
         onSetRole={handleSetRole}
         onShowToast={showToast}
+        profile={profile}
       />
       <div className="admin-main">
         <AdminTopbar
@@ -52,6 +63,7 @@ const AdminLMS = () => {
           onOpenModal={setOpenModal}
           onNav={setActivePage}
           onShowToast={showToast}
+          profile={profile}
         />
       </div>
       <AdminModals

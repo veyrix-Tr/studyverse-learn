@@ -1,6 +1,8 @@
 import React from 'react';
 
-const AdminSidebar = ({ activePage, superMode, onNav, onSetRole, onShowToast }) => {
+const AdminSidebar = ({ activePage, superMode, onNav, onSetRole, onShowToast, profile }) => {
+  const name = profile?.name || (superMode ? 'Super Admin' : 'Admin');
+  const initial = name.charAt(0).toUpperCase();
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
@@ -30,10 +32,10 @@ const AdminSidebar = ({ activePage, superMode, onNav, onSetRole, onShowToast }) 
 
       <div className={`role-badge ${superMode ? 'rb-super' : 'rb-admin'}`}>
         <div className={`rb-av ${superMode ? 'rb-av-super' : 'rb-av-admin'}`}>
-          {superMode ? 'V' : 'M'}
+          {initial}
         </div>
         <div>
-          <div className="rb-name">{superMode ? 'Vinay Raj Pareta' : 'Meera Krishnan'}</div>
+          <div className="rb-name">{name}</div>
           <div className={superMode ? 'rb-role-super' : 'rb-role-admin'}>
             {superMode ? '⬡ SUPER ADMIN' : '◈ ADMIN'}
           </div>

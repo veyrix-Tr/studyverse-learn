@@ -36,6 +36,12 @@ app.use('/api/otp', otpRoutes);
 const studentRoutes = require('./routes/studentRoutes');
 app.use('/api/student', studentRoutes);
 
+const facultyRoutes = require('./routes/facultyRoutes');
+app.use('/api/faculty', facultyRoutes);
+
+const adminRoutes = require('./routes/adminRoutes');
+app.use('/api/admin', adminRoutes);
+
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });

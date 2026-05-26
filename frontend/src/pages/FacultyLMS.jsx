@@ -11,6 +11,7 @@ const FacultyLMS = () => {
   const [detailOpen, setDetailOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [toast, setToast] = useState({ show: false, msg: '' });
+  const [profile, setProfile] = useState(null);
   const toastTimer = useRef(null);
 
   useEffect(() => {
@@ -20,6 +21,17 @@ const FacultyLMS = () => {
       document.documentElement.classList.remove('faculty-mode');
       document.body.classList.remove('faculty-mode');
     };
+  }, []);
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    fetch('http://localhost:5000/api/faculty/me', {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data && !data.error) setProfile(data); })
+      .catch(() => {});
   }, []);
 
   const showToast = (msg) => {
@@ -39,6 +51,7 @@ const FacultyLMS = () => {
         activePage={activePage}
         onNav={setActivePage}
         onShowToast={showToast}
+        profile={profile}
       />
       <div className="faculty-main">
         <FacultyTopbar
@@ -53,6 +66,7 @@ const FacultyLMS = () => {
           onOpenStudentDetail={openStudentDetail}
           onNav={setActivePage}
           onShowToast={showToast}
+          profile={profile}
         />
       </div>
       <FacultyModals
