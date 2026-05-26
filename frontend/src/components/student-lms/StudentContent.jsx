@@ -74,7 +74,34 @@ const journeyArcNodes = [
   { type: 'future', pb: '70px', label: 'Target<br><span style="font-size:10px;">600</span>' },
 ];
 
-const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast }) => {
+const getGreeting = () => {
+  const h = new Date().getHours();
+  if (h < 12) return 'Good morning';
+  if (h < 17) return 'Good afternoon';
+  return 'Good evening';
+};
+
+const getExamDate = (examTarget, targetYear) => {
+  if (!targetYear) return null;
+  const t = (examTarget || '').toLowerCase();
+  if (t.includes('mains') || t.includes('main')) return new Date(`${targetYear}-01-25`);
+  if (t.includes('advanced'))                     return new Date(`${targetYear}-05-17`);
+  if (t.includes('neet'))                         return new Date(`${targetYear}-05-03`);
+  return new Date(`${targetYear}-05-15`); // fallback
+};
+
+const getDaysRemaining = (examTarget, targetYear) => {
+  const examDate = getExamDate(examTarget, targetYear);
+  if (!examDate) return null;
+  const diff = Math.ceil((examDate - new Date()) / (1000 * 60 * 60 * 24));
+  return diff > 0 ? diff : null;
+};
+
+const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile }) => {
+  const firstName = profile?.name?.split(' ')[0] || 'there';
+  const examTarget = profile?.studentProfile?.examTarget || 'your exam';
+  const targetYear = profile?.studentProfile?.targetYear;
+  const daysRemaining = getDaysRemaining(examTarget, targetYear);
   const [coursesTab, setCoursesTab] = useState(0);
   const [videoTab, setVideoTab] = useState(0);
   const [sessionsTab, setSessionsTab] = useState(0);
@@ -99,9 +126,9 @@ const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast }) => {
       <div className={p('dashboard')}>
         <div style={{ marginBottom: '24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}>
           <div>
-            <div style={{ fontSize: '12px', color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 500, marginBottom: '6px' }}>Wednesday, 15 April 2026</div>
-            <div style={{ fontFamily: 'var(--font-serif)', fontSize: '26px', fontWeight: 700, color: 'var(--text)' }}>Good morning, Aryan.</div>
-            <div style={{ fontSize: '14px', color: 'var(--text2)', marginTop: '4px' }}>You have <strong style={{ color: 'var(--text)' }}>2 sessions</strong> today. JEE Advanced is in <strong style={{ color: 'var(--gold)' }}>187 days</strong>.</div>
+            <div style={{ fontSize: '12px', color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 500, marginBottom: '6px' }}>{new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</div>
+            <div style={{ fontFamily: 'var(--font-serif)', fontSize: '26px', fontWeight: 700, color: 'var(--text)' }}>{getGreeting()}, {firstName}.</div>
+            <div style={{ fontSize: '14px', color: 'var(--text2)', marginTop: '4px' }}>You have <strong style={{ color: 'var(--text)' }}>2 sessions</strong> today. {examTarget} is in <strong style={{ color: 'var(--gold)' }}>{daysRemaining ?? '—'} days</strong>.</div>
           </div>
           <button className="btn btn-primary" style={{ flexShrink: 0, width: 'fit-content' }} onClick={() => onNav('journey')}>View My Journey →</button>
         </div>
@@ -113,8 +140,8 @@ const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast }) => {
               <div className="journey-sub">From Day 1 diagnostic to today — every step is yours alone</div>
             </div>
             <div className="journey-exam">
-              <div className="journey-exam-name">JEE Advanced</div>
-              <div className="journey-exam-days">187</div>
+              <div className="journey-exam-name">{examTarget}</div>
+              <div className="journey-exam-days">{daysRemaining ?? '—'}</div>
               <div className="journey-exam-label">days remaining</div>
             </div>
           </div>
@@ -164,7 +191,7 @@ const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast }) => {
               <span className="pill pill-gold">This Week</span>
             </div>
             <div style={{ fontFamily: 'var(--font-serif)', fontSize: '14px', fontStyle: 'italic', color: 'var(--text2)', lineHeight: 1.8, marginBottom: '16px' }}>
-              "Aryan, your Maths accuracy has jumped 11% since we rebuilt integration from scratch. Focus this week is Organic Chemistry reaction mechanisms — that's the gap holding your Chemistry below 75%."
+              {`"${firstName}, your Maths accuracy has jumped 11% since we rebuilt integration from scratch. Focus this week is Organic Chemistry reaction mechanisms — that's the gap holding your Chemistry below 75%."`}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <div style={{ width: '36px', height: '36px', borderRadius: '50%', border: '2px solid var(--gold)', background: 'var(--gold-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-serif)', fontSize: '13px', fontWeight: 700, color: 'var(--gold)' }}>A</div>
@@ -234,8 +261,8 @@ const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast }) => {
               <div className="journey-sub">No comparisons. Just you vs. who you were on Day 1.</div>
             </div>
             <div className="journey-exam">
-              <div className="journey-exam-name">JEE Advanced 2026</div>
-              <div className="journey-exam-days">187</div>
+              <div className="journey-exam-name">{examTarget}</div>
+              <div className="journey-exam-days">{daysRemaining ?? '—'}</div>
               <div className="journey-exam-label">days remaining</div>
             </div>
           </div>
@@ -598,7 +625,7 @@ const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast }) => {
           <div className="sh-title" style={{ marginBottom: '14px' }}>Mentor's Note to Parents — Week 11</div>
           <div style={{ background: 'var(--cream2)', borderRadius: 'var(--r)', padding: '18px', borderLeft: '4px solid var(--gold)' }}>
             <div style={{ fontFamily: 'var(--font-serif)', fontSize: '14px', fontStyle: 'italic', color: 'var(--text2)', lineHeight: 1.85, marginBottom: '12px' }}>
-              "Aryan has had a genuinely strong week. His Mathematics accuracy is now consistently above 80% — a transformation from where he started. The one area requiring your awareness: Organic Chemistry is still below target. We have scheduled two extra sessions this week to address this specifically. No concern needed — this is expected at this stage and is being actively managed. The trajectory is on track for the June milestone."
+              {`"${firstName} has had a genuinely strong week. His Mathematics accuracy is now consistently above 80% — a transformation from where he started. The one area requiring your awareness: Organic Chemistry is still below target. We have scheduled two extra sessions this week to address this specifically. No concern needed — this is expected at this stage and is being actively managed. The trajectory is on track for the June milestone."`}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <div style={{ width: '36px', height: '36px', borderRadius: '50%', border: '2px solid var(--gold)', background: 'var(--gold-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-serif)', fontSize: '13px', fontWeight: 700, color: 'var(--gold)' }}>A</div>

@@ -28,7 +28,7 @@ async function main() {
         create: {
           plan: 'free',
           examTarget: 'JEE Mains',
-          targetYear: '2026',
+          targetYear: '2027',
           grade: '12',
         },
       },
@@ -45,7 +45,7 @@ async function main() {
         create: {
           plan: 'premium',
           examTarget: 'NEET',
-          targetYear: '2026',
+          targetYear: '2027',
           grade: 'Dropper',
           parentPhone: '9876543210',
           planEndDate: new Date('2026-12-31'),
@@ -64,7 +64,7 @@ async function main() {
         create: {
           plan: 'free',
           examTarget: 'JEE Advanced',
-          targetYear: '2027',
+          targetYear: '2028',
           grade: '11',
         },
       },

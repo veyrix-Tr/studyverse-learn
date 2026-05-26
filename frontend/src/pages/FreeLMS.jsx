@@ -9,6 +9,7 @@ const FreeLMS = () => {
   const [activePage, setActivePage] = useState('home');
   const [openModal, setOpenModal] = useState(null);
   const [toast, setToast] = useState({ show: false, msg: '' });
+  const [profile, setProfile] = useState(null);
   const toastTimer = useRef(null);
 
   useEffect(() => {
@@ -20,6 +21,17 @@ const FreeLMS = () => {
     };
   }, []);
 
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    fetch('http://localhost:5000/api/student/me', {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data && !data.error) setProfile(data); })
+      .catch(() => {});
+  }, []);
+
   const showToast = (msg) => {
     setToast({ show: true, msg });
     clearTimeout(toastTimer.current);
@@ -28,7 +40,7 @@ const FreeLMS = () => {
 
   return (
     <div className="free-app">
-      <FreeSidebar activePage={activePage} onNav={setActivePage} />
+      <FreeSidebar activePage={activePage} onNav={setActivePage} profile={profile} />
       <div className="free-main">
         <FreeTopbar activePage={activePage} onNav={setActivePage} />
         <FreeContent
@@ -36,6 +48,7 @@ const FreeLMS = () => {
           onNav={setActivePage}
           onOpenModal={setOpenModal}
           onShowToast={showToast}
+          profile={profile}
         />
       </div>
       <FreeModals
@@ -49,3 +62,4 @@ const FreeLMS = () => {
 };
 
 export default FreeLMS;
+

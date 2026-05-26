@@ -1,7 +1,11 @@
 import React from 'react';
 
-const StudentSidebar = ({ activePage, onNav }) => {
+const StudentSidebar = ({ activePage, onNav, profile }) => {
   const ni = (page, extra) => `nav-item${(activePage === page || (extra && activePage === extra)) ? ' active' : ''}`;
+  const name = profile?.name || 'Student';
+  const initial = name.charAt(0).toUpperCase();
+  const examTarget = profile?.studentProfile?.examTarget || '';
+  const targetYear = profile?.studentProfile?.targetYear || '';
 
   return (
     <aside className="sidebar">
@@ -99,10 +103,10 @@ const StudentSidebar = ({ activePage, onNav }) => {
 
       <div className="sidebar-user">
         <div className="user-row">
-          <div className="user-initial">A</div>
+          <div className="user-initial">{initial}</div>
           <div className="user-info">
-            <div className="uname">Aryan Kumar</div>
-            <div className="utarget">JEE Advanced 2026</div>
+            <div className="uname">{name}</div>
+            <div className="utarget">{examTarget}{targetYear ? ` ${targetYear}` : ''}</div>
           </div>
         </div>
         <div className="logout-btn" onClick={() => { localStorage.removeItem('token'); localStorage.removeItem('user'); window.location.href = '/'; }} style={{ marginTop: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: 'rgba(253,248,240,0.5)', padding: '8px 0' }}>

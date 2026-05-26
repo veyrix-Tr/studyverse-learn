@@ -9,6 +9,7 @@ const StudentLMS = () => {
   const [activePage, setActivePage] = useState('dashboard');
   const [openModal, setOpenModal] = useState(null);
   const [toast, setToast] = useState({ show: false, msg: '' });
+  const [profile, setProfile] = useState(null);
   const toastTimer = useRef(null);
 
   useEffect(() => {
@@ -18,6 +19,17 @@ const StudentLMS = () => {
       document.documentElement.classList.remove('student-mode');
       document.body.classList.remove('student-mode');
     };
+  }, []);
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    fetch('http://localhost:5000/api/student/me', {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data && !data.error) setProfile(data); })
+      .catch(() => {});
   }, []);
 
   const showToast = (msg) => {
@@ -31,6 +43,7 @@ const StudentLMS = () => {
       <StudentSidebar
         activePage={activePage}
         onNav={setActivePage}
+        profile={profile}
       />
       <div className="student-main">
         <StudentTopbar
@@ -43,6 +56,7 @@ const StudentLMS = () => {
           onOpenModal={setOpenModal}
           onNav={setActivePage}
           onShowToast={showToast}
+          profile={profile}
         />
       </div>
       <StudentModals

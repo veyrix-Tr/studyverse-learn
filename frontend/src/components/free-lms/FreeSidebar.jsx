@@ -1,7 +1,11 @@
 import React from 'react';
 
-const FreeSidebar = ({ activePage, onNav }) => {
+const FreeSidebar = ({ activePage, onNav, profile }) => {
   const ni = (page) => `ni${activePage === page ? ' on' : ''}`;
+  const name = profile?.name || 'Student';
+  const initial = name.charAt(0).toUpperCase();
+  const examTarget = profile?.studentProfile?.examTarget || '';
+  const targetYear = profile?.studentProfile?.targetYear || '';
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -82,10 +86,10 @@ const FreeSidebar = ({ activePage, onNav }) => {
 
       <div className="sb-bottom">
         <div className="sb-user">
-          <div className="sb-av">S</div>
+          <div className="sb-av">{initial}</div>
           <div>
-            <div className="sb-uname">Student</div>
-            <div className="sb-uexam">JEE Mains 2026 • Free Plan</div>
+            <div className="sb-uname">{name}</div>
+            <div className="sb-uexam">{examTarget}{targetYear ? ` ${targetYear}` : ''} • Free Plan</div>
           </div>
         </div>
         <div className="logout-btn" onClick={handleLogout}>

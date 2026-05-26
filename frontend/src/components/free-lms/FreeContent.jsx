@@ -49,11 +49,37 @@ const habitHistoryData = [
   { label: '10 probs', dots: ['y','n','n','y','y','y','y','n','y','y','y','y','n','t'] },
 ];
 
-const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast }) => {
+const getGreeting = () => {
+  const h = new Date().getHours();
+  if (h < 12) return 'Good morning';
+  if (h < 17) return 'Good afternoon';
+  return 'Good evening';
+};
+
+const topicIcons = {
+  electro: '⚡', mechanics: '⚙️', integration: '∫',
+  limits: '📈', coordinate: '📐', 'physical-chem': '🧪', organic: '🔬',
+};
+
+const guidanceConfig = [
+  { key: 'electro', icon: '⚡', title: 'Start with Electrostatics — 3 days',
+    body: (p) => `This is your lowest-scoring topic with the highest JEE Mains frequency (6–8 questions). Even moving from ${p}% to ${Math.min(p + 20, 100)}% here adds approximately 8–10 marks. Begin with Coulomb's Law → Electric Field → Gauss's Law. Study NCERT first, then attempt previous year questions.` },
+  { key: 'mechanics', icon: '⚙️', title: "Mechanics — Newton's Laws & Energy — 2 days",
+    body: (p) => `Mechanics is the backbone of JEE Physics. You're at ${p}% — this chapter rewards practice more than theory. Spend 2 focused days on Free Body Diagrams and Energy Conservation. These are directly connected to your integration weakness too.` },
+  { key: 'integration', icon: '∫', title: 'Integration — 2 days in parallel with Maths revision',
+    body: (p) => `You're at ${p}% in Integration. Don't skip this — it bleeds into 4–5 guaranteed questions. Study substitution method, then integration by parts. Use NCERT examples first. This is fixable in 2 focused sessions.` },
+  { key: 'organic', icon: '🧪', title: 'Organic Reactions — Keep it light this week (1 day)',
+    body: (p) => `You're at ${p}% in Organic Chemistry. Spend 1 day revising key named reactions (Aldol, Cannizzaro, Markovnikov) and mechanism logic. Do not go deep here until Physics improves.` },
+];
+
+const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile }) => {
   const p = (name) => `page${activePage === name ? ' on' : ''}`;
+  const firstName = profile?.name?.split(' ')[0] || 'there';
+  const examTarget = profile?.studentProfile?.examTarget || 'your exam';
 
   // Diagnostic state
   const [diagStep, setDiagStep] = useState(1);
+  const [diagDone, setDiagDone] = useState(false);
   const [ratings, setRatings] = useState({});
   const [mcqCurrent, setMcqCurrent] = useState(1);
   const [mcqFeedback, setMcqFeedback] = useState(null);
@@ -89,6 +115,7 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast }) => {
       setMcqFeedback(null);
       if (mcqCurrent >= 6) {
         setMcqDone(true);
+        setDiagDone(true);
       } else {
         setMcqCurrent(c => c + 1);
       }
@@ -125,6 +152,43 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast }) => {
     onShowToast('Check-in saved for today ✓');
   };
 
+  // Rating helpers — converts 1–5 scale to 0–100 percentage
+  const ratingToPct = (r) => Math.round((r / 5) * 100);
+  const subjectAvg = (keys) => {
+    const rated = keys.filter(k => ratings[k]);
+    if (!rated.length) return null;
+    return Math.round(rated.reduce((s, k) => s + ratingToPct(ratings[k]), 0) / rated.length);
+  };
+  const pctMeta = (pct) => {
+    if (pct === null) return { color: 'var(--text3)', barCls: 'pb-navy', note: '—', tag: '—', tagCls: 'ok-tag' };
+    if (pct <= 40) return { color: 'var(--red)', barCls: 'pb-red', note: 'Critical Gap', tag: 'Weak', tagCls: 'weak-tag' };
+    if (pct <= 55) return { color: 'var(--orange)', barCls: 'pb-orange', note: 'Needs Work', tag: 'Avg', tagCls: 'ok-tag' };
+    if (pct <= 70) return { color: 'var(--gold)', barCls: 'pb-gold', note: 'Average', tag: 'Avg', tagCls: 'ok-tag' };
+    return { color: 'var(--green)', barCls: 'pb-green', note: 'Good', tag: 'Good', tagCls: 'good-tag' };
+  };
+  const mathPct = subjectAvg(['limits', 'integration', 'coordinate']);
+  const physPct = subjectAvg(['mechanics', 'electro']);
+  const chemPct = subjectAvg(['physical-chem', 'organic']);
+
+  const allRatedTopics = ratingTopics.flatMap((g, gi) =>
+    g.topics.map(t => ({
+      ...t,
+      subject: ['Maths', 'Physics', 'Chemistry'][gi],
+      pct: ratings[t.key] ? ratingToPct(ratings[t.key]) : null,
+    }))
+  ).filter(t => t.pct !== null).sort((a, b) => a.pct - b.pct);
+  const weakTopicsList = allRatedTopics.filter(t => t.pct <= 60).slice(0, 4);
+  const strongTopicsList = allRatedTopics.filter(t => t.pct >= 72);
+  const guidanceCards = guidanceConfig
+    .map(g => ({ ...g, pct: ratings[g.key] ? ratingToPct(ratings[g.key]) : null }))
+    .filter(g => g.pct !== null)
+    .sort((a, b) => a.pct - b.pct)
+    .map((g, i) => ({
+      ...g,
+      pCls: i === 0 ? 'gp-high' : i === 1 ? 'gp-high' : i === 2 ? 'gp-mid' : 'gp-low',
+      pLabel: i === 0 ? '🔴 Highest Priority' : i === 1 ? '🔴 High Priority' : i === 2 ? '🟠 Medium Priority' : '🟢 Lower Priority',
+    }));
+
   return (
     <div className="content">
 
@@ -132,9 +196,9 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast }) => {
       <div className={p('home')}>
         <div style={{ marginBottom: '22px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' }}>
           <div>
-            <div style={{ fontSize: '11px', color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '.1em', fontWeight: 500, marginBottom: '5px' }}>Wednesday, 15 April 2026</div>
-            <div style={{ fontFamily: 'var(--fs)', fontSize: '24px', fontWeight: 700, color: 'var(--text)' }}>Welcome to Studyverse.</div>
-            <div style={{ fontSize: '13.5px', color: 'var(--text2)', marginTop: '4px' }}>You're on the <strong style={{ color: 'var(--text)' }}>Free Plan</strong>. Your personalised JEE guidance is ready.</div>
+            <div style={{ fontSize: '11px', color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '.1em', fontWeight: 500, marginBottom: '5px' }}>{new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</div>
+            <div style={{ fontFamily: 'var(--fs)', fontSize: '24px', fontWeight: 700, color: 'var(--text)' }}>{getGreeting()}, {firstName}.</div>
+            <div style={{ fontSize: '13.5px', color: 'var(--text2)', marginTop: '4px' }}>You're on the <strong style={{ color: 'var(--text)' }}>Free Plan</strong>. Your personalised <strong style={{ color: 'var(--text)' }}>{examTarget}</strong> guidance is ready.</div>
           </div>
           <button className="btn btn-gold" style={{ flexShrink: 0 }} onClick={() => onNav('diagnostic')}>Start Diagnostic →</button>
         </div>
@@ -143,7 +207,7 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast }) => {
           <div style={{ fontSize: '44px', flexShrink: 0 }}>🎯</div>
           <div style={{ flex: 1 }}>
             <div style={{ fontFamily: 'var(--fs)', fontSize: '19px', fontWeight: 700, color: 'var(--inv)', marginBottom: '5px' }}>Take your free diagnostic first</div>
-            <div style={{ fontSize: '13px', color: 'var(--inv2)', lineHeight: 1.7 }}>Rate yourself on each topic, confirm with a quick MCQ round — and we'll map exactly where you stand and what to fix first. Free. No login required.</div>
+            <div style={{ fontSize: '13px', color: 'var(--inv2)', lineHeight: 1.7 }}>Rate yourself on each topic, confirm with a quick MCQ round — and we'll map exactly where you stand and what to fix first.</div>
           </div>
           <div style={{ flexShrink: 0 }}>
             <button className="btn btn-gold" onClick={() => onNav('diagnostic')}>Begin Now →</button>
@@ -154,23 +218,23 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast }) => {
         <div className="g4 mb">
           <div className="stat sa-gold">
             <div className="stat-l">Diagnostic</div>
-            <div className="stat-v" style={{ fontSize: '20px', color: 'var(--text3)' }}>Not done</div>
-            <div className="stat-n warn">→ Start now</div>
+            <div className="stat-v" style={{ fontSize: '20px', color: diagDone ? 'var(--green)' : 'var(--text3)' }}>{diagDone ? 'Done ✓' : 'Not done'}</div>
+            <div className="stat-n warn" style={diagDone ? { color: 'var(--green)' } : {}} onClick={diagDone ? undefined : () => onNav('diagnostic')} >{diagDone ? 'View results →' : '→ Start now'}</div>
           </div>
           <div className="stat sa-green">
             <div className="stat-l">Habits This Week</div>
-            <div className="stat-v">3/5</div>
-            <div className="stat-n up">↑ Keep going</div>
+            <div className="stat-v">{habitCount > 0 ? `${habitCount}/5` : '—'}</div>
+            <div className="stat-n up">{habitCount > 0 ? '↑ Keep going' : 'Check in today'}</div>
           </div>
           <div className="stat sa-navy">
             <div className="stat-l">Topics Identified</div>
-            <div className="stat-v">—</div>
-            <div className="stat-n neu">After diagnostic</div>
+            <div className="stat-v">{diagDone ? Object.keys(ratings).length : '—'}</div>
+            <div className="stat-n neu">{diagDone ? 'topics rated' : 'After diagnostic'}</div>
           </div>
           <div className="stat sa-red">
             <div className="stat-l">Weak Areas</div>
-            <div className="stat-v">—</div>
-            <div className="stat-n neu">After diagnostic</div>
+            <div className="stat-v">{diagDone ? Object.values(ratings).filter(v => v <= 2).length : '—'}</div>
+            <div className="stat-n neu">{diagDone ? 'need focus' : 'After diagnostic'}</div>
           </div>
         </div>
 
@@ -325,16 +389,19 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast }) => {
             </div>
             <div className="g3" style={{ marginBottom: 0 }}>
               {[
-                { subj: 'Mathematics', pct: '54%', color: 'var(--orange)', note: 'Needs Work' },
-                { subj: 'Physics', pct: '41%', color: 'var(--red)', note: 'Critical Gap' },
-                { subj: 'Chemistry', pct: '67%', color: 'var(--gold)', note: 'Average' },
-              ].map((s, i) => (
-                <div key={i} style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid var(--bi)', borderRadius: 'var(--rl)', padding: '16px', textAlign: 'center' }}>
-                  <div style={{ fontSize: '11px', color: 'var(--inv3)', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: '6px' }}>{s.subj}</div>
-                  <div style={{ fontFamily: 'var(--fs)', fontSize: '28px', fontWeight: 700, color: s.color }}>{s.pct}</div>
-                  <div style={{ fontSize: '11px', color: s.color, marginTop: '3px' }}>{s.note}</div>
-                </div>
-              ))}
+                { subj: 'Mathematics', raw: mathPct },
+                { subj: 'Physics', raw: physPct },
+                { subj: 'Chemistry', raw: chemPct },
+              ].map((s, i) => {
+                const m = pctMeta(s.raw);
+                return (
+                  <div key={i} style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid var(--bi)', borderRadius: 'var(--rl)', padding: '16px', textAlign: 'center' }}>
+                    <div style={{ fontSize: '11px', color: 'var(--inv3)', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: '6px' }}>{s.subj}</div>
+                    <div style={{ fontFamily: 'var(--fs)', fontSize: '28px', fontWeight: 700, color: m.color }}>{s.raw !== null ? `${s.raw}%` : '—'}</div>
+                    <div style={{ fontSize: '11px', color: m.color, marginTop: '3px' }}>{m.note}</div>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
@@ -342,21 +409,21 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast }) => {
             <div className="card">
               <div className="sh-t" style={{ marginBottom: '14px' }}>Your Weak Topics (Priority Order)</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {[
-                  { icon: '⚡', name: 'Electrostatics', sub: 'Physics • Very weak — 6–8 questions in JEE Mains', bg: 'var(--red-dim)', border: 'rgba(239,68,68,0.2)', tag: '#1 Fix', tagCls: 'weak-tag' },
-                  { icon: '⚙️', name: 'Mechanics', sub: 'Physics • Weak — highest weightage in JEE', bg: 'var(--red-dim)', border: 'rgba(239,68,68,0.2)', tag: '#2 Fix', tagCls: 'weak-tag' },
-                  { icon: '∫', name: 'Integration', sub: 'Maths • Below average — 4–5 questions guaranteed', bg: 'var(--orange-dim)', border: 'rgba(249,115,22,0.2)', tag: '#3 Fix', tagCls: 'ok-tag' },
-                  { icon: '🧪', name: 'Organic Reactions', sub: 'Chemistry • Average but improvable fast', bg: 'var(--orange-dim)', border: 'rgba(249,115,22,0.2)', tag: '#4 Fix', tagCls: 'ok-tag' },
-                ].map((item, i) => (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', background: item.bg, borderRadius: 'var(--r)', border: `1px solid ${item.border}` }}>
-                    <span style={{ fontSize: '16px' }}>{item.icon}</span>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text)' }}>{item.name}</div>
-                      <div style={{ fontSize: '11px', color: 'var(--text3)' }}>{item.sub}</div>
+                {weakTopicsList.length > 0 ? weakTopicsList.map((item, i) => {
+                  const isRed = item.pct <= 40;
+                  return (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', background: isRed ? 'var(--red-dim)' : 'var(--orange-dim)', borderRadius: 'var(--r)', border: `1px solid ${isRed ? 'rgba(239,68,68,0.2)' : 'rgba(249,115,22,0.2)'}` }}>
+                      <span style={{ fontSize: '16px' }}>{topicIcons[item.key] || '📌'}</span>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text)' }}>{item.label}</div>
+                        <div style={{ fontSize: '11px', color: 'var(--text3)' }}>{item.subject} • {pctMeta(item.pct).note} — {item.pct}%</div>
+                      </div>
+                      <span className={`cr-tag ${isRed ? 'weak-tag' : 'ok-tag'}`}>#{i + 1} Fix</span>
                     </div>
-                    <span className={`cr-tag ${item.tagCls}`}>{item.tag}</span>
-                  </div>
-                ))}
+                  );
+                }) : (
+                  <div style={{ fontSize: '13px', color: 'var(--text3)', padding: '10px 0' }}>No weak topics identified — all topics rated above average.</div>
+                )}
               </div>
             </div>
             <div className="card">
@@ -391,47 +458,42 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast }) => {
 
         <div className="topic-map mb">
           {[
-            { key: 'physics', icon: '⚡', name: 'Physics', pct: 41, barCls: 'pb-red', scoreColor: 'var(--red)', chapters: [
-              { name: 'Mechanics — Laws of Motion', pct: 38, barCls: 'pb-red', pctColor: 'var(--red)', tag: 'Weak', tagCls: 'weak-tag' },
-              { name: 'Work, Energy & Power', pct: 44, barCls: 'pb-red', pctColor: 'var(--red)', tag: 'Weak', tagCls: 'weak-tag' },
-              { name: 'Electrostatics', pct: 31, barCls: 'pb-red', pctColor: 'var(--red)', tag: 'Weak', tagCls: 'weak-tag' },
-              { name: 'Current Electricity', pct: 55, barCls: 'pb-orange', pctColor: 'var(--orange)', tag: 'Avg', tagCls: 'ok-tag' },
-              { name: 'Waves & Optics', pct: 72, barCls: 'pb-green', pctColor: 'var(--green)', tag: 'Good', tagCls: 'good-tag' },
-            ]},
-            { key: 'maths', icon: '📐', name: 'Mathematics', pct: 54, barCls: 'pb-orange', scoreColor: 'var(--orange)', chapters: [
-              { name: 'Limits & Continuity', pct: 50, barCls: 'pb-orange', pctColor: 'var(--orange)', tag: 'Avg', tagCls: 'ok-tag' },
-              { name: 'Integration', pct: 42, barCls: 'pb-red', pctColor: 'var(--red)', tag: 'Weak', tagCls: 'weak-tag' },
-              { name: 'Coordinate Geometry', pct: 58, barCls: 'pb-orange', pctColor: 'var(--orange)', tag: 'Avg', tagCls: 'ok-tag' },
-              { name: 'Trigonometry', pct: 74, barCls: 'pb-green', pctColor: 'var(--green)', tag: 'Good', tagCls: 'good-tag' },
-              { name: 'Permutation & Combination', pct: 69, barCls: 'pb-green', pctColor: 'var(--green)', tag: 'Good', tagCls: 'good-tag' },
-            ]},
-            { key: 'chem', icon: '⚛️', name: 'Chemistry', pct: 67, barCls: 'pb-gold', scoreColor: 'var(--gold)', chapters: [
-              { name: 'Mole Concept', pct: 78, barCls: 'pb-green', pctColor: 'var(--green)', tag: 'Good', tagCls: 'good-tag' },
-              { name: 'Chemical Equilibrium', pct: 60, barCls: 'pb-orange', pctColor: 'var(--orange)', tag: 'Avg', tagCls: 'ok-tag' },
-              { name: 'Organic Reactions', pct: 55, barCls: 'pb-orange', pctColor: 'var(--orange)', tag: 'Avg', tagCls: 'ok-tag' },
-              { name: 'Atomic Structure', pct: 71, barCls: 'pb-green', pctColor: 'var(--green)', tag: 'Good', tagCls: 'good-tag' },
-            ]},
-          ].map((subj) => (
-            <div key={subj.key} className="tm-subject">
-              <div className="tms-header" onClick={() => toggleSubj(subj.key)}>
-                <div className="tms-icon">{subj.icon}</div>
-                <div className="tms-name">{subj.name}</div>
-                <div className="pbar" style={{ width: '120px', flexShrink: 0 }}><div className={`pbar-inner ${subj.barCls}`} style={{ width: `${subj.pct}%` }}></div></div>
-                <div className="tms-score" style={{ color: subj.scoreColor, width: '40px', textAlign: 'right' }}>{subj.pct}%</div>
-                <svg className="tms-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ transform: openSubj.has(subj.key) ? 'rotate(180deg)' : '' }}><path d="M6 9l6 6 6-6"/></svg>
+            { key: 'physics', icon: '⚡', name: 'Physics', raw: physPct, group: ratingTopics[1] },
+            { key: 'maths',   icon: '📐', name: 'Mathematics', raw: mathPct, group: ratingTopics[0] },
+            { key: 'chem',    icon: '⚛️', name: 'Chemistry', raw: chemPct, group: ratingTopics[2] },
+          ].map((subj) => {
+            const sm = pctMeta(subj.raw);
+            const ratedChapters = subj.group.topics
+              .filter(t => ratings[t.key])
+              .map(t => {
+                const p = ratingToPct(ratings[t.key]);
+                const m = pctMeta(p);
+                return { name: t.label, pct: p, barCls: m.barCls, pctColor: m.color, tag: m.tag, tagCls: m.tagCls };
+              });
+            return (
+              <div key={subj.key} className="tm-subject">
+                <div className="tms-header" onClick={() => toggleSubj(subj.key)}>
+                  <div className="tms-icon">{subj.icon}</div>
+                  <div className="tms-name">{subj.name}</div>
+                  <div className="pbar" style={{ width: '120px', flexShrink: 0 }}><div className={`pbar-inner ${subj.raw !== null ? sm.barCls : 'pb-navy'}`} style={{ width: `${subj.raw ?? 0}%` }}></div></div>
+                  <div className="tms-score" style={{ color: sm.color, width: '40px', textAlign: 'right' }}>{subj.raw !== null ? `${subj.raw}%` : '—'}</div>
+                  <svg className="tms-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ transform: openSubj.has(subj.key) ? 'rotate(180deg)' : '' }}><path d="M6 9l6 6 6-6"/></svg>
+                </div>
+                <div className={`tms-body${openSubj.has(subj.key) ? ' open' : ''}`}>
+                  {ratedChapters.length > 0 ? ratedChapters.map((ch, ci) => (
+                    <div key={ci} className="chapter-row">
+                      <div className="cr-name">{ch.name}</div>
+                      <div className="cr-bar"><div className="pbar"><div className={`pbar-inner ${ch.barCls}`} style={{ width: `${ch.pct}%` }}></div></div></div>
+                      <div className="cr-pct" style={{ color: ch.pctColor }}>{ch.pct}%</div>
+                      <div className={`cr-tag ${ch.tagCls}`}>{ch.tag}</div>
+                    </div>
+                  )) : (
+                    <div style={{ padding: '12px 16px', fontSize: '12px', color: 'var(--text3)' }}>Complete diagnostic to see chapter breakdown.</div>
+                  )}
+                </div>
               </div>
-              <div className={`tms-body${openSubj.has(subj.key) ? ' open' : ''}`}>
-                {subj.chapters.map((ch, ci) => (
-                  <div key={ci} className="chapter-row">
-                    <div className="cr-name">{ch.name}</div>
-                    <div className="cr-bar"><div className="pbar"><div className={`pbar-inner ${ch.barCls}`} style={{ width: `${ch.pct}%` }}></div></div></div>
-                    <div className="cr-pct" style={{ color: ch.pctColor }}>{ch.pct}%</div>
-                    <div className={`cr-tag ${ch.tagCls}`}>{ch.tag}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         <div className="upgrade-banner">
@@ -452,32 +514,37 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast }) => {
           <div style={{ fontSize: '24px', flexShrink: 0 }}>📋</div>
           <div>
             <div style={{ fontFamily: 'var(--fs)', fontSize: '15px', fontWeight: 700, color: 'var(--text)', marginBottom: '3px' }}>Your Personalised Study Plan</div>
-            <div style={{ fontSize: '12.5px', color: 'var(--text2)', lineHeight: 1.7 }}>Built from your diagnostic. Based on JEE Mains 2026 pattern — topics are ordered by <strong>impact per hour</strong>: what will gain you the most marks the fastest.</div>
+            <div style={{ fontSize: '12.5px', color: 'var(--text2)', lineHeight: 1.7 }}>Built from your diagnostic. Based on {examTarget} pattern — topics are ordered by <strong>impact per hour</strong>: what will gain you the most marks the fastest.</div>
           </div>
         </div>
 
         <div className="sh"><div className="sh-t">This Week — Priority Order</div><span className="pill pp">Free</span></div>
 
-        {[
-          { icon: '⚡', title: 'Start with Electrostatics — 3 days', body: "This is your lowest-scoring topic with the highest JEE Mains frequency (6–8 questions). Even moving from 31% to 55% here adds approximately 8–10 marks. Begin with Coulomb's Law → Electric Field → Gauss's Law. Study NCERT first, then attempt previous year questions.", pCls: 'gp-high', pLabel: '🔴 Highest Priority' },
-          { icon: '⚙️', title: "Mechanics — Newton's Laws & Energy — 2 days", body: "Mechanics is the backbone of JEE Physics. You're at 38% — this chapter rewards practice more than theory. After Electrostatics, spend 2 focused days on Free Body Diagrams and Energy Conservation. These are directly connected to your integration weakness too.", pCls: 'gp-high', pLabel: '🔴 High Priority' },
-          { icon: '∫', title: 'Integration — 2 days in parallel with Maths revision', body: "You're at 42% in Integration. Don't skip this — it bleeds into 4-5 guaranteed questions. Study substitution method, then integration by parts. Use NCERT examples first. This is fixable in 2 focused sessions.", pCls: 'gp-mid', pLabel: '🟠 Medium Priority' },
-          { icon: '🧪', title: 'Organic Reactions — Keep it light this week (1 day)', body: "You're at 55% in Organic — not critical yet. Spend 1 day revising key named reactions (Aldol, Cannizzaro, Markovnikov) and mechanism logic. Do not go deep here until Physics improves.", pCls: 'gp-low', pLabel: '🟢 Lower Priority' },
-        ].map((g, i) => (
+        {guidanceCards.length > 0 ? guidanceCards.map((g, i) => (
           <div key={i} className="guide-card">
             <div className="gc-top">
               <div className="gc-icon">{g.icon}</div>
-              <div><div className="gc-title">{g.title}</div><div className="gc-body">{g.body}</div></div>
+              <div><div className="gc-title">{g.title}</div><div className="gc-body">{g.body(g.pct)}</div></div>
             </div>
             <span className={`gc-priority ${g.pCls}`}>{g.pLabel}</span>
           </div>
-        ))}
+        )) : (
+          <div className="card" style={{ marginBottom: '12px', color: 'var(--text3)', fontSize: '13px', padding: '16px 20px' }}>Complete your diagnostic to get a personalised study plan.</div>
+        )}
 
         <div className="sh" style={{ marginTop: '8px' }}><div className="sh-t">Your Strong Topics — Don't Ignore</div></div>
         <div className="card mb" style={{ padding: '16px 20px' }}>
-          <div style={{ fontSize: '13px', color: 'var(--text2)', lineHeight: 1.8 }}>
-            You're doing well in <strong>Trigonometry (74%)</strong>, <strong>Mole Concept (78%)</strong>, and <strong>Waves &amp; Optics (72%)</strong>. Spend 30 minutes every 3 days keeping these warm — don't let them slip while you rebuild weak areas. These are your <strong style={{ color: 'var(--green)' }}>guaranteed marks</strong>.
-          </div>
+          {strongTopicsList.length > 0 ? (
+            <div style={{ fontSize: '13px', color: 'var(--text2)', lineHeight: 1.8 }}>
+              You're doing well in {strongTopicsList.map((t, i) => (
+                <span key={i}><strong>{t.label} ({t.pct}%)</strong>{i < strongTopicsList.length - 1 ? ', ' : ''}</span>
+              ))}. Spend 30 minutes every 3 days keeping these warm — don't let them slip while you rebuild weak areas. These are your <strong style={{ color: 'var(--green)' }}>guaranteed marks</strong>.
+            </div>
+          ) : (
+            <div style={{ fontSize: '13px', color: 'var(--text2)', lineHeight: 1.8 }}>
+              Complete your diagnostic to identify your strong topics and keep them warm.
+            </div>
+          )}
         </div>
 
         <div className="upgrade-banner">
@@ -500,7 +567,7 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast }) => {
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '6px' }}>
               <div>
                 <div style={{ fontFamily: 'var(--fs)', fontSize: '16px', fontWeight: 700, color: 'var(--text)' }}>Today's Check-in</div>
-                <div style={{ fontSize: '12px', color: 'var(--text3)' }}>Wednesday, 15 April 2026</div>
+                <div style={{ fontSize: '12px', color: 'var(--text3)' }}>{new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</div>
               </div>
               <span className="pill pp">Free</span>
             </div>

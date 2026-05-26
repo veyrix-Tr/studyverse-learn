@@ -26,7 +26,7 @@ const RegisterForm = ({ onSwitchToLogin, googleName = '', googleEmail = '', isGo
   const [formData, setFormData] = useState({
     name: googleName, email: googleEmail, otp: '',
     password: '', confirm: '',
-    exam: '', city: '', grade: '',
+    exam: '', targetYear: '', city: '', grade: '',
   });
 
   const update = (field, value) => setFormData(p => ({ ...p, [field]: value }));
@@ -116,7 +116,7 @@ const RegisterForm = ({ onSwitchToLogin, googleName = '', googleEmail = '', isGo
 
   // ── Step 3 ──────────────────────────────────────────
   const handleStep3 = async () => {
-    if (!formData.exam || !formData.city || !formData.grade) {
+    if (!formData.exam || !formData.targetYear || !formData.city || !formData.grade) {
       showToast('Please fill all fields');
       return;
     }
@@ -132,6 +132,7 @@ const RegisterForm = ({ onSwitchToLogin, googleName = '', googleEmail = '', isGo
           email:      formData.email,
           password:   formData.password,
           examTarget: formData.exam,
+          targetYear: formData.targetYear,
           grade:      formData.grade,
           city:       formData.city,
         }),
@@ -366,6 +367,22 @@ const RegisterForm = ({ onSwitchToLogin, googleName = '', googleEmail = '', isGo
                 <option>NEET</option>
                 <option>UPSC</option>
                 <option>Other</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Target Year</label>
+            <div className="input-wrap">
+              <svg className="input-icon" viewBox="0 0 20 20" fill="none">
+                <rect x="3" y="4" width="14" height="14" rx="2" stroke="currentColor" strokeWidth="1.5"/>
+                <path d="M3 8h14M8 4V2M12 4V2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+              </svg>
+              <select className="form-input form-select" value={formData.targetYear} onChange={e => update('targetYear', e.target.value)}>
+                <option value="">Select year</option>
+                <option>2026</option>
+                <option>2027</option>
+                <option>2028</option>
               </select>
             </div>
           </div>
