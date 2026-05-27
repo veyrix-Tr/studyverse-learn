@@ -21,7 +21,7 @@ const RevenueChart = () => (
 
 const getGreeting = () => { const h = new Date().getHours(); if (h < 12) return 'Good morning'; if (h < 17) return 'Good afternoon'; return 'Good evening'; };
 
-const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile }) => {
+const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, students = [], onOpenMessage }) => {
   const firstName = profile?.name?.split(' ')[0] || 'there';
   const [studentsTab, setStudentsTab] = useState(0);
   const [approvalsTab, setApprovalsTab] = useState(0);
@@ -356,48 +356,106 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile }) 
 
       {/* ══ STUDENTS ══ */}
       <div className={pg('students')} id="p-students">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px', flexWrap: 'wrap', gap: '10px' }}>
-          <div className="tabs" style={{ marginBottom: '0' }}>
-            {['All (12)', 'JEE (8)', 'NEET (4)'].map((label, i) => (
-              <div key={i} className={`tab${studentsTab === i ? ' on' : ''}`} onClick={() => setStudentsTab(i)}>{label}</div>
-            ))}
-          </div>
-          <button className="btn btn-gold btn-sm" onClick={() => onOpenModal('enroll-modal')}>+ Enroll Student</button>
-        </div>
-        <div className="card" style={{ padding: '0', overflow: 'hidden' }}>
-          <table className="tbl">
-            <thead><tr><th>Student</th><th>Exam</th><th>Faculty</th><th>Week</th><th>Score Progress</th><th>Fee</th><th>Actions</th></tr></thead>
-            <tbody>
-              {[
-                { av: 'R', name: 'Rahul Mehta', exam: 'JEE Mains', examClass: 'pn', wk: 'Wk 9', score: '388→462', gain: '+74', fee: 'paid', feeLabel: 'Paid' },
-                { av: 'S', name: 'Sneha Kapoor', exam: 'JEE Mains', examClass: 'pn', wk: 'Wk 11', score: '420→511', gain: '+91', fee: 'paid', feeLabel: 'Paid' },
-                { av: 'P', name: 'Priya Desai', exam: 'NEET', examClass: 'pp', wk: 'Wk 7', score: '350→418', gain: '+68', fee: 'overdue', feeLabel: 'Overdue', overdue: true },
-                { av: 'K', name: 'Kavya Menon', exam: 'NEET', examClass: 'pp', wk: 'Wk 12', score: '440→548', gain: '+108', fee: 'paid', feeLabel: 'Paid', viewProfile: true },
-                { av: 'A', name: 'Arjun Singh', exam: 'JEE Mains', examClass: 'pn', wk: 'Wk 8', score: '410→478', gain: '+68', fee: 'paid', feeLabel: 'Paid', viewProfile: true }
-              ].map(({ av, name, exam, examClass, wk, score, gain, fee, feeLabel, overdue, viewProfile }) => (
-                <tr key={name}>
-                  <td><div className="av-row"><div className="av">{av}</div>{name}</div></td>
-                  <td><span className={`pill ${examClass}`}>{exam}</span></td>
-                  <td><div className="av-row"><div className="av" style={{ background: 'transparent', borderColor: 'var(--text3)', color: 'var(--text3)' }}>A</div>Ajay Sharma</div></td>
-                  <td>{wk}</td>
-                  <td><span style={{ fontFamily: 'var(--fs)', color: 'var(--gold)', fontWeight: '700' }}>{score}</span> <span style={{ fontSize: '11px', color: 'var(--green)' }}>{gain}</span></td>
-                  <td><span className={`fc-status ${fee}`}>{feeLabel}</span></td>
-                  <td>
-                    <div style={{ display: 'flex', gap: '6px' }}>
-                      <button className="btn btn-ghost btn-sm" onClick={() => onOpenModal('message-modal')}>Message</button>
-                      {overdue
-                        ? <button className="btn btn-gold btn-sm" onClick={() => onShowToast('Reminder sent ✓')}>Remind Fee</button>
-                        : viewProfile
-                          ? <button className="btn btn-ghost btn-sm">View Profile</button>
-                          : <button className="btn btn-ghost btn-sm" onClick={() => onOpenModal('assign-modal')}>Reassign</button>
-                      }
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        {(() => {
+          const premium  = students.filter(s => s.plan === 'premium');
+          const free     = students.filter(s => s.plan !== 'premium');
+          const premJee  = premium.filter(s => s.examTarget?.toLowerCase().includes('jee'));
+          const premNeet = premium.filter(s => s.examTarget?.toLowerCase().includes('neet'));
+
+          // tab 0=All(premium) 1=JEE 2=NEET 3=Free Tier
+          const rows = studentsTab === 1 ? premJee : studentsTab === 2 ? premNeet : studentsTab === 3 ? free : premium;
+
+          const tabs = [
+            { label: `All (${premium.length})`, i: 0 },
+            { label: `JEE (${premJee.length})`,  i: 1 },
+            { label: `NEET (${premNeet.length})`, i: 2 },
+            { label: `Free Tier (${free.length})`, i: 3, gold: true },
+          ];
+
+          const isFreeTab = studentsTab === 3;
+
+          const PremiumRow = ({ s }) => {
+            const av = s.name?.[0]?.toUpperCase() || '?';
+            const examClass = s.examTarget?.includes('NEET') ? 'pp' : 'pn';
+            const hasScores = s.firstScore !== null && s.lastScore !== null;
+            const gain = hasScores ? s.lastScore - s.firstScore : 0;
+            const mentorAv = s.facultyName?.[0]?.toUpperCase() || '?';
+            return (
+              <tr>
+                <td><div className="av-row"><div className="av">{av}</div>{s.name}</div></td>
+                <td><span className={`pill ${examClass}`}>{s.examTarget || '—'}</span></td>
+                <td>
+                  {s.facultyName
+                    ? <div className="av-row"><div className="av" style={{ background: 'transparent', borderColor: 'var(--text3)', color: 'var(--text3)' }}>{mentorAv}</div>{s.facultyName}</div>
+                    : <span style={{ color: 'var(--text3)', fontSize: '12px' }}>Unassigned</span>}
+                </td>
+                <td>
+                  {hasScores
+                    ? <><span style={{ fontFamily: 'var(--fs)', color: 'var(--gold)', fontWeight: '700' }}>{s.firstScore}→{s.lastScore}</span>{' '}<span style={{ fontSize: '11px', color: gain >= 0 ? 'var(--green)' : 'var(--red)' }}>{gain >= 0 ? '+' : ''}{gain}</span></>
+                    : <span style={{ color: 'var(--text3)', fontSize: '12px' }}>No scores yet</span>}
+                </td>
+                <td><button className="btn btn-ghost btn-sm" onClick={() => onOpenMessage(s.id)}>Message</button></td>
+              </tr>
+            );
+          };
+
+          const FreeRow = ({ s }) => {
+            const av = s.name?.[0]?.toUpperCase() || '?';
+            const examClass = s.examTarget?.includes('NEET') ? 'pp' : 'pn';
+            const diagDone = s.diagnosticScore !== null && s.diagnosticScore !== undefined;
+            return (
+              <tr>
+                <td><div className="av-row"><div className="av">{av}</div>{s.name}</div></td>
+                <td><span className={`pill ${examClass}`}>{s.examTarget || '—'}</span></td>
+                <td style={{ color: 'var(--text2)', fontSize: '13px' }}>{s.grade || '—'}</td>
+                <td>
+                  {diagDone
+                    ? <span style={{ fontSize: '12px', fontWeight: '600', color: 'var(--green)' }}>Done — {s.diagnosticScore}</span>
+                    : <span style={{ fontSize: '12px', color: 'var(--text3)' }}>Pending</span>}
+                </td>
+                <td><button className="btn btn-ghost btn-sm" onClick={() => onOpenMessage(s.id)}>Message</button></td>
+              </tr>
+            );
+          };
+
+          return (
+            <>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px', flexWrap: 'wrap', gap: '10px' }}>
+                <div className="tabs" style={{ marginBottom: '0' }}>
+                  {tabs.map(({ label, i, gold }) => (
+                    <div key={i}
+                      className={`tab${studentsTab === i ? ' on' : ''}`}
+                      style={gold ? {
+                        color: 'var(--black)',
+                        background: studentsTab === i ? 'rgb(250, 187, 0)' : 'rgb(244, 210, 108)',
+                        borderColor: studentsTab === i ? 'rgb(250, 187, 0)' : 'rgb(244, 210, 108)',
+                        borderWidth: '1px',
+                        borderStyle: 'solid',
+                        borderRadius: 'var(--r)',
+                      } : {}}
+                      onClick={() => setStudentsTab(i)}
+                    >{label}</div>
+                  ))}
+                </div>
+                <button className="btn btn-gold btn-sm" onClick={() => onOpenModal('enroll-modal')}>+ Enroll Student</button>
+              </div>
+              <div className="card" style={{ padding: '0', overflow: 'hidden' }}>
+                <table className="tbl">
+                  <thead>
+                    {isFreeTab
+                      ? <tr><th>Student</th><th>Exam</th><th>Grade</th><th>Diagnostic</th><th>Actions</th></tr>
+                      : <tr><th>Student</th><th>Exam</th><th>Mentor</th><th>Score Progress</th><th>Actions</th></tr>}
+                  </thead>
+                  <tbody>
+                    {rows.length === 0
+                      ? <tr><td colSpan={5} style={{ textAlign: 'center', color: 'var(--text3)', padding: '24px' }}>No students found.</td></tr>
+                      : rows.map(s => isFreeTab ? <FreeRow key={s.id} s={s} /> : <PremiumRow key={s.id} s={s} />)}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          );
+        })()}
       </div>
 
       {/* ══ FACULTY ══ */}

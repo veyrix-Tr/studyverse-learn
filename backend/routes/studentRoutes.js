@@ -167,4 +167,34 @@ router.get('/doubts', requireAuth, async (req, res) => {
   }
 });
 
+// GET /api/student/notifications
+router.get('/notifications', requireAuth, async (req, res) => {
+  try {
+    const profile = await prisma.studentProfile.findUnique({ where: { userId: req.user.id } });
+    if (!profile) return res.json([]);
+    const messages = await prisma.adminMessage.findMany({
+      where: { studentId: profile.id },
+      orderBy: { createdAt: 'desc' },
+    });
+    res.json(messages.map(m => ({ id: m.id, content: m.content, type: m.type, readAt: m.readAt, createdAt: m.createdAt })));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch notifications' });
+  }
+});
+
+// PUT /api/student/notifications/:id/read
+router.put('/notifications/:id/read', requireAuth, async (req, res) => {
+  try {
+    const profile = await prisma.studentProfile.findUnique({ where: { userId: req.user.id } });
+    if (!profile) return res.status(403).json({ error: 'Not found' });
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ error: 'Invalid ID' });
+    await prisma.adminMessage.updateMany({ where: { id, studentId: profile.id }, data: { readAt: new Date() } });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to mark read' });
+  }
+});
+
 module.exports = router;

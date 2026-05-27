@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 const PermToggleRow = ({ label, defaultOn, last }) => {
   const [on, setOn] = useState(defaultOn);
@@ -10,8 +10,40 @@ const PermToggleRow = ({ label, defaultOn, last }) => {
   );
 };
 
-const AdminModals = ({ openModal, onClose, onShowToast, toast }) => {
+const AdminModals = ({ openModal, onClose, onShowToast, toast, students = [], messageStudentId = null }) => {
   const isOpen = (id) => openModal === id ? ' open' : '';
+
+  const [msgStudent, setMsgStudent] = useState('all');
+  const [msgType, setMsgType] = useState('Announcement');
+  const [msgContent, setMsgContent] = useState('');
+  const [sending, setSending] = useState(false);
+
+  useEffect(() => {
+    if (openModal === 'message-modal') {
+      setMsgStudent(messageStudentId !== null ? String(messageStudentId) : 'all');
+    }
+  }, [openModal, messageStudentId]);
+
+  const handleSendMessage = async () => {
+    if (!msgContent.trim()) { onShowToast('Please write a message'); return; }
+    setSending(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch('http://localhost:5000/api/admin/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ studentId: msgStudent, content: msgContent.trim(), type: msgType }),
+      });
+      if (!res.ok) throw new Error();
+      setMsgContent('');
+      onClose();
+      onShowToast(msgStudent === 'all' ? 'Message sent to all students ✓' : 'Message sent to student dashboard ✓');
+    } catch {
+      onShowToast('Failed to send message. Try again.');
+    } finally {
+      setSending(false);
+    }
+  };
 
   return (
     <>
@@ -80,17 +112,26 @@ const AdminModals = ({ openModal, onClose, onShowToast, toast }) => {
           <div className="mt">Send Message to Student</div>
           <div className="ms">Appears as a notification on their dashboard immediately.</div>
           <div className="fg"><label>Student</label>
-            <select className="fi"><option>Rahul Mehta</option><option>Sneha Kapoor</option><option>Priya Desai</option><option>All Students</option></select>
+            <select className="fi" value={msgStudent} onChange={e => setMsgStudent(e.target.value)}>
+              <option value="all">All Students</option>
+              {students.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
           </div>
           <div className="fg"><label>Type</label>
-            <select className="fi"><option>Announcement</option><option>Reminder</option><option>Motivational Note</option><option>Fee Reminder</option><option>Schedule Update</option></select>
+            <select className="fi" value={msgType} onChange={e => setMsgType(e.target.value)}>
+              <option>Announcement</option>
+              <option>Reminder</option>
+              <option>Motivational Note</option>
+              <option>Fee Reminder</option>
+              <option>Schedule Update</option>
+            </select>
           </div>
           <div className="fg"><label>Message</label>
-            <textarea className="fi" rows="4" placeholder="Write message..."></textarea>
+            <textarea className="fi" rows="4" placeholder="Write message..." value={msgContent} onChange={e => setMsgContent(e.target.value)}></textarea>
           </div>
           <div className="ma">
             <button className="btn btn-ghost btn-sm" onClick={onClose}>Cancel</button>
-            <button className="btn btn-gold btn-sm" onClick={() => { onClose(); onShowToast('Message sent to student dashboard ✓'); }}>Send →</button>
+            <button className="btn btn-gold btn-sm" onClick={handleSendMessage} disabled={sending}>{sending ? 'Sending…' : 'Send →'}</button>
           </div>
         </div>
       </div>

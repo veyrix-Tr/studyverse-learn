@@ -13,6 +13,7 @@ const StudentLMS = () => {
   const [scores, setScores] = useState(null);
   const [sessions, setSessions] = useState([]);
   const [doubts, setDoubts] = useState([]);
+  const [notifications, setNotifications] = useState([]);
   const toastTimer = useRef(null);
 
   useEffect(() => {
@@ -54,6 +55,13 @@ const StudentLMS = () => {
       .then(r => r.ok ? r.json() : null)
       .then(data => { if (Array.isArray(data)) setDoubts(data); })
       .catch(() => {});
+
+    fetch('http://localhost:5000/api/student/notifications', {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (Array.isArray(data)) setNotifications(data); })
+      .catch(() => {});
   }, []);
 
   const showToast = (msg, onClick) => {
@@ -62,7 +70,7 @@ const StudentLMS = () => {
     toastTimer.current = setTimeout(() => setToast(t => ({ ...t, show: false })), onClick ? 6000 : 3000);
   };
 
-  // Poll doubts every 15s only after student profile is confirmed loaded
+  // Poll doubts + notifications every 15s only after student profile is confirmed loaded
   useEffect(() => {
     if (!profile) return;
     const token = localStorage.getItem('token');
@@ -85,9 +93,38 @@ const StudentLMS = () => {
           });
         })
         .catch(() => {});
+
+      fetch('http://localhost:5000/api/student/notifications', {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+        .then(r => r.ok ? r.json() : null)
+        .then(fresh => {
+          if (!Array.isArray(fresh)) return;
+          setNotifications(prev => {
+            const newOnes = fresh.filter(fn => !fn.readAt && !prev.some(n => n.id === fn.id));
+            newOnes.forEach(n => showToast(`${n.type}: ${n.content}`));
+            return fresh;
+          });
+        })
+        .catch(() => {});
     }, 15000);
     return () => clearInterval(id);
   }, [profile]); // starts only once profile is loaded, cleans up on unmount
+
+  const markAllNotificationsRead = () => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    setNotifications(prev => {
+      const unread = prev.filter(n => !n.readAt);
+      unread.forEach(n => {
+        fetch(`http://localhost:5000/api/student/notifications/${n.id}/read`, {
+          method: 'PUT',
+          headers: { Authorization: `Bearer ${token}` },
+        }).catch(() => {});
+      });
+      return prev.map(n => n.readAt ? n : { ...n, readAt: new Date().toISOString() });
+    });
+  };
 
   return (
     <div className="student-app">
@@ -113,6 +150,8 @@ const StudentLMS = () => {
           scores={scores}
           sessions={sessions}
           doubts={doubts}
+          notifications={notifications}
+          onMarkNotificationsRead={markAllNotificationsRead}
         />
       </div>
       <StudentModals

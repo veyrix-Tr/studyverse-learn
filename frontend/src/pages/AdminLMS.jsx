@@ -9,8 +9,10 @@ const AdminLMS = () => {
   const [activePage, setActivePage] = useState('dashboard');
   const [superMode, setSuperMode] = useState(true);
   const [openModal, setOpenModal] = useState(null);
+  const [messageStudentId, setMessageStudentId] = useState(null);
   const [toast, setToast] = useState({ show: false, msg: '' });
   const [profile, setProfile] = useState(null);
+  const [students, setStudents] = useState([]);
   const toastTimer = useRef(null);
 
   useEffect(() => {
@@ -29,6 +31,11 @@ const AdminLMS = () => {
       .then(r => r.ok ? r.json() : null)
       .then(data => { if (data && !data.error) setProfile(data); })
       .catch(() => {});
+
+    fetch('http://localhost:5000/api/admin/students', { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : [])
+      .then(data => { if (Array.isArray(data)) setStudents(data); })
+      .catch(() => {});
   }, []);
 
   const showToast = (msg) => {
@@ -41,6 +48,11 @@ const AdminLMS = () => {
     setSuperMode(role === 'super');
   };
 
+  const openMessage = (studentId = null) => {
+    setMessageStudentId(studentId);
+    setOpenModal('message-modal');
+  };
+
   return (
     <div className="admin-app">
       <AdminSidebar
@@ -50,6 +62,7 @@ const AdminLMS = () => {
         onSetRole={handleSetRole}
         onShowToast={showToast}
         profile={profile}
+        studentsCount={students.length}
       />
       <div className="admin-main">
         <AdminTopbar
@@ -64,6 +77,8 @@ const AdminLMS = () => {
           onNav={setActivePage}
           onShowToast={showToast}
           profile={profile}
+          students={students}
+          onOpenMessage={openMessage}
         />
       </div>
       <AdminModals
@@ -71,6 +86,8 @@ const AdminLMS = () => {
         onClose={() => setOpenModal(null)}
         onShowToast={showToast}
         toast={toast}
+        students={students}
+        messageStudentId={messageStudentId}
       />
     </div>
   );

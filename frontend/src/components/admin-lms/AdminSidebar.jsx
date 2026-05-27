@@ -1,6 +1,6 @@
 import React from 'react';
 
-const AdminSidebar = ({ activePage, superMode, onNav, onSetRole, onShowToast, profile }) => {
+const AdminSidebar = ({ activePage, superMode, onNav, onSetRole, onShowToast, profile, studentsCount = 0 }) => {
   const name = profile?.name || (superMode ? 'Super Admin' : 'Admin');
   const initial = name.charAt(0).toUpperCase();
   const handleLogout = () => {
@@ -80,7 +80,7 @@ const AdminSidebar = ({ activePage, superMode, onNav, onSetRole, onShowToast, pr
             <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
           </svg>
           Students
-          <span className="nbadge nb-dim">12</span>
+          {studentsCount > 0 && <span className="nbadge nb-dim">{studentsCount}</span>}
         </div>
         <div className={niClass('faculty')} onClick={() => onNav('faculty')}>
           <svg className="nic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

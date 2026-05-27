@@ -176,13 +176,15 @@ const isToday = (iso) => {
   return d.getFullYear() === n.getFullYear() && d.getMonth() === n.getMonth() && d.getDate() === n.getDate();
 };
 
-const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, scores, sessions = [], doubts = [] }) => {
+const TYPE_DOT = { 'Fee Reminder': 'var(--red)', 'Reminder': 'var(--gold)', 'Motivational Note': 'var(--green)', 'Schedule Update': 'var(--navy)', 'Announcement': 'var(--gold)' };
+
+const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, scores, sessions = [], doubts = [], notifications = [], onMarkNotificationsRead }) => {
   const firstName = profile?.name?.split(' ')[0] || 'there';
   const examTarget = profile?.studentProfile?.examTarget || 'your exam';
   const targetYear = profile?.studentProfile?.targetYear;
   const daysRemaining = getDaysRemaining(examTarget, targetYear);
 
-  const weeks = scores || [];
+  const weeks = scores ? [...scores].sort((a, b) => a.weekNumber - b.weekNumber) : [];
   const max = getExamMax(examTarget);
   const toM = (pct) => Math.round(pct * max / 100);
   const targetMarks = toM(90);
@@ -321,33 +323,26 @@ const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
 
         <div className="sh"><div className="sh-title">This Week's Insights</div></div>
         <div className="g3 mb">
-          {topImprover ? (
-            <div className="insight">
-              <div className="insight-icon">📈</div>
-              <div>
-                <div className="insight-title">{topImprover.name} Up {topImprover.delta}%</div>
-                <div className="insight-body">Score moved from {topImprover.firstPct}% to {topImprover.lastPct}% since Week 1 — your strongest growth subject.</div>
+          {subjectStats.length > 0 ? subjectStats.map(s => {
+            const isWeakest = s.name === weakestSubject?.name;
+            const isBest    = s.name === topImprover?.name;
+            const bg     = isWeakest ? 'var(--red-dim)'   : isBest ? 'var(--green-dim)' : undefined;
+            const border = isWeakest ? 'rgba(239,68,68,0.2)' : isBest ? 'rgba(34,197,94,0.2)' : undefined;
+            const icon   = isWeakest ? '⚠️' : isBest ? '📈' : '📊';
+            return (
+              <div key={s.name} className="insight" style={{ background: bg, borderColor: border }}>
+                <div className="insight-icon">{icon}</div>
+                <div>
+                  <div className="insight-title">{s.name} — {s.lastPct}% <span style={{ fontSize: '12px', fontWeight: 600, color: s.delta >= 0 ? 'var(--green)' : 'var(--red)' }}>{s.delta >= 0 ? '+' : ''}{s.delta}%</span></div>
+                  <div className="insight-body">
+                    {isWeakest ? `Weakest subject this week. Prioritise before ${examTarget}.` : isBest ? `Strongest growth — up from ${s.firstPct}% since Week 1.` : `Baseline ${s.firstPct}% → now ${s.lastPct}%.`}
+                  </div>
+                </div>
               </div>
-            </div>
-          ) : (
-            <div className="insight"><div className="insight-icon">📊</div><div><div className="insight-title">No Tests Yet</div><div className="insight-body">Complete your first weekly test to see your insights here.</div></div></div>
+            );
+          }) : (
+            <div className="insight"><div className="insight-icon">📊</div><div><div className="insight-title">No Tests Yet</div><div className="insight-body">Complete your first weekly test to see subject insights here.</div></div></div>
           )}
-          {weakestSubject ? (
-            <div className="insight" style={{ background: 'var(--red-dim)', borderColor: 'rgba(239,68,68,0.2)' }}>
-              <div className="insight-icon">⚠️</div>
-              <div>
-                <div className="insight-title">{weakestSubject.name} at {weakestSubject.lastPct}%</div>
-                <div className="insight-body">Your weakest subject this week. Prioritise this to close the gap before {examTarget}.</div>
-              </div>
-            </div>
-          ) : null}
-          <div className="insight" style={{ background: 'var(--green-dim)', borderColor: 'rgba(34,197,94,0.2)' }}>
-            <div className="insight-icon">🔥</div>
-            <div>
-              <div className="insight-title">{weeks.length} Week{weeks.length !== 1 ? 's' : ''} Documented</div>
-              <div className="insight-body">{weeks.length > 0 ? `${weeks.length} week${weeks.length !== 1 ? 's' : ''} of tests recorded. Each week builds a clearer picture of your progress.` : 'Your first test result will appear here automatically.'}</div>
-            </div>
-          </div>
         </div>
 
         <div className="card mb">
@@ -778,13 +773,21 @@ const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
         <div className="card">
           <div className="sh">
             <div className="sh-title">Notifications</div>
-            <span className="sh-action" onClick={() => onShowToast('All marked as read')}>Mark all read</span>
+            {notifications.some(n => !n.readAt) && (
+              <button className="btn btn-ghost btn-sm" style={{ fontSize: '11px', padding: '4px 10px' }} onClick={onMarkNotificationsRead}>Mark all read</button>
+            )}
           </div>
-          <div className="notif-row"><div className="notif-dot" style={{ background: 'var(--green)' }}></div><div><div className="notif-text"><strong>Session Live</strong> — "Atomic Structure" with Vinay is live right now</div><div className="notif-time">Just now</div></div></div>
-          <div className="notif-row"><div className="notif-dot" style={{ background: 'var(--gold)' }}></div><div><div className="notif-text"><strong>New Assigned Test</strong> — Organic Chemistry Targeted Test assigned by your mentor</div><div className="notif-time">2 hours ago</div></div></div>
-          <div className="notif-row"><div className="notif-dot" style={{ background: 'var(--gold)' }}></div><div><div className="notif-text"><strong>Doubt Answered</strong> — Vinay replied to your integration doubt</div><div className="notif-time">3 hours ago</div></div></div>
-          <div className="notif-row"><div className="notif-dot" style={{ background: 'var(--text3)' }}></div><div><div className="notif-text"><strong>Weekly Report Ready</strong> — Week 11 parent report has been sent to your parent's email</div><div className="notif-time">Sunday, Apr 13</div></div></div>
-          <div className="notif-row"><div className="notif-dot" style={{ background: 'var(--text3)' }}></div><div><div className="notif-text"><strong>Score Update</strong> — Your Journey arc updated: 512 marks (+25 this week)</div><div className="notif-time">Sunday, Apr 13</div></div></div>
+          {notifications.length === 0 ? (
+            <div style={{ fontSize: '13px', color: 'var(--text3)', padding: '12px 0' }}>No messages from admin yet.</div>
+          ) : notifications.map(n => (
+            <div key={n.id} className="notif-row" style={!n.readAt ? { background: 'var(--cream2)', borderRadius: 'var(--r)', padding: '8px 10px', marginBottom: '4px' } : {}}>
+              <div className="notif-dot" style={{ background: TYPE_DOT[n.type] || 'var(--gold)', flexShrink: 0 }}></div>
+              <div>
+                <div className="notif-text"><strong>{n.type}</strong> — {n.content}</div>
+                <div className="notif-time">{timeAgo(n.createdAt)}</div>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 
