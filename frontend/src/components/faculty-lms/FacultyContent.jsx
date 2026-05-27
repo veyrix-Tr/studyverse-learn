@@ -1,9 +1,12 @@
 import { useState } from 'react';
 
-const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 const fmtTime = (iso) => new Date(iso).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
 const fmtDate = (iso) => new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
 const isUpcoming = (iso) => new Date(iso) > new Date();
+const isToday = (iso) => {
+  const d = new Date(iso), n = new Date();
+  return d.getFullYear() === n.getFullYear() && d.getMonth() === n.getMonth() && d.getDate() === n.getDate();
+};
 const timeAgo = (iso) => {
   const mins = Math.round((Date.now() - new Date(iso)) / 60000);
   if (mins < 60) return `${mins}m ago`;
@@ -45,7 +48,7 @@ const StudentCard = ({ av, name, exam, week, statusBadge, base, curr, gain, gain
   </div>
 );
 
-const DoubtItem = ({ priority, av, name, time, pills, question, placeholder, extraActions, isOpen, isReplied, onToggle, onReply }) => (
+const DoubtItem = ({ priority, av, name, time, pills, question, placeholder, extraActions, isOpen, isReplied, onToggle, onReply, replyText, onReplyTextChange }) => (
   <div className={`doubt-item ${priority}`} style={isReplied ? { opacity: 0.5, pointerEvents: 'none' } : {}}>
     <div className="di-top">
       <div className="di-student">
@@ -60,7 +63,7 @@ const DoubtItem = ({ priority, av, name, time, pills, question, placeholder, ext
       {extraActions}
     </div>
     <div className={`reply-box${isOpen ? ' open' : ''}`}>
-      <textarea className="reply-textarea" rows="3" placeholder={placeholder}></textarea>
+      <textarea className="reply-textarea" rows="3" placeholder={placeholder} value={replyText || ''} onChange={e => onReplyTextChange(e.target.value)}></textarea>
       <div className="reply-actions">
         <button className="btn btn-ghost btn-sm" onClick={onToggle}>Cancel</button>
         <button className="btn btn-gold btn-sm" onClick={onReply}>Send Reply ✓</button>
@@ -71,18 +74,17 @@ const DoubtItem = ({ priority, av, name, time, pills, question, placeholder, ext
 
 const getGreeting = () => { const h = new Date().getHours(); if (h < 12) return 'Good morning'; if (h < 17) return 'Good afternoon'; return 'Good evening'; };
 
-const FacultyContent = ({ activePage, onOpenModal, onOpenStudentDetail, onNav, onShowToast, profile, sessions = [], doubts = [] }) => {
+const FacultyContent = ({ activePage, onOpenModal, onOpenStudentDetail, onNav, onShowToast, profile, sessions = [], doubts = [], onDoubtAnswered }) => {
   const firstName = profile?.name?.split(' ').find(p => !p.startsWith('Dr')) || profile?.name?.split(' ')[0] || 'there';
   const [scheduleTab, setScheduleTab] = useState(0);
   const [doubtsTab, setDoubtsTab] = useState(0);
   const [openReplies, setOpenReplies] = useState(new Set());
-  const [repliedDoubts, setRepliedDoubts] = useState(new Set());
+  const [replyTexts, setReplyTexts] = useState({});
 
-  const pending = doubts.filter(d => !d.answeredAt && !repliedDoubts.has(d.id));
-  const answered = doubts.filter(d => d.answeredAt || repliedDoubts.has(d.id));
+  const pending = doubts.filter(d => !d.answeredAt);
+  const answered = doubts.filter(d => d.answeredAt);
 
-  const today = DAYS[new Date().getDay()];
-  const todaySessions = sessions.filter(s => s.dayOfWeek === today);
+  const todaySessions = sessions.filter(s => isToday(s.scheduledAt));
   const upcomingSessions = sessions.filter(s => isUpcoming(s.scheduledAt));
   const pastSessions = sessions.filter(s => !isUpcoming(s.scheduledAt));
   const activeStudents = new Set(sessions.flatMap(s => s.enrolledStudents || [])).size;
@@ -95,10 +97,25 @@ const FacultyContent = ({ activePage, onOpenModal, onOpenStudentDetail, onNav, o
     });
   };
 
-  const markReplied = (id) => {
-    setRepliedDoubts(prev => new Set([...prev, id]));
-    setOpenReplies(prev => { const next = new Set(prev); next.delete(id); return next; });
-    onShowToast('Reply sent ✓ Doubt marked as answered');
+  const markReplied = async (id) => {
+    const text = replyTexts[id] || '';
+    if (!text.trim()) { onShowToast('Please type a reply before sending'); return; }
+    const token = localStorage.getItem('token');
+    try {
+      const res = await fetch(`http://localhost:5000/api/faculty/doubts/${id}/answer`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ answer: text.trim() }),
+      });
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      setOpenReplies(prev => { const next = new Set(prev); next.delete(id); return next; });
+      setReplyTexts(prev => { const next = { ...prev }; delete next[id]; return next; });
+      onDoubtAnswered?.(id, data.answeredAt, text.trim());
+      onShowToast('Reply sent ✓ Doubt marked as answered');
+    } catch {
+      onShowToast('Failed to send reply. Try again.');
+    }
   };
 
   const rahulSubjects = <>
@@ -311,7 +328,7 @@ const FacultyContent = ({ activePage, onOpenModal, onOpenStudentDetail, onNav, o
       {/* ══════════ MY STUDENTS ══════════ */}
       <div className={`page${activePage === 'students' ? ' on' : ''}`}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
-          <div style={{ fontSize: '13px', color: 'var(--text2)' }}>8 active students • All 1-to-1 or small groups</div>
+          <div style={{ fontSize: '13px', color: 'var(--text2)' }}>{activeStudents} active student{activeStudents !== 1 ? 's' : ''} • All 1-to-1 or small groups</div>
           <div style={{ display: 'flex', gap: '8px' }}>
             <button className="btn btn-ghost btn-sm">Filter by Exam</button>
             <button className="btn btn-gold btn-sm" onClick={() => onOpenModal('schedule-modal')}>+ New Session</button>
@@ -374,7 +391,9 @@ const FacultyContent = ({ activePage, onOpenModal, onOpenStudentDetail, onNav, o
                 question={d.question}
                 placeholder={`Type your reply to ${d.studentName}...`}
                 extraActions={<button className="btn btn-ghost btn-sm" onClick={() => onShowToast('Marked for session discussion')}>Discuss in session</button>}
-                isOpen={openReplies.has(d.id)} isReplied={repliedDoubts.has(d.id)}
+                isOpen={openReplies.has(d.id)} isReplied={!!d.answeredAt}
+                replyText={replyTexts[d.id] || ''}
+                onReplyTextChange={val => setReplyTexts(prev => ({ ...prev, [d.id]: val }))}
                 onToggle={() => toggleReply(d.id)} onReply={() => markReplied(d.id)} />
             );
           });

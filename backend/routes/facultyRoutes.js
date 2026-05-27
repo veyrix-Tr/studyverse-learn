@@ -86,15 +86,40 @@ router.get('/doubts', requireAuth, async (req, res) => {
     res.json(doubts.map(d => ({
       id: d.id,
       question: d.question,
+      subject: d.subject || fp.subject || 'General',
       answer: d.answer,
       answeredAt: d.answeredAt,
       createdAt: d.createdAt,
       studentName: d.student.user.name,
-      subject: fp.subject,
     })));
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to fetch doubts' });
+  }
+});
+
+// PUT /api/faculty/doubts/:id/answer
+router.put('/doubts/:id/answer', requireAuth, async (req, res) => {
+  try {
+    const { answer } = req.body;
+    if (!answer || !answer.trim()) return res.status(400).json({ error: 'Answer text is required' });
+
+    const fp = await prisma.facultyProfile.findUnique({ where: { userId: req.user.id } });
+    if (!fp) return res.status(403).json({ error: 'Not a faculty member' });
+
+    const doubtId = parseInt(req.params.id);
+    if (isNaN(doubtId)) return res.status(400).json({ error: 'Invalid doubt ID' });
+    const doubt = await prisma.doubt.findUnique({ where: { id: doubtId } });
+    if (!doubt || doubt.facultyId !== fp.id) return res.status(404).json({ error: 'Doubt not found' });
+
+    const updated = await prisma.doubt.update({
+      where: { id: doubt.id },
+      data: { answer: answer.trim(), answeredAt: new Date() },
+    });
+    res.json({ success: true, answeredAt: updated.answeredAt, answer: updated.answer });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to save answer' });
   }
 });
 

@@ -1,7 +1,43 @@
-import React from 'react';
+import { useState } from 'react';
 
-const StudentModals = ({ openModal, onClose, onShowToast, toast }) => {
+const EXAM_SUBJECTS = {
+  'JEE Mains':    ['Physics', 'Chemistry', 'Maths'],
+  'JEE Advanced': ['Physics', 'Chemistry', 'Maths'],
+  'NEET':         ['Physics', 'Chemistry', 'Biology'],
+};
+
+const StudentModals = ({ openModal, onClose, onShowToast, toast, profile, onDoubtPosted }) => {
   const isOpen = (id) => openModal === id ? ' open' : '';
+
+  const subjects = EXAM_SUBJECTS[profile?.studentProfile?.examTarget] || ['Physics', 'Chemistry', 'Maths'];
+  const [doubtSubject, setDoubtSubject] = useState('');
+  const [doubtQuestion, setDoubtQuestion] = useState('');
+  const [posting, setPosting] = useState(false);
+
+  const handlePostDoubt = async () => {
+    if (!doubtQuestion.trim()) { onShowToast('Please write your question'); return; }
+    const subject = doubtSubject || subjects[0];
+    setPosting(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch('http://localhost:5000/api/student/doubts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ question: doubtQuestion.trim(), subject }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed');
+      onDoubtPosted?.(data);
+      setDoubtQuestion('');
+      setDoubtSubject('');
+      onClose();
+      onShowToast(`Doubt posted! ${data.facultyName} will respond shortly.`);
+    } catch (err) {
+      onShowToast(err.message || 'Failed to post doubt. Try again.');
+    } finally {
+      setPosting(false);
+    }
+  };
 
   return (
     <>
@@ -23,10 +59,10 @@ const StudentModals = ({ openModal, onClose, onShowToast, toast }) => {
               </select>
             </div>
           </div>
-          <div className="fg"><label>Any specific doubt to address?</label><textarea className="fi" rows="2" placeholder="Optional — helps Vinay prepare before the session"></textarea></div>
+          <div className="fg"><label>Any specific doubt to address?</label><textarea className="fi" rows="2" placeholder="Optional — helps your faculty prepare before the session"></textarea></div>
           <div className="ma">
             <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
-            <button className="btn btn-primary" onClick={() => { onClose(); onShowToast('Session request sent to Vinay! 🎉'); }}>Send Request</button>
+            <button className="btn btn-primary" onClick={() => { onClose(); onShowToast('Session request sent!'); }}>Send Request</button>
           </div>
         </div>
       </div>
@@ -35,21 +71,30 @@ const StudentModals = ({ openModal, onClose, onShowToast, toast }) => {
       <div className={`overlay${isOpen('doubt-modal')}`} onClick={e => e.target.classList.contains('overlay') && onClose()}>
         <div className="modal">
           <div className="modal-title">Ask a Doubt</div>
-          <div className="modal-sub">Post your doubt — Vinay typically responds within 4 hours.</div>
+          <div className="modal-sub">Your faculty typically responds within 4 hours.</div>
           <div className="fg">
             <label>Subject</label>
-            <select className="fi"><option>Chemistry</option><option>Mathematics</option><option>Physics</option></select>
+            <select className="fi" value={doubtSubject || subjects[0]} onChange={e => setDoubtSubject(e.target.value)}>
+              {subjects.map(s => <option key={s}>{s}</option>)}
+            </select>
           </div>
-          <div className="fg"><label>Your Question</label><textarea className="fi" rows="4" placeholder="Write your doubt clearly — include the concept, where you're stuck, and what you've tried..."></textarea></div>
+          <div className="fg">
+            <label>Your Question</label>
+            <textarea className="fi" rows="4" placeholder="Write your doubt clearly — include the concept, where you're stuck, and what you've tried..." value={doubtQuestion} onChange={e => setDoubtQuestion(e.target.value)}></textarea>
+          </div>
           <div className="ma">
             <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
-            <button className="btn btn-primary" onClick={() => { onClose(); onShowToast('Doubt posted! Vinay will respond shortly.'); }}>Post Doubt</button>
+            <button className="btn btn-primary" onClick={handlePostDoubt} disabled={posting}>{posting ? 'Posting…' : 'Post Doubt'}</button>
           </div>
         </div>
       </div>
 
       {/* Toast */}
-      <div className={`toast${toast.show ? ' show' : ''}`}>
+      <div
+        className={`toast${toast.show ? ' show' : ''}${toast.onClick ? ' toast-action' : ''}`}
+        onClick={toast.onClick || undefined}
+        style={toast.onClick ? { cursor: 'pointer' } : {}}
+      >
         <div className="toast-pip"></div>
         <span>{toast.msg}</span>
       </div>

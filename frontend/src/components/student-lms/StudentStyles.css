@@ -365,8 +365,10 @@ body.student-mode .fi:focus { border-color: var(--gold); }
 body.student-mode .ma { display: flex; gap: 10px; margin-top: 22px; justify-content: flex-end; }
 
 /* ── TOAST ── */
-body.student-mode .toast { position: fixed; bottom: 28px; right: 28px; background: var(--navy); border: 1px solid var(--border-gold); border-radius: 10px; padding: 12px 18px; font-size: 13px; color: var(--text-inv); display: flex; align-items: center; gap: 10px; z-index: 300; transform: translateY(60px); opacity: 0; transition: all 0.3s ease; box-shadow: 0 8px 30px rgba(15,31,61,0.3); }
+body.student-mode .toast { position: fixed; bottom: 28px; right: 28px; background: var(--navy); border: 1px solid var(--border-gold); border-radius: 10px; padding: 12px 18px; font-size: 13px; color: var(--text-inv); display: flex; align-items: center; gap: 10px; z-index: 300; transform: translateY(60px); opacity: 0; transition: all 0.3s ease; box-shadow: 0 8px 30px rgba(15,31,61,0.3); max-width: 340px; }
 body.student-mode .toast.show { transform: translateY(0); opacity: 1; }
+body.student-mode .toast.toast-action { padding: 16px 22px; font-size: 14.5px; font-weight: 500; border-left: 3px solid var(--gold); border-radius: 10px; box-shadow: 0 12px 40px rgba(15,31,61,0.45); max-width: 380px; gap: 14px; }
+body.student-mode .toast.toast-action .toast-pip { width: 9px; height: 9px; background: var(--gold); box-shadow: 0 0 0 3px rgba(232,168,48,0.25); }
 body.student-mode .toast-pip { width: 7px; height: 7px; border-radius: 50%; background: var(--gold); flex-shrink: 0; }
 
 /* ── TABS ── */

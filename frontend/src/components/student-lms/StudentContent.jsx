@@ -167,11 +167,14 @@ const getDaysRemaining = (examTarget, targetYear) => {
   return diff > 0 ? diff : null;
 };
 
-const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 const fmtTime = (iso) => new Date(iso).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
 const fmtDate = (iso) => new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
 const isUpcoming = (iso) => new Date(iso) > new Date();
+const isToday = (iso) => {
+  const d = new Date(iso), n = new Date();
+  return d.getFullYear() === n.getFullYear() && d.getMonth() === n.getMonth() && d.getDate() === n.getDate();
+};
 
 const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, scores, sessions = [], doubts = [] }) => {
   const firstName = profile?.name?.split(' ')[0] || 'there';
@@ -239,7 +242,7 @@ const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
           <div>
             <div style={{ fontSize: '12px', color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 500, marginBottom: '6px' }}>{new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</div>
             <div style={{ fontFamily: 'var(--font-serif)', fontSize: '26px', fontWeight: 700, color: 'var(--text)' }}>{getGreeting()}, {firstName}.</div>
-            <div style={{ fontSize: '14px', color: 'var(--text2)', marginTop: '4px' }}>You have <strong style={{ color: 'var(--text)' }}>{sessions.filter(s => s.dayOfWeek === DAYS[new Date().getDay()]).length} session{sessions.filter(s => s.dayOfWeek === DAYS[new Date().getDay()]).length !== 1 ? 's' : ''}</strong> today. {examTarget} is in <strong style={{ color: 'var(--gold)' }}>{daysRemaining ?? '—'} days</strong>.</div>
+            <div style={{ fontSize: '14px', color: 'var(--text2)', marginTop: '4px' }}>You have <strong style={{ color: 'var(--text)' }}>{sessions.filter(s => isToday(s.scheduledAt)).length} session{sessions.filter(s => isToday(s.scheduledAt)).length !== 1 ? 's' : ''}</strong> today. {examTarget} is in <strong style={{ color: 'var(--gold)' }}>{daysRemaining ?? '—'} days</strong>.</div>
           </div>
           <button className="btn btn-primary" style={{ flexShrink: 0, width: 'fit-content' }} onClick={() => onNav('journey')}>View My Journey →</button>
         </div>
@@ -279,8 +282,7 @@ const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
               <span className="sh-action" onClick={() => onNav('sessions')}>All sessions →</span>
             </div>
             {(() => {
-              const today = DAYS[new Date().getDay()];
-              const todaySessions = sessions.filter(s => s.dayOfWeek === today);
+              const todaySessions = sessions.filter(s => isToday(s.scheduledAt));
               if (todaySessions.length === 0) return (
                 <div style={{ fontSize: '13px', color: 'var(--text3)', padding: '12px 0' }}>No sessions scheduled for today.</div>
               );

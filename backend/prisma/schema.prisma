@@ -80,6 +80,7 @@ model Session {
 model Doubt {
   id          Int       @id @default(autoincrement())
   question    String
+  subject     String?
   answer      String?
   answeredAt  DateTime?
   createdAt   DateTime  @default(now())

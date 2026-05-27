@@ -1,6 +1,6 @@
 import React from 'react';
 
-const StudentSidebar = ({ activePage, onNav, profile, upcomingSessionsCount = 0 }) => {
+const StudentSidebar = ({ activePage, onNav, profile, upcomingSessionsCount = 0, openDoubtsCount = 0 }) => {
   const ni = (page, extra) => `nav-item${(activePage === page || (extra && activePage === extra)) ? ' active' : ''}`;
   const name = profile?.name || 'Student';
   const initial = name.charAt(0).toUpperCase();
@@ -90,6 +90,7 @@ const StudentSidebar = ({ activePage, onNav, profile, upcomingSessionsCount = 0 
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
           </svg>
           Doubt Desk
+          {openDoubtsCount > 0 && <span className="nav-badge">{openDoubtsCount}</span>}
         </div>
 
         <div className={ni('parent')} onClick={() => onNav('parent')}>

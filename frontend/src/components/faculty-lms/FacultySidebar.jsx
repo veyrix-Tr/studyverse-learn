@@ -1,9 +1,18 @@
 import React from 'react';
 
-const FacultySidebar = ({ activePage, onNav, onShowToast, profile }) => {
+const isToday = (iso) => {
+  const d = new Date(iso), n = new Date();
+  return d.getFullYear() === n.getFullYear() && d.getMonth() === n.getMonth() && d.getDate() === n.getDate();
+};
+
+const FacultySidebar = ({ activePage, onNav, onShowToast, profile, sessions = [], doubts = [] }) => {
   const name = profile?.name || 'Faculty';
   const initial = name.charAt(0).toUpperCase();
   const subject = profile?.facultyProfile?.subject || '';
+
+  const todayCount = sessions.filter(s => isToday(s.scheduledAt)).length;
+  const activeStudents = new Set(sessions.flatMap(s => s.enrolledStudents || [])).size;
+  const pendingDoubts = doubts.filter(d => !d.answeredAt).length;
 
   return (
     <aside className="sidebar">
@@ -40,7 +49,7 @@ const FacultySidebar = ({ activePage, onNav, onShowToast, profile }) => {
             <rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>
           </svg>
           Schedule
-          <span className="nbadge gold">2 Today</span>
+          {todayCount > 0 && <span className="nbadge gold">{todayCount} Today</span>}
         </div>
         <div className={`ni${activePage === 'students' ? ' on' : ''}`} onClick={() => onNav('students')}>
           <svg className="nic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -49,7 +58,7 @@ const FacultySidebar = ({ activePage, onNav, onShowToast, profile }) => {
             <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
           </svg>
           My Students
-          <span className="nbadge dim">8</span>
+          {activeStudents > 0 && <span className="nbadge dim">{activeStudents}</span>}
         </div>
       </div>
 
@@ -60,7 +69,7 @@ const FacultySidebar = ({ activePage, onNav, onShowToast, profile }) => {
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
           </svg>
           Doubt Queue
-          <span className="nbadge red">5</span>
+          {pendingDoubts > 0 && <span className="nbadge red">{pendingDoubts}</span>}
         </div>
         <div className={`ni${activePage === 'resources' ? ' on' : ''}`} onClick={() => onNav('resources')}>
           <svg className="nic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

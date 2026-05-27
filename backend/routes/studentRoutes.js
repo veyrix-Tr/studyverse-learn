@@ -100,6 +100,46 @@ router.get('/sessions', requireAuth, async (req, res) => {
   }
 });
 
+// POST /api/student/doubts
+router.post('/doubts', requireAuth, async (req, res) => {
+  try {
+    const { question, subject } = req.body;
+    if (!question || !question.trim()) return res.status(400).json({ error: 'Question is required' });
+    if (!subject) return res.status(400).json({ error: 'Subject is required' });
+
+    const profile = await prisma.studentProfile.findUnique({ where: { userId: req.user.id } });
+    if (!profile) return res.status(403).json({ error: 'Student not found' });
+
+    const validSubjects = EXAM_SUBJECTS[profile.examTarget] || [];
+    if (!validSubjects.includes(subject)) return res.status(400).json({ error: 'Invalid subject for your exam' });
+
+    // Find faculty who teaches this subject for this student's grade
+    const session = await prisma.session.findFirst({
+      where: { subject, grade: profile.grade },
+      select: { facultyId: true },
+    });
+    if (!session) return res.status(400).json({ error: 'No faculty found for this subject and grade' });
+
+    const doubt = await prisma.doubt.create({
+      data: { question: question.trim(), subject, studentId: profile.id, facultyId: session.facultyId },
+      include: { faculty: { include: { user: { select: { name: true } } } } },
+    });
+
+    res.json({
+      id: doubt.id,
+      question: doubt.question,
+      subject: doubt.subject,
+      answer: doubt.answer,
+      answeredAt: doubt.answeredAt,
+      createdAt: doubt.createdAt,
+      facultyName: doubt.faculty.user.name,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to post doubt' });
+  }
+});
+
 // GET /api/student/doubts
 router.get('/doubts', requireAuth, async (req, res) => {
   try {
@@ -115,11 +155,11 @@ router.get('/doubts', requireAuth, async (req, res) => {
     res.json(doubts.map(d => ({
       id: d.id,
       question: d.question,
+      subject: d.subject || d.faculty?.subject || 'General',
       answer: d.answer,
       answeredAt: d.answeredAt,
       createdAt: d.createdAt,
       facultyName: d.faculty?.user?.name || 'Faculty',
-      subject: d.faculty?.subject || 'General',
     })));
   } catch (err) {
     console.error(err);

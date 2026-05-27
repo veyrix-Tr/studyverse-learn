@@ -68,6 +68,8 @@ const FacultyLMS = () => {
         onNav={setActivePage}
         onShowToast={showToast}
         profile={profile}
+        sessions={sessions}
+        doubts={doubts}
       />
       <div className="faculty-main">
         <FacultyTopbar
@@ -86,6 +88,9 @@ const FacultyLMS = () => {
           profile={profile}
           sessions={sessions}
           doubts={doubts}
+          onDoubtAnswered={(id, answeredAt, answer) =>
+            setDoubts(prev => prev.map(d => d.id === id ? { ...d, answeredAt, answer } : d))
+          }
         />
       </div>
       <FacultyModals

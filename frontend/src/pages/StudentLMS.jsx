@@ -56,11 +56,38 @@ const StudentLMS = () => {
       .catch(() => {});
   }, []);
 
-  const showToast = (msg) => {
-    setToast({ show: true, msg });
+  const showToast = (msg, onClick) => {
+    setToast({ show: true, msg, onClick: onClick || null });
     clearTimeout(toastTimer.current);
-    toastTimer.current = setTimeout(() => setToast(t => ({ ...t, show: false })), 3000);
+    toastTimer.current = setTimeout(() => setToast(t => ({ ...t, show: false })), onClick ? 6000 : 3000);
   };
+
+  // Poll doubts every 15s only after student profile is confirmed loaded
+  useEffect(() => {
+    if (!profile) return;
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    const id = setInterval(() => {
+      fetch('http://localhost:5000/api/student/doubts', {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+        .then(r => r.ok ? r.json() : null)
+        .then(fresh => {
+          if (!Array.isArray(fresh)) return;
+          setDoubts(prev => {
+            fresh
+              .filter(nd => nd.answeredAt && !prev.some(d => d.id === nd.id && d.answeredAt))
+              .forEach(d => showToast(
+                `${d.facultyName} answered your ${d.subject} doubt — tap to view`,
+                () => setActivePage('doubt')
+              ));
+            return fresh;
+          });
+        })
+        .catch(() => {});
+    }, 15000);
+    return () => clearInterval(id);
+  }, [profile]); // starts only once profile is loaded, cleans up on unmount
 
   return (
     <div className="student-app">
@@ -69,6 +96,7 @@ const StudentLMS = () => {
         onNav={setActivePage}
         profile={profile}
         upcomingSessionsCount={sessions.filter(s => new Date(s.scheduledAt) > new Date()).length}
+        openDoubtsCount={doubts.filter(d => !d.answeredAt).length}
       />
       <div className="student-main">
         <StudentTopbar
@@ -92,6 +120,8 @@ const StudentLMS = () => {
         onClose={() => setOpenModal(null)}
         onShowToast={showToast}
         toast={toast}
+        profile={profile}
+        onDoubtPosted={doubt => setDoubts(prev => [doubt, ...prev])}
       />
     </div>
   );
