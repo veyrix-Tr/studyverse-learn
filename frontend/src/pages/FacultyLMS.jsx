@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import '../components/faculty-lms/FacultyStyles.css';
 import FacultySidebar from '../components/faculty-lms/FacultySidebar';
 import FacultyTopbar from '../components/faculty-lms/FacultyTopbar';
@@ -12,6 +12,8 @@ const FacultyLMS = () => {
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [toast, setToast] = useState({ show: false, msg: '' });
   const [profile, setProfile] = useState(null);
+  const [sessions, setSessions] = useState([]);
+  const [doubts, setDoubts] = useState([]);
   const toastTimer = useRef(null);
 
   useEffect(() => {
@@ -31,6 +33,20 @@ const FacultyLMS = () => {
     })
       .then(r => r.ok ? r.json() : null)
       .then(data => { if (data && !data.error) setProfile(data); })
+      .catch(() => {});
+
+    fetch('http://localhost:5000/api/faculty/sessions', {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (Array.isArray(data)) setSessions(data); })
+      .catch(() => {});
+
+    fetch('http://localhost:5000/api/faculty/doubts', {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (Array.isArray(data)) setDoubts(data); })
       .catch(() => {});
   }, []);
 
@@ -59,6 +75,7 @@ const FacultyLMS = () => {
           onOpenModal={setOpenModal}
           onNav={setActivePage}
           onShowToast={showToast}
+          pendingDoubts={doubts.filter(d => !d.answeredAt).length}
         />
         <FacultyContent
           activePage={activePage}
@@ -67,6 +84,8 @@ const FacultyLMS = () => {
           onNav={setActivePage}
           onShowToast={showToast}
           profile={profile}
+          sessions={sessions}
+          doubts={doubts}
         />
       </div>
       <FacultyModals

@@ -35,7 +35,6 @@ model StudentProfile {
   updatedAt   DateTime  @updatedAt
 
   user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  enrollments  Enrollment[]
   doubts       Doubt[]
   weeklyScores WeeklyScore[]
 }
@@ -65,30 +64,17 @@ model AdminProfile {
 }
 
 model Session {
-  id           Int      @id @default(autoincrement())
-  title        String
-  subject      String
-  dayOfWeek    String
-  scheduledAt  DateTime
-  duration     Int
-  planRequired String   @default("free")
-  createdAt    DateTime @default(now())
+  id          Int      @id @default(autoincrement())
+  title       String
+  subject     String
+  grade       String
+  dayOfWeek   String
+  scheduledAt DateTime
+  duration    Int
+  createdAt   DateTime @default(now())
 
-  facultyId   Int
-  faculty     FacultyProfile @relation(fields: [facultyId], references: [id], onDelete: Cascade)
-  enrollments Enrollment[]
-}
-
-model Enrollment {
-  id         Int      @id @default(autoincrement())
-  enrolledAt DateTime @default(now())
-
-  studentId Int
-  student   StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  sessionId Int
-  session   Session        @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-
-  @@unique([studentId, sessionId])
+  facultyId Int
+  faculty   FacultyProfile @relation(fields: [facultyId], references: [id], onDelete: Cascade)
 }
 
 model Doubt {

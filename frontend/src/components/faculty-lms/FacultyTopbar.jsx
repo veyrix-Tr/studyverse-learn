@@ -1,5 +1,3 @@
-import React from 'react';
-
 const pageTitles = {
   dashboard: 'Dashboard',
   schedule: 'Schedule',
@@ -11,7 +9,7 @@ const pageTitles = {
   feedback: 'Parent Feedback'
 };
 
-const FacultyTopbar = ({ activePage, onOpenModal, onNav, onShowToast }) => {
+const FacultyTopbar = ({ activePage, onOpenModal, onNav, onShowToast, pendingDoubts = 0 }) => {
   const title = pageTitles[activePage] || 'Dashboard';
   return (
     <header className="topbar" style={activePage === 'dashboard' ? { paddingTop: 16, paddingBottom: 16 } : undefined}>
@@ -29,7 +27,7 @@ const FacultyTopbar = ({ activePage, onOpenModal, onNav, onShowToast }) => {
       <div className="tbr">
         <div className="tb-doubts-chip" onClick={() => onNav('doubts')}>
           <span className="td-dot"></span>
-          5 doubts pending
+          {pendingDoubts} doubt{pendingDoubts !== 1 ? 's' : ''} pending
         </div>
         <button className="join-btn" onClick={() => onShowToast('Launching session: Atomic Structure with Rahul...')}>
           <span className="live-ring"></span>

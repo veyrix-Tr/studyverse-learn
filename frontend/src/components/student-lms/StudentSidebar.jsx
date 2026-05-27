@@ -1,6 +1,6 @@
 import React from 'react';
 
-const StudentSidebar = ({ activePage, onNav, profile }) => {
+const StudentSidebar = ({ activePage, onNav, profile, upcomingSessionsCount = 0 }) => {
   const ni = (page, extra) => `nav-item${(activePage === page || (extra && activePage === extra)) ? ' active' : ''}`;
   const name = profile?.name || 'Student';
   const initial = name.charAt(0).toUpperCase();
@@ -53,7 +53,7 @@ const StudentSidebar = ({ activePage, onNav, profile }) => {
             <rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>
           </svg>
           Sessions
-          <span className="nav-badge">2</span>
+          {upcomingSessionsCount > 0 && <span className="nav-badge">{upcomingSessionsCount}</span>}
         </div>
 
         <div className={ni('tests')} onClick={() => onNav('tests')}>

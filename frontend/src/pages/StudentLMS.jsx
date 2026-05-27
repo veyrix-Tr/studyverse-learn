@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import '../components/student-lms/StudentStyles.css';
 import StudentSidebar from '../components/student-lms/StudentSidebar';
 import StudentTopbar from '../components/student-lms/StudentTopbar';
@@ -10,6 +10,9 @@ const StudentLMS = () => {
   const [openModal, setOpenModal] = useState(null);
   const [toast, setToast] = useState({ show: false, msg: '' });
   const [profile, setProfile] = useState(null);
+  const [scores, setScores] = useState(null);
+  const [sessions, setSessions] = useState([]);
+  const [doubts, setDoubts] = useState([]);
   const toastTimer = useRef(null);
 
   useEffect(() => {
@@ -30,6 +33,27 @@ const StudentLMS = () => {
       .then(r => r.ok ? r.json() : null)
       .then(data => { if (data && !data.error) setProfile(data); })
       .catch(() => {});
+
+    fetch('http://localhost:5000/api/student/scores', {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data && data.weeks) setScores(data.weeks); })
+      .catch(() => {});
+
+    fetch('http://localhost:5000/api/student/sessions', {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (Array.isArray(data)) setSessions(data); })
+      .catch(() => {});
+
+    fetch('http://localhost:5000/api/student/doubts', {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (Array.isArray(data)) setDoubts(data); })
+      .catch(() => {});
   }, []);
 
   const showToast = (msg) => {
@@ -44,6 +68,7 @@ const StudentLMS = () => {
         activePage={activePage}
         onNav={setActivePage}
         profile={profile}
+        upcomingSessionsCount={sessions.filter(s => new Date(s.scheduledAt) > new Date()).length}
       />
       <div className="student-main">
         <StudentTopbar
@@ -57,6 +82,9 @@ const StudentLMS = () => {
           onNav={setActivePage}
           onShowToast={showToast}
           profile={profile}
+          scores={scores}
+          sessions={sessions}
+          doubts={doubts}
         />
       </div>
       <StudentModals

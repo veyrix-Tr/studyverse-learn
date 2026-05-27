@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 
 const ArcTrack = ({ height = 120, viewBox = '0 0 800 110', solidPath, dashedPath, fillPath, nodes }) => (
   <div className="arc-track" style={{ height, position: 'relative', margin: '0 0 24px' }}>
@@ -56,23 +56,93 @@ const WeeklyReport = ({ week, meta, score, change, changeClass, isOpen, onToggle
   </div>
 );
 
-const dashboardArcNodes = [
-  { type: 'done', pb: '18px', label: 'Day 1 Diagnostic<br><strong style="color:var(--gold);font-size:10px;">420 marks</strong>' },
-  { type: 'done', pb: '54px', label: 'Week 4<br><strong style="color:var(--gold);font-size:10px;">458 marks</strong>' },
-  { type: 'done', pb: '68px', label: 'Week 8<br><strong style="color:var(--gold);font-size:10px;">487 marks</strong>' },
-  { type: 'current', pb: '60px', label: 'Today<br><strong style="font-size:10px;">512 marks</strong>' },
-  { type: 'future', pb: '74px', label: 'Week 20<br><span style="font-size:10px;">~540 marks</span>' },
-  { type: 'future', pb: '63px', label: 'Final Target<br><span style="font-size:10px;">600 marks</span>' },
-];
+const getExamMax = (examTarget) => {
+  if (!examTarget) return 360;
+  const t = examTarget.toLowerCase();
+  if (t.includes('neet')) return 720;
+  return 360; // JEE Mains & Advanced
+};
 
-const journeyArcNodes = [
-  { type: 'done', pb: '20px', label: 'Day 1 Diagnostic<br><strong style="color:var(--gold);font-size:10px;">420 marks</strong>' },
-  { type: 'done', pb: '62px', label: 'Wk 4 Test<br><strong style="color:var(--gold);font-size:10px;">458</strong>' },
-  { type: 'done', pb: '80px', label: 'Wk 8 Test<br><strong style="color:var(--gold);font-size:10px;">487</strong>' },
-  { type: 'current', pb: '72px', label: 'Today<br><strong style="font-size:10px;">512</strong>' },
-  { type: 'future', pb: '86px', label: 'Wk 20 Goal<br><span style="font-size:10px;">~540</span>' },
-  { type: 'future', pb: '70px', label: 'Target<br><span style="font-size:10px;">600</span>' },
-];
+// Compute N evenly-spaced arc points along a quarter-sine curve (bottom-left → top-right)
+const arcPoints = (nNodes, viewBoxW, viewBoxH) => {
+  if (nNodes <= 1) return [{ x: 20, y: viewBoxH * 0.84 }];
+  const xStart = 20, xEnd = viewBoxW - 20;
+  const yMax = viewBoxH * 0.84, yMin = viewBoxH * 0.36;
+  return Array.from({ length: nNodes }, (_, i) => ({
+    x: xStart + (xEnd - xStart) * i / (nNodes - 1),
+    y: yMax - (yMax - yMin) * Math.sin(i / (nNodes - 1) * Math.PI / 2),
+  }));
+};
+
+// Convert point array to smooth SVG cubic-bezier path string
+const ptsToPath = (pts) => {
+  if (!pts || pts.length === 0) return '';
+  if (pts.length === 1) return `M ${pts[0].x.toFixed(1)} ${pts[0].y.toFixed(1)}`;
+  let d = `M ${pts[0].x.toFixed(1)} ${pts[0].y.toFixed(1)}`;
+  for (let i = 1; i < pts.length; i++) {
+    const p = pts[i - 1], c = pts[i];
+    const cx = ((p.x + c.x) / 2).toFixed(1);
+    d += ` C ${cx} ${p.y.toFixed(1)} ${cx} ${c.y.toFixed(1)} ${c.x.toFixed(1)} ${c.y.toFixed(1)}`;
+  }
+  return d;
+};
+
+// Build arc data: exactly N data nodes + 2 future nodes (N = weeks.length)
+const buildArc = (weeks, examTarget, viewBoxW, viewBoxH, containerH) => {
+  const max = getExamMax(examTarget);
+  const toM = (pct) => Math.round(pct * max / 100);
+  const target = toM(90);
+  const nData = weeks ? weeks.length : 0;
+  const toPb = (pt) => `${Math.round(containerH * (1 - pt.y / viewBoxH))}px`;
+
+  if (nData === 0) {
+    const allPts = arcPoints(4, viewBoxW, viewBoxH);
+    return {
+      nodes: allPts.map((pt, i) => ({
+        type: 'future', pb: toPb(pt),
+        label: i === 0 ? 'Baseline<br><span style="font-size:10px;">—</span>'
+             : i === 2 ? `Near Goal<br><span style="font-size:10px;">—</span>`
+             : i === 3 ? `Target<br><span style="font-size:10px;">${target}</span>`
+             : '—',
+      })),
+      solidPath: `M ${arcPoints(4, viewBoxW, viewBoxH)[0].x.toFixed(1)} ${arcPoints(4, viewBoxW, viewBoxH)[0].y.toFixed(1)}`,
+      dashedPath: ptsToPath(arcPoints(4, viewBoxW, viewBoxH)),
+      fillPath: null,
+    };
+  }
+
+  const nTotal = nData + 2;
+  const allPts = arcPoints(nTotal, viewBoxW, viewBoxH);
+  const last = weeks[nData - 1];
+  const currentM = toM(last.avgPct);
+  const near = Math.min(currentM + Math.round((target - currentM) * 0.5), target);
+
+  const nodes = allPts.map((pt, i) => {
+    const pb = toPb(pt);
+    if (i < nData) {
+      const w = weeks[i];
+      const m = toM(w.avgPct);
+      if (nData === 1) return { type: 'current', pb, label: `This Week<br><strong style="font-size:10px;">${m} marks</strong>` };
+      if (i === 0) return { type: 'done', pb, label: `Baseline<br><strong style="color:var(--gold);font-size:10px;">${m} marks</strong>` };
+      if (i === nData - 1) return { type: 'current', pb, label: `This Week<br><strong style="font-size:10px;">${m} marks</strong>` };
+      return { type: 'done', pb, label: `Wk ${w.weekNumber}<br><strong style="color:var(--gold);font-size:10px;">${m} marks</strong>` };
+    }
+    if (i === nTotal - 2) return { type: 'future', pb, label: `Near Goal<br><span style="font-size:10px;">~${near}</span>` };
+    if (i === nTotal - 1) return { type: 'future', pb, label: `Target<br><span style="font-size:10px;">${target}</span>` };
+    return { type: 'future', pb, label: '—' };
+  });
+
+  const solidPts = allPts.slice(0, nData);
+  const dashedPts = allPts.slice(nData - 1);
+  const solidPath = ptsToPath(solidPts);
+  const dashedPath = ptsToPath(dashedPts);
+  const last0 = solidPts[solidPts.length - 1];
+  const fillPath = nData > 1
+    ? solidPath + ` L ${last0.x.toFixed(1)} ${viewBoxH} L ${solidPts[0].x.toFixed(1)} ${viewBoxH} Z`
+    : null;
+
+  return { nodes, solidPath, dashedPath, fillPath };
+};
 
 const getGreeting = () => {
   const h = new Date().getHours();
@@ -97,11 +167,52 @@ const getDaysRemaining = (examTarget, targetYear) => {
   return diff > 0 ? diff : null;
 };
 
-const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile }) => {
+const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+const fmtTime = (iso) => new Date(iso).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+const fmtDate = (iso) => new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+const isUpcoming = (iso) => new Date(iso) > new Date();
+
+const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, scores, sessions = [], doubts = [] }) => {
   const firstName = profile?.name?.split(' ')[0] || 'there';
   const examTarget = profile?.studentProfile?.examTarget || 'your exam';
   const targetYear = profile?.studentProfile?.targetYear;
   const daysRemaining = getDaysRemaining(examTarget, targetYear);
+
+  const weeks = scores || [];
+  const max = getExamMax(examTarget);
+  const toM = (pct) => Math.round(pct * max / 100);
+  const targetMarks = toM(90);
+  const first = weeks[0] || null;
+  const last = weeks[weeks.length - 1] || null;
+  const baselineMarks = first ? toM(first.avgPct) : null;
+  const currentMarks = last ? toM(last.avgPct) : null;
+  const improvement = baselineMarks !== null && currentMarks !== null ? currentMarks - baselineMarks : null;
+  const toGo = currentMarks !== null ? targetMarks - currentMarks : null;
+
+  const dashArc    = buildArc(weeks, examTarget, 800, 110, 120);
+  const journeyArc = buildArc(weeks, examTarget, 800, 130, 140);
+
+  // Per-subject stats: first vs latest score across all weeks
+  const subjectStats = (() => {
+    if (weeks.length === 0) return [];
+    const map = {};
+    for (const w of weeks) {
+      for (const s of w.subjects) {
+        if (!map[s.subject]) map[s.subject] = { first: s, last: s };
+        map[s.subject].last = s;
+      }
+    }
+    return Object.entries(map).map(([name, { first, last }]) => {
+      const firstPct = Math.round(first.score / first.totalMarks * 100);
+      const lastPct  = Math.round(last.score  / last.totalMarks  * 100);
+      return { name, firstPct, lastPct, delta: lastPct - firstPct };
+    });
+  })();
+
+  const topImprover    = subjectStats.length > 0 ? subjectStats.reduce((a, b) => a.delta  > b.delta  ? a : b) : null;
+  const weakestSubject = subjectStats.length > 0 ? subjectStats.reduce((a, b) => a.lastPct < b.lastPct ? a : b) : null;
+
   const [coursesTab, setCoursesTab] = useState(0);
   const [videoTab, setVideoTab] = useState(0);
   const [sessionsTab, setSessionsTab] = useState(0);
@@ -128,7 +239,7 @@ const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile }
           <div>
             <div style={{ fontSize: '12px', color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 500, marginBottom: '6px' }}>{new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</div>
             <div style={{ fontFamily: 'var(--font-serif)', fontSize: '26px', fontWeight: 700, color: 'var(--text)' }}>{getGreeting()}, {firstName}.</div>
-            <div style={{ fontSize: '14px', color: 'var(--text2)', marginTop: '4px' }}>You have <strong style={{ color: 'var(--text)' }}>2 sessions</strong> today. {examTarget} is in <strong style={{ color: 'var(--gold)' }}>{daysRemaining ?? '—'} days</strong>.</div>
+            <div style={{ fontSize: '14px', color: 'var(--text2)', marginTop: '4px' }}>You have <strong style={{ color: 'var(--text)' }}>{sessions.filter(s => s.dayOfWeek === DAYS[new Date().getDay()]).length} session{sessions.filter(s => s.dayOfWeek === DAYS[new Date().getDay()]).length !== 1 ? 's' : ''}</strong> today. {examTarget} is in <strong style={{ color: 'var(--gold)' }}>{daysRemaining ?? '—'} days</strong>.</div>
           </div>
           <button className="btn btn-primary" style={{ flexShrink: 0, width: 'fit-content' }} onClick={() => onNav('journey')}>View My Journey →</button>
         </div>
@@ -149,15 +260,15 @@ const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile }
           <ArcTrack
             height={120}
             viewBox="0 0 800 110"
-            solidPath="M 20 90 Q 100 20 180 60 Q 260 90 340 45 Q 420 10 500 50"
-            dashedPath="M 500 50 Q 580 20 660 35 Q 720 45 780 15"
-            nodes={dashboardArcNodes}
+            solidPath={dashArc.solidPath}
+            dashedPath={dashArc.dashedPath}
+            nodes={dashArc.nodes}
           />
 
           <ScoreDeltas items={[
-            { label: 'Started At', val: '420', valClass: 'white', change: 'Day 1 diagnostic', neutral: true },
-            { label: "Today's Score", val: '512', valClass: 'gold', change: '+92 marks improvement' },
-            { label: 'Target Score', val: '600', valClass: 'white', change: '88 marks to go', changeStyle: { color: 'var(--gold)' } },
+            { label: 'Started At', val: baselineMarks ?? '—', valClass: 'white', change: first ? `Week ${first.weekNumber}` : 'No tests yet', neutral: true },
+            { label: "This Week's Score", val: currentMarks ?? '—', valClass: 'gold', change: improvement !== null ? `+${improvement} marks improvement` : 'No data yet' },
+            { label: 'Target Score', val: targetMarks, valClass: 'white', change: toGo !== null ? `${toGo} marks to go` : '—', changeStyle: { color: 'var(--gold)' } },
           ]} />
         </div>
 
@@ -167,22 +278,25 @@ const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile }
               <div className="sh-title">Today's Sessions</div>
               <span className="sh-action" onClick={() => onNav('sessions')}>All sessions →</span>
             </div>
-            <div className="sess-item">
-              <div className="sess-subj" style={{ background: 'rgba(232,168,48,0.1)' }}>⚛️</div>
-              <div className="sess-info">
-                <div className="sess-name">Atomic Structure — Quantum Numbers</div>
-                <div className="sess-meta">with Ajay Sharma • Chemistry</div>
-              </div>
-              <div className="sess-status s-live">● Live</div>
-            </div>
-            <div className="sess-item">
-              <div className="sess-subj" style={{ background: 'rgba(15,31,61,0.06)' }}>📐</div>
-              <div className="sess-info">
-                <div className="sess-name">Integration — By Parts &amp; Substitution</div>
-                <div className="sess-meta">with Ajay Sharma • Mathematics</div>
-              </div>
-              <div className="sess-status s-up">4:00 PM</div>
-            </div>
+            {(() => {
+              const today = DAYS[new Date().getDay()];
+              const todaySessions = sessions.filter(s => s.dayOfWeek === today);
+              if (todaySessions.length === 0) return (
+                <div style={{ fontSize: '13px', color: 'var(--text3)', padding: '12px 0' }}>No sessions scheduled for today.</div>
+              );
+              return todaySessions.map(s => (
+                <div key={s.id} className="sess-item">
+                  <div className="sess-subj" style={{ background: 'rgba(15,31,61,0.06)', fontSize: '18px' }}>📚</div>
+                  <div className="sess-info">
+                    <div className="sess-name">{s.title}</div>
+                    <div className="sess-meta">with {s.facultyName} • {s.subject}</div>
+                  </div>
+                  <div className={`sess-status ${isUpcoming(s.scheduledAt) ? 's-up' : 's-live'}`}>
+                    {isUpcoming(s.scheduledAt) ? fmtTime(s.scheduledAt) : '● Live'}
+                  </div>
+                </div>
+              ));
+            })()}
           </div>
 
           <div className="card card-gold-accent">
@@ -205,50 +319,52 @@ const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile }
 
         <div className="sh"><div className="sh-title">This Week's Insights</div></div>
         <div className="g3 mb">
-          <div className="insight">
-            <div className="insight-icon">📈</div>
-            <div>
-              <div className="insight-title">Maths Accuracy Up 11%</div>
-              <div className="insight-body">Your integration chapter score moved from 52% to 63% — exactly where we targeted last session.</div>
+          {topImprover ? (
+            <div className="insight">
+              <div className="insight-icon">📈</div>
+              <div>
+                <div className="insight-title">{topImprover.name} Up {topImprover.delta}%</div>
+                <div className="insight-body">Score moved from {topImprover.firstPct}% to {topImprover.lastPct}% since Week 1 — your strongest growth subject.</div>
+              </div>
             </div>
-          </div>
-          <div className="insight" style={{ background: 'var(--red-dim)', borderColor: 'rgba(239,68,68,0.2)' }}>
-            <div className="insight-icon">⚠️</div>
-            <div>
-              <div className="insight-title">Chemistry Still at 68%</div>
-              <div className="insight-body">Organic mechanisms need attention. Mentor has flagged this for today's session focus.</div>
+          ) : (
+            <div className="insight"><div className="insight-icon">📊</div><div><div className="insight-title">No Tests Yet</div><div className="insight-body">Complete your first weekly test to see your insights here.</div></div></div>
+          )}
+          {weakestSubject ? (
+            <div className="insight" style={{ background: 'var(--red-dim)', borderColor: 'rgba(239,68,68,0.2)' }}>
+              <div className="insight-icon">⚠️</div>
+              <div>
+                <div className="insight-title">{weakestSubject.name} at {weakestSubject.lastPct}%</div>
+                <div className="insight-body">Your weakest subject this week. Prioritise this to close the gap before {examTarget}.</div>
+              </div>
             </div>
-          </div>
+          ) : null}
           <div className="insight" style={{ background: 'var(--green-dim)', borderColor: 'rgba(34,197,94,0.2)' }}>
             <div className="insight-icon">🔥</div>
             <div>
-              <div className="insight-title">14-Day Study Streak</div>
-              <div className="insight-body">You've shown up every single day for 2 weeks. That discipline compounds.</div>
+              <div className="insight-title">{weeks.length} Week{weeks.length !== 1 ? 's' : ''} Documented</div>
+              <div className="insight-body">{weeks.length > 0 ? `${weeks.length} week${weeks.length !== 1 ? 's' : ''} of tests recorded. Each week builds a clearer picture of your progress.` : 'Your first test result will appear here automatically.'}</div>
             </div>
           </div>
         </div>
 
         <div className="card mb">
           <div className="sh"><div className="sh-title">Subject Progress — vs. Your Baseline</div></div>
-          <div className="subj-row">
-            <div className="subj-name">Chemistry</div>
-            <div className="subj-bar"><div className="pbar"><div className="pbar-inner pbar-gold" style={{ width: '68%' }}></div></div></div>
-            <div className="subj-score">68%</div>
-            <div className="subj-delta" style={{ color: 'var(--green)' }}>+14%</div>
-          </div>
-          <div className="subj-row">
-            <div className="subj-name">Mathematics</div>
-            <div className="subj-bar"><div className="pbar"><div className="pbar-inner pbar-green" style={{ width: '82%' }}></div></div></div>
-            <div className="subj-score">82%</div>
-            <div className="subj-delta" style={{ color: 'var(--green)' }}>+22%</div>
-          </div>
-          <div className="subj-row">
-            <div className="subj-name">Physics</div>
-            <div className="subj-bar"><div className="pbar"><div className="pbar-inner" style={{ width: '61%', background: 'var(--navy3)' }}></div></div></div>
-            <div className="subj-score">61%</div>
-            <div className="subj-delta" style={{ color: 'var(--green)' }}>+9%</div>
-          </div>
-          <div style={{ fontSize: '11px', color: 'var(--text3)', marginTop: '12px', textAlign: 'right' }}>Deltas calculated from Day 1 diagnostic baseline • Apr 15, 2026</div>
+          {subjectStats.length > 0 ? subjectStats.map(s => (
+            <div className="subj-row" key={s.name}>
+              <div className="subj-name">{s.name}</div>
+              <div className="subj-bar"><div className="pbar"><div className="pbar-inner pbar-gold" style={{ width: `${s.lastPct}%` }}></div></div></div>
+              <div className="subj-score">{s.lastPct}%</div>
+              <div className="subj-delta" style={{ color: s.delta >= 0 ? 'var(--green)' : 'var(--red)' }}>{s.delta >= 0 ? '+' : ''}{s.delta}%</div>
+            </div>
+          )) : (
+            <div style={{ color: 'var(--text3)', fontSize: '13px', padding: '12px 0' }}>No test data yet. Your subject breakdown will appear here after your first weekly test.</div>
+          )}
+          {first && (
+            <div style={{ fontSize: '11px', color: 'var(--text3)', marginTop: '12px', textAlign: 'right' }}>
+              Deltas from Week 1 baseline &bull; {new Date(first.testDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+            </div>
+          )}
         </div>
       </div>
 
@@ -270,63 +386,61 @@ const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile }
           <ArcTrack
             height={140}
             viewBox="0 0 800 130"
-            solidPath="M 20 110 Q 100 30 180 70 Q 260 110 340 55 Q 420 15 500 60"
-            dashedPath="M 500 60 Q 580 30 660 45 Q 720 55 780 15"
-            fillPath="M 20 110 Q 100 30 180 70 Q 260 110 340 55 Q 420 15 500 60 L 500 130 L 20 130 Z"
-            nodes={journeyArcNodes}
+            solidPath={journeyArc.solidPath}
+            dashedPath={journeyArc.dashedPath}
+            fillPath={journeyArc.fillPath}
+            nodes={journeyArc.nodes}
           />
 
           <ScoreDeltas items={[
-            { label: 'Started At (Day 1)', val: '420', valClass: 'white', change: 'Jan 28, 2026', neutral: true },
-            { label: 'Current Score', val: '512', valClass: 'gold', change: '+92 marks in 78 days' },
-            { label: 'Target', val: '600', valClass: 'white', change: '88 marks to go', changeStyle: { color: 'var(--gold)' } },
+            { label: 'Started At (Week 1)', val: baselineMarks ?? '—', valClass: 'white', change: first ? new Date(first.testDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'No data', neutral: true },
+            { label: 'Current Score', val: currentMarks ?? '—', valClass: 'gold', change: improvement !== null ? `+${improvement} marks in ${weeks.length} week${weeks.length !== 1 ? 's' : ''}` : 'No tests yet' },
+            { label: 'Target', val: targetMarks, valClass: 'white', change: toGo !== null ? `${toGo} marks to go` : '—', changeStyle: { color: 'var(--gold)' } },
           ]} />
         </div>
 
         <div className="sh mb" style={{ marginBottom: '16px' }}>
           <div className="sh-title">Weekly Performance Reports</div>
-          <span className="pill pill-navy">11 weeks documented</span>
+          <span className="pill pill-navy">{weeks.length} week{weeks.length !== 1 ? 's' : ''} documented</span>
         </div>
 
-        <WeeklyReport week="Week 11 — Apr 7–13" meta="Focus: Organic Chemistry + Integration" score="512" change="+25" changeClass="up" isOpen={openWR.has(0)} onToggle={() => toggleWR(0)}>
-          <div style={{ fontSize: '13px', fontStyle: 'italic', color: 'var(--text2)', borderLeft: '3px solid var(--gold)', paddingLeft: '14px', marginBottom: '16px', lineHeight: 1.7 }}>
-            "Strong week. Integration accuracy hit 68% — best ever. Chemistry organic still needs two more focused sessions before it clicks. Keep the Physics momentum going."<br/>
-            <span style={{ fontSize: '11px', color: 'var(--text3)' }}>— Ajay Sharma</span>
+        {weeks.length === 0 ? (
+          <div style={{ textAlign: 'center', color: 'var(--text3)', fontSize: '13px', padding: '32px 0' }}>
+            No test results yet. Complete your first weekly test to see your journey here.
           </div>
-          <div className="subj-row" style={{ padding: '8px 0' }}>
-            <div className="subj-name">Chemistry</div>
-            <div className="subj-bar"><div className="pbar"><div className="pbar-inner pbar-gold" style={{ width: '68%' }}></div></div></div>
-            <div className="subj-score">68%</div><div className="subj-delta" style={{ color: 'var(--green)' }}>+6%</div>
-          </div>
-          <div className="subj-row" style={{ padding: '8px 0' }}>
-            <div className="subj-name">Mathematics</div>
-            <div className="subj-bar"><div className="pbar"><div className="pbar-inner pbar-green" style={{ width: '82%' }}></div></div></div>
-            <div className="subj-score">82%</div><div className="subj-delta" style={{ color: 'var(--green)' }}>+11%</div>
-          </div>
-          <div className="subj-row" style={{ padding: '8px 0' }}>
-            <div className="subj-name">Physics</div>
-            <div className="subj-bar"><div className="pbar"><div className="pbar-inner pbar-navy" style={{ width: '61%' }}></div></div></div>
-            <div className="subj-score">61%</div><div className="subj-delta" style={{ color: 'var(--green)' }}>+4%</div>
-          </div>
-          <div style={{ fontSize: '12px', color: 'var(--text3)', marginTop: '12px' }}>Sessions: 6 completed • Hours: 14.5 hrs • Doubts resolved: 8</div>
-        </WeeklyReport>
-
-        <WeeklyReport week="Week 10 — Mar 31 – Apr 6" meta="Focus: Electrostatics + Calculus" score="487" change="+18" changeClass="up" isOpen={openWR.has(1)} onToggle={() => toggleWR(1)}>
-          <div style={{ fontSize: '13px', fontStyle: 'italic', color: 'var(--text2)', borderLeft: '3px solid var(--gold)', paddingLeft: '14px', marginBottom: '16px', lineHeight: 1.7 }}>
-            "Good progress on electrostatics. Calculus fundamentals are now solid — moving to applications next week."<br/>
-            <span style={{ fontSize: '11px', color: 'var(--text3)' }}>— Ajay Sharma</span>
-          </div>
-          <div style={{ fontSize: '12px', color: 'var(--text3)' }}>Sessions: 5 completed • Hours: 12 hrs</div>
-        </WeeklyReport>
-
-        <WeeklyReport week="Week 8 — Mar 17–23" meta="Focus: Atomic Structure + Limits" score="469" change="+11" changeClass="up" isOpen={openWR.has(2)} onToggle={() => toggleWR(2)}>
-        </WeeklyReport>
-
-        <WeeklyReport week="Week 4 — Feb 18–24" meta="First full mock after baseline" score="458" change="+38" changeClass="up" isOpen={openWR.has(3)} onToggle={() => toggleWR(3)}>
-        </WeeklyReport>
-
-        <WeeklyReport week="Day 1 Diagnostic — Jan 28" meta="Baseline established" score="420" change="Start" changeClass="start">
-        </WeeklyReport>
+        ) : (
+          [...weeks].reverse().map((w, i, arr) => {
+            const prevW = arr[i + 1];
+            const wMarks = toM(w.avgPct);
+            const prevMarks = prevW ? toM(prevW.avgPct) : null;
+            const delta = prevMarks !== null ? wMarks - prevMarks : null;
+            const isFirst = i === arr.length - 1;
+            const dateStr = new Date(w.testDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+            return (
+              <WeeklyReport
+                key={w.weekNumber}
+                week={`Week ${w.weekNumber} — ${dateStr}`}
+                meta={w.subjects.map(s => s.subject).join(' + ')}
+                score={wMarks}
+                change={isFirst ? 'Start' : delta >= 0 ? `+${delta}` : `${delta}`}
+                changeClass={isFirst ? 'start' : delta >= 0 ? 'up' : 'down'}
+                isOpen={openWR.has(i)}
+                onToggle={() => toggleWR(i)}
+              >
+                {w.subjects.map(s => {
+                  const pct = Math.round(s.score / s.totalMarks * 100);
+                  return (
+                    <div key={s.subject} className="subj-row" style={{ padding: '8px 0' }}>
+                      <div className="subj-name">{s.subject}</div>
+                      <div className="subj-bar"><div className="pbar"><div className="pbar-inner pbar-gold" style={{ width: `${pct}%` }}></div></div></div>
+                      <div className="subj-score">{pct}%</div>
+                    </div>
+                  );
+                })}
+              </WeeklyReport>
+            );
+          })
+        )}
       </div>
 
       {/* ══════════ COURSES ══════════ */}
@@ -406,25 +520,39 @@ const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile }
       <div className={p('sessions')}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '22px' }}>
           <div className="tabs" style={{ marginBottom: 0 }}>
-            {['Upcoming', 'Past', 'Recordings'].map((t, i) => (
+            {['Upcoming', 'Past'].map((t, i) => (
               <div key={t} className={`tab${sessionsTab === i ? ' on' : ''}`} onClick={() => setSessionsTab(i)}>{t}</div>
             ))}
           </div>
-          <button className="btn btn-primary" onClick={() => onOpenModal('book-modal')}>+ Book Session</button>
         </div>
         <div className="card mb">
-          <table className="tbl">
-            <thead>
-              <tr><th>Session Topic</th><th>Subject</th><th>Date &amp; Time</th><th>Duration</th><th>Status</th><th></th></tr>
-            </thead>
-            <tbody>
-              <tr><td>Atomic Structure — Quantum Numbers</td><td><span className="pill pill-gold">Chemistry</span></td><td>Today, 2:00 PM</td><td>60 min</td><td><span className="sess-status s-live">● Live Now</span></td><td><button className="btn btn-primary btn-sm" onClick={() => onShowToast('Joining...')}>Join</button></td></tr>
-              <tr><td>Integration — By Parts</td><td><span className="pill pill-navy">Maths</span></td><td>Today, 4:00 PM</td><td>75 min</td><td><span className="sess-status s-up">Upcoming</span></td><td><button className="btn btn-ghost btn-sm">Details</button></td></tr>
-              <tr><td>Electrostatics — Gauss's Law</td><td><span className="pill pill-navy">Physics</span></td><td>Apr 17, 7:00 PM</td><td>60 min</td><td><span className="sess-status s-up">Upcoming</span></td><td><button className="btn btn-ghost btn-sm">Details</button></td></tr>
-              <tr><td>Organic Chemistry — Mechanisms</td><td><span className="pill pill-gold">Chemistry</span></td><td>Apr 19, 3:00 PM</td><td>90 min</td><td><span className="sess-status s-up">Upcoming</span></td><td><button className="btn btn-ghost btn-sm">Details</button></td></tr>
-              <tr><td>Binomial Theorem &amp; Series</td><td><span className="pill pill-navy">Maths</span></td><td>Apr 21, 5:00 PM</td><td>60 min</td><td><span className="sess-status s-up">Upcoming</span></td><td><button className="btn btn-ghost btn-sm">Details</button></td></tr>
-            </tbody>
-          </table>
+          {(() => {
+            const filtered = sessions.filter(s => sessionsTab === 0 ? isUpcoming(s.scheduledAt) : !isUpcoming(s.scheduledAt));
+            if (filtered.length === 0) return (
+              <div style={{ fontSize: '13px', color: 'var(--text3)', padding: '16px 0', textAlign: 'center' }}>
+                {sessionsTab === 0 ? 'No upcoming sessions.' : 'No past sessions yet.'}
+              </div>
+            );
+            return (
+              <table className="tbl">
+                <thead>
+                  <tr><th>Session Topic</th><th>Subject</th><th>Day &amp; Time</th><th>Duration</th><th>Status</th><th></th></tr>
+                </thead>
+                <tbody>
+                  {filtered.map(s => (
+                    <tr key={s.id}>
+                      <td>{s.title}</td>
+                      <td><span className="pill pill-navy">{s.subject}</span></td>
+                      <td>{s.dayOfWeek}, {fmtTime(s.scheduledAt)}</td>
+                      <td>{s.duration} min</td>
+                      <td><span className={`sess-status ${isUpcoming(s.scheduledAt) ? 's-up' : ''}`}>{isUpcoming(s.scheduledAt) ? 'Upcoming' : 'Completed'}</span></td>
+                      <td><button className="btn btn-ghost btn-sm" onClick={() => onShowToast('Opening session details...')}>Details</button></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            );
+          })()}
         </div>
       </div>
 
@@ -432,7 +560,7 @@ const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile }
       <div className={p('tests')}>
         <div className="g4 mb">
           <div className="stat"><div className="stat-accent accent-gold"></div><div className="stat-lbl">Tests Taken</div><div className="stat-val">18</div><div className="stat-note up">vs 0 at start</div></div>
-          <div className="stat"><div className="stat-accent accent-green"></div><div className="stat-lbl">Latest Score</div><div className="stat-val">512</div><div className="stat-note up">+92 from baseline</div></div>
+          <div className="stat"><div className="stat-accent accent-green"></div><div className="stat-lbl">Latest Score</div><div className="stat-val">{currentMarks ?? '—'}</div><div className="stat-note up">{improvement !== null ? `+${improvement} from baseline` : 'No data yet'}</div></div>
           <div className="stat"><div className="stat-accent accent-gold"></div><div className="stat-lbl">Best Accuracy</div><div className="stat-val">83%</div><div className="stat-note up">Maths this week</div></div>
           <div className="stat"><div className="stat-accent accent-navy"></div><div className="stat-lbl">Weak Areas</div><div className="stat-val">7</div><div className="stat-note warn">flagged by mentor</div></div>
         </div>
@@ -548,36 +676,41 @@ const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile }
       <div className={p('doubt')}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '22px' }}>
           <div className="tabs" style={{ marginBottom: 0 }}>
-            {['Open Doubts', 'Resolved', 'All'].map((t, i) => (
+            {['Open', 'Resolved', 'All'].map((t, i) => (
               <div key={t} className={`tab${doubtTab === i ? ' on' : ''}`} onClick={() => setDoubtTab(i)}>{t}</div>
             ))}
           </div>
           <button className="btn btn-primary" onClick={() => onOpenModal('doubt-modal')}>+ Ask a Doubt</button>
         </div>
-        <div className="doubt-item">
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-            <span className="pill pill-gold">Chemistry</span>
-            <span style={{ fontSize: '11px', color: 'var(--text3)' }}>2 hours ago</span>
-          </div>
-          <div className="doubt-q">How to determine the shape of complex molecules using VSEPR theory?</div>
-          <div className="doubt-footer"><span>Awaiting Vinay's response</span><span>3 views</span></div>
-        </div>
-        <div className="doubt-item" style={{ borderColor: 'rgba(34,197,94,0.25)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-            <span className="pill pill-navy">Maths</span>
-            <span style={{ fontSize: '11px', color: 'var(--green)' }}>✓ Answered by Vinay</span>
-          </div>
-          <div className="doubt-q">Explain the difference between definite and improper integrals with examples from JEE problems</div>
-          <div className="doubt-footer"><span>Replied 1 hour ago</span><span>Read</span></div>
-        </div>
-        <div className="doubt-item">
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-            <span className="pill pill-navy">Physics</span>
-            <span style={{ fontSize: '11px', color: 'var(--text3)' }}>Yesterday</span>
-          </div>
-          <div className="doubt-q">Why does current lead voltage in a capacitor but lag in an inductor?</div>
-          <div className="doubt-footer"><span>Awaiting response</span><span>1 view</span></div>
-        </div>
+        {(() => {
+          const filtered = doubts.filter(d =>
+            doubtTab === 0 ? !d.answeredAt :
+            doubtTab === 1 ?  d.answeredAt : true
+          );
+          if (filtered.length === 0) return (
+            <div style={{ fontSize: '13px', color: 'var(--text3)', padding: '24px 0', textAlign: 'center' }}>
+              {doubtTab === 0 ? 'No open doubts.' : doubtTab === 1 ? 'No resolved doubts yet.' : 'No doubts raised yet.'}
+            </div>
+          );
+          return filtered.map(d => (
+            <div key={d.id} className="doubt-item" style={d.answeredAt ? { borderColor: 'rgba(34,197,94,0.25)' } : {}}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                <span className="pill pill-navy">{d.subject || 'General'}</span>
+                {d.answeredAt
+                  ? <span style={{ fontSize: '11px', color: 'var(--green)' }}>✓ Answered by {d.facultyName}</span>
+                  : <span style={{ fontSize: '11px', color: 'var(--text3)' }}>{fmtDate(d.createdAt || new Date())}</span>
+                }
+              </div>
+              <div className="doubt-q">{d.question}</div>
+              {d.answeredAt && d.answer && (
+                <div style={{ marginTop: '8px', fontSize: '12.5px', color: 'var(--text2)', background: 'var(--cream2)', padding: '10px 12px', borderRadius: 'var(--r)', lineHeight: 1.7 }}>{d.answer}</div>
+              )}
+              <div className="doubt-footer">
+                <span>{d.answeredAt ? `Replied ${fmtDate(d.answeredAt)}` : `Awaiting ${d.facultyName}'s response`}</span>
+              </div>
+            </div>
+          ));
+        })()}
       </div>
 
       {/* ══════════ PARENT VIEW ══════════ */}
@@ -594,12 +727,12 @@ const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile }
           <div className="card">
             <div className="sh-title" style={{ marginBottom: '16px' }}>Score This Week vs. Last Week</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
-              <div><div style={{ fontSize: '11px', color: 'var(--text3)', marginBottom: '4px' }}>Last Week</div><div style={{ fontFamily: 'var(--font-serif)', fontSize: '32px', fontWeight: 700, color: 'var(--text)' }}>487</div></div>
+              <div><div style={{ fontSize: '11px', color: 'var(--text3)', marginBottom: '4px' }}>Last Week</div><div style={{ fontFamily: 'var(--font-serif)', fontSize: '32px', fontWeight: 700, color: 'var(--text)' }}>{weeks.length >= 2 ? toM(weeks[weeks.length - 2].avgPct) : '—'}</div></div>
               <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-              <div><div style={{ fontSize: '11px', color: 'var(--text3)', marginBottom: '4px' }}>This Week</div><div style={{ fontFamily: 'var(--font-serif)', fontSize: '32px', fontWeight: 700, color: 'var(--gold)' }}>512</div></div>
+              <div><div style={{ fontSize: '11px', color: 'var(--text3)', marginBottom: '4px' }}>This Week</div><div style={{ fontFamily: 'var(--font-serif)', fontSize: '32px', fontWeight: 700, color: 'var(--gold)' }}>{currentMarks ?? '—'}</div></div>
               <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
                 <div style={{ fontSize: '11px', color: 'var(--text3)' }}>Improvement</div>
-                <div style={{ fontFamily: 'var(--font-serif)', fontSize: '24px', fontWeight: 700, color: 'var(--green)' }}>+25</div>
+                <div style={{ fontFamily: 'var(--font-serif)', fontSize: '24px', fontWeight: 700, color: 'var(--green)' }}>{weeks.length >= 2 ? `+${toM(weeks[weeks.length - 1].avgPct) - toM(weeks[weeks.length - 2].avgPct)}` : '—'}</div>
                 <div style={{ fontSize: '11px', color: 'var(--green)' }}>marks this week</div>
               </div>
             </div>

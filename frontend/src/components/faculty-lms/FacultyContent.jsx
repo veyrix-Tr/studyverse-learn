@@ -1,4 +1,16 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
+
+const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const fmtTime = (iso) => new Date(iso).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+const fmtDate = (iso) => new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+const isUpcoming = (iso) => new Date(iso) > new Date();
+const timeAgo = (iso) => {
+  const mins = Math.round((Date.now() - new Date(iso)) / 60000);
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.round(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return `${Math.round(hrs / 24)}d ago`;
+};
 
 const SubjRow = ({ name, pct, bar, color }) => (
   <div className="sc-subj-row">
@@ -59,24 +71,33 @@ const DoubtItem = ({ priority, av, name, time, pills, question, placeholder, ext
 
 const getGreeting = () => { const h = new Date().getHours(); if (h < 12) return 'Good morning'; if (h < 17) return 'Good afternoon'; return 'Good evening'; };
 
-const FacultyContent = ({ activePage, onOpenModal, onOpenStudentDetail, onNav, onShowToast, profile }) => {
+const FacultyContent = ({ activePage, onOpenModal, onOpenStudentDetail, onNav, onShowToast, profile, sessions = [], doubts = [] }) => {
   const firstName = profile?.name?.split(' ').find(p => !p.startsWith('Dr')) || profile?.name?.split(' ')[0] || 'there';
   const [scheduleTab, setScheduleTab] = useState(0);
   const [doubtsTab, setDoubtsTab] = useState(0);
   const [openReplies, setOpenReplies] = useState(new Set());
   const [repliedDoubts, setRepliedDoubts] = useState(new Set());
 
-  const toggleReply = (i) => {
+  const pending = doubts.filter(d => !d.answeredAt && !repliedDoubts.has(d.id));
+  const answered = doubts.filter(d => d.answeredAt || repliedDoubts.has(d.id));
+
+  const today = DAYS[new Date().getDay()];
+  const todaySessions = sessions.filter(s => s.dayOfWeek === today);
+  const upcomingSessions = sessions.filter(s => isUpcoming(s.scheduledAt));
+  const pastSessions = sessions.filter(s => !isUpcoming(s.scheduledAt));
+  const activeStudents = new Set(sessions.flatMap(s => s.enrolledStudents || [])).size;
+
+  const toggleReply = (id) => {
     setOpenReplies(prev => {
       const next = new Set(prev);
-      next.has(i) ? next.delete(i) : next.add(i);
+      next.has(id) ? next.delete(id) : next.add(id);
       return next;
     });
   };
 
-  const markReplied = (i) => {
-    setRepliedDoubts(prev => new Set([...prev, i]));
-    setOpenReplies(prev => { const next = new Set(prev); next.delete(i); return next; });
+  const markReplied = (id) => {
+    setRepliedDoubts(prev => new Set([...prev, id]));
+    setOpenReplies(prev => { const next = new Set(prev); next.delete(id); return next; });
     onShowToast('Reply sent ✓ Doubt marked as answered');
   };
 
@@ -120,7 +141,7 @@ const FacultyContent = ({ activePage, onOpenModal, onOpenStudentDetail, onNav, o
           <div>
             <div className="db-date">{new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</div>
             <div className="db-greeting">{getGreeting()}, {firstName}.</div>
-            <div className="db-sub">You have <strong>2 sessions</strong> today &nbsp;·&nbsp; <span className="db-red">5 doubts</span> pending reply</div>
+            <div className="db-sub">You have <strong>{todaySessions.length} session{todaySessions.length !== 1 ? 's' : ''}</strong> today &nbsp;·&nbsp; <span className="db-red">{pending.length} doubt{pending.length !== 1 ? 's' : ''}</span> pending reply</div>
           </div>
           <div className="db-actions">
             <button className="btn btn-ghost-inv btn-sm" onClick={() => onNav('reports')}>Weekly Report Due Sunday →</button>
@@ -131,18 +152,18 @@ const FacultyContent = ({ activePage, onOpenModal, onOpenStudentDetail, onNav, o
         <div className="g4 mb">
           <div className="stat sa-navy">
             <div className="stat-l">Active Students</div>
-            <div className="stat-v">8</div>
-            <div className="stat-n neu">2 new this month</div>
+            <div className="stat-v">{activeStudents}</div>
+            <div className="stat-n neu">{sessions.length} sessions scheduled</div>
           </div>
           <div className="stat sa-red">
             <div className="stat-l">Doubts Pending</div>
-            <div className="stat-v">5</div>
-            <div className="stat-n bad">Oldest: 18h ago</div>
+            <div className="stat-v">{pending.length}</div>
+            <div className="stat-n bad">{pending.length > 0 ? `Oldest: ${timeAgo(pending[pending.length-1].createdAt)}` : 'All clear!'}</div>
           </div>
           <div className="stat sa-gold">
-            <div className="stat-l">Sessions This Week</div>
-            <div className="stat-v">11</div>
-            <div className="stat-n up">↑ vs 9 last week</div>
+            <div className="stat-l">Upcoming Sessions</div>
+            <div className="stat-v">{upcomingSessions.length}</div>
+            <div className="stat-n up">{todaySessions.length} today</div>
           </div>
           <div className="stat sa-green">
             <div className="stat-l">Avg Improvement</div>
@@ -157,25 +178,19 @@ const FacultyContent = ({ activePage, onOpenModal, onOpenStudentDetail, onNav, o
               <div className="sh-t">Today's Sessions</div>
               <span className="sh-a" onClick={() => onNav('schedule')}>Full schedule →</span>
             </div>
-            <div className="sched-item">
-              <div className="sched-time">2:00 PM</div>
-              <div className="sched-dot" style={{ background: 'var(--green)', boxShadow: '0 0 0 3px rgba(34,197,94,0.2)' }}></div>
-              <div className="sched-info">
-                <div className="sched-name">Rahul M. — Atomic Structure</div>
-                <div className="sched-meta">Chemistry • 60 min • JEE Mains</div>
+            {todaySessions.length === 0 ? (
+              <div style={{ padding: '12px 0', fontSize: '13px', color: 'var(--text3)' }}>No sessions scheduled for today.</div>
+            ) : todaySessions.map(s => (
+              <div key={s.id} className="sched-item">
+                <div className="sched-time">{fmtTime(s.scheduledAt)}</div>
+                <div className="sched-dot" style={{ background: isUpcoming(s.scheduledAt) ? 'var(--gold)' : 'var(--green)', boxShadow: isUpcoming(s.scheduledAt) ? 'none' : '0 0 0 3px rgba(34,197,94,0.2)' }}></div>
+                <div className="sched-info">
+                  <div className="sched-name">{s.title}</div>
+                  <div className="sched-meta">{s.subject} • {s.duration} min • {s.enrolledCount} student{s.enrolledCount !== 1 ? 's' : ''}</div>
+                </div>
+                <div className={`sched-status ${isUpcoming(s.scheduledAt) ? 's-up' : 's-live'}`}>{isUpcoming(s.scheduledAt) ? 'Upcoming' : '● Live'}</div>
               </div>
-              <div className="sched-status s-live">● Live Now</div>
-            </div>
-            <div className="sched-item">
-              <div className="sched-time">4:00 PM</div>
-              <div className="sched-dot" style={{ background: 'var(--gold)' }}></div>
-              <div className="sched-info">
-                <div className="sched-name">Sneha K. — Integration (By Parts)</div>
-                <div className="sched-meta">Mathematics • 75 min • JEE Mains</div>
-              </div>
-              <div className="sched-status s-up">Upcoming</div>
-            </div>
-            <div style={{ padding: '10px 0 2px', fontSize: '12px', color: 'var(--text3)', textAlign: 'center' }}>No more sessions today</div>
+            ))}
           </div>
 
           <div className="card">
@@ -183,30 +198,22 @@ const FacultyContent = ({ activePage, onOpenModal, onOpenStudentDetail, onNav, o
               <div className="sh-t">Doubts Needing Reply</div>
               <span className="sh-a" onClick={() => onNav('doubts')}>Reply all →</span>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '10px 12px', background: 'var(--rdim)', borderRadius: 'var(--r)', border: '1px solid rgba(239,68,68,0.2)', cursor: 'pointer' }} onClick={() => onNav('doubts')}>
-                <div className="di-av">R</div>
-                <div>
-                  <div style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--text)' }}>Rahul M. <span style={{ color: 'var(--red)', fontSize: '10px', fontWeight: 400 }}>18h ago</span></div>
-                  <div style={{ fontSize: '12.5px', color: 'var(--text2)' }}>How does Gauss's law apply when charge is outside the surface?</div>
-                </div>
+            {pending.length === 0 ? (
+              <div style={{ padding: '12px 0', fontSize: '13px', color: 'var(--text3)' }}>All doubts answered. Great work!</div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {pending.slice(0, 3).map(d => (
+                  <div key={d.id} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '10px 12px', background: 'var(--cream2)', borderRadius: 'var(--r)', border: '1px solid var(--b)', cursor: 'pointer' }} onClick={() => onNav('doubts')}>
+                    <div className="di-av">{d.studentName.charAt(0)}</div>
+                    <div>
+                      <div style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--text)' }}>{d.studentName} <span style={{ color: 'var(--text3)', fontSize: '10px', fontWeight: 400 }}>{timeAgo(d.createdAt)}</span></div>
+                      <div style={{ fontSize: '12.5px', color: 'var(--text2)' }}>{d.question.length > 80 ? d.question.slice(0, 80) + '…' : d.question}</div>
+                    </div>
+                  </div>
+                ))}
+                {pending.length > 3 && <div style={{ fontSize: '11.5px', color: 'var(--text3)', textAlign: 'center', paddingTop: '4px' }}>+{pending.length - 3} more doubts pending</div>}
               </div>
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '10px 12px', background: 'var(--odim)', borderRadius: 'var(--r)', border: '1px solid rgba(249,115,22,0.2)', cursor: 'pointer' }} onClick={() => onNav('doubts')}>
-                <div className="di-av">S</div>
-                <div>
-                  <div style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--text)' }}>Sneha K. <span style={{ color: 'var(--orange)', fontSize: '10px', fontWeight: 400 }}>6h ago</span></div>
-                  <div style={{ fontSize: '12.5px', color: 'var(--text2)' }}>Integration by parts — when to choose u and v?</div>
-                </div>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '10px 12px', background: 'var(--cream2)', borderRadius: 'var(--r)', border: '1px solid var(--b)', cursor: 'pointer' }} onClick={() => onNav('doubts')}>
-                <div className="di-av">P</div>
-                <div>
-                  <div style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--text)' }}>Priya D. <span style={{ color: 'var(--text3)', fontSize: '10px', fontWeight: 400 }}>2h ago</span></div>
-                  <div style={{ fontSize: '12.5px', color: 'var(--text2)' }}>Markovnikov vs anti-Markovnikov — explain with example</div>
-                </div>
-              </div>
-              <div style={{ fontSize: '11.5px', color: 'var(--text3)', textAlign: 'center', paddingTop: '4px' }}>+2 more doubts pending</div>
-            </div>
+            )}
           </div>
         </div>
 
@@ -237,7 +244,7 @@ const FacultyContent = ({ activePage, onOpenModal, onOpenStudentDetail, onNav, o
       <div className={`page${activePage === 'schedule' ? ' on' : ''}`}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
           <div className="tabs" style={{ marginBottom: 0 }}>
-            {['Today', 'This Week', 'All'].map((t, i) => (
+            {['Today', 'Upcoming', 'All'].map((t, i) => (
               <div key={t} className={`tab${scheduleTab === i ? ' on' : ''}`} onClick={() => setScheduleTab(i)}>{t}</div>
             ))}
           </div>
@@ -247,57 +254,34 @@ const FacultyContent = ({ activePage, onOpenModal, onOpenStudentDetail, onNav, o
         <div className="card mb">
           <table className="tbl">
             <thead>
-              <tr><th>Student</th><th>Topic</th><th>Subject</th><th>Time</th><th>Duration</th><th>Status</th><th>Actions</th></tr>
+              <tr><th>Students</th><th>Topic</th><th>Subject</th><th>Time</th><th>Duration</th><th>Status</th><th>Actions</th></tr>
             </thead>
             <tbody>
-              <tr key="sched-rahul">
-                <td><div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><div className="di-av">R</div>Rahul Mehta</div></td>
-                <td>Atomic Structure — Quantum Numbers</td>
-                <td><span className="pill pg">Chemistry</span></td>
-                <td>Today, 2:00 PM</td><td>60 min</td>
-                <td><span className="sched-status s-live">● Live Now</span></td>
-                <td><button className="btn btn-green btn-sm" onClick={() => onShowToast('Launching session...')}>Join</button></td>
-              </tr>
-              <tr key="sched-sneha">
-                <td><div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><div className="di-av">S</div>Sneha Kapoor</div></td>
-                <td>Integration — By Parts</td>
-                <td><span className="pill pn">Mathematics</span></td>
-                <td>Today, 4:00 PM</td><td>75 min</td>
-                <td><span className="sched-status s-up">Upcoming</span></td>
-                <td><div style={{ display: 'flex', gap: '6px' }}><button className="btn btn-ghost btn-sm" onClick={() => onOpenModal('session-note-modal')}>Add Note</button><button className="btn btn-gold btn-sm" onClick={() => onShowToast('Reminder set!')}>Remind</button></div></td>
-              </tr>
-              <tr key="sched-priya">
-                <td><div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><div className="di-av">P</div>Priya Desai</div></td>
-                <td>Organic Chemistry — Reaction Mechanisms</td>
-                <td><span className="pill pg">Chemistry</span></td>
-                <td>Apr 17, 3:00 PM</td><td>90 min</td>
-                <td><span className="sched-status s-up">Upcoming</span></td>
-                <td><button className="btn btn-ghost btn-sm">Details</button></td>
-              </tr>
-              <tr key="sched-arjun">
-                <td><div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><div className="di-av">A</div>Arjun Singh</div></td>
-                <td>Electrostatics — Gauss's Law</td>
-                <td><span className="pill pn">Physics</span></td>
-                <td>Apr 18, 5:00 PM</td><td>60 min</td>
-                <td><span className="sched-status s-up">Upcoming</span></td>
-                <td><button className="btn btn-ghost btn-sm">Details</button></td>
-              </tr>
-              <tr key="sched-vanya">
-                <td><div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><div className="di-av">V</div>Vanya Rao</div></td>
-                <td>Limits &amp; Continuity — L'Hôpital's Rule</td>
-                <td><span className="pill pn">Mathematics</span></td>
-                <td>Apr 19, 6:00 PM</td><td>60 min</td>
-                <td><span className="sched-status s-up">Upcoming</span></td>
-                <td><button className="btn btn-ghost btn-sm">Details</button></td>
-              </tr>
-              <tr key="sched-rahul2">
-                <td><div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><div className="di-av">R</div>Rahul Mehta</div></td>
-                <td>Chemical Bonding — VSEPR Theory</td>
-                <td><span className="pill pg">Chemistry</span></td>
-                <td>Apr 12, 2:00 PM</td><td>60 min</td>
-                <td><span className="sched-status s-done">Completed</span></td>
-                <td><button className="btn btn-ghost btn-sm" onClick={() => onOpenModal('session-note-modal')}>View Notes</button></td>
-              </tr>
+              {(() => {
+                const shown = scheduleTab === 0 ? todaySessions : scheduleTab === 1 ? upcomingSessions : sessions;
+                if (shown.length === 0) return (
+                  <tr><td colSpan={7} style={{ textAlign: 'center', padding: '20px', color: 'var(--text3)', fontSize: '13px' }}>No sessions found.</td></tr>
+                );
+                return shown.map(s => {
+                  const past = !isUpcoming(s.scheduledAt);
+                  return (
+                    <tr key={s.id}>
+                      <td>{s.enrolledStudents?.length > 0 ? s.enrolledStudents.join(', ') : '—'}</td>
+                      <td>{s.title}</td>
+                      <td><span className="pill pg">{s.subject}</span></td>
+                      <td>{fmtDate(s.scheduledAt)}, {fmtTime(s.scheduledAt)}</td>
+                      <td>{s.duration} min</td>
+                      <td><span className={`sched-status ${past ? 's-done' : 's-up'}`}>{past ? 'Completed' : 'Upcoming'}</span></td>
+                      <td>
+                        {past
+                          ? <button className="btn btn-ghost btn-sm" onClick={() => onOpenModal('session-note-modal')}>View Notes</button>
+                          : <div style={{ display: 'flex', gap: '6px' }}><button className="btn btn-ghost btn-sm" onClick={() => onOpenModal('session-note-modal')}>Add Note</button><button className="btn btn-gold btn-sm" onClick={() => onShowToast('Reminder set!')}>Remind</button></div>
+                        }
+                      </td>
+                    </tr>
+                  );
+                });
+              })()}
             </tbody>
           </table>
         </div>
@@ -307,26 +291,20 @@ const FacultyContent = ({ activePage, onOpenModal, onOpenStudentDetail, onNav, o
           <span style={{ fontSize: '12px', color: 'var(--text3)' }}>These feed into weekly parent reports</span>
         </div>
         <div className="card" style={{ padding: '14px 18px' }}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '12px 0', borderBottom: '1px solid var(--b)' }}>
-            <div className="di-av">R</div>
-            <div style={{ flex: 1 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text)' }}>Rahul Mehta — Chemical Bonding</div>
-                <div style={{ fontSize: '11px', color: 'var(--text3)' }}>Apr 12</div>
+          {pastSessions.length === 0 ? (
+            <div style={{ padding: '12px 0', fontSize: '13px', color: 'var(--text3)' }}>No past sessions yet.</div>
+          ) : pastSessions.slice(0, 2).map((s, idx) => (
+            <div key={s.id} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '12px 0', borderBottom: idx < Math.min(pastSessions.length, 2) - 1 ? '1px solid var(--b)' : 'none' }}>
+              <div className="di-av">{(s.enrolledStudents?.[0] || '?').charAt(0)}</div>
+              <div style={{ flex: 1 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text)' }}>{s.enrolledStudents?.join(', ') || 'Students'} — {s.title}</div>
+                  <div style={{ fontSize: '11px', color: 'var(--text3)' }}>{fmtDate(s.scheduledAt)}</div>
+                </div>
+                <div style={{ fontSize: '12.5px', color: 'var(--text2)', marginTop: '5px', lineHeight: 1.7 }}>{s.subject} • {s.duration} min</div>
               </div>
-              <div style={{ fontSize: '12.5px', color: 'var(--text2)', marginTop: '5px', lineHeight: 1.7, fontStyle: 'italic' }}>"Good session. VSEPR shapes are now clear. Struggled with bond angle exceptions in NH₃ vs H₂O — covered thoroughly. Next: quantum numbers and orbital filling."</div>
             </div>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '12px 0' }}>
-            <div className="di-av">S</div>
-            <div style={{ flex: 1 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text)' }}>Sneha Kapoor — Integration Substitution</div>
-                <div style={{ fontSize: '11px', color: 'var(--text3)' }}>Apr 11</div>
-              </div>
-              <div style={{ fontSize: '12.5px', color: 'var(--text2)', marginTop: '5px', lineHeight: 1.7, fontStyle: 'italic' }}>"Excellent session. Accuracy moved to 68%. Substitution method is now solid. Moving to integration by parts next — she's ready for it."</div>
-            </div>
-          </div>
+          ))}
         </div>
       </div>
 
@@ -366,56 +344,41 @@ const FacultyContent = ({ activePage, onOpenModal, onOpenStudentDetail, onNav, o
       {/* ══════════ DOUBT QUEUE ══════════ */}
       <div className={`page${activePage === 'doubts' ? ' on' : ''}`}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px', flexWrap: 'wrap', gap: '10px' }}>
-          <div style={{ fontSize: '13px', color: 'var(--text2)' }}><span style={{ color: 'var(--red)', fontWeight: 600 }}>5 unanswered</span> • Oldest: 18 hours ago. Aim to reply within 4 hours.</div>
+          <div style={{ fontSize: '13px', color: 'var(--text2)' }}>
+            <span style={{ color: 'var(--red)', fontWeight: 600 }}>{pending.length} unanswered</span>
+            {pending.length > 0 ? ` • Oldest: ${timeAgo(pending[pending.length - 1].createdAt)}.` : ' • All clear!'} Aim to reply within 4 hours.
+          </div>
           <div className="tabs" style={{ marginBottom: 0 }}>
-            {['Pending (5)', 'Answered', 'All'].map((t, i) => (
-              <div key={t} className={`tab${doubtsTab === i ? ' on' : ''}`} onClick={() => setDoubtsTab(i)}>{t}</div>
+            {[`Pending (${pending.length})`, `Answered (${answered.length})`, 'All'].map((t, i) => (
+              <div key={i} className={`tab${doubtsTab === i ? ' on' : ''}`} onClick={() => setDoubtsTab(i)}>{t}</div>
             ))}
           </div>
         </div>
 
-        <DoubtItem idx={0} priority="urgent" av="R" name="Rahul Mehta" time="18 hours ago"
-          pills={<><span className="pill pg">Chemistry</span><span className="pill pr">Overdue</span></>}
-          question="How does Gauss's law apply when the charge is placed outside the Gaussian surface? The net flux should be zero but the field isn't — I'm confused."
-          placeholder="Type your reply — Rahul will see this immediately..."
-          extraActions={<>
-            <button className="btn btn-ghost btn-sm" onClick={() => onShowToast('Marked for session discussion')}>Discuss in session</button>
-            <button className="btn btn-ghost btn-sm" onClick={() => onOpenModal('assign-test-modal')}>Assign practice Q</button>
-          </>}
-          isOpen={openReplies.has(0)} isReplied={repliedDoubts.has(0)}
-          onToggle={() => toggleReply(0)} onReply={() => markReplied(0)} />
-
-        <DoubtItem idx={1} priority="medium" av="S" name="Sneha Kapoor" time="6 hours ago"
-          pills={<span className="pill pn">Mathematics</span>}
-          question="Integration by parts — I get the formula ∫u dv = uv − ∫v du, but I don't know when to choose u and when to choose dv. Is there a rule?"
-          placeholder="Tip: mention the ILATE rule — Sneha will appreciate the mnemonic..."
-          extraActions={<button className="btn btn-ghost btn-sm" onClick={() => onShowToast("Flagged for today's 4PM session")}>Flag for today's session</button>}
-          isOpen={openReplies.has(1)} isReplied={repliedDoubts.has(1)}
-          onToggle={() => toggleReply(1)} onReply={() => markReplied(1)} />
-
-        <DoubtItem idx={2} priority="medium" av="P" name="Priya Desai" time="2 hours ago"
-          pills={<span className="pill pg">Chemistry</span>}
-          question="Can you explain the difference between Markovnikov and anti-Markovnikov addition with a real example? I keep mixing them up in tests."
-          placeholder="Write reply..."
-          extraActions={<button className="btn btn-ghost btn-sm" onClick={() => onShowToast('Assigned practice question')}>Assign practice Q</button>}
-          isOpen={openReplies.has(2)} isReplied={repliedDoubts.has(2)}
-          onToggle={() => toggleReply(2)} onReply={() => markReplied(2)} />
-
-        <DoubtItem idx={3} priority="low" av="A" name="Arjun Singh" time="1 hour ago"
-          pills={<span className="pill pb">Physics</span>}
-          question="In the potential energy diagram for SHM, at mean position why is KE maximum but PE minimum? The formula says PE = ½kx² — so at x=0, PE=0, that makes sense but I want to understand it intuitively."
-          placeholder="Write reply..."
-          extraActions={<button className="btn btn-ghost btn-sm" onClick={() => onShowToast('Marked for session discussion')}>Discuss in session</button>}
-          isOpen={openReplies.has(3)} isReplied={repliedDoubts.has(3)}
-          onToggle={() => toggleReply(3)} onReply={() => markReplied(3)} />
-
-        <DoubtItem idx={4} priority="low" av="V" name="Vanya Rao" time="30 min ago"
-          pills={<span className="pill pn">Mathematics</span>}
-          question="Is there a shortcut to find limits using L'Hôpital's rule only, or do I have to always check the 0/0 form first?"
-          placeholder="Write reply..."
-          extraActions={null}
-          isOpen={openReplies.has(4)} isReplied={repliedDoubts.has(4)}
-          onToggle={() => toggleReply(4)} onReply={() => markReplied(4)} />
+        {(() => {
+          const shown = doubtsTab === 0 ? pending : doubtsTab === 1 ? answered : doubts;
+          if (shown.length === 0) return (
+            <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text3)', fontSize: '13px' }}>
+              {doubtsTab === 0 ? 'No pending doubts. Great work!' : doubtsTab === 1 ? 'No answered doubts yet.' : 'No doubts yet.'}
+            </div>
+          );
+          return shown.map(d => {
+            const hrs = (Date.now() - new Date(d.createdAt)) / 3600000;
+            const priority = hrs > 12 ? 'urgent' : hrs > 4 ? 'medium' : 'low';
+            const subj = (d.subject || '').toLowerCase();
+            const pillClass = subj.includes('chem') ? 'pg' : subj.includes('math') ? 'pn' : subj.includes('phys') ? 'pb' : subj.includes('bio') ? 'pp' : 'pn';
+            return (
+              <DoubtItem key={d.id} priority={priority}
+                av={d.studentName.charAt(0)} name={d.studentName} time={timeAgo(d.createdAt)}
+                pills={<><span className={`pill ${pillClass}`}>{d.subject}</span>{hrs > 12 && !d.answeredAt ? <span className="pill pr">Overdue</span> : null}</>}
+                question={d.question}
+                placeholder={`Type your reply to ${d.studentName}...`}
+                extraActions={<button className="btn btn-ghost btn-sm" onClick={() => onShowToast('Marked for session discussion')}>Discuss in session</button>}
+                isOpen={openReplies.has(d.id)} isReplied={repliedDoubts.has(d.id)}
+                onToggle={() => toggleReply(d.id)} onReply={() => markReplied(d.id)} />
+            );
+          });
+        })()}
       </div>
 
       {/* ══════════ RESOURCES ══════════ */}
