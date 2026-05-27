@@ -140,6 +140,7 @@ const StudentLMS = () => {
           activePage={activePage}
           onOpenModal={setOpenModal}
           onNav={setActivePage}
+          unreadCount={notifications.filter(n => !n.readAt).length}
         />
         <StudentContent
           activePage={activePage}

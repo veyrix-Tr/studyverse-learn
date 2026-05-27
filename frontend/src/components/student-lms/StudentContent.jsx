@@ -176,6 +176,17 @@ const isToday = (iso) => {
   return d.getFullYear() === n.getFullYear() && d.getMonth() === n.getMonth() && d.getDate() === n.getDate();
 };
 
+const timeAgo = (iso) => {
+  const diff = Date.now() - new Date(iso).getTime();
+  const m = Math.floor(diff / 60000);
+  if (m < 1) return 'just now';
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  const d = Math.floor(h / 24);
+  return `${d}d ago`;
+};
+
 const TYPE_DOT = { 'Fee Reminder': 'var(--red)', 'Reminder': 'var(--gold)', 'Motivational Note': 'var(--green)', 'Schedule Update': 'var(--navy)', 'Announcement': 'var(--gold)' };
 
 const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, scores, sessions = [], doubts = [], notifications = [], onMarkNotificationsRead }) => {
@@ -209,8 +220,8 @@ const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
       }
     }
     return Object.entries(map).map(([name, { first, last }]) => {
-      const firstPct = Math.round(first.score / first.totalMarks * 100);
-      const lastPct  = Math.round(last.score  / last.totalMarks  * 100);
+      const firstPct = first.totalMarks > 0 ? Math.round(first.score / first.totalMarks * 100) : 0;
+      const lastPct  = last.totalMarks  > 0 ? Math.round(last.score  / last.totalMarks  * 100) : 0;
       return { name, firstPct, lastPct, delta: lastPct - firstPct };
     });
   })();
@@ -303,22 +314,51 @@ const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
             })()}
           </div>
 
-          <div className="card card-gold-accent">
-            <div className="sh">
-              <div className="sh-title">Mentor's Note</div>
-              <span className="pill pill-gold">This Week</span>
-            </div>
-            <div style={{ fontFamily: 'var(--font-serif)', fontSize: '14px', fontStyle: 'italic', color: 'var(--text2)', lineHeight: 1.8, marginBottom: '16px' }}>
-              {`"${firstName}, your Maths accuracy has jumped 11% since we rebuilt integration from scratch. Focus this week is Organic Chemistry reaction mechanisms — that's the gap holding your Chemistry below 75%."`}
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <div style={{ width: '36px', height: '36px', borderRadius: '50%', border: '2px solid var(--gold)', background: 'var(--gold-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-serif)', fontSize: '13px', fontWeight: 700, color: 'var(--gold)' }}>A</div>
-              <div>
-                <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text)' }}>Ajay Sharma</div>
-                <div style={{ fontSize: '11px', color: 'var(--text3)' }}>JEE &amp; NEET Senior Mentor</div>
+          {(() => {
+            const latest = notifications.find(n => !n.readAt);
+            if (latest) {
+              const dot = TYPE_DOT[latest.type] || 'var(--gold)';
+              return (
+                <div className="card card-gold-accent" style={{ borderColor: dot, position: 'relative' }}>
+                  <div className="sh">
+                    <div className="sh-title">{latest.type}</div>
+                    <span className="pill pill-gold" style={{ background: dot, color: '#fff', border: 'none' }}>New</span>
+                  </div>
+                  <div style={{ fontFamily: 'var(--font-serif)', fontSize: '14px', fontStyle: 'italic', color: 'var(--text2)', lineHeight: 1.8, marginBottom: '16px' }}>
+                    "{latest.content}"
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <div style={{ width: '36px', height: '36px', borderRadius: '50%', border: `2px solid ${dot}`, background: 'var(--gold-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-serif)', fontSize: '13px', fontWeight: 700, color: dot }}>S</div>
+                      <div>
+                        <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text)' }}>Studyverse Admin</div>
+                        <div style={{ fontSize: '11px', color: 'var(--text3)' }}>{timeAgo(latest.createdAt)}</div>
+                      </div>
+                    </div>
+                    <button className="btn btn-ghost btn-sm" onClick={() => onNav('notif')}>View all →</button>
+                  </div>
+                </div>
+              );
+            }
+            return (
+              <div className="card card-gold-accent">
+                <div className="sh">
+                  <div className="sh-title">From the Team</div>
+                  <span className="pill pill-gold">Motivational</span>
+                </div>
+                <div style={{ fontFamily: 'var(--font-serif)', fontSize: '14px', fontStyle: 'italic', color: 'var(--text2)', lineHeight: 1.8, marginBottom: '16px' }}>
+                  "{firstName}, every session you show up for is a brick in something that cannot be bought or shortcut. Stay consistent — the results are already in motion."
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div style={{ width: '36px', height: '36px', borderRadius: '50%', border: '2px solid var(--gold)', background: 'var(--gold-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-serif)', fontSize: '13px', fontWeight: 700, color: 'var(--gold)' }}>S</div>
+                  <div>
+                    <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text)' }}>Studyverse Admin</div>
+                    <div style={{ fontSize: '11px', color: 'var(--text3)' }}>Your team is with you</div>
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
+            );
+          })()}
         </div>
 
         <div className="sh"><div className="sh-title">This Week's Insights</div></div>
@@ -425,7 +465,7 @@ const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
                 onToggle={() => toggleWR(i)}
               >
                 {w.subjects.map(s => {
-                  const pct = Math.round(s.score / s.totalMarks * 100);
+                  const pct = s.totalMarks > 0 ? Math.round(s.score / s.totalMarks * 100) : 0;
                   return (
                     <div key={s.subject} className="subj-row" style={{ padding: '8px 0' }}>
                       <div className="subj-name">{s.subject}</div>

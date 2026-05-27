@@ -377,8 +377,7 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
           const PremiumRow = ({ s }) => {
             const av = s.name?.[0]?.toUpperCase() || '?';
             const examClass = s.examTarget?.includes('NEET') ? 'pp' : 'pn';
-            const hasScores = s.firstScore !== null && s.lastScore !== null;
-            const gain = hasScores ? s.lastScore - s.firstScore : 0;
+            const hasScores = Number.isFinite(s.lastScore) && Number.isFinite(s.lastTotalMarks) && s.lastTotalMarks > 0;
             const mentorAv = s.facultyName?.[0]?.toUpperCase() || '?';
             return (
               <tr>
@@ -391,7 +390,7 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
                 </td>
                 <td>
                   {hasScores
-                    ? <><span style={{ fontFamily: 'var(--fs)', color: 'var(--gold)', fontWeight: '700' }}>{s.firstScore}→{s.lastScore}</span>{' '}<span style={{ fontSize: '11px', color: gain >= 0 ? 'var(--green)' : 'var(--red)' }}>{gain >= 0 ? '+' : ''}{gain}</span></>
+                    ? <span style={{ fontFamily: 'var(--fs)', color: 'var(--gold)', fontWeight: '700' }}>{s.lastScore}<span style={{ color: 'var(--text3)', fontWeight: '400' }}>/{s.lastTotalMarks}</span></span>
                     : <span style={{ color: 'var(--text3)', fontSize: '12px' }}>No scores yet</span>}
                 </td>
                 <td><button className="btn btn-ghost btn-sm" onClick={() => onOpenMessage(s.id)}>Message</button></td>

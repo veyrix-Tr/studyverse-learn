@@ -83,7 +83,7 @@ const AdminLMS = () => {
       </div>
       <AdminModals
         openModal={openModal}
-        onClose={() => setOpenModal(null)}
+        onClose={() => { setOpenModal(null); setMessageStudentId(null); }}
         onShowToast={showToast}
         toast={toast}
         students={students}

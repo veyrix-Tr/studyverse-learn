@@ -54,16 +54,17 @@ router.get('/students', requireAuth, async (req, res) => {
         }
       }
 
-      // Aggregate total score per week
+      // Aggregate score and totalMarks per week
       const scoreMap = {};
+      const totalMap = {};
       for (const sc of s.weeklyScores) {
         scoreMap[sc.weekNumber] = (scoreMap[sc.weekNumber] || 0) + sc.score;
+        totalMap[sc.weekNumber] = (totalMap[sc.weekNumber] || 0) + sc.totalMarks;
       }
       const weeks = Object.keys(scoreMap).map(Number).sort((a, b) => a - b);
-      const firstWeek = weeks[0] ?? null;
-      const lastWeek  = weeks[weeks.length - 1] ?? null;
-      const firstScore = firstWeek !== null ? Math.round(scoreMap[firstWeek]) : null;
-      const lastScore  = lastWeek  !== null ? Math.round(scoreMap[lastWeek])  : null;
+      const lastWeek       = weeks[weeks.length - 1] ?? null;
+      const lastScore      = lastWeek !== null ? Math.round(scoreMap[lastWeek]) : null;
+      const lastTotalMarks = lastWeek !== null ? Math.round(totalMap[lastWeek])  : null;
 
       return {
         id: s.id, userId: s.userId,
@@ -71,7 +72,7 @@ router.get('/students', requireAuth, async (req, res) => {
         plan: s.plan, examTarget: s.examTarget, grade: s.grade,
         diagnosticScore: s.diagnosticScore,
         facultyName,
-        firstWeek, lastWeek, firstScore, lastScore,
+        lastWeek, lastScore, lastTotalMarks,
       };
     }));
 

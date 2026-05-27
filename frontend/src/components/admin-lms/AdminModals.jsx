@@ -21,6 +21,8 @@ const AdminModals = ({ openModal, onClose, onShowToast, toast, students = [], me
   useEffect(() => {
     if (openModal === 'message-modal') {
       setMsgStudent(messageStudentId !== null ? String(messageStudentId) : 'all');
+      setMsgType('Announcement');
+      setMsgContent('');
     }
   }, [openModal, messageStudentId]);
 
