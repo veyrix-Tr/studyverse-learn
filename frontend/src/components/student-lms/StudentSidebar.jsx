@@ -6,6 +6,9 @@ const StudentSidebar = ({ activePage, onNav, profile, upcomingSessionsCount = 0,
   const initial = name.charAt(0).toUpperCase();
   const examTarget = profile?.studentProfile?.examTarget || '';
   const targetYear = profile?.studentProfile?.targetYear || '';
+  const plan = profile?.studentProfile?.plan;
+  const planEndDate = profile?.studentProfile?.planEndDate;
+  const planEndFmt = planEndDate ? new Date(planEndDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : null;
 
   return (
     <aside className="sidebar">
@@ -108,6 +111,9 @@ const StudentSidebar = ({ activePage, onNav, profile, upcomingSessionsCount = 0,
           <div className="user-info">
             <div className="uname">{name}</div>
             <div className="utarget">{examTarget}{targetYear ? ` ${targetYear}` : ''}</div>
+            {plan === 'premium' && planEndFmt && (
+              <div style={{ fontSize: '10px', color: 'rgb(247, 184, 13)', marginTop: '2px' }}>Premium till {planEndFmt}</div>
+            )}
           </div>
         </div>
         <div className="logout-btn" onClick={() => { localStorage.removeItem('token'); localStorage.removeItem('user'); window.location.href = '/'; }} style={{ marginTop: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: 'rgba(253,248,240,0.5)', padding: '8px 0' }}>

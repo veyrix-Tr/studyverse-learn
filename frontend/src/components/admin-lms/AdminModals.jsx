@@ -71,7 +71,6 @@ const AdminModals = ({ openModal, onClose, onShowToast, toast, students = [], me
             </div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-            <div className="fg"><label>Monthly Fee (₹)</label><input className="fi" type="number" placeholder="e.g. 15000" /></div>
             <div className="fg"><label>Assign Faculty</label>
               <select className="fi"><option>Ajay Sharma</option><option>Neha Gupta</option><option>Assign later</option></select>
             </div>
@@ -124,7 +123,6 @@ const AdminModals = ({ openModal, onClose, onShowToast, toast, students = [], me
               <option>Announcement</option>
               <option>Reminder</option>
               <option>Motivational Note</option>
-              <option>Fee Reminder</option>
               <option>Schedule Update</option>
             </select>
           </div>
@@ -138,28 +136,6 @@ const AdminModals = ({ openModal, onClose, onShowToast, toast, students = [], me
         </div>
       </div>
 
-      {/* Record Payment */}
-      <div className={`overlay${isOpen('fee-modal')}`} id="fee-modal" onClick={e => e.target.classList.contains('overlay') && onClose()}>
-        <div className="modal">
-          <div className="mt">Record a Payment</div>
-          <div className="ms">Mark a fee as received and update the student's payment status.</div>
-          <div className="fg"><label>Student</label>
-            <select className="fi"><option>Priya Desai (₹14,000 overdue)</option><option>Vanya Rao (₹14,000 overdue)</option><option>Rahul Mehta</option></select>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-            <div className="fg"><label>Amount Received (₹)</label><input className="fi" type="number" placeholder="14000" /></div>
-            <div className="fg"><label>Date Received</label><input className="fi" type="date" /></div>
-          </div>
-          <div className="fg"><label>Payment Mode</label>
-            <select className="fi"><option>UPI / Bank Transfer</option><option>Cash</option><option>Cheque</option><option>Card</option></select>
-          </div>
-          <div className="fg"><label>Transaction Reference (optional)</label><input className="fi" type="text" placeholder="UPI ref or transaction ID" /></div>
-          <div className="ma">
-            <button className="btn btn-ghost btn-sm" onClick={onClose}>Cancel</button>
-            <button className="btn btn-gold btn-sm" onClick={() => { onClose(); onShowToast('Payment recorded. Status updated to Paid ✓'); }}>Record Payment →</button>
-          </div>
-        </div>
-      </div>
 
       {/* Create Admin */}
       <div className={`overlay${isOpen('add-admin-modal')}`} id="add-admin-modal" onClick={e => e.target.classList.contains('overlay') && onClose()}>
@@ -178,8 +154,8 @@ const AdminModals = ({ openModal, onClose, onShowToast, toast, students = [], me
               { label: 'Assign faculty to students', on: true },
               { label: 'Approve tests & resources', on: true },
               { label: 'Send messages to students', on: true },
-              { label: 'View revenue & fees', on: false },
-              { label: 'Record & manage payments', on: false },
+              { label: 'View revenue', on: false },
+              { label: 'Manage subscriptions', on: false },
               { label: 'Add / remove faculty', on: false }
             ].map(({ label, on }, i, arr) => (
               <PermToggleRow key={label} label={label} defaultOn={on} last={i === arr.length - 1} />
@@ -204,8 +180,8 @@ const AdminModals = ({ openModal, onClose, onShowToast, toast, students = [], me
               { label: 'Assign faculty to students', on: true },
               { label: 'Approve tests & resources', on: true },
               { label: 'Send messages to students', on: true },
-              { label: 'View revenue & fees', on: false },
-              { label: 'Record & manage payments', on: false },
+              { label: 'View revenue', on: false },
+              { label: 'Manage subscriptions', on: false },
               { label: 'Add / remove faculty', on: false }
             ].map(({ label, on }, i, arr) => (
               <PermToggleRow key={label} label={label} defaultOn={on} last={i === arr.length - 1} />

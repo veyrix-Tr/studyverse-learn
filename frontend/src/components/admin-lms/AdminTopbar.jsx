@@ -3,7 +3,7 @@ import React from 'react';
 const pageTitles = {
   dashboard: 'Dashboard',
   pipeline: 'Enrollment Pipeline',
-  revenue: 'Revenue & Fees',
+  revenue: 'Revenue',
   students: 'Students',
   faculty: 'Faculty',
   assign: 'Assign Faculty',

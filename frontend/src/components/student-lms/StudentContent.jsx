@@ -187,7 +187,7 @@ const timeAgo = (iso) => {
   return `${d}d ago`;
 };
 
-const TYPE_DOT = { 'Fee Reminder': 'var(--red)', 'Reminder': 'var(--gold)', 'Motivational Note': 'var(--green)', 'Schedule Update': 'var(--navy)', 'Announcement': 'var(--gold)' };
+const TYPE_DOT = { 'Reminder': 'var(--gold)', 'Motivational Note': 'var(--green)', 'Schedule Update': 'var(--navy)', 'Announcement': 'var(--gold)' };
 
 const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, scores, sessions = [], doubts = [], notifications = [], onMarkNotificationsRead }) => {
   const firstName = profile?.name?.split(' ')[0] || 'there';
@@ -259,6 +259,40 @@ const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
           </div>
           <button className="btn btn-primary" style={{ flexShrink: 0, width: 'fit-content' }} onClick={() => onNav('journey')}>View My Journey →</button>
         </div>
+
+        {(() => {
+          const planEndDate = profile?.studentProfile?.planEndDate;
+          const plan = profile?.studentProfile?.plan;
+          if (!planEndDate || plan !== 'premium') return null;
+          const daysLeft = Math.ceil((new Date(planEndDate) - new Date()) / (1000 * 60 * 60 * 24));
+          const isDev = import.meta.env.VITE_ENV === 'dev';
+          if (daysLeft <= 0 || (!isDev && daysLeft > 5)) return null;
+          return (
+            <div style={{
+              background: '#fef3c7', border: '2px solid #f59e0b',
+              borderRadius: 'var(--r)', padding: '16px 20px', marginBottom: '20px',
+              display: 'flex', alignItems: 'center', gap: '14px',
+            }}>
+              <div style={{
+                width: '40px', height: '40px', borderRadius: '50%', flexShrink: 0,
+                background: '#f59e0b', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5">
+                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                  <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: '14px', fontWeight: 700, color: '#92400e', marginBottom: '2px' }}>
+                  Subscription expires in {daysLeft} day{daysLeft !== 1 ? 's' : ''}
+                </div>
+                <div style={{ fontSize: '12.5px', color: '#b45309' }}>
+                  Contact your admin to renew and keep full access to sessions, doubts, and reports.
+                </div>
+              </div>
+            </div>
+          );
+        })()}
 
         <div className="journey-container mb">
           <div className="journey-header">

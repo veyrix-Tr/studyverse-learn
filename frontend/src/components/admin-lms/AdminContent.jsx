@@ -26,7 +26,7 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
   const [studentsTab, setStudentsTab] = useState(0);
   const [approvalsTab, setApprovalsTab] = useState(0);
   const [dismissedApprovals, setDismissedApprovals] = useState(new Set());
-  const [platformToggles, setPlatformToggles] = useState([true, true, true, true, true, true, true, true]);
+  const [platformToggles, setPlatformToggles] = useState([true, true, true, true, true, true, true]);
   const [activeChips, setActiveChips] = useState(new Set([0]));
 
   useEffect(() => {
@@ -95,7 +95,6 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
     { label: 'Free tier diagnostic enabled', desc: 'Students without enrollment can access the free diagnostic' },
     { label: 'New enrollments open', desc: 'Pipeline accepts new enquiries' },
     { label: 'Parent reports automated', desc: 'Send Sunday reports automatically when faculty marks "Ready"' },
-    { label: 'Payment reminders auto-send', desc: 'Send automatic reminders 3 days before due date' },
     { label: 'Free tier habit tracker', desc: 'Non-enrolled students can access the habit tracker' },
   ];
 
@@ -115,7 +114,7 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
             <div style={{ fontSize: '11px', color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '.1em', fontWeight: '500', marginBottom: '4px' }}>{new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</div>
             <div style={{ fontFamily: 'var(--fs)', fontSize: '23px', fontWeight: '700' }}>{getGreeting()}, {firstName}.</div>
             <div style={{ fontSize: '13.5px', color: 'var(--text2)', marginTop: '3px' }}>
-              <strong style={{ color: 'var(--red)' }}>2 fees overdue</strong> · <strong style={{ color: 'var(--gold)' }}>3 new enquiries</strong> · <strong style={{ color: 'var(--green)' }}>4 approvals pending</strong>
+              <strong style={{ color: 'var(--gold)' }}>3 new enquiries</strong> · <strong style={{ color: 'var(--green)' }}>4 approvals pending</strong>
             </div>
           </div>
         </div>
@@ -123,7 +122,7 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
         <div className="g4 mb">
           <div className="stat sa-navy"><div className="stat-l">Active Students</div><div className="stat-v">12</div><div className="stat-n up">↑ 2 this month</div></div>
           <div className="stat sa-gold"><div className="stat-l">Revenue (April)</div><div className="stat-v" style={{ fontSize: '22px' }}>₹1.84L</div><div className="stat-n up">↑ 18% vs March</div></div>
-          <div className="stat sa-red"><div className="stat-l">Fees Overdue</div><div className="stat-v">2</div><div className="stat-n bad">₹28,000 pending</div></div>
+          <div className="stat sa-blue"><div className="stat-l">Premium Students</div><div className="stat-v">{students.filter(s => s.plan === 'premium').length}</div><div className="stat-n up">active subscriptions</div></div>
           <div className="stat sa-green"><div className="stat-l">Avg Improvement</div><div className="stat-v">+76</div><div className="stat-n up">marks across cohort</div></div>
         </div>
 
@@ -298,7 +297,7 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
         <div className="g4 mb">
           <div className="stat sa-gold"><div className="stat-l">Total Revenue (YTD)</div><div className="stat-v" style={{ fontSize: '22px' }}>₹14.2L</div><div className="stat-n up">↑ 34% vs last year</div></div>
           <div className="stat sa-green"><div className="stat-l">April Collected</div><div className="stat-v" style={{ fontSize: '22px' }}>₹1.56L</div><div className="stat-n up">85% of target</div></div>
-          <div className="stat sa-red"><div className="stat-l">Overdue Amount</div><div className="stat-v" style={{ fontSize: '22px' }}>₹28K</div><div className="stat-n bad">2 students · 15+ days</div></div>
+          <div className="stat sa-blue"><div className="stat-l">Premium Subscribers</div><div className="stat-v" style={{ fontSize: '22px' }}>{students.filter(s => s.plan === 'premium').length}</div><div className="stat-n up">active this month</div></div>
           <div className="stat sa-navy"><div className="stat-l">Avg Revenue/Student</div><div className="stat-v" style={{ fontSize: '22px' }}>₹15.3K</div><div className="stat-n neu">per month</div></div>
         </div>
 
@@ -312,7 +311,7 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
             <div style={{ display: 'flex', gap: '16px', marginTop: '14px', borderTop: '1px solid var(--b)', paddingTop: '12px' }}>
               <div style={{ textAlign: 'center', flex: 1 }}><div style={{ fontFamily: 'var(--fs)', fontSize: '16px', fontWeight: '700', color: 'var(--text)' }}>₹1.84L</div><div style={{ fontSize: '10.5px', color: 'var(--text3)' }}>Apr target</div></div>
               <div style={{ textAlign: 'center', flex: 1 }}><div style={{ fontFamily: 'var(--fs)', fontSize: '16px', fontWeight: '700', color: 'var(--green)' }}>₹1.56L</div><div style={{ fontSize: '10.5px', color: 'var(--text3)' }}>Collected</div></div>
-              <div style={{ textAlign: 'center', flex: 1 }}><div style={{ fontFamily: 'var(--fs)', fontSize: '16px', fontWeight: '700', color: 'var(--red)' }}>₹28K</div><div style={{ fontSize: '10.5px', color: 'var(--text3)' }}>Remaining</div></div>
+              <div style={{ textAlign: 'center', flex: 1 }}><div style={{ fontFamily: 'var(--fs)', fontSize: '16px', fontWeight: '700', color: 'var(--blue)' }}>{students.filter(s => s.plan === 'premium').length}</div><div style={{ fontSize: '10.5px', color: 'var(--text3)' }}>Premium Active</div></div>
             </div>
           </div>
           <div className="card">
@@ -335,24 +334,19 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
           </div>
         </div>
 
-        <div className="sh"><div className="sh-t">Student Fee Status</div><button className="btn btn-gold btn-sm" onClick={() => onOpenModal('fee-modal')}>Record Payment</button></div>
+        <div className="sh"><div className="sh-t">Student Subscriptions</div></div>
         <div className="card" style={{ padding: '0', overflow: 'hidden' }}>
           <table className="tbl">
-            <thead><tr><th>Student</th><th>Plan</th><th>Monthly Fee</th><th>Last Payment</th><th>Next Due</th><th>Status</th><th>Action</th></tr></thead>
+            <thead><tr><th>Student</th><th>Exam</th><th>Grade</th><th>Subscription</th></tr></thead>
             <tbody>
-              {[
-                { av: 'R', name: 'Rahul Mehta', plan: 'Full Program', fee: '₹15,000', last: 'Apr 1', next: 'May 1', status: 'paid', statusLabel: 'Paid ✓', action: <button className="btn btn-ghost btn-sm">History</button> },
-                { av: 'S', name: 'Sneha Kapoor', plan: 'Full Program', fee: '₹15,000', last: 'Apr 1', next: 'May 1', status: 'paid', statusLabel: 'Paid ✓', action: <button className="btn btn-ghost btn-sm">History</button> },
-                { av: 'P', name: 'Priya Desai', plan: 'Full Program', fee: '₹14,000', last: 'Mar 28', next: 'Apr 28', status: 'overdue', statusLabel: 'Overdue 18d', action: <button className="btn btn-gold btn-sm" onClick={() => onShowToast("Payment reminder sent to Priya's parent ✓")}>Send Reminder</button> },
-                { av: 'A', name: 'Arjun Singh', plan: 'Full Program', fee: '₹14,000', last: 'Apr 5', next: 'May 5', status: 'paid', statusLabel: 'Paid ✓', action: <button className="btn btn-ghost btn-sm">History</button> },
-                { av: 'V', name: 'Vanya Rao', plan: 'Full Program', fee: '₹14,000', last: 'Mar 25', next: 'Apr 25', status: 'overdue', statusLabel: 'Overdue 21d', action: <button className="btn btn-gold btn-sm" onClick={() => onShowToast('Reminder sent ✓')}>Send Reminder</button> },
-                { av: 'K', name: 'Kavya Menon', plan: 'Full Program', fee: '₹16,000', last: 'Apr 3', next: 'May 3', status: 'paid', statusLabel: 'Paid ✓', action: <button className="btn btn-ghost btn-sm">History</button> }
-              ].map(({ av, name, plan, fee, last, next, status, statusLabel, action }) => (
-                <tr key={name}>
-                  <td><div className="av-row"><div className="av">{av}</div>{name}</div></td>
-                  <td>{plan}</td><td>{fee}</td><td>{last}</td><td>{next}</td>
-                  <td><span className={`fc-status ${status}`}>{statusLabel}</span></td>
-                  <td>{action}</td>
+              {students.length === 0 ? (
+                <tr><td colSpan={4} style={{ textAlign: 'center', padding: '20px', color: 'var(--text3)', fontSize: '13px' }}>No students enrolled.</td></tr>
+              ) : students.map(s => (
+                <tr key={s.id}>
+                  <td><div className="av-row"><div className="av">{s.name.charAt(0)}</div>{s.name}</div></td>
+                  <td>{s.examTarget || '—'}</td>
+                  <td>{s.grade ? `Grade ${s.grade}` : '—'}</td>
+                  <td><span className={`fc-status ${s.plan === 'premium' ? 'paid' : ''}`}>{s.plan === 'premium' ? 'Premium ✓' : 'Free Tier'}</span></td>
                 </tr>
               ))}
             </tbody>
@@ -605,7 +599,7 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
           </div>
           <div className="fg" style={{ marginBottom: '12px' }}>
             <label>Message Type</label>
-            <select className="fi"><option>Announcement</option><option>Reminder</option><option>Motivational Note</option><option>Schedule Update</option><option>Fee Reminder</option></select>
+            <select className="fi"><option>Announcement</option><option>Reminder</option><option>Motivational Note</option><option>Schedule Update</option></select>
           </div>
           <div className="fg" style={{ marginBottom: '12px' }}>
             <label>Message</label>
@@ -722,7 +716,7 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
               {approvalSettings.map(({ label, desc }, i) => (
                 <div key={i} className="perm-row" style={i === approvalSettings.length - 1 ? { border: 'none' } : {}}>
                   <div><div className="perm-label">{label}</div><div className="perm-desc">{desc}</div></div>
-                  <div className={`toggle${platformToggles[5 + i] ? ' on' : ''}`} onClick={() => togglePlatform(5 + i)}></div>
+                  <div className={`toggle${platformToggles[4 + i] ? ' on' : ''}`} onClick={() => togglePlatform(4 + i)}></div>
                 </div>
               ))}
             </div>
