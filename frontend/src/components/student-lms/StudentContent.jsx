@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, Fragment } from 'react';
 
 const ArcTrack = ({ height = 120, viewBox = '0 0 800 110', solidPath, dashedPath, fillPath, nodes }) => (
   <div className="arc-track" style={{ height, position: 'relative', margin: '0 0 24px' }}>
@@ -187,9 +187,9 @@ const timeAgo = (iso) => {
   return `${d}d ago`;
 };
 
-const TYPE_DOT = { 'Reminder': 'var(--gold)', 'Motivational Note': 'var(--green)', 'Schedule Update': 'var(--navy)', 'Announcement': 'var(--gold)' };
+const TYPE_DOT = { 'Reminder': 'var(--gold)', 'Motivational Note': 'var(--green)', 'Schedule Update': 'var(--navy)', 'Announcement': 'var(--gold)', 'Session Note': 'var(--navy)' };
 
-const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, scores, sessions = [], doubts = [], notifications = [], onMarkNotificationsRead }) => {
+const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, scores, sessions = [], doubts = [], notifications = [], onMarkNotificationsRead, onNotificationClick }) => {
   const firstName = profile?.name?.split(' ')[0] || 'there';
   const examTarget = profile?.studentProfile?.examTarget || 'your exam';
   const targetYear = profile?.studentProfile?.targetYear;
@@ -235,6 +235,7 @@ const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
   const [resourcesTab, setResourcesTab] = useState(0);
   const [doubtTab, setDoubtTab] = useState(0);
   const [openWR, setOpenWR] = useState(new Set([0]));
+  const [openSessionNote, setOpenSessionNote] = useState(null);
 
   const toggleWR = (i) => {
     setOpenWR(prev => {
@@ -352,8 +353,14 @@ const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
             const latest = notifications.find(n => !n.readAt);
             if (latest) {
               const dot = TYPE_DOT[latest.type] || 'var(--gold)';
+              const isFaculty = latest.type === 'Session Note';
+              const senderLabel = isFaculty ? 'Faculty' : 'Studyverse Admin';
+              const senderInit = isFaculty ? 'F' : 'S';
+              const destPage = latest.type === 'Session Note' || latest.type === 'Schedule Update' ? 'sessions'
+                : latest.type === 'Reminder' || latest.type === 'Motivational Note' ? 'dashboard' : 'notif';
               return (
-                <div className="card card-gold-accent" style={{ borderColor: dot, position: 'relative' }}>
+                <div className="card card-gold-accent" style={{ borderColor: dot, position: 'relative', cursor: 'pointer' }}
+                  onClick={() => onNotificationClick?.(latest.id, latest.type)}>
                   <div className="sh">
                     <div className="sh-title">{latest.type}</div>
                     <span className="pill pill-gold" style={{ background: dot, color: '#fff', border: 'none' }}>New</span>
@@ -363,13 +370,15 @@ const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <div style={{ width: '36px', height: '36px', borderRadius: '50%', border: `2px solid ${dot}`, background: 'var(--gold-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-serif)', fontSize: '13px', fontWeight: 700, color: dot }}>S</div>
+                      <div style={{ width: '36px', height: '36px', borderRadius: '50%', border: `2px solid ${dot}`, background: 'var(--gold-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-serif)', fontSize: '13px', fontWeight: 700, color: dot }}>{senderInit}</div>
                       <div>
-                        <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text)' }}>Studyverse Admin</div>
+                        <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text)' }}>{senderLabel}</div>
                         <div style={{ fontSize: '11px', color: 'var(--text3)' }}>{timeAgo(latest.createdAt)}</div>
                       </div>
                     </div>
-                    <button className="btn btn-ghost btn-sm" onClick={() => onNav('notif')}>View all →</button>
+                    <button className="btn btn-ghost btn-sm" onClick={e => { e.stopPropagation(); onNotificationClick?.(latest.id, latest.type); }}>
+                      {destPage === 'sessions' ? 'Go to Sessions →' : destPage === 'dashboard' ? 'Go to Dashboard →' : 'View all →'}
+                    </button>
                   </div>
                 </div>
               );
@@ -610,16 +619,43 @@ const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
                   <tr><th>Session Topic</th><th>Subject</th><th>Day &amp; Time</th><th>Duration</th><th>Status</th><th></th></tr>
                 </thead>
                 <tbody>
-                  {filtered.map(s => (
-                    <tr key={s.id}>
-                      <td>{s.title}</td>
-                      <td><span className="pill pill-navy">{s.subject}</span></td>
-                      <td>{s.dayOfWeek}, {fmtTime(s.scheduledAt)}</td>
-                      <td>{s.duration} min</td>
-                      <td><span className={`sess-status ${isUpcoming(s.scheduledAt) ? 's-up' : ''}`}>{isUpcoming(s.scheduledAt) ? 'Upcoming' : 'Completed'}</span></td>
-                      <td><button className="btn btn-ghost btn-sm" onClick={() => onShowToast('Opening session details...')}>Details</button></td>
-                    </tr>
-                  ))}
+                  {filtered.map(s => {
+                    const noteOpen = openSessionNote === s.id;
+                    return (
+                      <Fragment key={s.id}>
+                        <tr>
+                          <td>{s.title}</td>
+                          <td><span className="pill pill-navy">{s.subject}</span></td>
+                          <td>{s.dayOfWeek}, {fmtTime(s.scheduledAt)}</td>
+                          <td>{s.duration} min</td>
+                          <td><span className={`sess-status ${isUpcoming(s.scheduledAt) ? 's-up' : ''}`}>{isUpcoming(s.scheduledAt) ? 'Upcoming' : 'Completed'}</span></td>
+                          <td>
+                            {!isUpcoming(s.scheduledAt) && (
+                              <button
+                                className={`btn btn-sm ${s.note ? (noteOpen ? 'btn-gold' : 'btn-ghost') : 'btn-ghost'}`}
+                                style={!s.note ? { opacity: 0.4, cursor: 'default' } : {}}
+                                onClick={() => s.note && setOpenSessionNote(noteOpen ? null : s.id)}
+                              >
+                                {noteOpen ? 'Hide Note' : 'See Note'}
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                        {noteOpen && s.note && (
+                          <tr>
+                            <td colSpan={6} style={{ padding: '0 0 12px 0', background: 'var(--cream)' }}>
+                              <div style={{ padding: '12px 16px', borderLeft: '3px solid var(--gold)', margin: '0 16px', background: 'var(--cream2)', borderRadius: '0 var(--r) var(--r) 0' }}>
+                                <div style={{ fontSize: '11px', color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '.07em', fontWeight: 500, marginBottom: '6px' }}>
+                                  Note from {s.facultyName} — {fmtDate(s.scheduledAt)}
+                                </div>
+                                <div style={{ fontSize: '13px', color: 'var(--text2)', lineHeight: 1.75 }}>{s.note}</div>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </Fragment>
+                    );
+                  })}
                 </tbody>
               </table>
             );
@@ -852,14 +888,23 @@ const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
             )}
           </div>
           {notifications.length === 0 ? (
-            <div style={{ fontSize: '13px', color: 'var(--text3)', padding: '12px 0' }}>No messages from admin yet.</div>
+            <div style={{ fontSize: '13px', color: 'var(--text3)', padding: '12px 0' }}>No messages yet.</div>
           ) : notifications.map(n => (
-            <div key={n.id} className="notif-row" style={!n.readAt ? { background: 'var(--cream2)', borderRadius: 'var(--r)', padding: '8px 10px', marginBottom: '4px' } : {}}>
+            <div key={n.id} className="notif-row"
+              onClick={() => onNotificationClick?.(n.id, n.type)}
+              style={{
+                cursor: 'pointer',
+                ...((!n.readAt) ? { background: 'var(--cream2)', borderRadius: 'var(--r)', padding: '8px 10px', marginBottom: '4px' } : {}),
+              }}
+            >
               <div className="notif-dot" style={{ background: TYPE_DOT[n.type] || 'var(--gold)', flexShrink: 0 }}></div>
-              <div>
+              <div style={{ flex: 1 }}>
                 <div className="notif-text"><strong>{n.type}</strong> — {n.content}</div>
                 <div className="notif-time">{timeAgo(n.createdAt)}</div>
               </div>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" strokeWidth="2" style={{ flexShrink: 0 }}>
+                <path d="M9 18l6-6-6-6"/>
+              </svg>
             </div>
           ))}
         </div>

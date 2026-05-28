@@ -92,6 +92,7 @@ router.get('/sessions', requireAuth, async (req, res) => {
       dayOfWeek: s.dayOfWeek,
       scheduledAt: s.scheduledAt,
       duration: s.duration,
+      note: s.note || null,
       facultyName: s.faculty.user.name,
     })));
   } catch (err) {
@@ -172,25 +173,42 @@ router.get('/notifications', requireAuth, async (req, res) => {
   try {
     const profile = await prisma.studentProfile.findUnique({ where: { userId: req.user.id } });
     if (!profile) return res.json([]);
-    const messages = await prisma.adminMessage.findMany({
-      where: { studentId: profile.id },
-      orderBy: { createdAt: 'desc' },
-    });
-    res.json(messages.map(m => ({ id: m.id, content: m.content, type: m.type, readAt: m.readAt, createdAt: m.createdAt })));
+
+    const [adminMsgs, facultyNotifs] = await Promise.all([
+      prisma.adminMessage.findMany({ where: { studentId: profile.id }, orderBy: { createdAt: 'desc' } }),
+      prisma.facultyNotification.findMany({ where: { studentId: profile.id }, orderBy: { createdAt: 'desc' } }),
+    ]);
+
+    const merged = [
+      ...adminMsgs.map(m => ({ id: `a-${m.id}`, content: m.content, type: m.type, readAt: m.readAt, createdAt: m.createdAt })),
+      ...facultyNotifs.map(n => ({ id: `f-${n.id}`, content: n.content, type: n.type, readAt: n.readAt, createdAt: n.createdAt })),
+    ].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    res.json(merged);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to fetch notifications' });
   }
 });
 
-// PUT /api/student/notifications/:id/read
+// PUT /api/student/notifications/:id/read  (id format: "a-123" or "f-123")
 router.put('/notifications/:id/read', requireAuth, async (req, res) => {
   try {
     const profile = await prisma.studentProfile.findUnique({ where: { userId: req.user.id } });
     if (!profile) return res.status(403).json({ error: 'Not found' });
-    const id = parseInt(req.params.id);
-    if (isNaN(id)) return res.status(400).json({ error: 'Invalid ID' });
-    await prisma.adminMessage.updateMany({ where: { id, studentId: profile.id }, data: { readAt: new Date() } });
+
+    const raw = req.params.id;
+    const [src, numStr] = raw.split('-');
+    const numId = parseInt(numStr);
+    if (!src || isNaN(numId)) return res.status(400).json({ error: 'Invalid ID' });
+
+    if (src === 'a') {
+      await prisma.adminMessage.updateMany({ where: { id: numId, studentId: profile.id }, data: { readAt: new Date() } });
+    } else if (src === 'f') {
+      await prisma.facultyNotification.updateMany({ where: { id: numId, studentId: profile.id }, data: { readAt: new Date() } });
+    } else {
+      return res.status(400).json({ error: 'Invalid ID prefix' });
+    }
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: 'Failed to mark read' });

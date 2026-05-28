@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, Fragment } from 'react';
 
 const fmtTime = (iso) => new Date(iso).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
 const fmtDate = (iso) => new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
@@ -85,12 +85,15 @@ const pctColor = (p) => p >= 75 ? 'var(--green)' : p >= 60 ? 'var(--gold)' : p >
 const pctBar   = (p) => p >= 75 ? 'pb-green' : p >= 60 ? 'pb-gold' : p >= 45 ? 'pb-orange' : 'pb-red';
 const pctFlag  = (p) => p >= 75 ? ['On track', 'pp'] : p >= 60 ? ['Progressing', 'po'] : ['Needs support', 'pr'];
 
-const FacultyContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, sessions = [], doubts = [], students = [], onDoubtAnswered }) => {
+const FacultyContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, sessions = [], doubts = [], students = [], onDoubtAnswered, onSessionNoteUpdated }) => {
   const firstName = profile?.name?.split(' ').find(p => !p.startsWith('Dr')) || profile?.name?.split(' ')[0] || 'there';
   const [scheduleTab, setScheduleTab] = useState(0);
   const [doubtsTab, setDoubtsTab] = useState(0);
   const [openReplies, setOpenReplies] = useState(new Set());
   const [replyTexts, setReplyTexts] = useState({});
+  const [openNotes, setOpenNotes] = useState(new Set());
+  const [noteTexts, setNoteTexts] = useState({});
+  const [savingNote, setSavingNote] = useState(null);
 
   const pending = doubts.filter(d => !d.answeredAt);
   const answered = doubts.filter(d => d.answeredAt);
@@ -113,6 +116,42 @@ const FacultyContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
       next.has(id) ? next.delete(id) : next.add(id);
       return next;
     });
+  };
+
+  const toggleNote = (id, existingNote) => {
+    setOpenNotes(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+        setNoteTexts(t => ({ ...t, [id]: existingNote || '' })); // discard unsaved changes on close
+      } else {
+        next.add(id);
+        setNoteTexts(t => ({ ...t, [id]: existingNote || '' })); // seed from saved value on open
+      }
+      return next;
+    });
+  };
+
+  const saveNote = async (id) => {
+    const text = noteTexts[id] ?? '';
+    const token = localStorage.getItem('token');
+    setSavingNote(id);
+    try {
+      const res = await fetch(`http://localhost:5000/api/faculty/sessions/${id}/note`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ note: text }),
+      });
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      onSessionNoteUpdated?.(id, data.note);
+      setOpenNotes(prev => { const next = new Set(prev); next.delete(id); return next; });
+      onShowToast('Session note saved ✓');
+    } catch {
+      onShowToast('Failed to save note. Try again.');
+    } finally {
+      setSavingNote(null);
+    }
   };
 
   const markReplied = async (id) => {
@@ -272,21 +311,49 @@ const FacultyContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
                 );
                 return shown.map(s => {
                   const past = !isUpcoming(s.scheduledAt);
+                  const noteOpen = openNotes.has(s.id);
+                  const noteVal = noteTexts[s.id] !== undefined ? noteTexts[s.id] : (s.note || '');
                   return (
-                    <tr key={s.id}>
-                      <td>{s.enrolledStudents?.length > 0 ? s.enrolledStudents.join(', ') : '—'}</td>
-                      <td>{s.title}</td>
-                      <td><span className="pill pg">{s.subject}</span></td>
-                      <td>{fmtDate(s.scheduledAt)}, {fmtTime(s.scheduledAt)}</td>
-                      <td>{s.duration} min</td>
-                      <td><span className={`sched-status ${past ? 's-done' : 's-up'}`}>{past ? 'Completed' : 'Upcoming'}</span></td>
-                      <td>
-                        {past
-                          ? <button className="btn btn-ghost btn-sm" onClick={() => onOpenModal('session-note-modal')}>View Notes</button>
-                          : <div style={{ display: 'flex', gap: '6px' }}><button className="btn btn-ghost btn-sm" onClick={() => onOpenModal('session-note-modal')}>Add Note</button><button className="btn btn-gold btn-sm" onClick={() => onShowToast('Reminder set!')}>Remind</button></div>
-                        }
-                      </td>
-                    </tr>
+                    <Fragment key={s.id}>
+                      <tr>
+                        <td>{s.enrolledStudents?.length > 0 ? s.enrolledStudents.join(', ') : '—'}</td>
+                        <td>{s.title}</td>
+                        <td><span className="pill pg">{s.subject}</span></td>
+                        <td>{fmtDate(s.scheduledAt)}, {fmtTime(s.scheduledAt)}</td>
+                        <td>{s.duration} min</td>
+                        <td><span className={`sched-status ${past ? 's-done' : 's-up'}`}>{past ? 'Completed' : 'Upcoming'}</span></td>
+                        <td>
+                          <div style={{ display: 'flex', gap: '6px' }}>
+                            <button className={`btn btn-sm ${s.note ? 'btn-gold' : 'btn-ghost'}`} onClick={() => toggleNote(s.id, s.note)}>
+                              {s.note ? 'Edit Note' : 'Add Note'}
+                            </button>
+                            {!past && <button className="btn btn-ghost btn-sm" onClick={() => onShowToast('Reminder set!')}>Remind</button>}
+                          </div>
+                        </td>
+                      </tr>
+                      {noteOpen && (
+                        <tr>
+                          <td colSpan={7} style={{ padding: '0 0 12px 0', background: 'var(--cream)' }}>
+                            <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                              <div style={{ fontSize: '12px', color: 'var(--text3)', fontWeight: 500 }}>{s.title} — Session Note</div>
+                              <textarea
+                                className="sn-textarea"
+                                rows="3"
+                                placeholder="What was covered? What clicked? What needs follow-up? These notes feed into weekly parent reports."
+                                value={noteVal}
+                                onChange={e => setNoteTexts(t => ({ ...t, [s.id]: e.target.value }))}
+                              />
+                              <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                                <button className="btn btn-ghost btn-sm" onClick={() => toggleNote(s.id, s.note)}>Cancel</button>
+                                <button className="btn btn-gold btn-sm" disabled={savingNote === s.id} onClick={() => saveNote(s.id)}>
+                                  {savingNote === s.id ? 'Saving…' : 'Save Note ✓'}
+                                </button>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
                   );
                 });
               })()}
@@ -301,18 +368,26 @@ const FacultyContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
         <div className="card" style={{ padding: '14px 18px' }}>
           {pastSessions.length === 0 ? (
             <div style={{ padding: '12px 0', fontSize: '13px', color: 'var(--text3)' }}>No past sessions yet.</div>
-          ) : pastSessions.slice(0, 2).map((s, idx) => (
-            <div key={s.id} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '12px 0', borderBottom: idx < Math.min(pastSessions.length, 2) - 1 ? '1px solid var(--b)' : 'none' }}>
-              <div className="di-av">{(s.enrolledStudents?.[0] || '?').charAt(0)}</div>
-              <div style={{ flex: 1 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text)' }}>{s.enrolledStudents?.join(', ') || 'Students'} — {s.title}</div>
-                  <div style={{ fontSize: '11px', color: 'var(--text3)' }}>{fmtDate(s.scheduledAt)}</div>
+          ) : (() => {
+            const withNotes = pastSessions.filter(s => s.note);
+            const shown = withNotes.length > 0 ? withNotes.slice(0, 3) : pastSessions.slice(0, 2);
+            return shown.map((s, idx) => (
+              <div key={s.id} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '12px 0', borderBottom: idx < shown.length - 1 ? '1px solid var(--b)' : 'none' }}>
+                <div className="di-av">{(s.enrolledStudents?.[0] || '?').charAt(0)}</div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text)' }}>{s.enrolledStudents?.join(', ') || 'Students'} — {s.title}</div>
+                    <div style={{ fontSize: '11px', color: 'var(--text3)' }}>{fmtDate(s.scheduledAt)}</div>
+                  </div>
+                  <div style={{ fontSize: '12px', color: 'var(--text3)', marginTop: '2px' }}>{s.subject} • {s.duration} min</div>
+                  {s.note
+                    ? <div style={{ marginTop: '8px', fontSize: '12.5px', color: 'var(--text2)', background: 'var(--cream2)', padding: '9px 12px', borderRadius: 'var(--r)', borderLeft: '3px solid var(--gold)', lineHeight: 1.7 }}>{s.note}</div>
+                    : <div style={{ marginTop: '6px', fontSize: '12px', color: 'var(--text3)', fontStyle: 'italic' }}>No note added yet — click "Add Note" in the table above.</div>
+                  }
                 </div>
-                <div style={{ fontSize: '12.5px', color: 'var(--text2)', marginTop: '5px', lineHeight: 1.7 }}>{s.subject} • {s.duration} min</div>
               </div>
-            </div>
-          ))}
+            ));
+          })()}
         </div>
       </div>
 

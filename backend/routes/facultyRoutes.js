@@ -61,6 +61,7 @@ router.get('/sessions', requireAuth, async (req, res) => {
         dayOfWeek: s.dayOfWeek,
         scheduledAt: s.scheduledAt,
         duration: s.duration,
+        note: s.note || null,
         enrolledCount: eligible.length,
         enrolledStudents: eligible.map(sp => sp.user.name),
       };
@@ -157,6 +158,62 @@ router.get('/students', requireAuth, async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to fetch students' });
+  }
+});
+
+// POST /api/faculty/sessions/:id/note
+router.post('/sessions/:id/note', requireAuth, async (req, res) => {
+  try {
+    const { note } = req.body;
+    if (note === undefined) return res.status(400).json({ error: 'Note text is required' });
+
+    const fp = await prisma.facultyProfile.findUnique({
+      where: { userId: req.user.id },
+      include: { user: { select: { name: true } } },
+    });
+    if (!fp) return res.status(403).json({ error: 'Not a faculty member' });
+
+    const sessionId = parseInt(req.params.id);
+    if (isNaN(sessionId)) return res.status(400).json({ error: 'Invalid session ID' });
+
+    const session = await prisma.session.findUnique({ where: { id: sessionId } });
+    if (!session || session.facultyId !== fp.id) return res.status(404).json({ error: 'Session not found' });
+
+    const trimmedNote = note.trim() || null;
+    const updated = await prisma.session.update({
+      where: { id: sessionId },
+      data: { note: trimmedNote },
+    });
+
+    // Notify eligible students if a note was actually set
+    if (trimmedNote) {
+      const students = await prisma.studentProfile.findMany({
+        where: { grade: session.grade, plan: 'premium' },
+      });
+      const eligible = students.filter(sp =>
+        (EXAM_SUBJECTS[sp.examTarget] || []).includes(session.subject)
+      );
+      if (eligible.length > 0) {
+        // Delete old notification for this session (so we don't pile up duplicates on edits)
+        await prisma.facultyNotification.deleteMany({
+          where: { sessionId, facultyId: fp.id },
+        });
+        await prisma.facultyNotification.createMany({
+          data: eligible.map(sp => ({
+            content: `${fp.user.name} added a note for "${session.title}": ${trimmedNote.length > 80 ? trimmedNote.slice(0, 80) + '…' : trimmedNote}`,
+            type: 'Session Note',
+            studentId: sp.id,
+            facultyId: fp.id,
+            sessionId,
+          })),
+        });
+      }
+    }
+
+    res.json({ success: true, note: updated.note });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to save note' });
   }
 });
 

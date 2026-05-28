@@ -100,6 +100,9 @@ const FacultyLMS = () => {
           onDoubtAnswered={(id, answeredAt, answer) =>
             setDoubts(prev => prev.map(d => d.id === id ? { ...d, answeredAt, answer } : d))
           }
+          onSessionNoteUpdated={(id, note) =>
+            setSessions(prev => prev.map(s => s.id === id ? { ...s, note } : s))
+          }
         />
       </div>
       <FacultyModals

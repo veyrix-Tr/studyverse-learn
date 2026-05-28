@@ -5,6 +5,14 @@ import StudentTopbar from '../components/student-lms/StudentTopbar';
 import StudentContent from '../components/student-lms/StudentContent';
 import StudentModals from '../components/student-lms/StudentModals';
 
+const NOTIF_NAV = {
+  'Session Note':      'sessions',
+  'Schedule Update':   'sessions',
+  'Reminder':          'dashboard',
+  'Motivational Note': 'dashboard',
+  'Announcement':      'notif',
+};
+
 const StudentLMS = () => {
   const [activePage, setActivePage] = useState('dashboard');
   const [openModal, setOpenModal] = useState(null);
@@ -102,7 +110,10 @@ const StudentLMS = () => {
           if (!Array.isArray(fresh)) return;
           setNotifications(prev => {
             const newOnes = fresh.filter(fn => !fn.readAt && !prev.some(n => n.id === fn.id));
-            newOnes.forEach(n => showToast(`${n.type}: ${n.content}`));
+            newOnes.forEach(n => {
+              const page = NOTIF_NAV[n.type] || 'notif';
+              showToast(`${n.type}: ${n.content.length > 60 ? n.content.slice(0, 60) + '…' : n.content}`, () => setActivePage(page));
+            });
             return fresh;
           });
         })
@@ -124,6 +135,24 @@ const StudentLMS = () => {
       });
       return prev.map(n => n.readAt ? n : { ...n, readAt: new Date().toISOString() });
     });
+  };
+
+  // Auto-mark all read when student opens the notifications page
+  useEffect(() => {
+    if (activePage === 'notif') markAllNotificationsRead();
+  }, [activePage]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleNotificationClick = (id, type) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      fetch(`http://localhost:5000/api/student/notifications/${id}/read`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${token}` },
+      }).catch(() => {});
+    }
+    setNotifications(prev => prev.map(n => n.id === id ? { ...n, readAt: new Date().toISOString() } : n));
+    const page = NOTIF_NAV[type] || 'notif';
+    setActivePage(page);
   };
 
   return (
@@ -153,6 +182,7 @@ const StudentLMS = () => {
           doubts={doubts}
           notifications={notifications}
           onMarkNotificationsRead={markAllNotificationsRead}
+          onNotificationClick={handleNotificationClick}
         />
       </div>
       <StudentModals
