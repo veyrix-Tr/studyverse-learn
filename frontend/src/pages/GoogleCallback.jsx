@@ -19,10 +19,11 @@ const GoogleCallback = () => {
       localStorage.setItem('user', JSON.stringify(parsedUser));
 
       const { role, plan } = parsedUser;
-      if (role === 'admin')        window.location.href = '/admin';
-      else if (role === 'faculty') window.location.href = '/faculty';
-      else if (plan === 'premium') window.location.href = '/student-v2';
-      else                         window.location.href = '/student';
+      if (role === 'superadmin')    window.location.replace('/superadmin');
+      else if (role === 'admin')    window.location.replace('/admin');
+      else if (role === 'faculty')  window.location.replace('/faculty');
+      else if (plan === 'premium')  window.location.replace('/student-v2');
+      else                          window.location.replace('/student');
     } catch {
       window.location.href = '/login?error=google-failed';
     }

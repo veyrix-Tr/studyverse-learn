@@ -34,7 +34,7 @@ const AdminLMS = ({ expectedRole }) => {
         if (!data || data.error) return;
         setProfile(data);
         if (expectedRole && data.role !== expectedRole) {
-          window.location.href = data.role === 'superadmin' ? '/superadmin' : '/admin';
+          window.location.replace(data.role === 'superadmin' ? '/superadmin' : '/admin');
           return;
         }
         if (data.role === 'admin' && data.adminProfile?.isActive === false) {
