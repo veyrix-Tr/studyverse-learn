@@ -98,6 +98,68 @@ router.get('/doubts', requireAuth, async (req, res) => {
   }
 });
 
+// GET /api/faculty/students
+// Students whose grade + exam curriculum includes this faculty's subject (via sessions)
+router.get('/students', requireAuth, async (req, res) => {
+  try {
+    const fp = await prisma.facultyProfile.findUnique({ where: { userId: req.user.id } });
+    if (!fp || !fp.subject) return res.json([]);
+
+    const EXAM_SUBJECTS = {
+      'JEE Mains':    ['Physics', 'Chemistry', 'Maths'],
+      'JEE Advanced': ['Physics', 'Chemistry', 'Maths'],
+      'NEET':         ['Physics', 'Chemistry', 'Biology'],
+    };
+
+    // Grades this faculty teaches for their subject
+    const gradeSessions = await prisma.session.findMany({
+      where: { facultyId: fp.id, subject: fp.subject },
+      select: { grade: true },
+      distinct: ['grade'],
+    });
+    const grades = gradeSessions.map(s => s.grade);
+    if (grades.length === 0) return res.json([]);
+
+    // Premium students in those grades whose exam curriculum includes this faculty's subject
+    const students = await prisma.studentProfile.findMany({
+      where: { grade: { in: grades }, plan: 'premium' },
+      include: { user: { select: { name: true } } },
+    });
+    const relevant = students.filter(sp =>
+      (EXAM_SUBJECTS[sp.examTarget] || []).includes(fp.subject)
+    );
+
+    const now = new Date();
+    const result = await Promise.all(relevant.map(async (sp) => {
+      const scores = await prisma.weeklyScore.findMany({
+        where: { studentId: sp.id, subject: fp.subject },
+        orderBy: { testDate: 'desc' },
+        take: 4,
+      });
+      const nextSession = await prisma.session.findFirst({
+        where: { facultyId: fp.id, grade: sp.grade, subject: fp.subject, scheduledAt: { gt: now } },
+        orderBy: { scheduledAt: 'asc' },
+      });
+      return {
+        id: sp.id,
+        name: sp.user.name,
+        examTarget: sp.examTarget,
+        targetYear: sp.targetYear,
+        grade: sp.grade,
+        plan: sp.plan,
+        latestScore: scores[0] ? { score: scores[0].score, totalMarks: scores[0].totalMarks, testDate: scores[0].testDate, weekNumber: scores[0].weekNumber } : null,
+        allScores: scores.map(s => ({ score: s.score, totalMarks: s.totalMarks, testDate: s.testDate, weekNumber: s.weekNumber })),
+        nextSession: nextSession ? { scheduledAt: nextSession.scheduledAt, title: nextSession.title } : null,
+      };
+    }));
+
+    res.json(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch students' });
+  }
+});
+
 // PUT /api/faculty/doubts/:id/answer
 router.put('/doubts/:id/answer', requireAuth, async (req, res) => {
   try {

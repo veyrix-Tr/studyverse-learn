@@ -5,13 +5,12 @@ const isToday = (iso) => {
   return d.getFullYear() === n.getFullYear() && d.getMonth() === n.getMonth() && d.getDate() === n.getDate();
 };
 
-const FacultySidebar = ({ activePage, onNav, onShowToast, profile, sessions = [], doubts = [] }) => {
+const FacultySidebar = ({ activePage, onNav, onShowToast, profile, sessions = [], doubts = [], students = [] }) => {
   const name = profile?.name || 'Faculty';
   const initial = name.charAt(0).toUpperCase();
   const subject = profile?.facultyProfile?.subject || '';
 
   const todayCount = sessions.filter(s => isToday(s.scheduledAt)).length;
-  const activeStudents = new Set(sessions.flatMap(s => s.enrolledStudents || [])).size;
   const pendingDoubts = doubts.filter(d => !d.answeredAt).length;
 
   return (
@@ -58,7 +57,7 @@ const FacultySidebar = ({ activePage, onNav, onShowToast, profile, sessions = []
             <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
           </svg>
           My Students
-          {activeStudents > 0 && <span className="nbadge dim">{activeStudents}</span>}
+          {students.length > 0 && <span className="nbadge dim">{students.length}</span>}
         </div>
       </div>
 
@@ -98,7 +97,6 @@ const FacultySidebar = ({ activePage, onNav, onShowToast, profile, sessions = []
             <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
           </svg>
           Parent Feedback
-          <span className="nbadge dim">3</span>
         </div>
       </div>
 

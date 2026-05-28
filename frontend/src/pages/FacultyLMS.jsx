@@ -14,6 +14,7 @@ const FacultyLMS = () => {
   const [profile, setProfile] = useState(null);
   const [sessions, setSessions] = useState([]);
   const [doubts, setDoubts] = useState([]);
+  const [students, setStudents] = useState([]);
   const toastTimer = useRef(null);
 
   useEffect(() => {
@@ -48,6 +49,13 @@ const FacultyLMS = () => {
       .then(r => r.ok ? r.json() : null)
       .then(data => { if (Array.isArray(data)) setDoubts(data); })
       .catch(() => {});
+
+    fetch('http://localhost:5000/api/faculty/students', {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (Array.isArray(data)) setStudents(data); })
+      .catch(() => {});
   }, []);
 
   const showToast = (msg) => {
@@ -70,6 +78,7 @@ const FacultyLMS = () => {
         profile={profile}
         sessions={sessions}
         doubts={doubts}
+        students={students}
       />
       <div className="faculty-main">
         <FacultyTopbar
@@ -82,12 +91,12 @@ const FacultyLMS = () => {
         <FacultyContent
           activePage={activePage}
           onOpenModal={setOpenModal}
-          onOpenStudentDetail={openStudentDetail}
           onNav={setActivePage}
           onShowToast={showToast}
           profile={profile}
           sessions={sessions}
           doubts={doubts}
+          students={students}
           onDoubtAnswered={(id, answeredAt, answer) =>
             setDoubts(prev => prev.map(d => d.id === id ? { ...d, answeredAt, answer } : d))
           }

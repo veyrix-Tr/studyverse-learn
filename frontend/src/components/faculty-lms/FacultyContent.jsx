@@ -7,6 +7,12 @@ const isToday = (iso) => {
   const d = new Date(iso), n = new Date();
   return d.getFullYear() === n.getFullYear() && d.getMonth() === n.getMonth() && d.getDate() === n.getDate();
 };
+const isPast7Days = (iso) => {
+  const d = new Date(iso), n = new Date();
+  const sevenDaysAgo = new Date(n);
+  sevenDaysAgo.setDate(n.getDate() - 7);
+  return d >= sevenDaysAgo && d <= n;
+};
 const timeAgo = (iso) => {
   const mins = Math.round((Date.now() - new Date(iso)) / 60000);
   if (mins < 60) return `${mins}m ago`;
@@ -74,7 +80,12 @@ const DoubtItem = ({ priority, av, name, time, pills, question, placeholder, ext
 
 const getGreeting = () => { const h = new Date().getHours(); if (h < 12) return 'Good morning'; if (h < 17) return 'Good afternoon'; return 'Good evening'; };
 
-const FacultyContent = ({ activePage, onOpenModal, onOpenStudentDetail, onNav, onShowToast, profile, sessions = [], doubts = [], onDoubtAnswered }) => {
+const pctOf = (score, total) => total > 0 ? Math.round((score / total) * 100) : 0;
+const pctColor = (p) => p >= 75 ? 'var(--green)' : p >= 60 ? 'var(--gold)' : p >= 45 ? 'var(--orange)' : 'var(--red)';
+const pctBar   = (p) => p >= 75 ? 'pb-green' : p >= 60 ? 'pb-gold' : p >= 45 ? 'pb-orange' : 'pb-red';
+const pctFlag  = (p) => p >= 75 ? ['On track', 'pp'] : p >= 60 ? ['Progressing', 'po'] : ['Needs support', 'pr'];
+
+const FacultyContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, sessions = [], doubts = [], students = [], onDoubtAnswered }) => {
   const firstName = profile?.name?.split(' ').find(p => !p.startsWith('Dr')) || profile?.name?.split(' ')[0] || 'there';
   const [scheduleTab, setScheduleTab] = useState(0);
   const [doubtsTab, setDoubtsTab] = useState(0);
@@ -87,7 +98,14 @@ const FacultyContent = ({ activePage, onOpenModal, onOpenStudentDetail, onNav, o
   const todaySessions = sessions.filter(s => isToday(s.scheduledAt));
   const upcomingSessions = sessions.filter(s => isUpcoming(s.scheduledAt));
   const pastSessions = sessions.filter(s => !isUpcoming(s.scheduledAt));
-  const activeStudents = new Set(sessions.flatMap(s => s.enrolledStudents || [])).size;
+
+  const studentsWithScores = students.filter(st => st.latestScore && st.allScores?.length > 0);
+  const avgGain = studentsWithScores.length > 0
+    ? Math.round(studentsWithScores.reduce((sum, st) => {
+        const first = st.allScores[st.allScores.length - 1];
+        return sum + (st.latestScore.score - first.score);
+      }, 0) / studentsWithScores.length)
+    : null;
 
   const toggleReply = (id) => {
     setOpenReplies(prev => {
@@ -118,36 +136,6 @@ const FacultyContent = ({ activePage, onOpenModal, onOpenStudentDetail, onNav, o
     }
   };
 
-  const rahulSubjects = <>
-    <SubjRow name="Chem" pct={72} bar="pb-gold" color="var(--gold)" />
-    <SubjRow name="Maths" pct={80} bar="pb-green" color="var(--green)" />
-    <SubjRow name="Phys" pct={58} bar="pb-orange" color="var(--orange)" />
-  </>;
-  const snehaSubjects = <>
-    <SubjRow name="Chem" pct={81} bar="pb-green" color="var(--green)" />
-    <SubjRow name="Maths" pct={86} bar="pb-green" color="var(--green)" />
-    <SubjRow name="Phys" pct={68} bar="pb-gold" color="var(--gold)" />
-  </>;
-  const priyaSubjects = <>
-    <SubjRow name="Chem" pct={62} bar="pb-orange" color="var(--orange)" />
-    <SubjRow name="Bio" pct={77} bar="pb-green" color="var(--green)" />
-    <SubjRow name="Phys" pct={44} bar="pb-red" color="var(--red)" />
-  </>;
-  const arjunSubjects = <>
-    <SubjRow name="Chem" pct={75} bar="pb-green" color="var(--green)" />
-    <SubjRow name="Maths" pct={62} bar="pb-orange" color="var(--orange)" />
-    <SubjRow name="Phys" pct={66} bar="pb-orange" color="var(--orange)" />
-  </>;
-  const vanyaSubjects = <>
-    <SubjRow name="Chem" pct={58} bar="pb-orange" color="var(--orange)" />
-    <SubjRow name="Maths" pct={61} bar="pb-orange" color="var(--orange)" />
-    <SubjRow name="Phys" pct={48} bar="pb-red" color="var(--red)" />
-  </>;
-  const kavyaSubjects = <>
-    <SubjRow name="Chem" pct={88} bar="pb-green" color="var(--green)" />
-    <SubjRow name="Bio" pct={91} bar="pb-green" color="var(--green)" />
-    <SubjRow name="Phys" pct={74} bar="pb-gold" color="var(--gold)" />
-  </>;
 
   return (
     <div className="content">
@@ -169,8 +157,8 @@ const FacultyContent = ({ activePage, onOpenModal, onOpenStudentDetail, onNav, o
         <div className="g4 mb">
           <div className="stat sa-navy">
             <div className="stat-l">Active Students</div>
-            <div className="stat-v">{activeStudents}</div>
-            <div className="stat-n neu">{sessions.length} sessions scheduled</div>
+            <div className="stat-v">{students.length}</div>
+            <div className="stat-n neu">{sessions.filter(s => isPast7Days(s.scheduledAt)).length} sessions in last 7 days</div>
           </div>
           <div className="stat sa-red">
             <div className="stat-l">Doubts Pending</div>
@@ -184,7 +172,7 @@ const FacultyContent = ({ activePage, onOpenModal, onOpenStudentDetail, onNav, o
           </div>
           <div className="stat sa-green">
             <div className="stat-l">Avg Improvement</div>
-            <div className="stat-v">+74</div>
+            <div className="stat-v">{avgGain !== null ? `+${avgGain}` : '—'}</div>
             <div className="stat-n up">marks across cohort</div>
           </div>
         </div>
@@ -239,21 +227,24 @@ const FacultyContent = ({ activePage, onOpenModal, onOpenStudentDetail, onNav, o
           <span className="sh-a" onClick={() => onNav('students')}>All students →</span>
         </div>
         <div className="g3 mb">
-          <StudentCard av="R" name="Rahul Mehta" exam="JEE Mains 2026" week="Week 9"
-            statusBadge={<span className="sched-status s-live" style={{ fontSize: '10px' }}>Live</span>}
-            base={388} curr={462} gain={74} gainFull
-            subjects={rahulSubjects} next="Today 4PM" flagClass="pr" flag="Phys weak"
-            onDetail={() => onOpenStudentDetail('Rahul Mehta', 'R', 'JEE Mains 2026', 'Chemistry', 'Atomic Structure', 388, 462, 74)} />
-          <StudentCard av="S" name="Sneha Kapoor" exam="JEE Mains 2026" week="Week 11"
-            statusBadge={<span className="sched-status s-up">Today 4PM</span>}
-            base={420} curr={511} gain={91} gainFull
-            subjects={snehaSubjects} next="Today 4PM" flagClass="pp" flag="On track"
-            onDetail={() => onOpenStudentDetail('Sneha Kapoor', 'S', 'JEE Mains 2026', 'Mathematics', 'Integration', 420, 511, 91)} />
-          <StudentCard av="P" name="Priya Desai" exam="NEET 2026" week="Week 7"
-            statusBadge={<span className="sched-status s-done" style={{ fontSize: '10px' }}>Apr 17</span>}
-            base={350} curr={418} gain={68} gainFull
-            subjects={priyaSubjects} next="Apr 17" flagClass="pr" flag="Phys critical"
-            onDetail={() => onOpenStudentDetail('Priya Desai', 'P', 'NEET 2026', 'Chemistry', 'Organic Mechanisms', 350, 418, 68)} />
+          {students.slice(0, 3).map(st => {
+            const ls = st.latestScore;
+            const fs = st.allScores?.[st.allScores.length - 1];
+            const pct = ls ? pctOf(ls.score, ls.totalMarks) : null;
+            const [flag, flagClass] = pct !== null ? pctFlag(pct) : ['No scores', 'pn'];
+            const subj = profile?.facultyProfile?.subject || 'Subject';
+            const subjEl = ls ? <SubjRow name={subj} pct={pct} bar={pctBar(pct)} color={pctColor(pct)} /> : <div style={{ fontSize: '12px', color: 'var(--text3)' }}>No scores yet</div>;
+            const nextText = st.nextSession ? `${fmtDate(st.nextSession.scheduledAt)}, ${fmtTime(st.nextSession.scheduledAt)}` : 'No upcoming session';
+            return (
+              <StudentCard key={st.id} av={st.name.charAt(0)} name={st.name}
+                exam={`${st.examTarget || ''} ${st.targetYear || ''}`}
+                week={ls ? `Week ${ls.weekNumber}` : 'No tests'}
+                base={fs?.score ?? '—'} curr={ls?.score ?? '—'} gain={fs && ls ? ls.score - fs.score : 0}
+                subjects={subjEl} next={nextText} flagClass={flagClass} flag={flag}
+                onDetail={() => {}} />
+            );
+          })}
+          {students.length === 0 && <div style={{ color: 'var(--text3)', fontSize: '13px' }}>No students assigned yet.</div>}
         </div>
       </div>
 
@@ -328,34 +319,38 @@ const FacultyContent = ({ activePage, onOpenModal, onOpenStudentDetail, onNav, o
       {/* ══════════ MY STUDENTS ══════════ */}
       <div className={`page${activePage === 'students' ? ' on' : ''}`}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
-          <div style={{ fontSize: '13px', color: 'var(--text2)' }}>{activeStudents} active student{activeStudents !== 1 ? 's' : ''} • All 1-to-1 or small groups</div>
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <button className="btn btn-ghost btn-sm">Filter by Exam</button>
-            <button className="btn btn-gold btn-sm" onClick={() => onOpenModal('schedule-modal')}>+ New Session</button>
+          <div style={{ fontSize: '13px', color: 'var(--text2)' }}>
+            {students.length} student{students.length !== 1 ? 's' : ''} • {profile?.facultyProfile?.subject || 'Your subject'}
           </div>
+          <button className="btn btn-gold btn-sm" onClick={() => onOpenModal('schedule-modal')}>+ New Session</button>
         </div>
-        <div className="g3 mb">
-          <StudentCard av="R" name="Rahul Mehta" exam="JEE Mains 2026" week="Wk 9"
-            statusBadge={<span className="sched-status s-live" style={{ fontSize: '10px' }}>● Live</span>}
-            base={388} curr={462} gain={74} subjects={rahulSubjects} next="Today 2PM" flagClass="pr" flag="Phys weak"
-            onDetail={() => onOpenStudentDetail('Rahul Mehta', 'R', 'JEE Mains 2026', 'Chemistry', 'Atomic Structure', 388, 462, 74)} />
-          <StudentCard av="S" name="Sneha Kapoor" exam="JEE Mains 2026" week="Wk 11"
-            statusBadge={<span className="sched-status s-up" style={{ fontSize: '10px' }}>Today 4PM</span>}
-            base={420} curr={511} gain={91} subjects={snehaSubjects} next="Today 4PM" flagClass="pp" flag="On track"
-            onDetail={() => onOpenStudentDetail('Sneha Kapoor', 'S', 'JEE Mains 2026', 'Mathematics', 'Integration', 420, 511, 91)} />
-          <StudentCard av="P" name="Priya Desai" exam="NEET 2026" week="Wk 7"
-            base={350} curr={418} gain={68} subjects={priyaSubjects} next="Apr 17" flagClass="pr" flag="Phys critical"
-            onDetail={() => onOpenStudentDetail('Priya Desai', 'P', 'NEET 2026', 'Chemistry', 'Organic Mechanisms', 350, 418, 68)} />
-          <StudentCard av="A" name="Arjun Singh" exam="JEE Mains 2026" week="Wk 8"
-            base={410} curr={478} gain={68} subjects={arjunSubjects} next="Apr 18" flagClass="po" flag="Maths dip"
-            onDetail={() => onOpenStudentDetail('Arjun Singh', 'A', 'JEE Mains 2026', 'Physics', 'Electrostatics', 410, 478, 68)} />
-          <StudentCard av="V" name="Vanya Rao" exam="JEE Mains 2026" week="Wk 5"
-            base={360} curr={402} gain={42} subjects={vanyaSubjects} next="Apr 19" flagClass="pr" flag="Early stage"
-            onDetail={() => onOpenStudentDetail('Vanya Rao', 'V', 'JEE Mains 2026', 'Mathematics', 'Limits & Continuity', 360, 402, 42)} />
-          <StudentCard av="K" name="Kavya Menon" exam="NEET 2026" week="Wk 12"
-            base={440} curr={548} gain={108} subjects={kavyaSubjects} next="Apr 20" flagClass="pp" flag="Excellent"
-            onDetail={() => onOpenStudentDetail('Kavya Menon', 'K', 'NEET 2026', 'Biology', 'Human Physiology', 440, 548, 108)} />
-        </div>
+        {students.length === 0 ? (
+          <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text3)', fontSize: '13px' }}>No students found for your subject yet.</div>
+        ) : (
+          <div className="g3 mb">
+            {students.map(st => {
+              const ls = st.latestScore;
+              const fs = st.allScores?.[st.allScores.length - 1];
+              const pct = ls ? pctOf(ls.score, ls.totalMarks) : null;
+              const [flag, flagClass] = pct !== null ? pctFlag(pct) : ['No scores', 'pn'];
+              const subj = profile?.facultyProfile?.subject || 'Subject';
+              const subjEl = ls
+                ? <SubjRow name={subj} pct={pct} bar={pctBar(pct)} color={pctColor(pct)} />
+                : <div style={{ fontSize: '12px', color: 'var(--text3)' }}>No {subj} scores yet</div>;
+              const nextText = st.nextSession
+                ? `${fmtDate(st.nextSession.scheduledAt)}, ${fmtTime(st.nextSession.scheduledAt)}`
+                : 'No upcoming session';
+              return (
+                <StudentCard key={st.id} av={st.name.charAt(0)} name={st.name}
+                  exam={`${st.examTarget || ''} ${st.targetYear || ''}`}
+                  week={ls ? `Week ${ls.weekNumber}` : 'No tests'}
+                  base={fs?.score ?? '—'} curr={ls?.score ?? '—'} gain={fs && ls ? ls.score - fs.score : 0}
+                  subjects={subjEl} next={nextText} flagClass={flagClass} flag={flag}
+                  onDetail={() => {}} />
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* ══════════ DOUBT QUEUE ══════════ */}
