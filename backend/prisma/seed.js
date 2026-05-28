@@ -122,18 +122,35 @@ async function main() {
     },
   });
 
-  // ── Admin ─────────────────────────────────────────
+  // ── Super Admin ───────────────────────────────────
   await prisma.user.create({
     data: {
       name: 'Chirag Goyal',
-      email: 'admin@studyverse.com',
+      email: 'superadmin@studyverse.com',
+      password: adminPass,
+      role: 'superadmin',
+      adminProfile: { create: { department: 'Platform' } },
+    },
+  });
+
+  // ── Admins ────────────────────────────────────────
+  await prisma.user.create({
+    data: {
+      name: 'Meera Krishnan',
+      email: 'admin1@studyverse.com',
       password: adminPass,
       role: 'admin',
-      adminProfile: {
-        create: {
-          department: 'Platform',
-        },
-      },
+      adminProfile: { create: { department: 'Operations' } },
+    },
+  });
+
+  await prisma.user.create({
+    data: {
+      name: 'Sanjay Pillai',
+      email: 'admin2@studyverse.com',
+      password: adminPass,
+      role: 'admin',
+      adminProfile: { create: { department: 'Finance' } },
     },
   });
 
@@ -309,7 +326,7 @@ async function main() {
     { studentId: ishaanProfile.id, weekNumber: 4, subject: 'Chemistry', score: 70, totalMarks: 100, testDate: new Date('2026-05-26') },
   ]});
 
-  console.log('Seeded: 4 students (2 free, 2 premium), 2 faculty, 1 admin, 12 sessions by grade+subject (no enrollment table), 13 doubts, weekly scores (3 subjects/week)');
+  console.log('Seeded: 4 students (2 free, 2 premium), 2 faculty, 1 superadmin + 2 admins, 12 sessions, 13 doubts, weekly scores');
 }
 
 main()

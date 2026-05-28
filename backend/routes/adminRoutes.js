@@ -17,7 +17,7 @@ router.get('/me', requireAuth, async (req, res) => {
       select: {
         id: true, name: true, email: true, role: true,
         adminProfile: {
-          select: { department: true },
+          select: { department: true, isActive: true },
         },
       },
     });
@@ -80,6 +80,53 @@ router.get('/students', requireAuth, async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to fetch students' });
+  }
+});
+
+// GET /api/admin/admins — list all admin accounts (superadmin only)
+router.get('/admins', requireAuth, async (req, res) => {
+  try {
+    if (req.user.role !== 'superadmin') return res.status(403).json({ error: 'Superadmin only' });
+    const admins = await prisma.user.findMany({
+      where: { role: 'admin' },
+      select: {
+        id: true, name: true, email: true, role: true, createdAt: true,
+        adminProfile: { select: { department: true, isActive: true } },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+    res.json(admins);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch admins' });
+  }
+});
+
+// PUT /api/admin/admins/:id/deactivate — deactivate an admin account (superadmin only)
+router.put('/admins/:id/deactivate', requireAuth, async (req, res) => {
+  try {
+    if (req.user.role !== 'superadmin') return res.status(403).json({ error: 'Superadmin only' });
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ error: 'Invalid ID' });
+    await prisma.adminProfile.update({ where: { userId: id }, data: { isActive: false } });
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to deactivate' });
+  }
+});
+
+// PUT /api/admin/admins/:id/reactivate — reactivate an admin account (superadmin only)
+router.put('/admins/:id/reactivate', requireAuth, async (req, res) => {
+  try {
+    if (req.user.role !== 'superadmin') return res.status(403).json({ error: 'Superadmin only' });
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ error: 'Invalid ID' });
+    await prisma.adminProfile.update({ where: { userId: id }, data: { isActive: true } });
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to reactivate' });
   }
 });
 

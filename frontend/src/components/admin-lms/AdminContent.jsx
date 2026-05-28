@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 const chartData = [95, 112, 128, 142, 156, 184];
 const chartMax = Math.max(...chartData);
@@ -21,13 +21,19 @@ const RevenueChart = () => (
 
 const getGreeting = () => { const h = new Date().getHours(); if (h < 12) return 'Good morning'; if (h < 17) return 'Good afternoon'; return 'Good evening'; };
 
-const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, students = [], onOpenMessage }) => {
+const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, students = [], onOpenMessage, isSuperAdmin, adminAccounts = [], onDeactivateAdmin, onReactivateAdmin }) => {
   const firstName = profile?.name?.split(' ')[0] || 'there';
   const [studentsTab, setStudentsTab] = useState(0);
   const [approvalsTab, setApprovalsTab] = useState(0);
   const [dismissedApprovals, setDismissedApprovals] = useState(new Set());
   const [platformToggles, setPlatformToggles] = useState([true, true, true, true, true, true, true, true]);
   const [activeChips, setActiveChips] = useState(new Set([0]));
+
+  useEffect(() => {
+    if (!isSuperAdmin && (activePage === 'admins' || activePage === 'settings')) {
+      onNav('dashboard');
+    }
+  }, [activePage, isSuperAdmin]);
 
   const pg = (id) => `page${activePage === id ? ' on' : ''}`;
 
@@ -431,6 +437,9 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
                         borderWidth: '1px',
                         borderStyle: 'solid',
                         borderRadius: 'var(--r)',
+                      } : studentsTab === i ? {
+                        background: 'var(--blue)',
+                        color: '#fff',
                       } : {}}
                       onClick={() => setStudentsTab(i)}
                     >{label}</div>
@@ -629,7 +638,7 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
       </div>
 
       {/* ══ ADMIN ACCOUNTS (SUPER ONLY) ══ */}
-      <div className={pg('admins')} id="p-admins">
+      <div className={pg(isSuperAdmin ? 'admins' : '__never__')} id="p-admins">
         <div style={{ background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.25)', borderRadius: 'var(--rl)', padding: '14px 18px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '12px' }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
           <div style={{ fontSize: '13px', color: '#5b21b6', fontWeight: '500' }}>Super Admin view only. You can create admins, toggle their permissions, and deactivate accounts.</div>
@@ -640,51 +649,51 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
           <button className="btn btn-purple btn-sm" onClick={() => onOpenModal('add-admin-modal')}>+ Create Admin</button>
         </div>
 
-        <div className="g2 mb">
-          {[
-            {
-              avStyle: { color: 'var(--gold)', borderColor: 'var(--gold)' }, av: 'M', name: 'Meera Krishnan', role: 'Operations Admin · Active since Jan 2026',
-              perms: [
-                { label: 'View Students', on: true }, { label: 'Enroll Students', on: true }, { label: 'Assign Faculty', on: true },
-                { label: 'Approve Tests/Resources', on: true }, { label: 'Send Messages', on: true },
-                { label: 'View Revenue', on: false }, { label: 'Manage Fees', on: false }, { label: 'Add/Remove Faculty', on: false }
-              ]
-            },
-            {
-              avStyle: { color: 'var(--blue)', borderColor: 'var(--blue)', background: 'var(--bdim)' }, av: 'S', name: 'Sanjay Pillai', role: 'Finance Admin · Active since Feb 2026',
-              perms: [
-                { label: 'View Students', on: true }, { label: 'Enroll Students', on: false }, { label: 'Assign Faculty', on: false },
-                { label: 'Approve Tests/Resources', on: false }, { label: 'Send Messages', on: true },
-                { label: 'View Revenue', on: true }, { label: 'Manage Fees', on: true }, { label: 'Add/Remove Faculty', on: false }
-              ]
-            }
-          ].map(({ av, avStyle, name, role, perms }) => (
-            <div key={name} className="admin-card">
-              <div className="ac-header">
-                <div className="av av-lg" style={avStyle}>{av}</div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text)' }}>{name}</div>
-                  <div className="ac-meta">{role}</div>
+        {adminAccounts.length === 0 ? (
+          <div style={{ color: 'var(--text3)', fontSize: '13px', padding: '24px 0' }}>No admin accounts found.</div>
+        ) : (
+          <div className="g2 mb">
+            {adminAccounts.map((admin) => {
+              const initial = admin.name.charAt(0).toUpperCase();
+              const since = new Date(admin.createdAt).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
+              const dept = admin.adminProfile?.department || 'Admin';
+              const active = admin.adminProfile?.isActive !== false;
+              return (
+                <div key={admin.id} className="admin-card" style={active ? {} : { opacity: 0.7 }}>
+                  <div className="ac-header">
+                    <div className="av av-lg" style={active
+                      ? { color: 'var(--gold)', borderColor: 'var(--gold)' }
+                      : { color: 'var(--text3)', borderColor: 'var(--b)' }
+                    }>{initial}</div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: '14px', fontWeight: '600', color: active ? 'var(--text)' : 'var(--text3)' }}>{admin.name}</div>
+                      <div className="ac-meta">{dept} · Active since {since}</div>
+                      <div style={{ fontSize: '11.5px', color: 'var(--text3)', marginTop: '2px' }}>{admin.email}</div>
+                    </div>
+                    {active
+                      ? <span className="pill pp">Active</span>
+                      : <span className="pill" style={{ background: 'rgba(239,68,68,0.15)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.3)' }}>Deactivated</span>
+                    }
+                  </div>
+                  <div style={{ display: 'flex', gap: '7px', marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--b)' }}>
+                    {active ? (
+                      <>
+                        <button className="btn btn-ghost btn-sm" style={{ flex: 1, justifyContent: 'center' }} onClick={() => onShowToast('Permission editing coming soon')}>Edit Permissions</button>
+                        <button className="btn btn-red btn-sm" onClick={() => onDeactivateAdmin(admin.id)}>Deactivate</button>
+                      </>
+                    ) : (
+                      <button className="btn btn-sm" style={{ flex: 1, justifyContent: 'center', background: 'rgba(34,197,94,0.15)', color: '#22c55e', border: '1px solid rgba(34,197,94,0.3)' }} onClick={() => onReactivateAdmin(admin.id)}>Reactivate</button>
+                    )}
+                  </div>
                 </div>
-                <span className="pill pp">Active</span>
-              </div>
-              <div style={{ fontSize: '11.5px', color: 'var(--text3)', marginBottom: '10px', fontWeight: '500', textTransform: 'uppercase', letterSpacing: '.06em' }}>Permissions</div>
-              <div className="ac-perms">
-                {perms.map(({ label, on }) => (
-                  <span key={label} className={`ac-perm-tag ${on ? 'tag-on' : 'tag-off'}`}>{label}</span>
-                ))}
-              </div>
-              <div style={{ display: 'flex', gap: '7px', marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--b)' }}>
-                <button className="btn btn-ghost btn-sm" style={{ flex: 1, justifyContent: 'center' }} onClick={() => onOpenModal('edit-admin-modal')}>Edit Permissions</button>
-                <button className="btn btn-red btn-sm" onClick={() => onShowToast('Account deactivated')}>Deactivate</button>
-              </div>
-            </div>
-          ))}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* ══ PLATFORM SETTINGS (SUPER ONLY) ══ */}
-      <div className={pg('settings')} id="p-settings">
+      <div className={pg(isSuperAdmin ? 'settings' : '__never__')} id="p-settings">
         <div style={{ background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.25)', borderRadius: 'var(--rl)', padding: '14px 18px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '12px' }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
           <div style={{ fontSize: '13px', color: '#5b21b6', fontWeight: '500' }}>Platform-level settings. Changes apply across all dashboards immediately.</div>

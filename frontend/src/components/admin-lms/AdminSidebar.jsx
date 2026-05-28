@@ -1,7 +1,7 @@
 import React from 'react';
 
-const AdminSidebar = ({ activePage, superMode, onNav, onSetRole, onShowToast, profile, studentsCount = 0 }) => {
-  const name = profile?.name || (superMode ? 'Super Admin' : 'Admin');
+const AdminSidebar = ({ activePage, isSuperAdmin, onNav, onShowToast, profile, studentsCount = 0 }) => {
+  const name = profile?.name || (isSuperAdmin ? 'Super Admin' : 'Admin');
   const initial = name.charAt(0).toUpperCase();
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -18,7 +18,7 @@ const AdminSidebar = ({ activePage, superMode, onNav, onSetRole, onShowToast, pr
   };
 
   return (
-    <aside className={`sidebar${superMode ? ' supermode' : ''}`} id="sidebar">
+    <aside className={`sidebar${isSuperAdmin ? ' supermode' : ''}`} id="sidebar">
       <div className="sb-logo">
         <svg className="sb-mark" viewBox="0 0 100 100" fill="none">
           <path d="M50 5L90 28V72L50 95L10 72V28L50 5Z" stroke="#E8A830" strokeWidth="6" strokeLinejoin="round"/>
@@ -30,22 +30,18 @@ const AdminSidebar = ({ activePage, superMode, onNav, onSetRole, onShowToast, pr
         </div>
       </div>
 
-      <div className={`role-badge ${superMode ? 'rb-super' : 'rb-admin'}`}>
-        <div className={`rb-av ${superMode ? 'rb-av-super' : 'rb-av-admin'}`}>
+      <div className={`role-badge ${isSuperAdmin ? 'rb-super' : 'rb-admin'}`}>
+        <div className={`rb-av ${isSuperAdmin ? 'rb-av-super' : 'rb-av-admin'}`}>
           {initial}
         </div>
         <div>
           <div className="rb-name">{name}</div>
-          <div className={superMode ? 'rb-role-super' : 'rb-role-admin'}>
-            {superMode ? '⬡ SUPER ADMIN' : '◈ ADMIN'}
+          <div className={isSuperAdmin ? 'rb-role-super' : 'rb-role-admin'}>
+            {isSuperAdmin ? '⬡ SUPER ADMIN' : '◈ ADMIN'}
           </div>
         </div>
       </div>
 
-      <div className="role-switcher">
-        <button className={`rs-btn${superMode ? ' on super-on' : ''}`} onClick={() => onSetRole('super')}>Super Admin</button>
-        <button className={`rs-btn${!superMode ? ' on' : ''}`} onClick={() => onSetRole('admin')}>Admin View</button>
-      </div>
 
       <div className="nb">
         <div className="nl">Overview</div>

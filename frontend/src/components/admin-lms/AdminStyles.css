@@ -85,8 +85,8 @@ body.admin-mode #root {
 .nb-purple{background:rgba(139,92,246,0.3);color:#c4b5fd}
 
 /* super-admin only items */
-.sa-only{display:none}
-.supermode .sa-only{display:flex}
+.sa-only{display:none !important}
+.supermode .sa-only{display:flex !important}
 .supermode .ni.on{background:rgba(139,92,246,0.2);color:#c4b5fd}
 
 .sb-bottom{margin-top:auto;padding:12px;border-top:1px solid var(--bi);flex-shrink:0}

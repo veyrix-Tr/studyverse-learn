@@ -53,7 +53,7 @@ const login = async (req, res) => {
     // Find user by email, include student profile to know free/premium
     const user = await prisma.user.findUnique({
       where: { email },
-      include: { studentProfile: true },
+      include: { studentProfile: true, adminProfile: true },
     });
     if (!user) {
       return res.status(401).json({ error: 'Invalid email or password' });
@@ -63,6 +63,11 @@ const login = async (req, res) => {
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(401).json({ error: 'Invalid email or password' });
+    }
+
+    // Block deactivated admin accounts
+    if ((user.role === 'admin' || user.role === 'superadmin') && user.adminProfile?.isActive === false) {
+      return res.status(403).json({ error: 'Your account has been deactivated. Please contact your superadmin.' });
     }
 
     // Create a JWT token with user id and role inside

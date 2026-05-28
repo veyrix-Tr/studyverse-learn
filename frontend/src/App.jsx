@@ -12,6 +12,7 @@ function App() {
     switch(path) {
       case '/': case '/login': return 'login'
       case '/admin': return 'admin'
+      case '/superadmin': return 'superadmin'
       case '/faculty': return 'faculty'
       case '/student-v2': return 'student'
       case '/student': return 'free'
@@ -29,7 +30,11 @@ function App() {
   }
 
   if (page === 'admin') {
-    return <AdminLMS />
+    return <AdminLMS expectedRole="admin" />
+  }
+
+  if (page === 'superadmin') {
+    return <AdminLMS expectedRole="superadmin" />
   }
 
   if (page === 'faculty') {

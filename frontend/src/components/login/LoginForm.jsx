@@ -35,7 +35,8 @@ const LoginForm = ({ onSwitchToRegister }) => {
       localStorage.setItem('user', JSON.stringify(data.user));
 
       const { role, plan } = data.user;
-      if (role === 'admin')        window.location.href = '/admin';
+      if (role === 'superadmin')    window.location.href = '/superadmin';
+      else if (role === 'admin')   window.location.href = '/admin';
       else if (role === 'faculty') window.location.href = '/faculty';
       else if (plan === 'premium') window.location.href = '/student-v2';
       else                         window.location.href = '/student';
