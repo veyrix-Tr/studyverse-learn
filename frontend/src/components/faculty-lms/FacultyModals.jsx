@@ -1,8 +1,32 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 const FacultyModals = ({ openModal, onClose, onShowToast, toast, detailOpen, selectedStudent, onCloseDetail, onOpenModal, onNav }) => {
   const isOpen = (id) => openModal === id ? ' open' : '';
   const s = selectedStudent || {};
+  const [broadcastText, setBroadcastText] = useState('');
+  const [broadcasting, setBroadcasting] = useState(false);
+
+  const sendBroadcast = async () => {
+    if (!broadcastText.trim()) { onShowToast('Please type a message first'); return; }
+    const token = localStorage.getItem('token');
+    setBroadcasting(true);
+    try {
+      const res = await fetch('http://localhost:5000/api/faculty/broadcast', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ message: broadcastText.trim() }),
+      });
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      setBroadcastText('');
+      onClose();
+      onShowToast(`Message sent to ${data.notified} student${data.notified !== 1 ? 's' : ''} ✓`);
+    } catch {
+      onShowToast('Failed to send message. Try again.');
+    } finally {
+      setBroadcasting(false);
+    }
+  };
 
   return (
     <>
@@ -177,6 +201,24 @@ const FacultyModals = ({ openModal, onClose, onShowToast, toast, detailOpen, sel
           <div className="ma">
             <button className="btn btn-ghost btn-sm" onClick={onClose}>Cancel</button>
             <button className="btn btn-gold btn-sm" onClick={() => { onClose(); onShowToast('Test suggestion sent for admin approval ✓'); }}>Send for Approval →</button>
+          </div>
+        </div>
+      </div>
+
+      {/* Broadcast Modal */}
+      <div className={`overlay${isOpen('broadcast-modal')}`} onClick={e => e.target.classList.contains('overlay') && onClose()}>
+        <div className="modal">
+          <div className="mt">📢 Message All Students</div>
+          <div className="ms">Sends a notification to all your assigned students instantly.</div>
+          <div className="fg">
+            <label>Message</label>
+            <textarea className="finput" rows="4" placeholder="e.g. No session this Friday. Revise chapters 3–5 before Monday." value={broadcastText} onChange={e => setBroadcastText(e.target.value)} />
+          </div>
+          <div className="ma">
+            <button className="btn btn-ghost btn-sm" onClick={onClose}>Cancel</button>
+            <button className="btn btn-gold btn-sm" disabled={broadcasting} onClick={sendBroadcast}>
+              {broadcasting ? 'Sending…' : 'Send to All Students →'}
+            </button>
           </div>
         </div>
       </div>

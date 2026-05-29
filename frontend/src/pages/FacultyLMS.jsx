@@ -9,7 +9,7 @@ const FacultyLMS = () => {
   const [activePage, setActivePage] = useState('dashboard');
   const [openModal, setOpenModal] = useState(null);
   const [detailOpen, setDetailOpen] = useState(false);
-  const [selectedStudent, setSelectedStudent] = useState(null);
+  const [selectedStudent] = useState(null);
   const [toast, setToast] = useState({ show: false, msg: '' });
   const [profile, setProfile] = useState(null);
   const [sessions, setSessions] = useState([]);
@@ -64,11 +64,6 @@ const FacultyLMS = () => {
     toastTimer.current = setTimeout(() => setToast(t => ({ ...t, show: false })), 3200);
   };
 
-  const openStudentDetail = (name, init, exam, subject, topic, base, curr, gain) => {
-    setSelectedStudent({ name, init, exam, subject, topic, base, curr, gain });
-    setDetailOpen(true);
-  };
-
   return (
     <div className="faculty-app">
       <FacultySidebar
@@ -97,8 +92,8 @@ const FacultyLMS = () => {
           sessions={sessions}
           doubts={doubts}
           students={students}
-          onDoubtAnswered={(id, answeredAt, answer) =>
-            setDoubts(prev => prev.map(d => d.id === id ? { ...d, answeredAt, answer } : d))
+          onDoubtAnswered={(id, answeredAt, answer, helpful) =>
+            setDoubts(prev => prev.map(d => d.id === id ? { ...d, answeredAt, answer, helpful } : d))
           }
           onSessionNoteUpdated={(id, note) =>
             setSessions(prev => prev.map(s => s.id === id ? { ...s, note } : s))

@@ -103,6 +103,7 @@ model Doubt {
   subject     String?
   answer      String?
   answeredAt  DateTime?
+  helpful     Boolean?
   createdAt   DateTime  @default(now())
 
   studentId Int

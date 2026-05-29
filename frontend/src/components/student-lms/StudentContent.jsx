@@ -187,7 +187,7 @@ const timeAgo = (iso) => {
   return `${d}d ago`;
 };
 
-const TYPE_DOT = { 'Reminder': 'var(--gold)', 'Motivational Note': 'var(--green)', 'Schedule Update': 'var(--navy)', 'Announcement': 'var(--gold)', 'Session Note': 'var(--navy)' };
+const TYPE_DOT = { 'Reminder': 'var(--gold)', 'Motivational Note': 'var(--green)', 'Schedule Update': 'var(--navy)', 'Announcement': 'var(--gold)', 'Session Note': 'var(--navy)', 'Doubt Answered': 'var(--green)' };
 
 const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, scores, sessions = [], doubts = [], notifications = [], onMarkNotificationsRead, onNotificationClick }) => {
   const firstName = profile?.name?.split(' ')[0] || 'there';
@@ -236,6 +236,7 @@ const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
   const [doubtTab, setDoubtTab] = useState(0);
   const [openWR, setOpenWR] = useState(new Set([0]));
   const [openSessionNote, setOpenSessionNote] = useState(null);
+  const [helpfulState, setHelpfulState] = useState({});
 
   const toggleWR = (i) => {
     setOpenWR(prev => {
@@ -783,7 +784,7 @@ const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
       <div className={p('doubt')}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '22px' }}>
           <div className="tabs" style={{ marginBottom: 0 }}>
-            {['Open', 'Resolved', 'All'].map((t, i) => (
+            {['Resolved', 'Open', 'All'].map((t, i) => (
               <div key={t} className={`tab${doubtTab === i ? ' on' : ''}`} onClick={() => setDoubtTab(i)}>{t}</div>
             ))}
           </div>
@@ -791,32 +792,69 @@ const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
         </div>
         {(() => {
           const filtered = doubts.filter(d =>
-            doubtTab === 0 ? !d.answeredAt :
-            doubtTab === 1 ?  d.answeredAt : true
+            doubtTab === 0 ?  d.answeredAt :
+            doubtTab === 1 ? !d.answeredAt : true
           );
           if (filtered.length === 0) return (
             <div style={{ fontSize: '13px', color: 'var(--text3)', padding: '24px 0', textAlign: 'center' }}>
-              {doubtTab === 0 ? 'No open doubts.' : doubtTab === 1 ? 'No resolved doubts yet.' : 'No doubts raised yet.'}
+              {doubtTab === 0 ? 'No resolved doubts yet.' : doubtTab === 1 ? 'No open doubts.' : 'No doubts raised yet.'}
             </div>
           );
-          return filtered.map(d => (
-            <div key={d.id} className="doubt-item" style={d.answeredAt ? { borderColor: 'rgba(34,197,94,0.25)' } : {}}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                <span className="pill pill-navy">{d.subject || 'General'}</span>
-                {d.answeredAt
-                  ? <span style={{ fontSize: '11px', color: 'var(--green)' }}>✓ Answered by {d.facultyName}</span>
-                  : <span style={{ fontSize: '11px', color: 'var(--text3)' }}>{fmtDate(d.createdAt || new Date())}</span>
-                }
+          return filtered.map(d => {
+            const isHelpful = helpfulState[d.id] !== undefined ? helpfulState[d.id] : d.helpful;
+            const markHelpful = async (val) => {
+              const token = localStorage.getItem('token');
+              try {
+                const res = await fetch(`http://localhost:5000/api/student/doubts/${d.id}/helpful`, {
+                  method: 'PUT',
+                  headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                  body: JSON.stringify({ helpful: val }),
+                });
+                if (!res.ok) throw new Error();
+                setHelpfulState(prev => ({ ...prev, [d.id]: val }));
+              } catch {
+                onShowToast('Failed to save feedback.');
+              }
+            };
+            return (
+              <div key={d.id} className="doubt-item" style={d.answeredAt ? { borderColor: 'rgba(34,197,94,0.3)', background: 'var(--cream)' } : {}}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                  <span className="pill pill-navy">{d.subject || 'General'}</span>
+                  {d.answeredAt
+                    ? <span style={{ fontSize: '11px', color: 'var(--green)', fontWeight: 600 }}>✓ Answered by {d.facultyName}</span>
+                    : <span style={{ fontSize: '11px', color: 'var(--text3)' }}>{fmtDate(d.createdAt || new Date())}</span>
+                  }
+                </div>
+                <div className="doubt-q" style={{ marginBottom: d.answeredAt ? '12px' : '6px' }}>{d.question}</div>
+                {d.answeredAt && d.answer && (
+                  <div style={{ borderLeft: '3px solid var(--green)', background: 'rgba(34,197,94,0.06)', padding: '12px 14px', borderRadius: '0 var(--r) var(--r) 0', marginBottom: '12px' }}>
+                    <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--green)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: '6px' }}>
+                      {d.facultyName}'s Answer
+                    </div>
+                    <div style={{ fontSize: '13.5px', color: 'var(--text)', lineHeight: 1.75 }}>{d.answer}</div>
+                  </div>
+                )}
+                <div className="doubt-footer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span>{d.answeredAt ? `Replied ${fmtDate(d.answeredAt)}` : `Awaiting ${d.facultyName}'s response`}</span>
+                  {d.answeredAt && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      {isHelpful === null || isHelpful === undefined ? (
+                        <>
+                          <span style={{ fontSize: '11px', color: 'var(--text3)' }}>Helpful?</span>
+                          <button className="btn btn-ghost btn-sm" style={{ padding: '2px 8px', fontSize: '13px' }} onClick={() => markHelpful(true)}>👍</button>
+                          <button className="btn btn-ghost btn-sm" style={{ padding: '2px 8px', fontSize: '13px' }} onClick={() => markHelpful(false)}>👎</button>
+                        </>
+                      ) : (
+                        <span style={{ fontSize: '11px', color: isHelpful ? 'var(--green)' : 'var(--text3)' }}>
+                          {isHelpful ? '👍 Marked as helpful' : '👎 Marked as not helpful'}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
-              <div className="doubt-q">{d.question}</div>
-              {d.answeredAt && d.answer && (
-                <div style={{ marginTop: '8px', fontSize: '12.5px', color: 'var(--text2)', background: 'var(--cream2)', padding: '10px 12px', borderRadius: 'var(--r)', lineHeight: 1.7 }}>{d.answer}</div>
-              )}
-              <div className="doubt-footer">
-                <span>{d.answeredAt ? `Replied ${fmtDate(d.answeredAt)}` : `Awaiting ${d.facultyName}'s response`}</span>
-              </div>
-            </div>
-          ));
+            );
+          });
         })()}
       </div>
 

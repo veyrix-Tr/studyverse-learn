@@ -90,6 +90,7 @@ router.get('/doubts', requireAuth, async (req, res) => {
       subject: d.subject || fp.subject || 'General',
       answer: d.answer,
       answeredAt: d.answeredAt,
+      helpful: d.helpful ?? null,
       createdAt: d.createdAt,
       studentName: d.student.user.name,
     })));
@@ -105,12 +106,6 @@ router.get('/students', requireAuth, async (req, res) => {
   try {
     const fp = await prisma.facultyProfile.findUnique({ where: { userId: req.user.id } });
     if (!fp || !fp.subject) return res.json([]);
-
-    const EXAM_SUBJECTS = {
-      'JEE Mains':    ['Physics', 'Chemistry', 'Maths'],
-      'JEE Advanced': ['Physics', 'Chemistry', 'Maths'],
-      'NEET':         ['Physics', 'Chemistry', 'Biology'],
-    };
 
     // Grades this faculty teaches for their subject
     const gradeSessions = await prisma.session.findMany({
@@ -217,13 +212,154 @@ router.post('/sessions/:id/note', requireAuth, async (req, res) => {
   }
 });
 
+// POST /api/faculty/sessions/:id/remind
+router.post('/sessions/:id/remind', requireAuth, async (req, res) => {
+  try {
+    const fp = await prisma.facultyProfile.findUnique({
+      where: { userId: req.user.id },
+      include: { user: { select: { name: true } } },
+    });
+    if (!fp) return res.status(403).json({ error: 'Not a faculty member' });
+
+    const sessionId = parseInt(req.params.id);
+    if (isNaN(sessionId)) return res.status(400).json({ error: 'Invalid session ID' });
+
+    const session = await prisma.session.findUnique({ where: { id: sessionId } });
+    if (!session || session.facultyId !== fp.id) return res.status(404).json({ error: 'Session not found' });
+
+    const students = await prisma.studentProfile.findMany({
+      where: { grade: session.grade, plan: 'premium' },
+    });
+    const eligible = students.filter(sp =>
+      (EXAM_SUBJECTS[sp.examTarget] || []).includes(session.subject)
+    );
+    if (eligible.length === 0) return res.json({ success: true, notified: 0 });
+
+    const scheduledAt = new Date(session.scheduledAt);
+    const dateStr = scheduledAt.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' });
+    const timeStr = scheduledAt.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+
+    // Delete previous reminders for this session to avoid duplicates
+    await prisma.facultyNotification.deleteMany({
+      where: { sessionId, facultyId: fp.id, type: 'Reminder' },
+    });
+    await prisma.facultyNotification.createMany({
+      data: eligible.map(sp => ({
+        content: `Reminder from ${fp.user.name}: "${session.title}" is scheduled on ${dateStr} at ${timeStr}. Be prepared!`,
+        type: 'Reminder',
+        studentId: sp.id,
+        facultyId: fp.id,
+        sessionId,
+      })),
+    });
+
+    res.json({ success: true, notified: eligible.length });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to send reminder' });
+  }
+});
+
+// POST /api/faculty/broadcast
+router.post('/broadcast', requireAuth, async (req, res) => {
+  try {
+    const { message } = req.body;
+    if (!message || !message.trim()) return res.status(400).json({ error: 'Message is required' });
+
+    const fp = await prisma.facultyProfile.findUnique({
+      where: { userId: req.user.id },
+      include: { user: { select: { name: true } } },
+    });
+    if (!fp || !fp.subject) return res.status(403).json({ error: 'Not a faculty member' });
+
+    // Find all eligible premium students (same logic as /students)
+    const gradeSessions = await prisma.session.findMany({
+      where: { facultyId: fp.id, subject: fp.subject },
+      select: { grade: true },
+      distinct: ['grade'],
+    });
+    const grades = gradeSessions.map(s => s.grade);
+    if (grades.length === 0) return res.json({ success: true, notified: 0 });
+
+    const students = await prisma.studentProfile.findMany({
+      where: { grade: { in: grades }, plan: 'premium' },
+    });
+    const eligible = students.filter(sp =>
+      (EXAM_SUBJECTS[sp.examTarget] || []).includes(fp.subject)
+    );
+    if (eligible.length === 0) return res.json({ success: true, notified: 0 });
+
+    await prisma.facultyNotification.createMany({
+      data: eligible.map(sp => ({
+        content: `${fp.user.name}: ${message.trim()}`,
+        type: 'Announcement',
+        studentId: sp.id,
+        facultyId: fp.id,
+        sessionId: null,
+      })),
+    });
+
+    res.json({ success: true, notified: eligible.length });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to send broadcast' });
+  }
+});
+
+// POST /api/faculty/doubts/:id/discuss
+router.post('/doubts/:id/discuss', requireAuth, async (req, res) => {
+  try {
+    const fp = await prisma.facultyProfile.findUnique({
+      where: { userId: req.user.id },
+      include: { user: { select: { name: true } } },
+    });
+    if (!fp) return res.status(403).json({ error: 'Not a faculty member' });
+
+    const doubtId = parseInt(req.params.id);
+    if (isNaN(doubtId)) return res.status(400).json({ error: 'Invalid doubt ID' });
+
+    const doubt = await prisma.doubt.findUnique({
+      where: { id: doubtId },
+      include: { student: true },
+    });
+    if (!doubt || doubt.facultyId !== fp.id) return res.status(404).json({ error: 'Doubt not found' });
+
+    const nextSession = await prisma.session.findFirst({
+      where: { facultyId: fp.id, subject: doubt.subject, grade: doubt.student.grade, scheduledAt: { gt: new Date() } },
+      orderBy: { scheduledAt: 'asc' },
+    });
+
+    const dateStr = nextSession
+      ? new Date(nextSession.scheduledAt).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })
+      : null;
+
+    await prisma.facultyNotification.create({
+      data: {
+        content: `${fp.user.name} will address your ${doubt.subject || 'General'} doubt in the ${dateStr ? `session on ${dateStr}` : 'next session'}: "${doubt.question.length > 60 ? doubt.question.slice(0, 60) + '…' : doubt.question}"`,
+        type: 'Announcement',
+        studentId: doubt.studentId,
+        facultyId: fp.id,
+        sessionId: nextSession?.id || null,
+      },
+    });
+
+    res.json({ success: true, sessionDate: dateStr });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to mark for discussion' });
+  }
+});
+
 // PUT /api/faculty/doubts/:id/answer
 router.put('/doubts/:id/answer', requireAuth, async (req, res) => {
   try {
     const { answer } = req.body;
     if (!answer || !answer.trim()) return res.status(400).json({ error: 'Answer text is required' });
 
-    const fp = await prisma.facultyProfile.findUnique({ where: { userId: req.user.id } });
+    const fp = await prisma.facultyProfile.findUnique({
+      where: { userId: req.user.id },
+      include: { user: { select: { name: true } } },
+    });
     if (!fp) return res.status(403).json({ error: 'Not a faculty member' });
 
     const doubtId = parseInt(req.params.id);
@@ -233,9 +369,21 @@ router.put('/doubts/:id/answer', requireAuth, async (req, res) => {
 
     const updated = await prisma.doubt.update({
       where: { id: doubt.id },
-      data: { answer: answer.trim(), answeredAt: new Date() },
+      data: { answer: answer.trim(), answeredAt: new Date(), helpful: null },
     });
-    res.json({ success: true, answeredAt: updated.answeredAt, answer: updated.answer });
+
+    // Notify student
+    await prisma.facultyNotification.create({
+      data: {
+        content: `${fp.user.name} answered your ${doubt.subject || 'General'} doubt: "${doubt.question.length > 60 ? doubt.question.slice(0, 60) + '…' : doubt.question}"`,
+        type: 'Doubt Answered',
+        studentId: doubt.studentId,
+        facultyId: fp.id,
+        sessionId: null,
+      },
+    });
+
+    res.json({ success: true, answeredAt: updated.answeredAt, answer: updated.answer, helpful: null });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to save answer' });

@@ -54,25 +54,37 @@ const StudentCard = ({ av, name, exam, week, statusBadge, base, curr, gain, gain
   </div>
 );
 
-const DoubtItem = ({ priority, av, name, time, pills, question, placeholder, extraActions, isOpen, isReplied, onToggle, onReply, replyText, onReplyTextChange }) => (
-  <div className={`doubt-item ${priority}`} style={isReplied ? { opacity: 0.5, pointerEvents: 'none' } : {}}>
+const DoubtItem = ({ priority, av, name, time, pills, question, answer, helpful, placeholder, extraActions, isOpen, isReplied, onToggle, onReply, replyText, onReplyTextChange }) => (
+  <div className={`doubt-item ${priority}`}>
     <div className="di-top">
       <div className="di-student">
         <div className="di-av">{av}</div>
         <div><div className="di-name">{name}</div><div className="di-time">{time}</div></div>
       </div>
-      <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>{pills}</div>
+      <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+        {pills}
+        {isReplied && helpful === true  && <span className="pill pp" style={{ fontSize: '10px' }}>👍 Helpful</span>}
+        {isReplied && helpful === false && <span className="pill pn" style={{ fontSize: '10px' }}>👎 Not helpful</span>}
+      </div>
     </div>
     <div className="di-q">{question}</div>
+    {isReplied && answer && !isOpen && (
+      <div style={{ borderLeft: '3px solid var(--gold)', background: 'var(--gold-dim)', padding: '10px 14px', borderRadius: '0 var(--r) var(--r) 0', margin: '8px 0' }}>
+        <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: '4px' }}>Your answer</div>
+        <div style={{ fontSize: '13px', color: 'var(--text2)', lineHeight: 1.7 }}>{answer}</div>
+      </div>
+    )}
     <div className="di-actions">
-      <button className="btn btn-gold btn-sm" onClick={onToggle}>Reply →</button>
+      <button className="btn btn-gold btn-sm" onClick={onToggle}>
+        {isReplied ? 'Edit Answer →' : 'Reply →'}
+      </button>
       {extraActions}
     </div>
     <div className={`reply-box${isOpen ? ' open' : ''}`}>
-      <textarea className="reply-textarea" rows="3" placeholder={placeholder} value={replyText || ''} onChange={e => onReplyTextChange(e.target.value)}></textarea>
+      <textarea className="reply-textarea" rows={Math.min(Math.max(4, Math.ceil((replyText || '').length / 60)), 8)} placeholder={placeholder} value={replyText || ''} onChange={e => onReplyTextChange(e.target.value)}></textarea>
       <div className="reply-actions">
         <button className="btn btn-ghost btn-sm" onClick={onToggle}>Cancel</button>
-        <button className="btn btn-gold btn-sm" onClick={onReply}>Send Reply ✓</button>
+        <button className="btn btn-gold btn-sm" onClick={onReply}>{isReplied ? 'Update Answer ✓' : 'Send Reply ✓'}</button>
       </div>
     </div>
   </div>
@@ -94,6 +106,7 @@ const FacultyContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
   const [openNotes, setOpenNotes] = useState(new Set());
   const [noteTexts, setNoteTexts] = useState({});
   const [savingNote, setSavingNote] = useState(null);
+  const [sendingReminder, setSendingReminder] = useState(null);
 
   const pending = doubts.filter(d => !d.answeredAt);
   const answered = doubts.filter(d => d.answeredAt);
@@ -110,10 +123,16 @@ const FacultyContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
       }, 0) / studentsWithScores.length)
     : null;
 
-  const toggleReply = (id) => {
+  const toggleReply = (id, existingAnswer) => {
     setOpenReplies(prev => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (next.has(id)) {
+        next.delete(id);
+        setReplyTexts(t => ({ ...t, [id]: existingAnswer || '' })); // reset to saved on close
+      } else {
+        next.add(id);
+        setReplyTexts(t => ({ ...t, [id]: existingAnswer || '' })); // seed with existing answer on open
+      }
       return next;
     });
   };
@@ -130,6 +149,24 @@ const FacultyContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
       }
       return next;
     });
+  };
+
+  const sendReminder = async (id) => {
+    const token = localStorage.getItem('token');
+    setSendingReminder(id);
+    try {
+      const res = await fetch(`http://localhost:5000/api/faculty/sessions/${id}/remind`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      onShowToast(`Reminder sent to ${data.notified} student${data.notified !== 1 ? 's' : ''} ✓`);
+    } catch {
+      onShowToast('Failed to send reminder. Try again.');
+    } finally {
+      setSendingReminder(null);
+    }
   };
 
   const saveNote = async (id) => {
@@ -154,6 +191,21 @@ const FacultyContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
     }
   };
 
+  const discussInSession = async (id) => {
+    const token = localStorage.getItem('token');
+    try {
+      const res = await fetch(`http://localhost:5000/api/faculty/doubts/${id}/discuss`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      onShowToast(data.sessionDate ? `Student notified — will discuss on ${data.sessionDate}` : 'Student notified — will discuss in next session');
+    } catch {
+      onShowToast('Failed to notify student. Try again.');
+    }
+  };
+
   const markReplied = async (id) => {
     const text = replyTexts[id] || '';
     if (!text.trim()) { onShowToast('Please type a reply before sending'); return; }
@@ -168,7 +220,7 @@ const FacultyContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
       const data = await res.json();
       setOpenReplies(prev => { const next = new Set(prev); next.delete(id); return next; });
       setReplyTexts(prev => { const next = { ...prev }; delete next[id]; return next; });
-      onDoubtAnswered?.(id, data.answeredAt, text.trim());
+      onDoubtAnswered?.(id, data.answeredAt, text.trim(), null);
       onShowToast('Reply sent ✓ Doubt marked as answered');
     } catch {
       onShowToast('Failed to send reply. Try again.');
@@ -189,6 +241,7 @@ const FacultyContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
           </div>
           <div className="db-actions">
             <button className="btn btn-ghost-inv btn-sm" onClick={() => onNav('reports')}>Weekly Report Due Sunday →</button>
+            <button className="btn btn-ghost-inv btn-sm" onClick={() => onOpenModal('broadcast-modal')}>📢 Message Students</button>
             <button className="btn btn-gold btn-sm" onClick={() => onOpenModal('schedule-modal')}>+ Schedule Session</button>
           </div>
         </div>
@@ -327,7 +380,7 @@ const FacultyContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
                             <button className={`btn btn-sm ${s.note ? 'btn-gold' : 'btn-ghost'}`} onClick={() => toggleNote(s.id, s.note)}>
                               {s.note ? 'Edit Note' : 'Add Note'}
                             </button>
-                            {!past && <button className="btn btn-ghost btn-sm" onClick={() => onShowToast('Reminder set!')}>Remind</button>}
+                            {!past && <button className="btn btn-ghost btn-sm" disabled={sendingReminder === s.id} onClick={() => sendReminder(s.id)}>{sendingReminder === s.id ? 'Sending…' : 'Remind'}</button>}
                           </div>
                         </td>
                       </tr>
@@ -434,6 +487,17 @@ const FacultyContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
           <div style={{ fontSize: '13px', color: 'var(--text2)' }}>
             <span style={{ color: 'var(--red)', fontWeight: 600 }}>{pending.length} unanswered</span>
             {pending.length > 0 ? ` • Oldest: ${timeAgo(pending[pending.length - 1].createdAt)}.` : ' • All clear!'} Aim to reply within 4 hours.
+            {answered.length > 0 && (() => {
+              const helpful = answered.filter(d => d.helpful === true).length;
+              const unhelpful = answered.filter(d => d.helpful === false).length;
+              return helpful + unhelpful > 0 ? (
+                <span style={{ marginLeft: '10px', color: 'var(--text2)' }}>
+                  Student feedback : <span style={{ color: 'var(--green)', fontWeight: 600 }}>👍 {helpful}</span>
+                  <span style={{ margin: '0 4px' }}>•</span>
+                  <span style={{ color: 'var(--red)', fontWeight: 600 }}>👎 {unhelpful}</span>
+                </span>
+              ) : null;
+            })()}
           </div>
           <div className="tabs" style={{ marginBottom: 0 }}>
             {[`Pending (${pending.length})`, `Answered (${answered.length})`, 'All'].map((t, i) => (
@@ -459,12 +523,14 @@ const FacultyContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
                 av={d.studentName.charAt(0)} name={d.studentName} time={timeAgo(d.createdAt)}
                 pills={<><span className={`pill ${pillClass}`}>{d.subject}</span>{hrs > 12 && !d.answeredAt ? <span className="pill pr">Overdue</span> : null}</>}
                 question={d.question}
+                answer={d.answer}
+                helpful={d.helpful}
                 placeholder={`Type your reply to ${d.studentName}...`}
-                extraActions={<button className="btn btn-ghost btn-sm" onClick={() => onShowToast('Marked for session discussion')}>Discuss in session</button>}
+                extraActions={<button className="btn btn-ghost btn-sm" onClick={() => discussInSession(d.id)}>Discuss in session</button>}
                 isOpen={openReplies.has(d.id)} isReplied={!!d.answeredAt}
                 replyText={replyTexts[d.id] || ''}
                 onReplyTextChange={val => setReplyTexts(prev => ({ ...prev, [d.id]: val }))}
-                onToggle={() => toggleReply(d.id)} onReply={() => markReplied(d.id)} />
+                onToggle={() => toggleReply(d.id, d.answer)} onReply={() => markReplied(d.id)} />
             );
           });
         })()}

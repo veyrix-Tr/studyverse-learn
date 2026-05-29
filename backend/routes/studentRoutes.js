@@ -159,12 +159,36 @@ router.get('/doubts', requireAuth, async (req, res) => {
       subject: d.subject || d.faculty?.subject || 'General',
       answer: d.answer,
       answeredAt: d.answeredAt,
+      helpful: d.helpful ?? null,
       createdAt: d.createdAt,
       facultyName: d.faculty?.user?.name || 'Faculty',
     })));
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to fetch doubts' });
+  }
+});
+
+// PUT /api/student/doubts/:id/helpful
+router.put('/doubts/:id/helpful', requireAuth, async (req, res) => {
+  try {
+    const { helpful } = req.body;
+    if (typeof helpful !== 'boolean') return res.status(400).json({ error: 'helpful must be a boolean' });
+
+    const profile = await prisma.studentProfile.findUnique({ where: { userId: req.user.id } });
+    if (!profile) return res.status(403).json({ error: 'Not found' });
+
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ error: 'Invalid ID' });
+
+    const doubt = await prisma.doubt.findUnique({ where: { id } });
+    if (!doubt || doubt.studentId !== profile.id) return res.status(404).json({ error: 'Doubt not found' });
+    if (!doubt.answeredAt) return res.status(400).json({ error: 'Doubt not yet answered' });
+
+    await prisma.doubt.update({ where: { id }, data: { helpful } });
+    res.json({ success: true, helpful });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to mark helpful' });
   }
 });
 

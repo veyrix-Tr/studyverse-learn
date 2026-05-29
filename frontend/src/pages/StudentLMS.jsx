@@ -11,6 +11,7 @@ const NOTIF_NAV = {
   'Reminder':          'dashboard',
   'Motivational Note': 'dashboard',
   'Announcement':      'notif',
+  'Doubt Answered':    'doubt',
 };
 
 const StudentLMS = () => {
