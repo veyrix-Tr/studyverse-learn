@@ -322,4 +322,33 @@ router.post('/habits', requireAuth, async (req, res) => {
   }
 });
 
+// GET /api/student/resources — approved resources matching student's exam subjects
+router.get('/resources', requireAuth, async (req, res) => {
+  try {
+    const profile = await prisma.studentProfile.findUnique({ where: { userId: req.user.id } });
+    if (!profile) return res.json([]);
+
+    const subjects = EXAM_SUBJECTS[profile.examTarget] || [];
+    if (!subjects.length) return res.json([]);
+
+    const where = { status: 'approved', subject: { in: subjects } };
+
+    const resources = await prisma.resource.findMany({
+      where,
+      include: { faculty: { include: { user: { select: { name: true } } } } },
+      orderBy: { approvedAt: 'desc' },
+    });
+
+    res.json(resources.map(r => ({
+      id: r.id, title: r.title, description: r.description || null,
+      subject: r.subject, grade: r.grade, type: r.type,
+      cloudinaryUrl: r.cloudinaryUrl, approvedAt: r.approvedAt,
+      facultyName: r.faculty.user.name,
+    })));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch resources' });
+  }
+});
+
 module.exports = router;

@@ -15,6 +15,7 @@ const FacultyLMS = () => {
   const [sessions, setSessions] = useState([]);
   const [doubts, setDoubts] = useState([]);
   const [students, setStudents] = useState([]);
+  const [resources, setResources] = useState([]);
   const toastTimer = useRef(null);
 
   useEffect(() => {
@@ -55,6 +56,13 @@ const FacultyLMS = () => {
     })
       .then(r => r.ok ? r.json() : null)
       .then(data => { if (Array.isArray(data)) setStudents(data); })
+      .catch(() => {});
+
+    fetch('http://localhost:5000/api/faculty/resources', {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (Array.isArray(data)) setResources(data); })
       .catch(() => {});
   }, []);
 
@@ -98,6 +106,9 @@ const FacultyLMS = () => {
           onSessionNoteUpdated={(id, note) =>
             setSessions(prev => prev.map(s => s.id === id ? { ...s, note } : s))
           }
+          resources={resources}
+          onResourceAdded={(r) => setResources(prev => [r, ...prev])}
+          onResourceDeleted={(id) => setResources(prev => prev.filter(r => r.id !== id))}
         />
       </div>
       <FacultyModals
@@ -110,6 +121,7 @@ const FacultyLMS = () => {
         onCloseDetail={() => setDetailOpen(false)}
         onOpenModal={setOpenModal}
         onNav={setActivePage}
+        onResourceAdded={(r) => setResources(prev => [r, ...prev])}
       />
     </div>
   );

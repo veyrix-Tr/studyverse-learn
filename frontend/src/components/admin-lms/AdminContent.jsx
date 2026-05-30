@@ -21,13 +21,36 @@ const RevenueChart = () => (
 
 const getGreeting = () => { const h = new Date().getHours(); if (h < 12) return 'Good morning'; if (h < 17) return 'Good afternoon'; return 'Good evening'; };
 
-const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, students = [], onOpenMessage, isSuperAdmin, adminAccounts = [], onDeactivateAdmin, onReactivateAdmin }) => {
+const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, students = [], onOpenMessage, isSuperAdmin, adminAccounts = [], onDeactivateAdmin, onReactivateAdmin, resources = [], onApproveResource, onDeclineResource, sentMessages = [], onSendMessage }) => {
   const firstName = profile?.name?.split(' ')[0] || 'there';
   const [studentsTab, setStudentsTab] = useState(0);
   const [approvalsTab, setApprovalsTab] = useState(0);
-  const [dismissedApprovals, setDismissedApprovals] = useState(new Set());
   const [platformToggles, setPlatformToggles] = useState([true, true, true, true, true, true, true]);
-  const [activeChips, setActiveChips] = useState(new Set([0]));
+  const [decliningId, setDecliningId] = useState(null);
+  const [declineReason, setDeclineReason] = useState('');
+  const [msgTo, setMsgTo] = useState('all');
+  const [msgType, setMsgType] = useState('Announcement');
+  const [msgContent, setMsgContent] = useState('');
+  const [msgSending, setMsgSending] = useState(false);
+
+  const sendMessage = async () => {
+    if (!msgContent.trim()) { onShowToast('Please write a message'); return; }
+    setMsgSending(true);
+    try {
+      await onSendMessage(msgTo, msgType, msgContent);
+      setMsgContent('');
+      setMsgTo('all');
+      setMsgType('Announcement');
+    } catch {
+      onShowToast('Failed to send message. Try again.');
+    } finally {
+      setMsgSending(false);
+    }
+  };
+
+  const pendingResources = resources.filter(r => r.status === 'pending');
+  const approvedResources = resources.filter(r => r.status === 'approved');
+  const declinedResources = resources.filter(r => r.status === 'declined');
 
   useEffect(() => {
     if (!isSuperAdmin && (activePage === 'admins' || activePage === 'settings')) {
@@ -37,59 +60,10 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
 
   const pg = (id) => `page${activePage === id ? ' on' : ''}`;
 
-  const dismissApproval = (i, msg) => {
-    setDismissedApprovals(prev => new Set([...prev, i]));
-    onShowToast(msg);
-  };
-
   const togglePlatform = (i) => {
     setPlatformToggles(prev => { const n = [...prev]; n[i] = !n[i]; return n; });
   };
 
-  const toggleChip = (i) => {
-    setActiveChips(prev => {
-      const n = new Set(prev);
-      n.has(i) ? n.delete(i) : n.add(i);
-      return n;
-    });
-  };
-
-  const approvals = [
-    {
-      title: 'Test: Electrostatics Targeted (25Q) — Rahul Mehta',
-      meta: 'Suggested by Ajay Sharma · Apr 14 · 25 questions · Due Apr 18',
-      type: 'Test', typeClass: 'po',
-      reason: '"Rahul\'s Gauss\'s Law accuracy is 31%. This test covers exactly his gap — 15 field line Qs + 10 potential. Needs to do this before our Apr 18 session so I can build on results."',
-      approveLabel: 'Approve & Assign',
-      approveMsg: 'Test approved. Rahul will see it as Mentor-assigned ✓'
-    },
-    {
-      title: 'Resource: PYQ Electrostatics 2018–2024 — Rahul Mehta',
-      meta: 'Suggested by Ajay Sharma · Apr 14 · PDF 4.2MB',
-      type: 'Resource', typeClass: 'pb',
-      reason: '"Rahul\'s doubt volume on this topic is high. These 40 PYQs map directly to his weak area and will give him exam-pattern familiarity before the Apr 18 session."',
-      approveLabel: 'Approve',
-      approveMsg: "Resource approved. Added to Rahul's library ✓"
-    },
-    {
-      title: 'Resource: Organic Reactions Cheat Sheet — Priya Desai',
-      meta: 'Suggested by Ajay Sharma · Apr 13 · PDF 0.8MB',
-      type: 'Resource', typeClass: 'pb',
-      reason: '"Priya keeps confusing Markovnikov, Aldol, and Cannizzaro under test conditions. A visual one-pager for revision before sessions will help consolidate."',
-      approveLabel: 'Approve',
-      approveMsg: "Resource approved. Added to Priya's library ✓"
-    },
-    {
-      title: 'Test: Integration Chapter Test (30Q) — Sneha Kapoor',
-      meta: 'Suggested by Ajay Sharma · Apr 12 · 30 questions · Due Apr 17',
-      type: 'Test', typeClass: 'po',
-      reason: '"Sneha\'s substitution method is now solid (68%). Ready to confirm with a full chapter test before moving to definite integrals. This closes the loop on 3 weeks of work."',
-      approveLabel: 'Approve & Assign',
-      approveMsg: 'Test approved. Sneha will see it as Mentor-assigned ✓'
-    }
-  ];
-
-  const chips = ['All Students', 'JEE Students', 'NEET Students', 'Rahul Mehta', 'Sneha Kapoor', 'Priya Desai', 'Arjun Singh', 'Kavya Menon', 'Vanya Rao'];
 
   const platformSettings = [
     { label: 'Free tier diagnostic enabled', desc: 'Students without enrollment can access the free diagnostic' },
@@ -114,7 +88,7 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
             <div style={{ fontSize: '11px', color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '.1em', fontWeight: '500', marginBottom: '4px' }}>{new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</div>
             <div style={{ fontFamily: 'var(--fs)', fontSize: '23px', fontWeight: '700' }}>{getGreeting()}, {firstName}.</div>
             <div style={{ fontSize: '13.5px', color: 'var(--text2)', marginTop: '3px' }}>
-              <strong style={{ color: 'var(--gold)' }}>3 new enquiries</strong> · <strong style={{ color: 'var(--green)' }}>4 approvals pending</strong>
+              <strong style={{ color: 'var(--gold)' }}>3 new enquiries</strong> · <strong style={{ color: 'var(--green)' }}>{pendingResources.length} approval{pendingResources.length !== 1 ? 's' : ''} pending</strong>
             </div>
           </div>
         </div>
@@ -157,25 +131,25 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
 
         <div className="sh"><div className="sh-t">Pending Approvals</div><span className="sh-a" onClick={() => onNav('approvals')}>All approvals →</span></div>
         <div className="card mb" style={{ padding: '14px 18px' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
-            {[
-              { av: 'A', title: 'Test: Electrostatics Targeted — for Rahul Mehta', meta: 'Suggested by Ajay Sharma • Apr 14', msg: 'Test approved and assigned to Rahul ✓' },
-              { av: 'A', title: 'Resource: PYQ Electrostatics (2018–24) — for Rahul', meta: 'Suggested by Ajay Sharma • Apr 14', msg: 'Resource approved ✓' },
-              { av: 'A', title: 'Resource: Organic Reactions Cheat Sheet — for Priya', meta: 'Suggested by Ajay Sharma • Apr 13', msg: 'Resource approved ✓' }
-            ].map(({ av, title, meta, msg }, i, arr) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '11px 0', borderBottom: i < arr.length - 1 ? '1px solid var(--b)' : 'none' }}>
-                <div className="av">{av}</div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: '13px', fontWeight: '600' }}>{title}</div>
-                  <div style={{ fontSize: '11.5px', color: 'var(--text3)' }}>{meta}</div>
+          {pendingResources.length === 0 ? (
+            <div style={{ fontSize: '13px', color: 'var(--text3)', padding: '12px 0' }}>No pending approvals.</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
+              {pendingResources.slice(0, 3).map((r, i, arr) => (
+                <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '11px 0', borderBottom: i < arr.length - 1 ? '1px solid var(--b)' : 'none' }}>
+                  <div className="av">{r.facultyName?.charAt(0) || 'F'}</div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: '13px', fontWeight: '600' }}>{r.title}</div>
+                    <div style={{ fontSize: '11.5px', color: 'var(--text3)' }}>By {r.facultyName} · {r.subject} · {new Date(r.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</div>
+                  </div>
+                  <div style={{ display: 'flex', gap: '7px' }}>
+                    <button className="btn btn-green btn-sm" onClick={() => onApproveResource(r.id)}>Approve</button>
+                    <button className="btn btn-ghost btn-sm" onClick={() => onNav('approvals')}>Review</button>
+                  </div>
                 </div>
-                <div style={{ display: 'flex', gap: '7px' }}>
-                  <button className="btn btn-green btn-sm" onClick={() => onShowToast(msg)}>Approve</button>
-                  <button className="btn btn-ghost btn-sm">Review</button>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
@@ -567,67 +541,107 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
       {/* ══ APPROVALS ══ */}
       <div className={pg('approvals')} id="p-approvals">
         <div className="tabs">
-          {['Pending (4)', 'Approved', 'Declined'].map((label, i) => (
+          {[`Pending (${pendingResources.length})`, `Approved (${approvedResources.length})`, `Declined (${declinedResources.length})`].map((label, i) => (
             <div key={i} className={`tab${approvalsTab === i ? ' on' : ''}`} onClick={() => setApprovalsTab(i)}>{label}</div>
           ))}
         </div>
-        {approvals.map((item, i) => (
-          <div key={i} className="approval-item" style={dismissedApprovals.has(i) ? { opacity: '0.4', pointerEvents: 'none' } : {}}>
-            <div className="ai-top">
-              <div><div className="ai-title">{item.title}</div><div className="ai-meta">{item.meta}</div></div>
-              <span className={`pill ${item.typeClass}`}>{item.type}</span>
+        {(() => {
+          const list = approvalsTab === 0 ? pendingResources : approvalsTab === 1 ? approvedResources : declinedResources;
+          if (list.length === 0) return (
+            <div style={{ fontSize: '13px', color: 'var(--text3)', padding: '32px 0', textAlign: 'center' }}>
+              {approvalsTab === 0 ? 'No pending resources.' : approvalsTab === 1 ? 'No approved resources yet.' : 'No declined resources.'}
             </div>
-            <div className="ai-reason">{item.reason}</div>
-            <div className="ai-actions">
-              <button className="btn btn-green btn-sm" onClick={() => dismissApproval(i, item.approveMsg)}>{item.approveLabel}</button>
-              <button className="btn btn-ghost btn-sm">Request Changes</button>
-              <button className="btn btn-red btn-sm" onClick={() => dismissApproval(i, 'Item declined.')}>Decline</button>
+          );
+          return list.map(item => (
+            <div key={item.id} className="approval-item">
+              <div className="ai-top">
+                <div>
+                  <div className="ai-title">{item.title}</div>
+                  <div className="ai-meta">
+                    {item.facultyName} · {new Date(item.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} · {item.type} · {item.subject} · Grade {item.grade}
+                  </div>
+                </div>
+                <span className="pill pb">Resource</span>
+              </div>
+              {item.cloudinaryUrl && (
+                <a
+                  href={`http://localhost:5000/api/files/proxy?url=${encodeURIComponent(item.cloudinaryUrl)}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="btn btn-ghost btn-sm"
+                  style={{ display: 'inline-block', marginBottom: '12px' }}
+                >↓ View / Download</a>
+              )}
+              {item.status === 'declined' && item.declineReason && (
+                <div style={{ fontSize: '12.5px', color: 'rgba(239,68,68,0.8)', marginBottom: '8px' }}>Reason: {item.declineReason}</div>
+              )}
+              {item.status === 'pending' && (
+                <div className="ai-actions">
+                  {decliningId === item.id ? (
+                    <>
+                      <input className="fi" style={{ flex: 1, padding: '6px 10px', fontSize: '13px' }} placeholder="Reason for declining (optional)" value={declineReason} onChange={e => setDeclineReason(e.target.value)} />
+                      <button className="btn btn-red btn-sm" onClick={() => { onDeclineResource(item.id, declineReason); setDecliningId(null); setDeclineReason(''); }}>Confirm Decline</button>
+                      <button className="btn btn-ghost btn-sm" onClick={() => { setDecliningId(null); setDeclineReason(''); }}>Cancel</button>
+                    </>
+                  ) : (
+                    <>
+                      <button className="btn btn-green btn-sm" onClick={() => onApproveResource(item.id)}>Approve</button>
+                      <button className="btn btn-red btn-sm" onClick={() => setDecliningId(item.id)}>Decline</button>
+                    </>
+                  )}
+                </div>
+              )}
             </div>
-          </div>
-        ))}
+          ));
+        })()}
       </div>
 
       {/* ══ MESSAGES ══ */}
       <div className={pg('messages')} id="p-messages">
         <div className="msg-compose mb">
           <div className="sh"><div className="sh-t">Compose Message</div><span style={{ fontSize: '12px', color: 'var(--text3)' }}>Appears on student's dashboard immediately</span></div>
-          <div style={{ fontSize: '12px', color: 'var(--text2)', marginBottom: '10px', fontWeight: '500' }}>Send to:</div>
-          <div className="target-chips">
-            {chips.map((label, i) => (
-              <div key={i} className={`chip${activeChips.has(i) ? ' on' : ''}`} onClick={() => toggleChip(i)}>{label}</div>
-            ))}
+          <div className="fg" style={{ marginBottom: '12px' }}>
+            <label>Send to</label>
+            <select className="fi" value={msgTo} onChange={e => setMsgTo(e.target.value)}>
+              <option value="all">All Students</option>
+              {students.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
           </div>
           <div className="fg" style={{ marginBottom: '12px' }}>
             <label>Message Type</label>
-            <select className="fi"><option>Announcement</option><option>Reminder</option><option>Motivational Note</option><option>Schedule Update</option></select>
+            <select className="fi" value={msgType} onChange={e => setMsgType(e.target.value)}>
+              <option>Announcement</option>
+              <option>Reminder</option>
+              <option>Motivational Note</option>
+              <option>Schedule Update</option>
+            </select>
           </div>
           <div className="fg" style={{ marginBottom: '12px' }}>
             <label>Message</label>
-            <textarea className="fi" rows="4" placeholder="Write your message — it will appear as a notification on the student's dashboard..."></textarea>
+            <textarea className="fi" rows="4" placeholder="Write your message — it will appear as a notification on the student's dashboard..." value={msgContent} onChange={e => setMsgContent(e.target.value)}></textarea>
           </div>
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '9px' }}>
-            <button className="btn btn-ghost btn-sm">Save as Draft</button>
-            <button className="btn btn-gold btn-sm" onClick={() => onShowToast('Message sent to selected students ✓')}>Send Now →</button>
+            <button className="btn btn-gold btn-sm" disabled={msgSending} onClick={sendMessage}>{msgSending ? 'Sending…' : 'Send Now →'}</button>
           </div>
         </div>
 
         <div className="sh"><div className="sh-t">Sent Messages</div></div>
         <div className="card" style={{ padding: '14px 18px' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
-            {[
-              { title: 'Reminder: Holiday Schedule Update', meta: 'Apr 13 · All Students', body: 'No sessions on Apr 14 (Sunday). All schedules resume from Apr 15. Doubt desk remains active throughout.' },
-              { title: 'JEE Mains April Result — Important', meta: 'Apr 10 · JEE Students', body: "Results will be declared next week. Stay focused on current preparation — results don't change the plan." },
-              { title: 'Week 10 — Keep the momentum', meta: 'Apr 6 · All Students', body: "You're past the halfway mark. The work you do in the next 8 weeks matters most. Trust the process." }
-            ].map(({ title, meta, body }, i, arr) => (
-              <div key={i} style={{ padding: '12px 0', borderBottom: i < arr.length - 1 ? '1px solid var(--b)' : 'none' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
-                  <div style={{ fontSize: '13px', fontWeight: '600' }}>{title}</div>
-                  <div style={{ fontSize: '11px', color: 'var(--text3)' }}>{meta}</div>
+          {sentMessages.length === 0 ? (
+            <div style={{ fontSize: '13px', color: 'var(--text3)', padding: '12px 0' }}>No messages sent yet.</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
+              {sentMessages.map((m, i, arr) => (
+                <div key={m.id} style={{ padding: '12px 0', borderBottom: i < arr.length - 1 ? '1px solid var(--b)' : 'none' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
+                    <div style={{ fontSize: '13px', fontWeight: '600' }}>{m.type}</div>
+                    <div style={{ fontSize: '11px', color: 'var(--text3)' }}>{new Date(m.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} · {m.recipient}</div>
+                  </div>
+                  <div style={{ fontSize: '12.5px', color: 'var(--text2)' }}>{m.content}</div>
                 </div>
-                <div style={{ fontSize: '12.5px', color: 'var(--text2)' }}>{body}</div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 

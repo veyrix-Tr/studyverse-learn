@@ -1,10 +1,75 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 
-const FacultyModals = ({ openModal, onClose, onShowToast, toast, detailOpen, selectedStudent, onCloseDetail, onOpenModal, onNav }) => {
+const CLOUD_NAME    = 'dnotkgppz';
+const UPLOAD_PRESET = 'faculty_resources';
+
+const FacultyModals = ({ openModal, onClose, onShowToast, toast, detailOpen, selectedStudent, onCloseDetail, onOpenModal, onNav, onResourceAdded }) => {
   const isOpen = (id) => openModal === id ? ' open' : '';
   const s = selectedStudent || {};
   const [broadcastText, setBroadcastText] = useState('');
   const [broadcasting, setBroadcasting] = useState(false);
+
+  // Resource upload state
+  const [resTitle, setResTitle] = useState('');
+  const [resDescription, setResDescription] = useState('');
+  const [resSubject, setResSubject] = useState('Physics');
+  const [resGrade, setResGrade] = useState('11');
+  const [resType, setResType] = useState('Study Material');
+  const [resFile, setResFile] = useState(null);
+  const [resUploading, setResUploading] = useState(false);
+  const fileInputRef = useRef(null);
+
+  const resetResForm = () => {
+    setResTitle(''); setResDescription(''); setResSubject('Physics');
+    setResGrade('11'); setResType('Study Material'); setResFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const submitResource = async () => {
+    if (!resTitle.trim()) { onShowToast('Please enter a title'); return; }
+    if (!resFile) { onShowToast('Please select a file to upload'); return; }
+    setResUploading(true);
+    try {
+      // 1. Upload to Cloudinary
+      const formData = new FormData();
+      formData.append('file', resFile);
+      formData.append('upload_preset', UPLOAD_PRESET);
+      formData.append('folder', 'resources');
+
+      const cdnRes = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`, {
+        method: 'POST',
+        body: formData,
+      });
+      if (!cdnRes.ok) throw new Error('Cloudinary upload failed');
+      const cdnData = await cdnRes.json();
+
+      // 2. Save metadata to backend
+      const token = localStorage.getItem('token');
+      const res = await fetch('http://localhost:5000/api/faculty/resources', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          title:        resTitle.trim(),
+          description:  resDescription.trim() || null,
+          subject:      resSubject,
+          grade:        resGrade,
+          type:         resType,
+          cloudinaryUrl: cdnData.secure_url,
+          cloudinaryId:  cdnData.public_id,
+        }),
+      });
+      if (!res.ok) throw new Error('Backend save failed');
+      const data = await res.json();
+      onResourceAdded?.(data.resource);
+      resetResForm();
+      onClose();
+      onShowToast('Resource submitted — pending admin approval ✓');
+    } catch (err) {
+      onShowToast('Upload failed. Try again.');
+    } finally {
+      setResUploading(false);
+    }
+  };
 
   const sendBroadcast = async () => {
     if (!broadcastText.trim()) { onShowToast('Please type a message first'); return; }
@@ -161,22 +226,42 @@ const FacultyModals = ({ openModal, onClose, onShowToast, toast, detailOpen, sel
       {/* Suggest Resource Modal */}
       <div className={`overlay${isOpen('suggest-res-modal')}`} onClick={e => e.target.classList.contains('overlay') && onClose()}>
         <div className="modal">
-          <div className="mt">Suggest a Resource</div>
-          <div className="ms">Your suggestion goes to admin for review before the student sees it.</div>
-          <div className="fg"><label>Student</label>
-            <select className="finput"><option>Rahul Mehta</option><option>Sneha Kapoor</option><option>Priya Desai</option><option>Arjun Singh</option><option>All students</option></select>
+          <div className="mt">Upload a Resource</div>
+          <div className="ms">Upload a file — admin reviews before students can access it.</div>
+          <div className="fg"><label>Resource Title</label>
+            <input className="finput" type="text" placeholder="e.g. HC Verma — Electrostatics Chapter" value={resTitle} onChange={e => setResTitle(e.target.value)} />
           </div>
-          <div className="fg"><label>Resource Name</label><input className="finput" type="text" placeholder="e.g. HC Verma — Chapter 29 Electrostatics" /></div>
-          <div className="fg"><label>Resource Type</label>
-            <select className="finput"><option>PDF / Notes</option><option>Practice Questions</option><option>PYQ Paper</option><option>Formula Sheet</option><option>Video Link</option></select>
+          <div className="fg"><label>Description <span style={{ fontWeight: 400, color: 'var(--text3)' }}>(optional)</span></label>
+            <input className="finput" type="text" placeholder="Brief note about what this covers" value={resDescription} onChange={e => setResDescription(e.target.value)} />
           </div>
-          <div className="fg"><label>Why does this student need this?</label>
-            <textarea className="finput" rows="3" placeholder="Be specific — admin needs your reasoning to approve quickly..."></textarea>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <div className="fg"><label>Subject</label>
+              <select className="finput" value={resSubject} onChange={e => setResSubject(e.target.value)}>
+                <option>Physics</option><option>Chemistry</option><option>Maths</option><option>Biology</option>
+              </select>
+            </div>
+            <div className="fg"><label>Grade</label>
+              <select className="finput" value={resGrade} onChange={e => setResGrade(e.target.value)}>
+                <option>11</option><option>12</option><option>Dropper</option>
+              </select>
+            </div>
           </div>
-          <div className="approval-notice">⏳ Admin will review and approve within 24h. Student notified on approval.</div>
+          <div className="fg"><label>Type</label>
+            <select className="finput" value={resType} onChange={e => setResType(e.target.value)}>
+              <option>Study Material</option><option>Previous Years</option><option>Formula Sheet</option><option>Session Notes</option>
+            </select>
+          </div>
+          <div className="fg">
+            <label>File <span style={{ fontWeight: 400, color: 'var(--text3)' }}>(PDF, DOC, etc.)</span></label>
+            <input ref={fileInputRef} className="finput" type="file" accept=".pdf,.doc,.docx,.ppt,.pptx,.png,.jpg" onChange={e => setResFile(e.target.files[0] || null)} />
+            {resFile && <div style={{ fontSize: '11px', color: 'var(--green)', marginTop: '4px' }}>✓ {resFile.name} ({(resFile.size / 1024 / 1024).toFixed(1)} MB)</div>}
+          </div>
+          <div className="approval-notice">⏳ Admin will review and approve — students see it only after approval.</div>
           <div className="ma">
-            <button className="btn btn-ghost btn-sm" onClick={onClose}>Cancel</button>
-            <button className="btn btn-gold btn-sm" onClick={() => { onClose(); onShowToast('Resource suggestion sent for admin approval ✓'); }}>Send for Approval →</button>
+            <button className="btn btn-ghost btn-sm" onClick={() => { resetResForm(); onClose(); }}>Cancel</button>
+            <button className="btn btn-gold btn-sm" disabled={resUploading} onClick={submitResource}>
+              {resUploading ? 'Uploading…' : 'Submit for Approval →'}
+            </button>
           </div>
         </div>
       </div>

@@ -97,7 +97,7 @@ const pctColor = (p) => p >= 75 ? 'var(--green)' : p >= 60 ? 'var(--gold)' : p >
 const pctBar   = (p) => p >= 75 ? 'pb-green' : p >= 60 ? 'pb-gold' : p >= 45 ? 'pb-orange' : 'pb-red';
 const pctFlag  = (p) => p >= 75 ? ['On track', 'pp'] : p >= 60 ? ['Progressing', 'po'] : ['Needs support', 'pr'];
 
-const FacultyContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, sessions = [], doubts = [], students = [], onDoubtAnswered, onSessionNoteUpdated }) => {
+const FacultyContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, sessions = [], doubts = [], students = [], resources = [], onDoubtAnswered, onSessionNoteUpdated, onResourceDeleted }) => {
   const firstName = profile?.name?.split(' ').find(p => !p.startsWith('Dr')) || profile?.name?.split(' ')[0] || 'there';
   const [scheduleTab, setScheduleTab] = useState(0);
   const [doubtsTab, setDoubtsTab] = useState(0);
@@ -107,6 +107,25 @@ const FacultyContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
   const [noteTexts, setNoteTexts] = useState({});
   const [savingNote, setSavingNote] = useState(null);
   const [sendingReminder, setSendingReminder] = useState(null);
+  const [deletingResourceId, setDeletingResourceId] = useState(null);
+
+  const deleteResource = async (id) => {
+    setDeletingResourceId(id);
+    try {
+      const token = localStorage.getItem('token');
+      const r = await fetch(`http://localhost:5000/api/faculty/resources/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!r.ok) { const d = await r.json(); throw new Error(d.error || 'Failed'); }
+      onResourceDeleted?.(id);
+      onShowToast('Resource deleted.');
+    } catch (err) {
+      onShowToast(`Delete failed: ${err.message}`);
+    } finally {
+      setDeletingResourceId(null);
+    }
+  };
 
   const pending = doubts.filter(d => !d.answeredAt);
   const answered = doubts.filter(d => d.answeredAt);
@@ -539,61 +558,60 @@ const FacultyContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
       {/* ══════════ RESOURCES ══════════ */}
       <div className={`page${activePage === 'resources' ? ' on' : ''}`}>
         <div style={{ fontSize: '13px', color: 'var(--text2)', marginBottom: '18px', background: 'var(--cream)', border: '1px solid var(--b)', borderRadius: 'var(--r)', padding: '11px 14px' }}>
-          📌 Suggest a resource for a specific student → it goes to admin for approval before appearing in their library.
+          📌 Upload a resource → admin reviews → students in the matching grade see it in their library.
         </div>
 
         <div className="sh">
-          <div className="sh-t">Suggest a Resource</div>
-          <button className="btn btn-gold btn-sm" onClick={() => onOpenModal('suggest-res-modal')}>+ Suggest Resource</button>
+          <div className="sh-t">My Resources</div>
+          <button className="btn btn-gold btn-sm" onClick={() => onOpenModal('suggest-res-modal')}>+ Upload Resource</button>
         </div>
 
-        <div style={{ marginBottom: '22px' }}>
-          <div style={{ fontSize: '12px', color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '.08em', fontWeight: 500, marginBottom: '10px' }}>Pending Admin Approval</div>
-          <div className="res-review-item">
-            <div className="rri-top">
-              <div className="rri-icon">📑</div>
-              <div style={{ flex: 1 }}>
-                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
-                  <div className="rri-name">Electrostatics — Previous Year Questions (2018–2024)</div>
-                  <span className="pending-badge">Pending</span>
+        {resources.length === 0 ? (
+          <div style={{ padding: '28px', textAlign: 'center', color: 'var(--text3)', fontSize: '13px' }}>No resources uploaded yet.</div>
+        ) : (
+          <>
+            {['pending', 'approved', 'declined'].map(status => {
+              const group = resources.filter(r => r.status === status);
+              if (group.length === 0) return null;
+              const label = status === 'pending' ? 'Pending Admin Approval' : status === 'approved' ? 'Approved' : 'Declined';
+              return (
+                <div key={status} style={{ marginBottom: '22px' }}>
+                  <div style={{ fontSize: '12px', color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '.08em', fontWeight: 500, marginBottom: '10px' }}>{label}</div>
+                  {group.map(r => (
+                    <div key={r.id} className="res-review-item" style={status !== 'pending' ? { opacity: 0.85 } : {}}>
+                      <div className="rri-top">
+                        <div className="rri-icon">📄</div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
+                            <div className="rri-name">{r.title}</div>
+                            {status === 'pending' && <span className="pending-badge">Pending</span>}
+                            {status === 'approved' && <span className="approved-badge">Approved ✓</span>}
+                            {status === 'declined' && <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--red)', background: 'var(--red-dim)', padding: '2px 8px', borderRadius: '20px' }}>Declined</span>}
+                          </div>
+                          <div className="rri-meta">{r.type} • {r.subject} • Grade {r.grade} • {new Date(r.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</div>
+                        </div>
+                      </div>
+                      {r.description && <div className="rri-request">{r.description}</div>}
+                      {status === 'declined' && r.declineReason && <div style={{ fontSize: '11.5px', color: 'var(--red)', marginTop: '6px' }}>Reason: {r.declineReason}</div>}
+                      <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                        {status === 'approved' && (
+                          <a href={`http://localhost:5000/api/files/proxy?url=${encodeURIComponent(r.cloudinaryUrl)}`} target="_blank" rel="noreferrer" className="btn btn-ghost btn-sm" style={{ textDecoration: 'none' }}>↗ View / Download</a>
+                        )}
+                        {status !== 'approved' && (
+                          <button
+                            className="btn btn-red btn-sm"
+                            disabled={deletingResourceId === r.id}
+                            onClick={() => deleteResource(r.id)}
+                          >{deletingResourceId === r.id ? 'Deleting…' : 'Delete'}</button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
                 </div>
-                <div className="rri-meta">PDF • For: Rahul Mehta • Suggested Apr 14</div>
-              </div>
-            </div>
-            <div className="rri-request">Suggested reason: "Rahul needs targeted PYQ practice on Gauss's Law and field lines — his doubt volume on this topic is high. These 40 questions map directly to his weak area."</div>
-            <div style={{ fontSize: '11.5px', color: 'var(--text3)' }}>Admin will approve and notify student within 24h</div>
-          </div>
-          <div className="res-review-item">
-            <div className="rri-top">
-              <div className="rri-icon">📄</div>
-              <div style={{ flex: 1 }}>
-                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
-                  <div className="rri-name">Organic Chemistry — Named Reactions Cheat Sheet</div>
-                  <span className="pending-badge">Pending</span>
-                </div>
-                <div className="rri-meta">PDF • For: Priya Desai • Suggested Apr 13</div>
-              </div>
-            </div>
-            <div className="rri-request">Suggested reason: "Priya confuses Markovnikov, Aldol, and Cannizzaro. This one-pager with reaction conditions side by side will help her revise faster."</div>
-            <div style={{ fontSize: '11.5px', color: 'var(--text3)' }}>Admin will approve and notify student within 24h</div>
-          </div>
-        </div>
-
-        <div>
-          <div style={{ fontSize: '12px', color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '.08em', fontWeight: 500, marginBottom: '10px' }}>Recently Approved</div>
-          <div className="res-review-item" style={{ opacity: 0.8 }}>
-            <div className="rri-top">
-              <div className="rri-icon">📘</div>
-              <div style={{ flex: 1 }}>
-                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
-                  <div className="rri-name">HC Verma — Electrostatics Chapter (Vol 2, Ch 29)</div>
-                  <span className="approved-badge">Approved ✓</span>
-                </div>
-                <div className="rri-meta">PDF • For: Arjun Singh • Approved Apr 12 • Student notified</div>
-              </div>
-            </div>
-          </div>
-        </div>
+              );
+            })}
+          </>
+        )}
       </div>
 
       {/* ══════════ ASSIGN TESTS ══════════ */}

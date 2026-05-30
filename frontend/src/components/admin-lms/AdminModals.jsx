@@ -10,7 +10,7 @@ const PermToggleRow = ({ label, defaultOn, last }) => {
   );
 };
 
-const AdminModals = ({ openModal, onClose, onShowToast, toast, students = [], messageStudentId = null }) => {
+const AdminModals = ({ openModal, onClose, onShowToast, toast, students = [], messageStudentId = null, onSendMessage }) => {
   const isOpen = (id) => openModal === id ? ' open' : '';
 
   const [msgStudent, setMsgStudent] = useState('all');
@@ -30,16 +30,9 @@ const AdminModals = ({ openModal, onClose, onShowToast, toast, students = [], me
     if (!msgContent.trim()) { onShowToast('Please write a message'); return; }
     setSending(true);
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:5000/api/admin/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ studentId: msgStudent, content: msgContent.trim(), type: msgType }),
-      });
-      if (!res.ok) throw new Error();
+      await onSendMessage(msgStudent, msgType, msgContent);
       setMsgContent('');
       onClose();
-      onShowToast(msgStudent === 'all' ? 'Message sent to all students ✓' : 'Message sent to student dashboard ✓');
     } catch {
       onShowToast('Failed to send message. Try again.');
     } finally {

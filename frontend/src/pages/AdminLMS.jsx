@@ -13,6 +13,8 @@ const AdminLMS = ({ expectedRole }) => {
   const [profile, setProfile] = useState(null);
   const [students, setStudents] = useState([]);
   const [adminAccounts, setAdminAccounts] = useState([]);
+  const [resources, setResources] = useState([]);
+  const [sentMessages, setSentMessages] = useState([]);
   const [deactivated, setDeactivated] = useState(false);
   const toastTimer = useRef(null);
 
@@ -47,6 +49,16 @@ const AdminLMS = ({ expectedRole }) => {
       .then(r => r.ok ? r.json() : [])
       .then(data => { if (Array.isArray(data)) setStudents(data); })
       .catch(() => {});
+
+    fetch('http://localhost:5000/api/admin/resources', { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : [])
+      .then(data => { if (Array.isArray(data)) setResources(data); })
+      .catch(() => {});
+
+    fetch('http://localhost:5000/api/admin/messages', { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : [])
+      .then(data => { if (Array.isArray(data)) setSentMessages(data); })
+      .catch(() => {});
   }, []);
 
   const showToast = (msg) => {
@@ -78,6 +90,62 @@ const AdminLMS = ({ expectedRole }) => {
         showToast('Admin account deactivated');
       } else {
         showToast('Failed to deactivate');
+      }
+    } catch {
+      showToast('Cannot connect to server');
+    }
+  };
+
+  const sendMessage = async (to, type, content) => {
+    const token = localStorage.getItem('token');
+    const res = await fetch('http://localhost:5000/api/admin/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ studentId: to, content: content.trim(), type }),
+    });
+    if (!res.ok) throw new Error('Failed to send');
+    const recipient = to === 'all' ? 'All Students' : students.find(s => String(s.id) === String(to))?.name || 'Student';
+    setSentMessages(prev => [{
+      id: Date.now(),
+      content,
+      type,
+      recipient,
+      createdAt: new Date().toISOString(),
+    }, ...prev]);
+    showToast(to === 'all' ? 'Message sent to all students ✓' : `Message sent to ${recipient} ✓`);
+  };
+
+  const approveResource = async (id) => {
+    const token = localStorage.getItem('token');
+    try {
+      const res = await fetch(`http://localhost:5000/api/admin/resources/${id}/approve`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        setResources(prev => prev.map(r => r.id === id ? { ...r, status: 'approved', approvedAt: new Date().toISOString() } : r));
+        showToast('Resource approved — students can now see it ✓');
+      } else {
+        showToast('Failed to approve resource');
+      }
+    } catch {
+      showToast('Cannot connect to server');
+    }
+  };
+
+  const declineResource = async (id, reason) => {
+    const token = localStorage.getItem('token');
+    try {
+      const res = await fetch(`http://localhost:5000/api/admin/resources/${id}/decline`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ reason }),
+      });
+      if (res.ok) {
+        setResources(prev => prev.map(r => r.id === id ? { ...r, status: 'declined', declineReason: reason || null } : r));
+        showToast('Resource declined.');
+      } else {
+        showToast('Failed to decline resource');
       }
     } catch {
       showToast('Cannot connect to server');
@@ -163,6 +231,7 @@ const AdminLMS = ({ expectedRole }) => {
         onShowToast={showToast}
         profile={profile}
         studentsCount={students.length}
+        pendingApprovalsCount={resources.filter(r => r.status === 'pending').length}
       />
       <div className="admin-main">
         <AdminTopbar
@@ -183,6 +252,11 @@ const AdminLMS = ({ expectedRole }) => {
           adminAccounts={adminAccounts}
           onDeactivateAdmin={deactivateAdmin}
           onReactivateAdmin={reactivateAdmin}
+          resources={resources}
+          onApproveResource={approveResource}
+          onDeclineResource={declineResource}
+          sentMessages={sentMessages}
+          onSendMessage={sendMessage}
         />
       </div>
       <AdminModals
@@ -192,6 +266,7 @@ const AdminLMS = ({ expectedRole }) => {
         toast={toast}
         students={students}
         messageStudentId={messageStudentId}
+        onSendMessage={sendMessage}
       />
     </div>
   );

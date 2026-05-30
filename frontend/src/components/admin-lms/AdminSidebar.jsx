@@ -1,6 +1,6 @@
 import React from 'react';
 
-const AdminSidebar = ({ activePage, isSuperAdmin, onNav, onShowToast, profile, studentsCount = 0 }) => {
+const AdminSidebar = ({ activePage, isSuperAdmin, onNav, onShowToast, profile, studentsCount = 0, pendingApprovalsCount = 0 }) => {
   const name = profile?.name || (isSuperAdmin ? 'Super Admin' : 'Admin');
   const initial = name.charAt(0).toUpperCase();
   const handleLogout = () => {
@@ -100,7 +100,7 @@ const AdminSidebar = ({ activePage, isSuperAdmin, onNav, onShowToast, profile, s
             <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
           </svg>
           Approvals
-          <span className="nbadge nb-red">4</span>
+          {pendingApprovalsCount > 0 && <span className="nbadge nb-red">{pendingApprovalsCount}</span>}
         </div>
         <div className={niClass('messages')} onClick={() => onNav('messages')}>
           <svg className="nic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

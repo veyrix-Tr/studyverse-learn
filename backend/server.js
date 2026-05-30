@@ -42,6 +42,9 @@ app.use('/api/faculty', facultyRoutes);
 const adminRoutes = require('./routes/adminRoutes');
 app.use('/api/admin', adminRoutes);
 
+const fileRoutes = require('./routes/fileRoutes');
+app.use('/api/files', fileRoutes);
+
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });

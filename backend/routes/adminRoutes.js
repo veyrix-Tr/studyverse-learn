@@ -159,4 +159,123 @@ router.post('/messages', requireAuth, async (req, res) => {
   }
 });
 
+// GET /api/admin/messages — sent messages (deduplicated broadcasts)
+router.get('/messages', requireAuth, async (req, res) => {
+  try {
+    const ap = await prisma.adminProfile.findUnique({ where: { userId: req.user.id } });
+    if (!ap) return res.status(403).json({ error: 'Not an admin' });
+
+    const msgs = await prisma.adminMessage.findMany({
+      where: { adminId: ap.id },
+      include: { student: { include: { user: { select: { name: true } } } } },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+    });
+
+    // Group by content+type+minute to collapse broadcasts into one row
+    const groups = {};
+    for (const m of msgs) {
+      const minute = new Date(m.createdAt).toISOString().slice(0, 16);
+      const key = `${minute}|${m.type}|${m.content}`;
+      if (!groups[key]) groups[key] = { id: m.id, content: m.content, type: m.type, createdAt: m.createdAt, count: 0 };
+      groups[key].count++;
+    }
+
+    const result = Object.values(groups)
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+      .slice(0, 30)
+      .map(g => ({ id: g.id, content: g.content, type: g.type, createdAt: g.createdAt, recipient: g.count > 1 ? 'All Students' : msgs.find(m => m.id === g.id)?.student?.user?.name || 'Student' }));
+
+    res.json(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch messages' });
+  }
+});
+
+// GET /api/admin/resources — all resources pending/approved/declined
+router.get('/resources', requireAuth, async (req, res) => {
+  try {
+    const ap = await prisma.adminProfile.findUnique({ where: { userId: req.user.id } });
+    if (!ap) return res.status(403).json({ error: 'Not an admin' });
+
+    const resources = await prisma.resource.findMany({
+      include: { faculty: { include: { user: { select: { name: true } } } } },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    res.json(resources.map(r => ({
+      id: r.id, title: r.title, description: r.description,
+      subject: r.subject, grade: r.grade, type: r.type,
+      cloudinaryUrl: r.cloudinaryUrl, status: r.status,
+      declineReason: r.declineReason, createdAt: r.createdAt, approvedAt: r.approvedAt,
+      facultyName: r.faculty.user.name,
+    })));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch resources' });
+  }
+});
+
+// PUT /api/admin/resources/:id/approve
+router.put('/resources/:id/approve', requireAuth, async (req, res) => {
+  try {
+    const ap = await prisma.adminProfile.findUnique({ where: { userId: req.user.id } });
+    if (!ap) return res.status(403).json({ error: 'Not an admin' });
+
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ error: 'Invalid ID' });
+
+    const resource = await prisma.resource.update({
+      where: { id },
+      data: { status: 'approved', approvedAt: new Date(), approvedById: ap.id },
+    });
+
+    // Notify all students whose exam target includes this resource's subject
+    const allStudents = await prisma.studentProfile.findMany({
+      select: { id: true, examTarget: true },
+    });
+    const relevantStudents = allStudents.filter(s => {
+      const subjects = EXAM_SUBJECTS[s.examTarget] || [];
+      return subjects.includes(resource.subject);
+    });
+    if (relevantStudents.length > 0) {
+      await prisma.facultyNotification.createMany({
+        data: relevantStudents.map(s => ({
+          content: `New ${resource.type} available: "${resource.title}" (${resource.subject})`,
+          type:      'New Resource',
+          studentId: s.id,
+          facultyId: resource.facultyId,
+        })),
+      });
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to approve resource' });
+  }
+});
+
+// PUT /api/admin/resources/:id/decline
+router.put('/resources/:id/decline', requireAuth, async (req, res) => {
+  try {
+    const { reason } = req.body;
+    const ap = await prisma.adminProfile.findUnique({ where: { userId: req.user.id } });
+    if (!ap) return res.status(403).json({ error: 'Not an admin' });
+
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ error: 'Invalid ID' });
+
+    await prisma.resource.update({
+      where: { id },
+      data: { status: 'declined', declineReason: reason || null },
+    });
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to decline resource' });
+  }
+});
+
 module.exports = router;

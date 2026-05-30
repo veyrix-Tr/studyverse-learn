@@ -57,6 +57,7 @@ model FacultyProfile {
   sessions             Session[]
   doubts               Doubt[]
   facultyNotifications FacultyNotification[]
+  resources            Resource[]
 }
 
 model AdminMessage {
@@ -80,8 +81,9 @@ model AdminProfile {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  adminMessages AdminMessage[]
+  user              User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  adminMessages     AdminMessage[]
+  approvedResources Resource[]
 }
 
 model Session {
@@ -139,6 +141,26 @@ model FacultyNotification {
   facultyId Int
   faculty   FacultyProfile @relation(fields: [facultyId], references: [id], onDelete: Cascade)
   sessionId Int?
+}
+
+model Resource {
+  id              Int      @id @default(autoincrement())
+  title           String
+  description     String?
+  subject         String
+  grade           String
+  type            String   // 'Study Material' | 'Previous Years' | 'Formula Sheet' | 'Session Notes'
+  cloudinaryUrl   String
+  cloudinaryId    String
+  status          String   @default("pending") // 'pending' | 'approved' | 'declined'
+  declineReason   String?
+  createdAt       DateTime @default(now())
+  approvedAt      DateTime?
+
+  facultyId   Int
+  faculty     FacultyProfile @relation(fields: [facultyId], references: [id], onDelete: Cascade)
+  approvedById Int?
+  approvedBy   AdminProfile? @relation(fields: [approvedById], references: [id])
 }
 
 model HabitLog {

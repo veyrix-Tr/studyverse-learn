@@ -189,7 +189,7 @@ const timeAgo = (iso) => {
 
 const TYPE_DOT = { 'Reminder': 'var(--gold)', 'Motivational Note': 'var(--green)', 'Schedule Update': 'var(--navy)', 'Announcement': 'var(--gold)', 'Session Note': 'var(--navy)', 'Doubt Answered': 'var(--green)' };
 
-const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, scores, sessions = [], doubts = [], notifications = [], onMarkNotificationsRead, onNotificationClick }) => {
+const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, scores, sessions = [], doubts = [], notifications = [], onMarkNotificationsRead, onNotificationClick, resources = [] }) => {
   const firstName = profile?.name?.split(' ')[0] || 'there';
   const examTarget = profile?.studentProfile?.examTarget || 'your exam';
   const targetYear = profile?.studentProfile?.targetYear;
@@ -757,27 +757,33 @@ const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
       {/* ══════════ RESOURCES ══════════ */}
       <div className={p('resources')}>
         <div className="tabs">
-          {['Study Material', 'Previous Years', 'Formula Sheets', 'Session Notes'].map((t, i) => (
+          {['Study Material', 'Previous Years', 'Formula Sheet', 'Session Notes', 'All'].map((t, i) => (
             <div key={t} className={`tab${resourcesTab === i ? ' on' : ''}`} onClick={() => setResourcesTab(i)}>{t}</div>
           ))}
         </div>
-        {[
-          { icon: '📕', name: 'NCERT Chemistry Class XI', meta: 'PDF • 18.4 MB • Uploaded by Vinay' },
-          { icon: '📗', name: 'NCERT Mathematics Class XII', meta: 'PDF • 22.1 MB' },
-          { icon: '📘', name: 'H.C. Verma — Concepts of Physics Vol. 1', meta: 'PDF • 31.6 MB' },
-          { icon: '📄', name: 'Session Notes — Quantum Numbers (Apr 15)', meta: "PDF • 1.2 MB • From today's session" },
-          { icon: '📑', name: "Chemistry Formula Sheet — Vinay's", meta: 'PDF • 0.9 MB • Mentor-curated' },
-          { icon: '📄', name: 'JEE Advanced 2023 — Paper + Solutions', meta: 'PDF • 4.2 MB' },
-        ].map((r, i) => (
-          <div key={i} className="res-item" onClick={() => onShowToast('Downloading...')}>
-            <div className="res-icon">{r.icon}</div>
-            <div>
-              <div className="res-name">{r.name}</div>
-              <div className="res-meta">{r.meta}</div>
+        {(() => {
+          const typeMap = ['Study Material', 'Previous Years', 'Formula Sheet', 'Session Notes'];
+          const filtered = resourcesTab < 4 ? resources.filter(r => r.type === typeMap[resourcesTab]) : resources;
+          if (filtered.length === 0) return (
+            <div style={{ fontSize: '13px', color: 'var(--text3)', padding: '32px 0', textAlign: 'center' }}>
+              No resources available{resourcesTab < 4 ? ` for ${typeMap[resourcesTab]}` : ''}.
             </div>
-            <button className="btn btn-ghost btn-sm" style={{ marginLeft: 'auto' }}>↓ Download</button>
-          </div>
-        ))}
+          );
+          return filtered.map(r => (
+            <div key={r.id} className="res-item">
+              <div className="res-icon">📄</div>
+              <div>
+                <div className="res-name">{r.title}</div>
+                <div className="res-meta">{r.subject} · Grade {r.grade} · {r.type} · By {r.facultyName}</div>
+                {r.description && <div style={{ fontSize: '12px', color: 'var(--text3)', marginTop: '3px' }}>{r.description}</div>}
+              </div>
+              <div style={{ marginLeft: 'auto', display: 'flex', gap: '6px' }}>
+                <a href={`http://localhost:5000/api/files/proxy?url=${encodeURIComponent(r.cloudinaryUrl)}`} target="_blank" rel="noreferrer" className="btn btn-ghost btn-sm" style={{ textDecoration: 'none' }}>↗ View</a>
+                <a href={`http://localhost:5000/api/files/proxy?url=${encodeURIComponent(r.cloudinaryUrl)}&download=1`} target="_blank" rel="noreferrer" className="btn btn-ghost btn-sm" style={{ textDecoration: 'none' }}>↓ Download</a>
+              </div>
+            </div>
+          ));
+        })()}
       </div>
 
       {/* ══════════ DOUBT DESK ══════════ */}

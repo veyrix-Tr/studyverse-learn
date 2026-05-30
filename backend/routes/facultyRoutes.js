@@ -1,7 +1,16 @@
-const express  = require('express');
-const router   = express.Router();
-const prisma   = require('../lib/prisma');
+const express    = require('express');
+const router     = express.Router();
+const prisma     = require('../lib/prisma');
 const { requireAuth } = require('../middleware/auth');
+const { v2: cloudinary } = require('cloudinary');
+require('dotenv').config();
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key:    process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+  secure:     true,
+});
 
 // GET /api/faculty/me
 router.get('/me', requireAuth, async (req, res) => {
@@ -387,6 +396,72 @@ router.put('/doubts/:id/answer', requireAuth, async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to save answer' });
+  }
+});
+
+// POST /api/faculty/resources — submit a resource (URL from Cloudinary)
+router.post('/resources', requireAuth, async (req, res) => {
+  try {
+    const { title, description, subject, grade, type, cloudinaryUrl, cloudinaryId } = req.body;
+    if (!title || !subject || !grade || !type || !cloudinaryUrl || !cloudinaryId)
+      return res.status(400).json({ error: 'Missing required fields' });
+
+    const fp = await prisma.facultyProfile.findUnique({ where: { userId: req.user.id } });
+    if (!fp) return res.status(403).json({ error: 'Not a faculty member' });
+
+    const resource = await prisma.resource.create({
+      data: { title, description: description || null, subject, grade, type, cloudinaryUrl, cloudinaryId, facultyId: fp.id },
+    });
+
+    res.json({ success: true, resource });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to submit resource' });
+  }
+});
+
+// GET /api/faculty/resources — faculty sees their own resources
+router.get('/resources', requireAuth, async (req, res) => {
+  try {
+    const fp = await prisma.facultyProfile.findUnique({ where: { userId: req.user.id } });
+    if (!fp) return res.json([]);
+
+    const resources = await prisma.resource.findMany({
+      where: { facultyId: fp.id },
+      orderBy: { createdAt: 'desc' },
+    });
+    res.json(resources);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch resources' });
+  }
+});
+
+// DELETE /api/faculty/resources/:id — delete own pending or declined resource
+router.delete('/resources/:id', requireAuth, async (req, res) => {
+  try {
+    const fp = await prisma.facultyProfile.findUnique({ where: { userId: req.user.id } });
+    if (!fp) return res.status(403).json({ error: 'Not a faculty member' });
+
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ error: 'Invalid ID' });
+
+    const resource = await prisma.resource.findUnique({ where: { id } });
+    if (!resource || resource.facultyId !== fp.id)
+      return res.status(404).json({ error: 'Resource not found' });
+    if (resource.status === 'approved')
+      return res.status(400).json({ error: 'Cannot delete an approved resource' });
+
+    // Best-effort Cloudinary deletion (don't fail the request if it errors)
+    try {
+      await cloudinary.uploader.destroy(resource.cloudinaryId, { resource_type: 'image' });
+    } catch (_) {}
+
+    await prisma.resource.delete({ where: { id } });
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to delete resource' });
   }
 });
 

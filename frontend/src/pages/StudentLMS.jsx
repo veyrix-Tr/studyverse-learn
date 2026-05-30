@@ -23,6 +23,7 @@ const StudentLMS = () => {
   const [sessions, setSessions] = useState([]);
   const [doubts, setDoubts] = useState([]);
   const [notifications, setNotifications] = useState([]);
+  const [resources, setResources] = useState([]);
   const toastTimer = useRef(null);
 
   useEffect(() => {
@@ -70,6 +71,13 @@ const StudentLMS = () => {
     })
       .then(r => r.ok ? r.json() : null)
       .then(data => { if (Array.isArray(data)) setNotifications(data); })
+      .catch(() => {});
+
+    fetch('http://localhost:5000/api/student/resources', {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (Array.isArray(data)) setResources(data); })
       .catch(() => {});
   }, []);
 
@@ -184,6 +192,7 @@ const StudentLMS = () => {
           notifications={notifications}
           onMarkNotificationsRead={markAllNotificationsRead}
           onNotificationClick={handleNotificationClick}
+          resources={resources}
         />
       </div>
       <StudentModals
