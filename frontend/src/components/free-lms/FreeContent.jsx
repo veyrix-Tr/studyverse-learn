@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 
 const mcqData = [
   { id: 1, qHtml: 'Q1. If f(x) = x² – 3x + 2, find lim<sub>x→2</sub> [f(x)/(x–2)]', opts: ['A. 0', 'B. 1', 'C. 2', "D. Doesn't exist"], correct: 'B' },
@@ -72,7 +72,7 @@ const guidanceConfig = [
     body: (p) => `You're at ${p}% in Organic Chemistry. Spend 1 day revising key named reactions (Aldol, Cannizzaro, Markovnikov) and mechanism logic. Do not go deep here until Physics improves.` },
 ];
 
-const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile }) => {
+const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, onDiagnosticSaved }) => {
   const p = (name) => `page${activePage === name ? ' on' : ''}`;
   const firstName = profile?.name?.split(' ')[0] || 'there';
   const examTarget = profile?.studentProfile?.examTarget || 'your exam';
@@ -84,7 +84,44 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile }) =
   const [mcqCurrent, setMcqCurrent] = useState(1);
   const [mcqFeedback, setMcqFeedback] = useState(null);
   const [mcqDone, setMcqDone] = useState(false);
+  const [mcqCorrect, setMcqCorrect] = useState(0);
+  const [savedScore, setSavedScore] = useState(null);
   const mcqTimer = useRef(null);
+
+  const THREE_MONTHS_MS = 3 * 30 * 24 * 60 * 60 * 1000;
+
+  const getNextAllowedDate = (takenAt) => takenAt ? new Date(new Date(takenAt).getTime() + THREE_MONTHS_MS) : null;
+  const isRetakeUnlocked = (takenAt) => { const next = getNextAllowedDate(takenAt); return next ? new Date() >= next : true; };
+
+  // If diagnostic already done (from DB), show completed state
+  useEffect(() => {
+    const sp = profile?.studentProfile;
+    if (sp?.diagnosticScore !== null && sp?.diagnosticScore !== undefined) {
+      setDiagDone(true);
+      setSavedScore(sp.diagnosticScore);
+    }
+  }, [profile]);
+
+  // Save to DB when MCQ round finishes
+  useEffect(() => {
+    if (!mcqDone) return;
+    const pcts = [mathPct, physPct, chemPct].filter(p => p !== null);
+    const selfAvg = pcts.length ? Math.round(pcts.reduce((a, b) => a + b, 0) / pcts.length) : 50;
+    const mcqScore = Math.round((mcqCorrect / 6) * 100);
+    saveDiagnostic(selfAvg, mcqScore);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mcqDone]);
+
+  const startRetake = () => {
+    setDiagStep(1);
+    setDiagDone(false);
+    setSavedScore(null);
+    setRatings({});
+    setMcqCurrent(1);
+    setMcqFeedback(null);
+    setMcqDone(false);
+    setMcqCorrect(0);
+  };
 
   // Habit state
   const [habitState, setHabitState] = useState({});
@@ -110,16 +147,35 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile }) =
     if (mcqFeedback) return;
     const isCorrect = chosen === correct;
     setMcqFeedback({ chosen, correct, isCorrect });
+    if (isCorrect) setMcqCorrect(c => c + 1);
     clearTimeout(mcqTimer.current);
     mcqTimer.current = setTimeout(() => {
       setMcqFeedback(null);
       if (mcqCurrent >= 6) {
         setMcqDone(true);
         setDiagDone(true);
+        setDiagStep(3);
       } else {
         setMcqCurrent(c => c + 1);
       }
     }, 1200);
+  };
+
+  const saveDiagnostic = async (selfAvg, mcqScore) => {
+    const finalScore = Math.round(selfAvg * 0.7 + mcqScore * 0.3);
+    const token = localStorage.getItem('token');
+    try {
+      const res = await fetch('http://localhost:5000/api/student/diagnostic', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ score: finalScore }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setSavedScore(finalScore);
+        onDiagnosticSaved?.(finalScore, new Date().toISOString());
+      }
+    } catch { /* silent — result is still shown */ }
   };
 
   const mcqProgress = mcqDone ? 100 : ((mcqCurrent - 1) / 6 * 100);
@@ -219,7 +275,7 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile }) =
           <div className="stat sa-gold">
             <div className="stat-l">Diagnostic</div>
             <div className="stat-v" style={{ fontSize: '20px', color: diagDone ? 'var(--green)' : 'var(--text3)' }}>{diagDone ? 'Done ✓' : 'Not done'}</div>
-            <div className="stat-n warn" style={diagDone ? { color: 'var(--green)' } : {}} onClick={diagDone ? undefined : () => onNav('diagnostic')} >{diagDone ? 'View results →' : '→ Start now'}</div>
+            <div className="stat-n warn" style={diagDone ? { color: 'var(--green)', cursor: 'pointer' } : {}} onClick={() => onNav('diagnostic')}>{diagDone ? 'View results →' : '→ Start now'}</div>
           </div>
           <div className="stat sa-green">
             <div className="stat-l">Habits This Week</div>
@@ -287,6 +343,33 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile }) =
 
       {/* ══════════ DIAGNOSTIC ══════════ */}
       <div className={p('diagnostic')}>
+        {savedScore !== null && !mcqDone && (() => {
+          const takenAt = profile?.studentProfile?.diagnosticTakenAt;
+          const nextDate = getNextAllowedDate(takenAt);
+          const unlocked = isRetakeUnlocked(takenAt);
+          const nextStr = nextDate ? nextDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }) : null;
+          return (
+            <div style={{ background: unlocked ? 'var(--gold-dim)' : 'var(--green-dim)', border: `1px solid ${unlocked ? 'var(--gold-b)' : 'rgba(34,197,94,0.3)'}`, borderRadius: 'var(--r)', padding: '14px 18px', marginBottom: '22px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
+                <div>
+                  <div style={{ fontSize: '13px', fontWeight: 600, color: unlocked ? 'var(--gold)' : 'var(--green)', marginBottom: '2px' }}>
+                    {unlocked ? '🔓 Retake now available!' : '✓ Diagnostic completed — 3-month plan active'}
+                  </div>
+                  <div style={{ fontSize: '12px', color: 'var(--text2)' }}>
+                    Your score: <strong style={{ color: 'var(--text)' }}>{savedScore}%</strong>
+                    {!unlocked && nextStr && <span> — next test unlocks on <strong style={{ color: 'var(--text)' }}>{nextStr}</strong></span>}
+                    {unlocked && <span> — retake to get a fresh 3-month plan</span>}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '8px', flexShrink: 0, flexWrap: 'wrap' }}>
+                  <button className="btn btn-sm btn-ghost" onClick={() => onNav('topics')}>Topic Map →</button>
+                  <button className="btn btn-sm btn-ghost" onClick={() => onNav('guidance')}>Study Plan →</button>
+                  {unlocked && <button className="btn btn-sm btn-gold" onClick={startRetake}>Retake Test →</button>}
+                </div>
+              </div>
+            </div>
+          );
+        })()}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '24px', flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 14px', borderRadius: '20px', fontSize: '12px', fontWeight: 600, ...stepStyle(1) }}>
             <span>①</span> Self-Rating
@@ -385,7 +468,17 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile }) =
                 <div style={{ fontFamily: 'var(--fs)', fontSize: '21px', fontWeight: 700, color: 'var(--inv)', marginBottom: '4px' }}>Your Diagnostic Results</div>
                 <div style={{ fontSize: '13px', color: 'var(--inv2)' }}>Based on your self-rating + MCQ performance • JEE Mains pattern</div>
               </div>
-              <span className="pill pp" style={{ fontSize: '11px' }}>Completed ✓</span>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px' }}>
+                <span className="pill pp" style={{ fontSize: '11px' }}>Completed ✓</span>
+                {savedScore !== null && <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--gold)' }}>Overall: {savedScore}%</span>}
+                {(() => {
+                  const takenAt = profile?.studentProfile?.diagnosticTakenAt;
+                  const nextDate = getNextAllowedDate(takenAt);
+                  if (!nextDate) return null;
+                  const nextStr = nextDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+                  return <span style={{ fontSize: '11px', color: 'var(--inv3)' }}>Next test: {nextStr}</span>;
+                })()}
+              </div>
             </div>
             <div className="g3" style={{ marginBottom: 0 }}>
               {[

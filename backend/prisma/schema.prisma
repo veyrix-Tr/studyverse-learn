@@ -31,7 +31,8 @@ model StudentProfile {
   grade           String?
   parentPhone     String?
   planEndDate     DateTime?
-  diagnosticScore Int?
+  diagnosticScore   Int?
+  diagnosticTakenAt DateTime?
   createdAt       DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 

@@ -14,6 +14,7 @@ router.get('/me', requireAuth, async (req, res) => {
           select: {
             plan: true, examTarget: true, targetYear: true,
             grade: true, planEndDate: true,
+            diagnosticScore: true, diagnosticTakenAt: true,
           },
         },
       },
@@ -24,6 +25,38 @@ router.get('/me', requireAuth, async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Failed to fetch profile' });
+  }
+});
+
+// POST /api/student/diagnostic
+const THREE_MONTHS_MS = 3 * 30 * 24 * 60 * 60 * 1000;
+
+router.post('/diagnostic', requireAuth, async (req, res) => {
+  try {
+    const { score } = req.body;
+    if (typeof score !== 'number' || score < 0 || score > 100)
+      return res.status(400).json({ error: 'Invalid score' });
+
+    const profile = await prisma.studentProfile.findUnique({ where: { userId: req.user.id } });
+    if (!profile) return res.status(403).json({ error: 'Not found' });
+
+    if (profile.diagnosticTakenAt) {
+      const nextAllowed = new Date(profile.diagnosticTakenAt.getTime() + THREE_MONTHS_MS);
+      if (new Date() < nextAllowed)
+        return res.status(409).json({ error: 'Diagnostic locked', nextAllowedAt: nextAllowed });
+    }
+
+    const now = new Date();
+    await prisma.studentProfile.update({
+      where: { id: profile.id },
+      data: { diagnosticScore: Math.round(score), diagnosticTakenAt: now },
+    });
+
+    const nextAllowedAt = new Date(now.getTime() + THREE_MONTHS_MS);
+    res.json({ success: true, score: Math.round(score), nextAllowedAt });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to save diagnostic' });
   }
 });
 
