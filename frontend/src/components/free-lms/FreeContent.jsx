@@ -41,13 +41,36 @@ const habitItems = [
   { key: 'problems', icon: '❓', name: 'Solved at least 10 problems', desc: 'JEE is a problem-solving exam. Read less, solve more.' },
 ];
 
-const habitHistoryData = [
-  { label: 'Sleep',    dots: ['y','y','n','y','y','n','y','y','y','n','y','y','y','t'] },
-  { label: 'Study 4h', dots: ['y','n','y','y','n','y','y','n','y','y','y','n','y','t'] },
-  { label: 'Revision', dots: ['n','y','y','n','y','y','n','y','y','y','n','y','y','t'] },
-  { label: 'No phone', dots: ['y','y','n','n','y','y','y','y','n','n','y','y','y','t'] },
-  { label: '10 probs', dots: ['y','n','n','y','y','y','y','n','y','y','y','y','n','t'] },
-];
+const HABIT_KEYS = ['sleep', 'study', 'revision', 'phone', 'problems'];
+const HABIT_LABELS = { sleep: 'Sleep', study: 'Study 4h', revision: 'Revision', phone: 'No phone', problems: '10 probs' };
+
+// Get today's date in IST as YYYY-MM-DD
+const getTodayIST = () => {
+  const now = new Date();
+  const ist = new Date(now.getTime() + 5.5 * 60 * 60 * 1000);
+  return ist.toISOString().slice(0, 10);
+};
+
+// Compute current streak — consecutive days (ending today or yesterday) where all 5 habits = true
+const computeStreak = (logs) => {
+  if (!logs.length) return 0;
+  const sorted = [...logs].sort((a, b) => b.date.localeCompare(a.date));
+  const today = getTodayIST();
+  const yesterday = (() => { const d = new Date(new Date().getTime() + 5.5*60*60*1000 - 86400000); return d.toISOString().slice(0,10); })();
+  if (sorted[0].date !== today && sorted[0].date !== yesterday) return 0;
+  let streak = 0;
+  let expected = sorted[0].date;
+  for (const log of sorted) {
+    if (log.date !== expected) break;
+    const allDone = HABIT_KEYS.every(k => log[k] === true);
+    if (!allDone) break;
+    streak++;
+    const d = new Date(expected);
+    d.setDate(d.getDate() - 1);
+    expected = d.toISOString().slice(0, 10);
+  }
+  return streak;
+};
 
 const getGreeting = () => {
   const h = new Date().getHours();
@@ -72,7 +95,7 @@ const guidanceConfig = [
     body: (p) => `You're at ${p}% in Organic Chemistry. Spend 1 day revising key named reactions (Aldol, Cannizzaro, Markovnikov) and mechanism logic. Do not go deep here until Physics improves.` },
 ];
 
-const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, onDiagnosticSaved }) => {
+const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, onDiagnosticSaved, habitLogs = [], onHabitSaved }) => {
   const p = (name) => `page${activePage === name ? ' on' : ''}`;
   const firstName = profile?.name?.split(' ')[0] || 'there';
   const examTarget = profile?.studentProfile?.examTarget || 'your exam';
@@ -125,8 +148,7 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, onD
 
   // Habit state
   const [habitState, setHabitState] = useState({});
-  const [habitSaved, setHabitSaved] = useState(false);
-  const [savedHabitDots, setSavedHabitDots] = useState(habitHistoryData);
+  const [habitSaving, setHabitSaving] = useState(false);
 
   // Topic map state — physics open by default
   const [openSubj, setOpenSubj] = useState(new Set(['physics']));
@@ -186,27 +208,65 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, onD
     return { background: 'var(--cream2)', color: 'var(--text3)' };
   };
 
+  const today = getTodayIST();
+  const todayLog = habitLogs.find(l => l.date === today) || null;
+  const alreadyCheckedIn = !!todayLog;
+  const streak = computeStreak(habitLogs);
+
+  // If today already checked in, show saved values; else show in-progress state
+  const effectiveState = alreadyCheckedIn
+    ? Object.fromEntries(HABIT_KEYS.map(k => [k, todayLog[k] ? 'yes' : 'no']))
+    : habitState;
+
+  const habitCount = alreadyCheckedIn
+    ? HABIT_KEYS.filter(k => todayLog[k]).length
+    : Object.keys(habitState).filter(k => habitState[k] === 'yes').length;
+  const allHabitsDone = Object.keys(habitState).length === 5;
+
   const logHabit = (key, val) => {
+    if (alreadyCheckedIn) return;
     setHabitState(prev => ({ ...prev, [key]: val }));
-    setHabitSaved(false);
   };
 
-  const habitCount = Object.keys(habitState).length;
-  const allHabitsDone = habitCount >= 5;
-
-  const habitLabelToKey = { 'Sleep': 'sleep', 'Study 4h': 'study', 'Revision': 'revision', 'No phone': 'phone', '10 probs': 'problems' };
-
-  const saveHabits = () => {
-    setSavedHabitDots(prev => prev.map(row => {
-      const key = habitLabelToKey[row.label];
-      if (!key || !habitState[key]) return row;
-      const newDots = [...row.dots];
-      newDots[newDots.length - 1] = habitState[key] === 'yes' ? 'y' : 'n';
-      return { ...row, dots: newDots };
-    }));
-    setHabitSaved(true);
-    onShowToast('Check-in saved for today ✓');
+  const saveHabits = async () => {
+    if (habitSaving || alreadyCheckedIn) return;
+    setHabitSaving(true);
+    const token = localStorage.getItem('token');
+    try {
+      const body = Object.fromEntries(HABIT_KEYS.map(k => [k, habitState[k] === 'yes']));
+      const res = await fetch('http://localhost:5000/api/student/habits', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      onHabitSaved?.(data.log);
+      setHabitState({});
+      onShowToast('Check-in saved for today ✓');
+    } catch {
+      onShowToast('Failed to save. Try again.');
+    } finally {
+      setHabitSaving(false);
+    }
   };
+
+  // Build 14-day dot grid from real logs
+  const buildDotGrid = () => {
+    const logMap = Object.fromEntries(habitLogs.map(l => [l.date, l]));
+    return HABIT_KEYS.map(k => {
+      const dots = [];
+      for (let i = 13; i >= 0; i--) {
+        const d = new Date(new Date().getTime() + 5.5*60*60*1000 - i*86400000);
+        const dateStr = d.toISOString().slice(0, 10);
+        if (dateStr === today) { dots.push(logMap[dateStr] ? (logMap[dateStr][k] ? 'y' : 'n') : 't'); }
+        else if (logMap[dateStr]) { dots.push(logMap[dateStr][k] ? 'y' : 'n'); }
+        else { dots.push('e'); } // no data
+      }
+      return { label: HABIT_LABELS[k], dots };
+    });
+  };
+  const dotGrid = buildDotGrid();
 
   // Rating helpers — converts 1–5 scale to 0–100 percentage
   const ratingToPct = (r) => Math.round((r / 5) * 100);
@@ -278,9 +338,9 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, onD
             <div className="stat-n warn" style={diagDone ? { color: 'var(--green)', cursor: 'pointer' } : {}} onClick={() => onNav('diagnostic')}>{diagDone ? 'View results →' : '→ Start now'}</div>
           </div>
           <div className="stat sa-green">
-            <div className="stat-l">Habits This Week</div>
-            <div className="stat-v">{habitCount > 0 ? `${habitCount}/5` : '—'}</div>
-            <div className="stat-n up">{habitCount > 0 ? '↑ Keep going' : 'Check in today'}</div>
+            <div className="stat-l">Habit Streak</div>
+            <div className="stat-v">{streak > 0 ? `🔥 ${streak}` : alreadyCheckedIn ? `${habitCount}/5` : '—'}</div>
+            <div className="stat-n up" style={{ cursor: 'pointer' }} onClick={() => onNav('habits')}>{streak > 0 ? `${streak}-day streak` : alreadyCheckedIn ? 'Done today ✓' : 'Check in today'}</div>
           </div>
           <div className="stat sa-navy">
             <div className="stat-l">Topics Identified</div>
@@ -656,18 +716,25 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, onD
       {/* ══════════ HABIT TRACKER ══════════ */}
       <div className={p('habits')}>
         <div className="g2 mb">
-          <div className="card">
+          <div className="card" style={alreadyCheckedIn
+            ? { borderColor: 'rgba(34,197,94,0.35)', borderLeftWidth: '4px', borderLeftColor: 'var(--green)' }
+            : { borderColor: 'rgba(232,168,48,0.45)', borderLeftWidth: '4px', borderLeftColor: 'var(--gold)' }}>
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '6px' }}>
               <div>
                 <div style={{ fontFamily: 'var(--fs)', fontSize: '16px', fontWeight: 700, color: 'var(--text)' }}>Today's Check-in</div>
                 <div style={{ fontSize: '12px', color: 'var(--text3)' }}>{new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</div>
               </div>
-              <span className="pill pp">Free</span>
+              {alreadyCheckedIn
+                ? <span className="pill pp" style={{ background: 'rgba(34,197,94,0.15)', color: 'var(--green)' }}>Done ✓</span>
+                : <span className="pill" style={{ background: 'var(--gold-dim)', color: 'var(--gold)', border: '1px solid var(--gold-b)' }}>Pending</span>}
             </div>
-            <div style={{ fontSize: '12.5px', color: 'var(--text2)', marginBottom: '18px', lineHeight: 1.6 }}>5 habits. Yes or No. Honest answers only — this is for you, not anyone else.</div>
+            {alreadyCheckedIn
+              ? <div style={{ fontSize: '12.5px', color: 'var(--green)', marginBottom: '18px', fontWeight: 500 }}>✓ Today's check-in is saved. See you tomorrow!</div>
+              : <div style={{ fontSize: '12.5px', color: 'var(--text2)', marginBottom: '18px', lineHeight: 1.6 }}>5 habits. Yes or No. Honest answers only — this is for you, not anyone else.</div>
+            }
 
             {habitItems.map((h) => (
-              <div key={h.key} className="habit-row">
+              <div key={h.key} className="habit-row" style={alreadyCheckedIn ? { opacity: 0.85 } : {}}>
                 <div className="habit-left">
                   <div className="habit-icon">{h.icon}</div>
                   <div>
@@ -676,29 +743,44 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, onD
                   </div>
                 </div>
                 <div className="habit-toggle">
-                  <div className={`ht-yes${habitState[h.key] === 'yes' ? ' active' : ''}`} onClick={() => logHabit(h.key, 'yes')}>Yes</div>
-                  <div className={`ht-no${habitState[h.key] === 'no' ? ' active' : ''}`} onClick={() => logHabit(h.key, 'no')}>No</div>
+                  <div className={`ht-yes${effectiveState[h.key] === 'yes' ? ' active' : ''}`} onClick={() => logHabit(h.key, 'yes')}>Yes</div>
+                  <div className={`ht-no${effectiveState[h.key] === 'no' ? ' active' : ''}`} onClick={() => logHabit(h.key, 'no')}>No</div>
                 </div>
               </div>
             ))}
 
-            {allHabitsDone && !habitSaved && (
+            {!alreadyCheckedIn && allHabitsDone && (
               <div style={{ marginTop: '16px', textAlign: 'right' }}>
-                <button className="btn btn-gold" onClick={saveHabits}>Save Today's Check-in ✓</button>
+                <button className="btn btn-gold" onClick={saveHabits} disabled={habitSaving}>
+                  {habitSaving ? 'Saving…' : 'Save Today\'s Check-in ✓'}
+                </button>
               </div>
             )}
           </div>
 
           <div className="card">
-            <div className="sh-t" style={{ marginBottom: '14px' }}>This Week</div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+              <div className="sh-t" style={{ marginBottom: 0 }}>Overview</div>
+              {streak > 0 && (
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: '5px', borderRadius: '20px', padding: '4px 12px',
+                  background: alreadyCheckedIn ? 'rgba(34,197,94,0.12)' : 'var(--gold-dim)',
+                  border: `1px solid ${alreadyCheckedIn ? 'rgba(34,197,94,0.3)' : 'var(--gold-b)'}`,
+                }}>
+                  <span style={{ fontSize: '15px' }}>🔥</span>
+                  <span style={{ fontSize: '13px', fontWeight: 700, color: alreadyCheckedIn ? 'var(--green)' : 'var(--gold)' }}>{streak}-day streak</span>
+                  {!alreadyCheckedIn && <span style={{ fontSize: '10px', color: 'var(--gold)', opacity: 0.8 }}>at risk</span>}
+                </div>
+              )}
+            </div>
             <div style={{ textAlign: 'center', padding: '16px 0 20px' }}>
-              <div className="habit-week-score" style={{ color: 'var(--gold)' }}>{habitCount}</div>
-              <div style={{ fontSize: '13px', color: 'var(--text3)' }}>habits completed today</div>
+              <div className="habit-week-score" style={{ color: habitCount === 5 ? 'var(--green)' : habitCount >= 3 ? 'var(--gold)' : 'var(--text3)' }}>{habitCount}</div>
+              <div style={{ fontSize: '13px', color: 'var(--text3)' }}>{alreadyCheckedIn ? 'habits done today' : 'habits completed today'}</div>
             </div>
             <div className="div"></div>
             <div style={{ fontSize: '12px', color: 'var(--text3)', marginBottom: '10px', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '.07em' }}>Last 14 days</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {savedHabitDots.map((row, ri) => (
+              {dotGrid.map((row, ri) => (
                 <div key={ri} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <div style={{ fontSize: '11px', color: 'var(--text3)', width: '60px' }}>{row.label}</div>
                   <div className="habit-history">
@@ -710,7 +792,8 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, onD
             <div style={{ display: 'flex', gap: '10px', marginTop: '12px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '10.5px', color: 'var(--text3)' }}><div className="hd y"></div>Done</div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '10.5px', color: 'var(--text3)' }}><div className="hd n"></div>Missed</div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '10.5px', color: 'var(--text3)' }}><div className="hd t"></div>Today</div>
+              {!alreadyCheckedIn && <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '10.5px', color: 'var(--text3)' }}><div className="hd t"></div>Today</div>}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '10.5px', color: 'var(--text3)' }}><div className="hd e"></div>No data</div>
             </div>
           </div>
         </div>

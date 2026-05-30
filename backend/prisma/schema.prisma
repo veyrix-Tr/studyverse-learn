@@ -41,6 +41,7 @@ model StudentProfile {
   weeklyScores         WeeklyScore[]
   adminMessages        AdminMessage[]
   facultyNotifications FacultyNotification[]
+  habitLogs            HabitLog[]
 }
 
 model FacultyProfile {
@@ -138,6 +139,22 @@ model FacultyNotification {
   facultyId Int
   faculty   FacultyProfile @relation(fields: [facultyId], references: [id], onDelete: Cascade)
   sessionId Int?
+}
+
+model HabitLog {
+  id        Int      @id @default(autoincrement())
+  date      String   // YYYY-MM-DD in IST
+  sleep     Boolean
+  study     Boolean
+  revision  Boolean
+  phone     Boolean
+  problems  Boolean
+  createdAt DateTime @default(now())
+
+  studentId Int
+  student   StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, date])
 }
 
 model Otp {

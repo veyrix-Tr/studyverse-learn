@@ -236,8 +236,8 @@ body.free-mode .ht-no:hover, body.free-mode .ht-no.active { background: var(--re
 body.free-mode .habit-history { display: flex; gap: 4px; margin-top: 6px; }
 body.free-mode .hd { width: 10px; height: 10px; border-radius: 3px; background: var(--cream3); }
 body.free-mode .hd.y { background: var(--green); }
-body.free-mode .hd.n { background: var(--red-dim); }
-body.free-mode .hd.t { background: var(--gold); }
+body.free-mode .hd.n { background: rgba(239,68,68,0.4); }
+body.free-mode .hd.t { background: #f97316; }
 body.free-mode .habit-week-score { font-family: var(--fs); font-size: 38px; font-weight: 700; }
 
 /* ── TOPIC MAP ── */

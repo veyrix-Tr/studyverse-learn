@@ -272,4 +272,54 @@ router.put('/notifications/:id/read', requireAuth, async (req, res) => {
   }
 });
 
+// GET /api/student/habits  — last 14 days of habit logs
+router.get('/habits', requireAuth, async (req, res) => {
+  try {
+    const profile = await prisma.studentProfile.findUnique({ where: { userId: req.user.id } });
+    if (!profile) return res.json([]);
+
+    // Last 14 dates in IST (YYYY-MM-DD)
+    const logs = await prisma.habitLog.findMany({
+      where: { studentId: profile.id },
+      orderBy: { date: 'desc' },
+      take: 14,
+    });
+
+    res.json(logs);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch habits' });
+  }
+});
+
+// POST /api/student/habits  — save today's check-in (one per day)
+router.post('/habits', requireAuth, async (req, res) => {
+  try {
+    const { sleep, study, revision, phone, problems } = req.body;
+    for (const key of ['sleep', 'study', 'revision', 'phone', 'problems']) {
+      if (typeof req.body[key] !== 'boolean')
+        return res.status(400).json({ error: `${key} must be boolean` });
+    }
+
+    const profile = await prisma.studentProfile.findUnique({ where: { userId: req.user.id } });
+    if (!profile) return res.status(403).json({ error: 'Not found' });
+
+    // Today in IST (UTC+5:30)
+    const now = new Date();
+    const ist = new Date(now.getTime() + 5.5 * 60 * 60 * 1000);
+    const today = ist.toISOString().slice(0, 10); // YYYY-MM-DD
+
+    const log = await prisma.habitLog.upsert({
+      where: { studentId_date: { studentId: profile.id, date: today } },
+      create: { studentId: profile.id, date: today, sleep, study, revision, phone, problems },
+      update: { sleep, study, revision, phone, problems },
+    });
+
+    res.json({ success: true, log });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to save habits' });
+  }
+});
+
 module.exports = router;
