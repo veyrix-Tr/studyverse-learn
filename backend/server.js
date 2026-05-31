@@ -45,6 +45,9 @@ app.use('/api/admin', adminRoutes);
 const fileRoutes = require('./routes/fileRoutes');
 app.use('/api/files', fileRoutes);
 
+const { startCronJobs } = require('./services/cronService');
+startCronJobs();
+
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });

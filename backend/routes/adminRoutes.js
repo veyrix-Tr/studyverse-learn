@@ -278,4 +278,118 @@ router.put('/resources/:id/decline', requireAuth, async (req, res) => {
   }
 });
 
+// ── Weekly Parent Reports ────────────────────────────────────────────────────
+
+// GET /api/admin/reports — all submitted/approved/rejected/sent reports
+router.get('/reports', requireAuth, async (req, res) => {
+  try {
+    const ap = await prisma.adminProfile.findUnique({ where: { userId: req.user.id } });
+    if (!ap) return res.status(403).json({ error: 'Not an admin' });
+
+    const reports = await prisma.weeklyReport.findMany({
+      where: { status: { in: ['submitted', 'approved', 'rejected', 'sent'] } },
+      include: {
+        student: { include: { user: { select: { name: true } } } },
+        faculty: { include: { user: { select: { name: true } } } },
+      },
+      orderBy: { submittedAt: 'desc' },
+    });
+
+    res.json(reports.map(r => ({
+      id: r.id,
+      weekNumber: r.weekNumber,
+      weekStartDate: r.weekStartDate,
+      overallRating: r.overallRating,
+      strengths: r.strengths,
+      improvements: r.improvements,
+      mentorNote: r.mentorNote,
+      nextWeekPlan: r.nextWeekPlan,
+      testScore: r.testScore,
+      testTotalMarks: r.testTotalMarks,
+      testSubject: r.testSubject,
+      status: r.status,
+      rejectedReason: r.rejectedReason,
+      submittedAt: r.submittedAt,
+      approvedAt: r.approvedAt,
+      sentAt: r.sentAt,
+      studentId: r.studentId,
+      studentName: r.student.user.name,
+      facultyId: r.facultyId,
+      facultyName: r.faculty.user.name,
+    })));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch reports' });
+  }
+});
+
+// PUT /api/admin/reports/:id/approve
+router.put('/reports/:id/approve', requireAuth, async (req, res) => {
+  try {
+    const ap = await prisma.adminProfile.findUnique({ where: { userId: req.user.id } });
+    if (!ap) return res.status(403).json({ error: 'Not an admin' });
+
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ error: 'Invalid ID' });
+
+    const report = await prisma.weeklyReport.findUnique({ where: { id } });
+    if (!report) return res.status(404).json({ error: 'Report not found' });
+    if (report.status !== 'submitted') return res.status(400).json({ error: 'Only submitted reports can be approved' });
+
+    const updated = await prisma.weeklyReport.update({
+      where: { id },
+      data: { status: 'approved', approvedAt: new Date(), approvedById: ap.id },
+    });
+
+    res.json({ success: true, report: updated });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to approve report' });
+  }
+});
+
+// PUT /api/admin/reports/:id/reject
+router.put('/reports/:id/reject', requireAuth, async (req, res) => {
+  try {
+    const { reason } = req.body;
+    const ap = await prisma.adminProfile.findUnique({ where: { userId: req.user.id } });
+    if (!ap) return res.status(403).json({ error: 'Not an admin' });
+
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ error: 'Invalid ID' });
+
+    const report = await prisma.weeklyReport.findUnique({ where: { id } });
+    if (!report) return res.status(404).json({ error: 'Report not found' });
+    if (report.status !== 'submitted') return res.status(400).json({ error: 'Only submitted reports can be rejected' });
+
+    const updated = await prisma.weeklyReport.update({
+      where: { id },
+      data: { status: 'rejected', rejectedReason: reason || null },
+    });
+
+    res.json({ success: true, report: updated });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to reject report' });
+  }
+});
+
+// POST /api/admin/reports/send — mark approved reports as sent (called by cron or manually)
+router.post('/reports/send', requireAuth, async (req, res) => {
+  try {
+    const ap = await prisma.adminProfile.findUnique({ where: { userId: req.user.id } });
+    if (!ap) return res.status(403).json({ error: 'Not an admin' });
+
+    const result = await prisma.weeklyReport.updateMany({
+      where: { status: 'approved' },
+      data: { status: 'sent', sentAt: new Date() },
+    });
+
+    res.json({ success: true, sent: result.count });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to send reports' });
+  }
+});
+
 module.exports = router;

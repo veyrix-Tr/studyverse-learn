@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 
 const chartData = [95, 112, 128, 142, 156, 184];
 const chartMax = Math.max(...chartData);
@@ -21,7 +21,15 @@ const RevenueChart = () => (
 
 const getGreeting = () => { const h = new Date().getHours(); if (h < 12) return 'Good morning'; if (h < 17) return 'Good afternoon'; return 'Good evening'; };
 
-const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, students = [], onOpenMessage, isSuperAdmin, adminAccounts = [], onDeactivateAdmin, onReactivateAdmin, resources = [], onApproveResource, onDeclineResource, sentMessages = [], onSendMessage }) => {
+const fmtWeekRange = (weekStartDate) => {
+  const mon = new Date(weekStartDate + 'T00:00:00');
+  const sun = new Date(mon);
+  sun.setDate(mon.getDate() + 6);
+  const fmt = (d) => d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+  return `${fmt(mon)} – ${fmt(sun)}`;
+};
+
+const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, students = [], onOpenMessage, isSuperAdmin, adminAccounts = [], onDeactivateAdmin, onReactivateAdmin, resources = [], onApproveResource, onDeclineResource, sentMessages = [], onSendMessage, parentReports = [], onApproveReport, onRejectReport, onSendReports }) => {
   const firstName = profile?.name?.split(' ')[0] || 'there';
   const [studentsTab, setStudentsTab] = useState(0);
   const [approvalsTab, setApprovalsTab] = useState(0);
@@ -32,6 +40,11 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
   const [msgType, setMsgType] = useState('Announcement');
   const [msgContent, setMsgContent] = useState('');
   const [msgSending, setMsgSending] = useState(false);
+  const [reportsTab, setReportsTab] = useState(0);
+  const [expandedReportId, setExpandedReportId] = useState(null);
+  const [rejectingReportId, setRejectingReportId] = useState(null);
+  const [rejectReason, setRejectReason] = useState('');
+  const [sendingReports, setSendingReports] = useState(false);
 
   const sendMessage = async () => {
     if (!msgContent.trim()) { onShowToast('Please write a message'); return; }
@@ -752,6 +765,129 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
             </div>
           </div>
         </div>
+      </div>
+
+      {/* ══════════ PARENT REPORTS ══════════ */}
+      <div className={pg('reports')}>
+        {(() => {
+          const submittedReports = parentReports.filter(r => r.status === 'submitted');
+          const approvedReports  = parentReports.filter(r => r.status === 'approved');
+          const shown = reportsTab === 0 ? submittedReports : reportsTab === 1 ? approvedReports : parentReports;
+          const statusPill = {
+            submitted: <span className="pill po">Pending Review</span>,
+            approved:  <span className="pill pp">Approved ✓</span>,
+            rejected:  <span className="pill pr">Rejected</span>,
+            sent:      <span className="pill" style={{ background: 'rgba(15,31,61,0.07)', color: 'var(--navy)' }}>Sent ✓</span>,
+          };
+
+          return (
+            <>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px', flexWrap: 'wrap', gap: '10px' }}>
+                <div className="tabs" style={{ marginBottom: 0 }}>
+                  {[`Pending Review (${submittedReports.length})`, `Approved (${approvedReports.length})`, `All (${parentReports.length})`].map((t, i) => (
+                    <div key={i} className={`tab${reportsTab === i ? ' on' : ''}`} onClick={() => { setReportsTab(i); setExpandedReportId(null); setRejectingReportId(null); }}>{t}</div>
+                  ))}
+                </div>
+                {approvedReports.length > 0 && (
+                  <button className="btn btn-gold btn-sm" disabled={sendingReports} onClick={async () => { setSendingReports(true); await onSendReports?.(); setSendingReports(false); }}>
+                    {sendingReports ? 'Sending…' : `Send All Approved (${approvedReports.length}) ✓`}
+                  </button>
+                )}
+              </div>
+
+              {shown.length === 0 ? (
+                <div style={{ fontSize: '13px', color: 'var(--text3)', padding: '32px 0', textAlign: 'center' }}>
+                  {reportsTab === 0 ? 'No reports pending review.' : reportsTab === 1 ? 'No approved reports yet.' : 'No reports submitted yet.'}
+                </div>
+              ) : shown.map(r => {
+                const isExpanded = expandedReportId === r.id;
+                const isRejecting = rejectingReportId === r.id;
+                return (
+                  <div key={r.id} className="approval-item">
+                    {/* Header row */}
+                    <div className="ai-top" style={{ alignItems: 'center' }}>
+                      <div style={{ flex: 1 }}>
+                        <div className="ai-title">{r.studentName}</div>
+                        <div className="ai-meta">
+                          By {r.facultyName} · Week {String(r.weekNumber).slice(-2)} · {fmtWeekRange(r.weekStartDate)}
+                          {r.testScore != null && <span> · Score: <strong>{r.testScore}/{r.testTotalMarks}</strong>{r.testSubject ? ` (${r.testSubject})` : ''}</span>}
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        {r.overallRating && <span style={{ fontSize: '14px', color: 'var(--gold)', letterSpacing: '-1px' }}>{'★'.repeat(r.overallRating)}{'☆'.repeat(5 - r.overallRating)}</span>}
+                        {statusPill[r.status]}
+                        <button className="btn btn-ghost btn-sm" onClick={() => setExpandedReportId(isExpanded ? null : r.id)}>
+                          {isExpanded ? 'Hide ▲' : 'Review ▼'}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Expanded content */}
+                    {isExpanded && (
+                      <div style={{ marginTop: '14px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                        {(r.strengths || r.improvements) && (
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                            {r.strengths && (
+                              <div>
+                                <div style={{ fontSize: '11px', color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '.06em', fontWeight: 600, marginBottom: '4px' }}>Strengths</div>
+                                <div style={{ fontSize: '13px', color: 'var(--text2)', lineHeight: 1.6 }}>{r.strengths}</div>
+                              </div>
+                            )}
+                            {r.improvements && (
+                              <div>
+                                <div style={{ fontSize: '11px', color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '.06em', fontWeight: 600, marginBottom: '4px' }}>Areas to improve</div>
+                                <div style={{ fontSize: '13px', color: 'var(--text2)', lineHeight: 1.6 }}>{r.improvements}</div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {r.mentorNote && (
+                          <div style={{ borderLeft: '3px solid var(--gold)', background: 'var(--cream2)', padding: '10px 14px', borderRadius: '0 var(--r) var(--r) 0' }}>
+                            <div style={{ fontSize: '11px', color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '.06em', fontWeight: 600, marginBottom: '4px' }}>Note to parents</div>
+                            <div style={{ fontSize: '13px', color: 'var(--text2)', lineHeight: 1.7 }}>{r.mentorNote}</div>
+                          </div>
+                        )}
+
+                        {r.nextWeekPlan && (
+                          <div>
+                            <div style={{ fontSize: '11px', color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '.06em', fontWeight: 600, marginBottom: '4px' }}>Next week plan</div>
+                            <div style={{ fontSize: '13px', color: 'var(--text2)', lineHeight: 1.6 }}>{r.nextWeekPlan}</div>
+                          </div>
+                        )}
+
+                        {r.status === 'rejected' && r.rejectedReason && (
+                          <div style={{ fontSize: '12.5px', color: 'rgba(239,68,68,0.8)' }}>Rejected: {r.rejectedReason}</div>
+                        )}
+
+                        {r.status === 'sent' && r.sentAt && (
+                          <div style={{ fontSize: '12px', color: 'var(--text3)' }}>Sent on {new Date(r.sentAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</div>
+                        )}
+
+                        {r.status === 'submitted' && (
+                          <div className="ai-actions" style={{ justifyContent: 'flex-end', paddingTop: '8px', borderTop: '1px solid var(--b)' }}>
+                            {isRejecting ? (
+                              <>
+                                <input className="fi" style={{ flex: 1, padding: '6px 10px', fontSize: '13px' }} placeholder="Reason for rejection (sent back to faculty)…" value={rejectReason} onChange={e => setRejectReason(e.target.value)} />
+                                <button className="btn btn-ghost btn-sm" onClick={() => setRejectingReportId(null)}>Cancel</button>
+                                <button className="btn btn-red btn-sm" onClick={() => { onRejectReport?.(r.id, rejectReason); setRejectingReportId(null); setExpandedReportId(null); }}>Confirm Reject</button>
+                              </>
+                            ) : (
+                              <>
+                                <button className="btn btn-red btn-sm" onClick={() => { setRejectingReportId(r.id); setRejectReason(''); }}>Reject</button>
+                                <button className="btn btn-green btn-sm" onClick={() => { onApproveReport?.(r.id); setExpandedReportId(null); }}>Approve ✓</button>
+                              </>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </>
+          );
+        })()}
       </div>
 
     </div>

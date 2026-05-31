@@ -437,6 +437,201 @@ router.get('/resources', requireAuth, async (req, res) => {
   }
 });
 
+// ── Weekly Reports ──────────────────────────────────────────────────────────
+
+// weekNumber = YYYYWW (e.g. 202622), weekStartDate = "YYYY-MM-DD" (Monday)
+function getWeekInfo(date = new Date()) {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  const day = d.getDay();
+  const diffToMonday = day === 0 ? -6 : 1 - day;
+  const monday = new Date(d);
+  monday.setDate(d.getDate() + diffToMonday);
+
+  const jan4 = new Date(monday.getFullYear(), 0, 4);
+  const jan4Day = jan4.getDay() || 7;
+  const jan4Monday = new Date(jan4);
+  jan4Monday.setDate(jan4.getDate() - jan4Day + 1);
+  const isoWeek = Math.round((monday - jan4Monday) / (7 * 86400000)) + 1;
+
+  return {
+    weekNumber: monday.getFullYear() * 100 + isoWeek,
+    weekStartDate: `${monday.getFullYear()}-${String(monday.getMonth() + 1).padStart(2, '0')}-${String(monday.getDate()).padStart(2, '0')}`,
+  };
+}
+
+// GET /api/faculty/reports
+router.get('/reports', requireAuth, async (req, res) => {
+  try {
+    const fp = await prisma.facultyProfile.findUnique({ where: { userId: req.user.id } });
+    if (!fp) return res.json([]);
+
+    const reports = await prisma.weeklyReport.findMany({
+      where: { facultyId: fp.id },
+      include: { student: { include: { user: { select: { name: true } } } } },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    res.json(reports.map(r => ({
+      id: r.id,
+      weekNumber: r.weekNumber,
+      weekStartDate: r.weekStartDate,
+      overallRating: r.overallRating,
+      strengths: r.strengths,
+      improvements: r.improvements,
+      mentorNote: r.mentorNote,
+      nextWeekPlan: r.nextWeekPlan,
+      testScore: r.testScore,
+      testTotalMarks: r.testTotalMarks,
+      testSubject: r.testSubject,
+      status: r.status,
+      rejectedReason: r.rejectedReason,
+      submittedAt: r.submittedAt,
+      approvedAt: r.approvedAt,
+      sentAt: r.sentAt,
+      createdAt: r.createdAt,
+      updatedAt: r.updatedAt,
+      studentId: r.studentId,
+      studentName: r.student.user.name,
+    })));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch reports' });
+  }
+});
+
+// POST /api/faculty/reports — create draft for a student for current week
+router.post('/reports', requireAuth, async (req, res) => {
+  try {
+    const { studentId, weekStartDate: wsdOverride } = req.body;
+    if (!studentId) return res.status(400).json({ error: 'studentId is required' });
+
+    const fp = await prisma.facultyProfile.findUnique({ where: { userId: req.user.id } });
+    if (!fp) return res.status(403).json({ error: 'Not a faculty member' });
+
+    const student = await prisma.studentProfile.findUnique({
+      where: { id: parseInt(studentId) },
+      include: { user: { select: { name: true } } },
+    });
+    if (!student) return res.status(404).json({ error: 'Student not found' });
+
+    const { weekNumber, weekStartDate } = wsdOverride
+      ? getWeekInfo(new Date(wsdOverride))
+      : getWeekInfo();
+
+    const existing = await prisma.weeklyReport.findUnique({
+      where: { studentId_facultyId_weekNumber: { studentId: student.id, facultyId: fp.id, weekNumber } },
+    });
+    if (existing) return res.status(409).json({ error: 'Report already exists for this week', reportId: existing.id });
+
+    // Snapshot latest test score for this faculty's subject
+    const latestScore = await prisma.weeklyScore.findFirst({
+      where: { studentId: student.id, ...(fp.subject ? { subject: fp.subject } : {}) },
+      orderBy: { testDate: 'desc' },
+    });
+
+    const report = await prisma.weeklyReport.create({
+      data: {
+        weekNumber,
+        weekStartDate,
+        studentId: student.id,
+        facultyId: fp.id,
+        testScore: latestScore?.score ?? null,
+        testTotalMarks: latestScore?.totalMarks ?? null,
+        testSubject: latestScore?.subject ?? null,
+      },
+    });
+
+    res.json({ success: true, report: { ...report, studentName: student.user.name } });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to create report' });
+  }
+});
+
+// PUT /api/faculty/reports/:id — update draft fields
+router.put('/reports/:id', requireAuth, async (req, res) => {
+  try {
+    const fp = await prisma.facultyProfile.findUnique({ where: { userId: req.user.id } });
+    if (!fp) return res.status(403).json({ error: 'Not a faculty member' });
+
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ error: 'Invalid ID' });
+
+    const report = await prisma.weeklyReport.findUnique({ where: { id } });
+    if (!report || report.facultyId !== fp.id) return res.status(404).json({ error: 'Report not found' });
+    if (!['draft', 'rejected'].includes(report.status))
+      return res.status(400).json({ error: 'Only draft or rejected reports can be edited' });
+
+    const { overallRating, strengths, improvements, mentorNote, nextWeekPlan } = req.body;
+    const updated = await prisma.weeklyReport.update({
+      where: { id },
+      data: {
+        ...(overallRating !== undefined && { overallRating: parseInt(overallRating) || null }),
+        ...(strengths !== undefined && { strengths: strengths || null }),
+        ...(improvements !== undefined && { improvements: improvements || null }),
+        ...(mentorNote !== undefined && { mentorNote: mentorNote || null }),
+        ...(nextWeekPlan !== undefined && { nextWeekPlan: nextWeekPlan || null }),
+      },
+    });
+
+    res.json({ success: true, report: updated });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to update report' });
+  }
+});
+
+// PUT /api/faculty/reports/:id/submit — submit for admin review
+router.put('/reports/:id/submit', requireAuth, async (req, res) => {
+  try {
+    const fp = await prisma.facultyProfile.findUnique({ where: { userId: req.user.id } });
+    if (!fp) return res.status(403).json({ error: 'Not a faculty member' });
+
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ error: 'Invalid ID' });
+
+    const report = await prisma.weeklyReport.findUnique({ where: { id } });
+    if (!report || report.facultyId !== fp.id) return res.status(404).json({ error: 'Report not found' });
+    if (!['draft', 'rejected'].includes(report.status))
+      return res.status(400).json({ error: 'Only draft or rejected reports can be submitted' });
+
+    const updated = await prisma.weeklyReport.update({
+      where: { id },
+      data: { status: 'submitted', submittedAt: new Date(), rejectedReason: null },
+    });
+
+    res.json({ success: true, report: updated });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to submit report' });
+  }
+});
+
+// DELETE /api/faculty/reports/:id — delete a draft report
+router.delete('/reports/:id', requireAuth, async (req, res) => {
+  try {
+    const fp = await prisma.facultyProfile.findUnique({ where: { userId: req.user.id } });
+    if (!fp) return res.status(403).json({ error: 'Not a faculty member' });
+
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ error: 'Invalid ID' });
+
+    const report = await prisma.weeklyReport.findUnique({ where: { id } });
+    if (!report || report.facultyId !== fp.id) return res.status(404).json({ error: 'Report not found' });
+    if (report.status !== 'draft')
+      return res.status(400).json({ error: 'Only draft reports can be deleted' });
+
+    await prisma.weeklyReport.delete({ where: { id } });
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to delete report' });
+  }
+});
+
+// ── Resources ────────────────────────────────────────────────────────────────
+
 // DELETE /api/faculty/resources/:id — delete own pending or declined resource
 router.delete('/resources/:id', requireAuth, async (req, res) => {
   try {

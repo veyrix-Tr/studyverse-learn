@@ -92,12 +92,46 @@ const DoubtItem = ({ priority, av, name, time, pills, question, answer, helpful,
 
 const getGreeting = () => { const h = new Date().getHours(); if (h < 12) return 'Good morning'; if (h < 17) return 'Good afternoon'; return 'Good evening'; };
 
+function getCurrentWeekInfo() {
+  const now = new Date();
+  const day = now.getDay();
+  const diffToMonday = day === 0 ? -6 : 1 - day;
+  const monday = new Date(now);
+  monday.setDate(now.getDate() + diffToMonday);
+  monday.setHours(0, 0, 0, 0);
+  const jan4 = new Date(monday.getFullYear(), 0, 4);
+  const jan4Day = jan4.getDay() || 7;
+  const jan4Monday = new Date(jan4);
+  jan4Monday.setDate(jan4.getDate() - jan4Day + 1);
+  const isoWeek = Math.round((monday - jan4Monday) / (7 * 86400000)) + 1;
+  const daysUntilSunday = (7 - now.getDay()) % 7 || 7;
+  const nextSunday = new Date(now);
+  nextSunday.setDate(now.getDate() + daysUntilSunday);
+  return {
+    weekNumber: monday.getFullYear() * 100 + isoWeek,
+    isoWeek,
+    weekStartDate: `${monday.getFullYear()}-${String(monday.getMonth() + 1).padStart(2, '0')}-${String(monday.getDate()).padStart(2, '0')}`,
+    nextSunday: nextSunday.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }),
+  };
+}
+
+const fmtWeekRange = (weekStartDate) => {
+  const mon = new Date(weekStartDate + 'T00:00:00');
+  const sun = new Date(mon);
+  sun.setDate(mon.getDate() + 6);
+  const fmt = (d) => d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+  return `${fmt(mon)} – ${fmt(sun)}`;
+};
+
+const REPORT_STATUS_LABEL = { draft: 'In Progress', submitted: 'Under Review', approved: 'Approved ✓', rejected: 'Revision Needed', sent: 'Sent ✓' };
+const REPORT_STATUS_CLASS = { draft: 'po', submitted: 'pb', approved: 'pp', rejected: 'pr', sent: 'pp' };
+
 const pctOf = (score, total) => total > 0 ? Math.round((score / total) * 100) : 0;
 const pctColor = (p) => p >= 75 ? 'var(--green)' : p >= 60 ? 'var(--gold)' : p >= 45 ? 'var(--orange)' : 'var(--red)';
 const pctBar   = (p) => p >= 75 ? 'pb-green' : p >= 60 ? 'pb-gold' : p >= 45 ? 'pb-orange' : 'pb-red';
 const pctFlag  = (p) => p >= 75 ? ['On track', 'pp'] : p >= 60 ? ['Progressing', 'po'] : ['Needs support', 'pr'];
 
-const FacultyContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, sessions = [], doubts = [], students = [], resources = [], onDoubtAnswered, onSessionNoteUpdated, onResourceDeleted }) => {
+const FacultyContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, sessions = [], doubts = [], students = [], resources = [], onDoubtAnswered, onSessionNoteUpdated, onResourceDeleted, weeklyReports = [], onReportCreated, onReportUpdated, onReportSubmitted, onReportDeleted }) => {
   const firstName = profile?.name?.split(' ').find(p => !p.startsWith('Dr')) || profile?.name?.split(' ')[0] || 'there';
   const [scheduleTab, setScheduleTab] = useState(0);
   const [doubtsTab, setDoubtsTab] = useState(0);
@@ -108,6 +142,128 @@ const FacultyContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
   const [savingNote, setSavingNote] = useState(null);
   const [sendingReminder, setSendingReminder] = useState(null);
   const [deletingResourceId, setDeletingResourceId] = useState(null);
+  const [activeReport, setActiveReport] = useState(null);
+  const [reportFields, setReportFields] = useState({});
+  const [savingReport, setSavingReport] = useState(false);
+  const [submittingReport, setSubmittingReport] = useState(false);
+  const [creatingReportFor, setCreatingReportFor] = useState(null);
+
+  const weekInfo = getCurrentWeekInfo();
+  const isSunday = new Date().getDay() === 0;
+  const currentWeekReports = weeklyReports.filter(r => r.weekNumber === weekInfo.weekNumber);
+  const submittedCount = currentWeekReports.filter(r => ['submitted', 'approved', 'sent'].includes(r.status)).length;
+
+  // For each student: show current-week report if exists, else most recent rejected (needs revision)
+  const getRelevantReport = (studentId) => {
+    const all = weeklyReports.filter(r => r.studentId === studentId);
+    if (!all.length) return null;
+    const current = all.find(r => r.weekNumber === weekInfo.weekNumber);
+    if (current) return current;
+    const rejected = all.filter(r => r.status === 'rejected').sort((a, b) => b.weekNumber - a.weekNumber);
+    return rejected[0] || null;
+  };
+
+  const openReportEditor = (report) => {
+    setActiveReport(report);
+    setReportFields({
+      overallRating: report.overallRating ?? '',
+      strengths: report.strengths ?? '',
+      improvements: report.improvements ?? '',
+      mentorNote: report.mentorNote ?? '',
+      nextWeekPlan: report.nextWeekPlan ?? '',
+    });
+  };
+
+  const createReport = async (studentId) => {
+    setCreatingReportFor(studentId);
+    const token = localStorage.getItem('token');
+    try {
+      const res = await fetch('http://localhost:5000/api/faculty/reports', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ studentId }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        if (res.status === 409 && data.reportId) {
+          const existing = weeklyReports.find(r => r.id === data.reportId);
+          if (existing) { openReportEditor(existing); return; }
+        }
+        throw new Error(data.error || 'Failed');
+      }
+      onReportCreated?.(data.report);
+      openReportEditor(data.report);
+    } catch (err) {
+      onShowToast(`Failed: ${err.message}`);
+    } finally {
+      setCreatingReportFor(null);
+    }
+  };
+
+  const saveReportDraft = async () => {
+    if (!activeReport) return;
+    setSavingReport(true);
+    const token = localStorage.getItem('token');
+    try {
+      const res = await fetch(`http://localhost:5000/api/faculty/reports/${activeReport.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(reportFields),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed');
+      const merged = { ...data.report, studentName: activeReport.studentName };
+      onReportUpdated?.(merged);
+      setActiveReport(merged);
+      onShowToast('Draft saved ✓');
+    } catch (err) {
+      onShowToast(`Save failed: ${err.message}`);
+    } finally {
+      setSavingReport(false);
+    }
+  };
+
+  const submitReport = async () => {
+    if (!activeReport) return;
+    setSubmittingReport(true);
+    const token = localStorage.getItem('token');
+    try {
+      await fetch(`http://localhost:5000/api/faculty/reports/${activeReport.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(reportFields),
+      });
+      const res = await fetch(`http://localhost:5000/api/faculty/reports/${activeReport.id}/submit`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed');
+      onReportSubmitted?.(data.report);
+      setActiveReport(null);
+      onShowToast('Report submitted for admin review ✓');
+    } catch (err) {
+      onShowToast(`Submit failed: ${err.message}`);
+    } finally {
+      setSubmittingReport(false);
+    }
+  };
+
+  const deleteReportDraft = async (id) => {
+    const token = localStorage.getItem('token');
+    try {
+      const res = await fetch(`http://localhost:5000/api/faculty/reports/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Failed'); }
+      onReportDeleted?.(id);
+      if (activeReport?.id === id) setActiveReport(null);
+      onShowToast('Draft deleted.');
+    } catch (err) {
+      onShowToast(`Delete failed: ${err.message}`);
+    }
+  };
 
   const deleteResource = async (id) => {
     setDeletingResourceId(id);
@@ -663,74 +819,204 @@ const FacultyContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
 
       {/* ══════════ WEEKLY REPORTS ══════════ */}
       <div className={`page${activePage === 'reports' ? ' on' : ''}`}>
+
+        {/* Banner */}
         <div style={{ background: 'var(--gold-dim)', border: '1px solid var(--gold-b)', borderRadius: 'var(--rl)', padding: '14px 18px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '12px' }}>
           <span style={{ fontSize: '18px' }}>📅</span>
           <div>
-            <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text)' }}>Weekly reports are due this Sunday (Apr 20)</div>
-            <div style={{ fontSize: '12px', color: 'var(--text2)' }}>3 of 8 reports drafted. Parents receive these every Sunday morning — your notes from sessions feed directly into them.</div>
+            <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text)' }}>
+              Week {weekInfo.isoWeek} ({fmtWeekRange(weekInfo.weekStartDate)})
+              {isSunday ? ' — reports send today' : ` — auto-send this Sunday (${weekInfo.nextSunday})`}
+            </div>
+            <div style={{ fontSize: '12px', color: 'var(--text2)' }}>
+              {submittedCount} of {students.length} submitted this week · Admin reviews before parents receive them
+            </div>
           </div>
-          <button className="btn btn-gold btn-sm" style={{ marginLeft: 'auto', flexShrink: 0 }} onClick={() => onShowToast('Sending all completed reports...')}>Send All Ready</button>
         </div>
 
-        <div className="sh"><div className="sh-t">Draft: Rahul Mehta — Week 9 Report</div><span className="pill po">In Progress</span></div>
+        {/* ── Active Editor ── */}
+        {activeReport && (
+          <div className="report-section" style={{ marginBottom: '20px' }}>
 
-        <div className="report-section">
-          <div className="rs-student">
-            <div className="di-av" style={{ width: '40px', height: '40px', fontSize: '15px' }}>R</div>
-            <div>
-              <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text)' }}>Rahul Mehta</div>
-              <div style={{ fontSize: '12px', color: 'var(--text3)' }}>JEE Mains 2026 • Parent: Mr. Suresh Mehta</div>
+            {/* Editor header */}
+            <div className="rs-student">
+              <div className="di-av" style={{ width: '40px', height: '40px', fontSize: '15px', flexShrink: 0 }}>{activeReport.studentName?.charAt(0)}</div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text)' }}>{activeReport.studentName}</div>
+                <div style={{ fontSize: '12px', color: 'var(--text3)', marginTop: '2px' }}>
+                  Week {String(activeReport.weekNumber).slice(-2)} · {fmtWeekRange(activeReport.weekStartDate)}
+                  {activeReport.status === 'rejected' && (
+                    <span className="pill pr" style={{ marginLeft: '8px', fontSize: '10px' }}>Revision needed</span>
+                  )}
+                </div>
+                {activeReport.status === 'rejected' && activeReport.rejectedReason && (
+                  <div style={{ marginTop: '6px', fontSize: '12px', color: 'var(--red)', background: 'var(--rdim)', padding: '6px 10px', borderRadius: '6px', borderLeft: '3px solid var(--red)' }}>
+                    Admin feedback: {activeReport.rejectedReason}
+                  </div>
+                )}
+              </div>
+              {activeReport.testScore != null && (
+                <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                  <div style={{ fontSize: '11px', color: 'var(--text3)' }}>{activeReport.testSubject || 'Latest score'}</div>
+                  <div style={{ fontFamily: 'var(--fs)', fontSize: '22px', fontWeight: 700, color: 'var(--gold)', lineHeight: 1.1 }}>
+                    {activeReport.testScore}<span style={{ fontSize: '13px', color: 'var(--text3)', fontWeight: 400 }}>/{activeReport.testTotalMarks}</span>
+                  </div>
+                </div>
+              )}
             </div>
-            <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
-              <div style={{ fontSize: '11px', color: 'var(--text3)' }}>Score this week</div>
-              <div style={{ fontFamily: 'var(--fs)', fontSize: '22px', fontWeight: 700, color: 'var(--gold)' }}>462 <span style={{ fontSize: '14px', color: 'var(--green)' }}>+18</span></div>
-            </div>
-          </div>
 
-          <div className="week-report-row"><div className="wr-label">Sessions done</div><div className="wr-val">4 of 4 scheduled • 100% attendance</div></div>
-          <div className="week-report-row"><div className="wr-label">Topics covered</div><div className="wr-val">Chemical Bonding, VSEPR Theory, Atomic Structure (Bohr), Quantum Numbers</div></div>
-          <div className="week-report-row">
-            <div className="wr-label">Subject scores</div>
-            <div className="wr-val">
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}><span style={{ width: '60px', fontSize: '12px', color: 'var(--text3)' }}>Chemistry</span><div className="pbar" style={{ width: '140px' }}><div className="pbar-inner pb-gold" style={{ width: '72%' }}></div></div><span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--gold)', marginLeft: '6px' }}>72% <span style={{ color: 'var(--green)', fontSize: '11px' }}>+8%</span></span></div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}><span style={{ width: '60px', fontSize: '12px', color: 'var(--text3)' }}>Mathematics</span><div className="pbar" style={{ width: '140px' }}><div className="pbar-inner pb-green" style={{ width: '80%' }}></div></div><span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--green)', marginLeft: '6px' }}>80% <span style={{ color: 'var(--green)', fontSize: '11px' }}>+4%</span></span></div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}><span style={{ width: '60px', fontSize: '12px', color: 'var(--text3)' }}>Physics</span><div className="pbar" style={{ width: '140px' }}><div className="pbar-inner pb-orange" style={{ width: '58%' }}></div></div><span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--orange)', marginLeft: '6px' }}>58% <span style={{ color: 'var(--red)', fontSize: '11px' }}>−2%</span></span></div>
+            {/* Rating */}
+            <div className="week-report-row">
+              <div className="wr-label">Rating</div>
+              <div className="wr-val">
+                <div style={{ display: 'flex', gap: '2px', alignItems: 'center' }}>
+                  {[1, 2, 3, 4, 5].map(n => (
+                    <button key={n}
+                      onClick={() => setReportFields(f => ({ ...f, overallRating: f.overallRating === n ? null : n }))}
+                      style={{ fontSize: '22px', background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', color: (reportFields.overallRating || 0) >= n ? 'var(--gold)' : 'var(--cream3)', lineHeight: 1, transition: 'color .15s' }}>★</button>
+                  ))}
+                  {reportFields.overallRating
+                    ? <span style={{ fontSize: '12px', color: 'var(--text3)', marginLeft: '6px' }}>{['', 'Poor', 'Below average', 'Average', 'Good', 'Excellent'][reportFields.overallRating]}</span>
+                    : <span style={{ fontSize: '12px', color: 'var(--text3)', marginLeft: '6px' }}>Click to rate</span>}
+                </div>
+              </div>
+            </div>
+
+            {/* Strengths */}
+            <div className="week-report-row">
+              <div className="wr-label">Strengths</div>
+              <div className="wr-val">
+                <textarea className="sn-textarea" rows={3} style={{ width: '100%' }}
+                  placeholder="What did the student do well this week? Be specific."
+                  value={reportFields.strengths || ''}
+                  onChange={e => setReportFields(f => ({ ...f, strengths: e.target.value }))} />
+              </div>
+            </div>
+
+            {/* Improvements */}
+            <div className="week-report-row">
+              <div className="wr-label">To improve</div>
+              <div className="wr-val">
+                <textarea className="sn-textarea" rows={3} style={{ width: '100%' }}
+                  placeholder="What needs attention? Be honest and specific — parents need to understand what to work on."
+                  value={reportFields.improvements || ''}
+                  onChange={e => setReportFields(f => ({ ...f, improvements: e.target.value }))} />
+              </div>
+            </div>
+
+            {/* Note to parents */}
+            <div className="week-report-row">
+              <div className="wr-label">Note to parents</div>
+              <div className="wr-val">
+                <textarea className="sn-textarea" rows={4} style={{ width: '100%', minHeight: '90px' }}
+                  placeholder="Write directly to the parents — what happened this week, what you observed, what they should know or watch at home."
+                  value={reportFields.mentorNote || ''}
+                  onChange={e => setReportFields(f => ({ ...f, mentorNote: e.target.value }))} />
+                <div className="sn-hint">The full report is sent to parents every Sunday after admin approval.</div>
+              </div>
+            </div>
+
+            {/* Next week plan */}
+            <div className="week-report-row">
+              <div className="wr-label">Next week</div>
+              <div className="wr-val">
+                <textarea className="sn-textarea" rows={2} style={{ width: '100%' }}
+                  placeholder="Topics, sessions, and goals planned for next week."
+                  value={reportFields.nextWeekPlan || ''}
+                  onChange={e => setReportFields(f => ({ ...f, nextWeekPlan: e.target.value }))} />
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px', paddingTop: '14px', borderTop: '1px solid var(--b)' }}>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button className="btn btn-ghost btn-sm" onClick={() => setActiveReport(null)}>Close</button>
+                {activeReport.status === 'draft' && (
+                  <button className="btn btn-ghost btn-sm" style={{ color: 'var(--red)' }} onClick={() => deleteReportDraft(activeReport.id)}>Delete</button>
+                )}
+              </div>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button className="btn btn-ghost btn-sm" disabled={savingReport} onClick={saveReportDraft}>
+                  {savingReport ? 'Saving…' : 'Save Draft'}
+                </button>
+                <button className="btn btn-gold btn-sm" disabled={submittingReport} onClick={submitReport}>
+                  {submittingReport ? 'Submitting…' : 'Submit for Review →'}
+                </button>
               </div>
             </div>
           </div>
-          <div className="week-report-row">
-            <div className="wr-label">Mentor's note</div>
-            <div className="wr-val">
-              <textarea className="sn-textarea" id="mentor-note-rahul" style={{ width: '100%', minHeight: '90px' }} placeholder="Write your note for Rahul's parents — be honest and specific. This is what they're paying for..." defaultValue="Rahul had a strong week in Chemistry — quantum numbers are now well-understood and atomic structure is becoming a strength. Mathematics is progressing steadily. The area needing attention is Physics: electrostatics accuracy dropped slightly this week due to confusion around Gauss's Law applications. We have scheduled a targeted session on Apr 18 specifically to address this. Overall trajectory remains on track." />
-              <div className="sn-hint">This will be sent to Rahul's parents on Sunday morning.</div>
-            </div>
-          </div>
-          <div className="week-report-row">
-            <div className="wr-label">Next week plan</div>
-            <div className="wr-val">
-              <textarea className="sn-textarea" style={{ width: '100%', minHeight: '60px' }} defaultValue="Electrostatics deep-dive (Apr 18) • Continue Atomic Structure • Begin Chemical Equilibrium basics" />
-            </div>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '14px' }}>
-            <button className="btn btn-ghost btn-sm">Save Draft</button>
-            <button className="btn btn-gold btn-sm" onClick={() => onShowToast('Report queued for Sunday delivery to Mr. Suresh Mehta ✓')}>Mark Ready to Send</button>
-          </div>
-        </div>
+        )}
 
-        <div className="sh" style={{ marginTop: '8px' }}><div className="sh-t">All Students — Report Status</div></div>
+        {/* ── Status Table ── */}
+        <div className="sh" style={{ marginTop: activeReport ? '8px' : '0' }}>
+          <div className="sh-t">All Students — Week {weekInfo.isoWeek}</div>
+        </div>
         <div className="card" style={{ padding: '14px 18px' }}>
-          <table className="tbl">
-            <thead><tr><th>Student</th><th>Exam</th><th>Score This Week</th><th>Report Status</th><th></th></tr></thead>
-            <tbody>
-              <tr key="rep-rahul"><td><div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}><div className="di-av">R</div>Rahul Mehta</div></td><td>JEE Mains</td><td><span style={{ color: 'var(--gold)', fontWeight: 600 }}>462 <span style={{ color: 'var(--green)', fontSize: '11px' }}>+18</span></span></td><td><span className="pill po">In Progress</span></td><td><button className="btn btn-ghost btn-sm">Edit</button></td></tr>
-              <tr key="rep-sneha"><td><div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}><div className="di-av">S</div>Sneha Kapoor</div></td><td>JEE Mains</td><td><span style={{ color: 'var(--green)', fontWeight: 600 }}>511 <span style={{ color: 'var(--green)', fontSize: '11px' }}>+25</span></span></td><td><span className="pill pp">Ready ✓</span></td><td><button className="btn btn-ghost btn-sm">Review</button></td></tr>
-              <tr key="rep-priya"><td><div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}><div className="di-av">P</div>Priya Desai</div></td><td>NEET</td><td><span style={{ color: 'var(--orange)', fontWeight: 600 }}>418 <span style={{ color: 'var(--green)', fontSize: '11px' }}>+12</span></span></td><td><span className="pill pp">Ready ✓</span></td><td><button className="btn btn-ghost btn-sm">Review</button></td></tr>
-              <tr key="rep-arjun"><td><div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}><div className="di-av">A</div>Arjun Singh</div></td><td>JEE Mains</td><td><span style={{ color: 'var(--orange)', fontWeight: 600 }}>478 <span style={{ color: 'var(--green)', fontSize: '11px' }}>+8</span></span></td><td><span className="pill pn">Not started</span></td><td><button className="btn btn-gold btn-sm" onClick={() => onShowToast('Opening report for Arjun...')}>Draft Now</button></td></tr>
-              <tr key="rep-vanya"><td><div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}><div className="di-av">V</div>Vanya Rao</div></td><td>JEE Mains</td><td><span style={{ color: 'var(--orange)', fontWeight: 600 }}>402 <span style={{ color: 'var(--green)', fontSize: '11px' }}>+14</span></span></td><td><span className="pill pn">Not started</span></td><td><button className="btn btn-gold btn-sm" onClick={() => onShowToast('Opening report for Vanya...')}>Draft Now</button></td></tr>
-              <tr key="rep-kavya"><td><div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}><div className="di-av">K</div>Kavya Menon</div></td><td>NEET</td><td><span style={{ color: 'var(--green)', fontWeight: 600 }}>548 <span style={{ color: 'var(--green)', fontSize: '11px' }}>+18</span></span></td><td><span className="pill pn">Not started</span></td><td><button className="btn btn-gold btn-sm" onClick={() => onShowToast('Opening report for Kavya...')}>Draft Now</button></td></tr>
-            </tbody>
-          </table>
+          {students.length === 0 ? (
+            <div style={{ padding: '16px 0', fontSize: '13px', color: 'var(--text3)', textAlign: 'center' }}>No students assigned yet.</div>
+          ) : (
+            <table className="tbl">
+              <thead>
+                <tr><th>Student</th><th>Exam</th><th>Score (snapshot)</th><th>Status</th><th></th></tr>
+              </thead>
+              <tbody>
+                {students.map(st => {
+                  const report = getRelevantReport(st.id);
+                  const isCurrentWeek = report?.weekNumber === weekInfo.weekNumber;
+                  const isEditing = activeReport?.id === report?.id;
+                  const canEdit = report && ['draft', 'rejected'].includes(report.status);
+                  const isLocked = report && ['submitted', 'approved', 'sent'].includes(report.status);
+                  // Show snapshotted score if report exists, else live score
+                  const scoreDisplay = report?.testScore != null
+                    ? <span style={{ fontWeight: 600, color: pctColor(pctOf(report.testScore, report.testTotalMarks)) }}>{report.testScore}/{report.testTotalMarks}{report.testSubject ? <span style={{ fontSize: '11px', color: 'var(--text3)', fontWeight: 400 }}> {report.testSubject}</span> : null}</span>
+                    : st.latestScore
+                      ? <span style={{ color: 'var(--text3)' }}>{st.latestScore.score}/{st.latestScore.totalMarks} <span style={{ fontSize: '10px' }}>(live)</span></span>
+                      : <span style={{ color: 'var(--text3)' }}>No score</span>;
+
+                  return (
+                    <tr key={st.id} style={isEditing ? { background: 'var(--cream2)' } : {}}>
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
+                          <div className="di-av">{st.name.charAt(0)}</div>
+                          {st.name}
+                        </div>
+                      </td>
+                      <td style={{ color: 'var(--text3)' }}>{st.examTarget || '—'}</td>
+                      <td>{scoreDisplay}</td>
+                      <td>
+                        {!report || !isCurrentWeek
+                          ? <span className="pill pn">Not started</span>
+                          : <span className={`pill ${REPORT_STATUS_CLASS[report.status]}`}>{REPORT_STATUS_LABEL[report.status]}</span>}
+                        {report && !isCurrentWeek && report.status === 'rejected' && (
+                          <span className="pill pr" style={{ marginLeft: '4px', fontSize: '10px' }}>Week {String(report.weekNumber).slice(-2)} rejected</span>
+                        )}
+                      </td>
+                      <td>
+                        {(!report || !isCurrentWeek) && (
+                          <button className="btn btn-gold btn-sm" disabled={creatingReportFor === st.id} onClick={() => createReport(st.id)}>
+                            {creatingReportFor === st.id ? 'Creating…' : 'Draft Now'}
+                          </button>
+                        )}
+                        {report && isCurrentWeek && canEdit && !isEditing && (
+                          <button className="btn btn-ghost btn-sm" onClick={() => openReportEditor(report)}>
+                            {report.status === 'rejected' ? 'Revise' : 'Continue →'}
+                          </button>
+                        )}
+                        {report && isCurrentWeek && canEdit && isEditing && (
+                          <button className="btn btn-ghost btn-sm" onClick={() => setActiveReport(null)}>Close</button>
+                        )}
+                        {report && isCurrentWeek && isLocked && (
+                          <span style={{ fontSize: '12px', color: 'var(--text3)' }}>
+                            {report.status === 'sent' ? 'Sent ✓' : report.status === 'approved' ? 'Approved ✓' : 'Under review'}
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
 

@@ -42,6 +42,7 @@ model StudentProfile {
   adminMessages        AdminMessage[]
   facultyNotifications FacultyNotification[]
   habitLogs            HabitLog[]
+  weeklyReports        WeeklyReport[]
 }
 
 model FacultyProfile {
@@ -58,6 +59,7 @@ model FacultyProfile {
   doubts               Doubt[]
   facultyNotifications FacultyNotification[]
   resources            Resource[]
+  weeklyReports        WeeklyReport[]
 }
 
 model AdminMessage {
@@ -84,6 +86,7 @@ model AdminProfile {
   user              User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   adminMessages     AdminMessage[]
   approvedResources Resource[]
+  approvedReports   WeeklyReport[]
 }
 
 model Session {
@@ -161,6 +164,42 @@ model Resource {
   faculty     FacultyProfile @relation(fields: [facultyId], references: [id], onDelete: Cascade)
   approvedById Int?
   approvedBy   AdminProfile? @relation(fields: [approvedById], references: [id])
+}
+
+model WeeklyReport {
+  id            Int       @id @default(autoincrement())
+  weekNumber    Int
+  weekStartDate String    // "YYYY-MM-DD" — the Monday of the report week
+
+  // Faculty-authored content
+  overallRating Int?      // 1–5
+  strengths     String?
+  improvements  String?
+  mentorNote    String?
+  nextWeekPlan  String?
+
+  // Snapshot from WeeklyScore at save time
+  testScore      Int?
+  testTotalMarks Int?
+  testSubject    String?
+
+  // Workflow
+  status         String    @default("draft") // draft | submitted | approved | rejected | sent
+  rejectedReason String?
+  submittedAt    DateTime?
+  approvedAt     DateTime?
+  sentAt         DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  studentId    Int
+  student      StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  facultyId    Int
+  faculty      FacultyProfile @relation(fields: [facultyId], references: [id], onDelete: Cascade)
+  approvedById Int?
+  approvedBy   AdminProfile?  @relation(fields: [approvedById], references: [id])
+
+  @@unique([studentId, facultyId, weekNumber])
 }
 
 model HabitLog {

@@ -15,6 +15,7 @@ const AdminLMS = ({ expectedRole }) => {
   const [adminAccounts, setAdminAccounts] = useState([]);
   const [resources, setResources] = useState([]);
   const [sentMessages, setSentMessages] = useState([]);
+  const [parentReports, setParentReports] = useState([]);
   const [deactivated, setDeactivated] = useState(false);
   const toastTimer = useRef(null);
 
@@ -58,6 +59,11 @@ const AdminLMS = ({ expectedRole }) => {
     fetch('http://localhost:5000/api/admin/messages', { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.ok ? r.json() : [])
       .then(data => { if (Array.isArray(data)) setSentMessages(data); })
+      .catch(() => {});
+
+    fetch('http://localhost:5000/api/admin/reports', { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : [])
+      .then(data => { if (Array.isArray(data)) setParentReports(data); })
       .catch(() => {});
   }, []);
 
@@ -152,6 +158,55 @@ const AdminLMS = ({ expectedRole }) => {
     }
   };
 
+  const approveReport = async (id) => {
+    const token = localStorage.getItem('token');
+    try {
+      const res = await fetch(`http://localhost:5000/api/admin/reports/${id}/approve`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed');
+      setParentReports(prev => prev.map(r => r.id === id ? { ...r, ...data.report } : r));
+      showToast('Report approved ✓');
+    } catch (err) {
+      showToast(`Failed: ${err.message}`);
+    }
+  };
+
+  const rejectReport = async (id, reason) => {
+    const token = localStorage.getItem('token');
+    try {
+      const res = await fetch(`http://localhost:5000/api/admin/reports/${id}/reject`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ reason }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed');
+      setParentReports(prev => prev.map(r => r.id === id ? { ...r, ...data.report } : r));
+      showToast('Report sent back for revision.');
+    } catch (err) {
+      showToast(`Failed: ${err.message}`);
+    }
+  };
+
+  const sendApprovedReports = async () => {
+    const token = localStorage.getItem('token');
+    try {
+      const res = await fetch('http://localhost:5000/api/admin/reports/send', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed');
+      setParentReports(prev => prev.map(r => r.status === 'approved' ? { ...r, status: 'sent', sentAt: new Date().toISOString() } : r));
+      showToast(`${data.sent} report${data.sent !== 1 ? 's' : ''} marked as sent ✓`);
+    } catch (err) {
+      showToast(`Failed: ${err.message}`);
+    }
+  };
+
   const reactivateAdmin = async (adminId) => {
     const token = localStorage.getItem('token');
     try {
@@ -232,6 +287,7 @@ const AdminLMS = ({ expectedRole }) => {
         profile={profile}
         studentsCount={students.length}
         pendingApprovalsCount={resources.filter(r => r.status === 'pending').length}
+        pendingReportsCount={parentReports.filter(r => r.status === 'submitted').length}
       />
       <div className="admin-main">
         <AdminTopbar
@@ -257,6 +313,10 @@ const AdminLMS = ({ expectedRole }) => {
           onDeclineResource={declineResource}
           sentMessages={sentMessages}
           onSendMessage={sendMessage}
+          parentReports={parentReports}
+          onApproveReport={approveReport}
+          onRejectReport={rejectReport}
+          onSendReports={sendApprovedReports}
         />
       </div>
       <AdminModals

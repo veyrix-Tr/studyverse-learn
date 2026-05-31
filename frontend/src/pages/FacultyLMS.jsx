@@ -16,6 +16,7 @@ const FacultyLMS = () => {
   const [doubts, setDoubts] = useState([]);
   const [students, setStudents] = useState([]);
   const [resources, setResources] = useState([]);
+  const [weeklyReports, setWeeklyReports] = useState([]);
   const toastTimer = useRef(null);
 
   useEffect(() => {
@@ -64,6 +65,13 @@ const FacultyLMS = () => {
       .then(r => r.ok ? r.json() : null)
       .then(data => { if (Array.isArray(data)) setResources(data); })
       .catch(() => {});
+
+    fetch('http://localhost:5000/api/faculty/reports', {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (Array.isArray(data)) setWeeklyReports(data); })
+      .catch(() => {});
   }, []);
 
   const showToast = (msg) => {
@@ -109,6 +117,11 @@ const FacultyLMS = () => {
           resources={resources}
           onResourceAdded={(r) => setResources(prev => [r, ...prev])}
           onResourceDeleted={(id) => setResources(prev => prev.filter(r => r.id !== id))}
+          weeklyReports={weeklyReports}
+          onReportCreated={(r) => setWeeklyReports(prev => [r, ...prev])}
+          onReportUpdated={(r) => setWeeklyReports(prev => prev.map(x => x.id === r.id ? { ...x, ...r } : x))}
+          onReportSubmitted={(r) => setWeeklyReports(prev => prev.map(x => x.id === r.id ? { ...x, ...r } : x))}
+          onReportDeleted={(id) => setWeeklyReports(prev => prev.filter(x => x.id !== id))}
         />
       </div>
       <FacultyModals

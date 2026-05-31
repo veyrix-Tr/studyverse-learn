@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc:*)",
+      "Bash(node --check server.js)",
+      "Bash(node --check routes/facultyRoutes.js)",
+      "Bash(node --check routes/adminRoutes.js)",
+      "Bash(node --check services/cronService.js)"
+    ]
+  }
+}
