@@ -12,6 +12,7 @@ const NOTIF_NAV = {
   'Motivational Note': 'dashboard',
   'Announcement':      'notif',
   'Doubt Answered':    'doubt',
+  'Weekly Report':     'parent',
 };
 
 const StudentLMS = () => {
@@ -24,6 +25,7 @@ const StudentLMS = () => {
   const [doubts, setDoubts] = useState([]);
   const [notifications, setNotifications] = useState([]);
   const [resources, setResources] = useState([]);
+  const [parentReports, setParentReports] = useState(null);
   const toastTimer = useRef(null);
 
   useEffect(() => {
@@ -78,6 +80,13 @@ const StudentLMS = () => {
     })
       .then(r => r.ok ? r.json() : null)
       .then(data => { if (Array.isArray(data)) setResources(data); })
+      .catch(() => {});
+
+    fetch('http://localhost:5000/api/student/reports', {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data && (data.subjects || data.reports)) setParentReports(data); })
       .catch(() => {});
   }, []);
 
@@ -193,6 +202,7 @@ const StudentLMS = () => {
           onMarkNotificationsRead={markAllNotificationsRead}
           onNotificationClick={handleNotificationClick}
           resources={resources}
+          parentReports={parentReports}
         />
       </div>
       <StudentModals

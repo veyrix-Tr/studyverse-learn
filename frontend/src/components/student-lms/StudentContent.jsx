@@ -1,5 +1,13 @@
 import { useState, Fragment } from 'react';
 
+const SUBJ_COLOR = {
+  Physics:     '#4F8EF7',
+  Chemistry:   '#22C55E',
+  Mathematics: '#A855F7',
+  Maths:       '#A855F7',
+  Biology:     '#F97316',
+};
+
 const ArcTrack = ({ height = 120, viewBox = '0 0 800 110', solidPath, dashedPath, fillPath, nodes }) => (
   <div className="arc-track" style={{ height, position: 'relative', margin: '0 0 24px' }}>
     <svg className="arc-svg" viewBox={viewBox} preserveAspectRatio="none" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}>
@@ -187,9 +195,9 @@ const timeAgo = (iso) => {
   return `${d}d ago`;
 };
 
-const TYPE_DOT = { 'Reminder': 'var(--gold)', 'Motivational Note': 'var(--green)', 'Schedule Update': 'var(--navy)', 'Announcement': 'var(--gold)', 'Session Note': 'var(--navy)', 'Doubt Answered': 'var(--green)' };
+const TYPE_DOT = { 'Reminder': 'var(--gold)', 'Motivational Note': 'var(--green)', 'Schedule Update': 'var(--navy)', 'Announcement': 'var(--gold)', 'Session Note': 'var(--navy)', 'Doubt Answered': 'var(--green)', 'Weekly Report': 'var(--gold)' };
 
-const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, scores, sessions = [], doubts = [], notifications = [], onMarkNotificationsRead, onNotificationClick, resources = [] }) => {
+const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, scores, sessions = [], doubts = [], notifications = [], onMarkNotificationsRead, onNotificationClick, resources = [], parentReports = null }) => {
   const firstName = profile?.name?.split(' ')[0] || 'there';
   const examTarget = profile?.studentProfile?.examTarget || 'your exam';
   const targetYear = profile?.studentProfile?.targetYear;
@@ -237,6 +245,8 @@ const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
   const [openWR, setOpenWR] = useState(new Set([0]));
   const [openSessionNote, setOpenSessionNote] = useState(null);
   const [helpfulState, setHelpfulState] = useState({});
+  const [expandedWeek, setExpandedWeek] = useState(null); // null=first open, -1=all closed, N=weekNumber open
+  const [expandedReportId, setExpandedReportId] = useState(null);
 
   const toggleWR = (i) => {
     setOpenWR(prev => {
@@ -866,60 +876,323 @@ const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
 
       {/* ══════════ PARENT VIEW ══════════ */}
       <div className={p('parent')}>
-        <div style={{ background: 'var(--navy)', borderRadius: 'var(--r-xl)', padding: '28px', marginBottom: '22px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div>
-            <div style={{ fontFamily: 'var(--font-serif)', fontSize: '20px', fontWeight: 700, color: 'var(--text-inv)', marginBottom: '4px' }}>Parent Dashboard</div>
-            <div style={{ fontSize: '13px', color: 'var(--text-inv2)' }}>Weekly report sent every Sunday • Next report: Apr 20</div>
-          </div>
-          <button className="btn btn-primary" style={{ flexShrink: 0, width: 'fit-content' }} onClick={() => onShowToast('Report downloaded!')}>↓ Download Full Report</button>
-        </div>
+        {(() => {
+          const prSubjects = parentReports?.subjects || [];
+          const prAllReports = parentReports?.reports || [];
 
-        <div className="g2 mb">
-          <div className="card">
-            <div className="sh-title" style={{ marginBottom: '16px' }}>Score This Week vs. Last Week</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
-              <div><div style={{ fontSize: '11px', color: 'var(--text3)', marginBottom: '4px' }}>Last Week</div><div style={{ fontFamily: 'var(--font-serif)', fontSize: '32px', fontWeight: 700, color: 'var(--text)' }}>{weeks.length >= 2 ? toM(weeks[weeks.length - 2].avgPct) : '—'}</div></div>
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-              <div><div style={{ fontSize: '11px', color: 'var(--text3)', marginBottom: '4px' }}>This Week</div><div style={{ fontFamily: 'var(--font-serif)', fontSize: '32px', fontWeight: 700, color: 'var(--gold)' }}>{currentMarks ?? '—'}</div></div>
-              <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
-                <div style={{ fontSize: '11px', color: 'var(--text3)' }}>Improvement</div>
-                <div style={{ fontFamily: 'var(--font-serif)', fontSize: '24px', fontWeight: 700, color: 'var(--green)' }}>{weeks.length >= 2 ? `+${toM(weeks[weeks.length - 1].avgPct) - toM(weeks[weeks.length - 2].avgPct)}` : '—'}</div>
-                <div style={{ fontSize: '11px', color: 'var(--green)' }}>marks this week</div>
-              </div>
-            </div>
-          </div>
-          <div className="card">
-            <div className="sh-title" style={{ marginBottom: '16px' }}>Attendance &amp; Engagement</div>
-            <div style={{ display: 'flex', gap: '18px' }}>
-              {[
-                { val: '6/6', color: 'var(--green)', label: 'Sessions attended' },
-                { val: '14.5h', color: 'var(--gold)', label: 'Study this week' },
-                { val: '🔥14', color: 'var(--text)', label: 'Day streak' },
-              ].map((s, i) => (
-                <div key={i} style={{ flex: 1, textAlign: 'center', padding: '14px', background: 'var(--cream2)', borderRadius: 'var(--r)' }}>
-                  <div style={{ fontFamily: 'var(--font-serif)', fontSize: '24px', fontWeight: 700, color: s.color }}>{s.val}</div>
-                  <div style={{ fontSize: '11px', color: 'var(--text3)' }}>{s.label}</div>
+          // Group all reports by weekNumber, newest first
+          const weekMap = {};
+          for (const r of prAllReports) {
+            if (!weekMap[r.weekNumber]) weekMap[r.weekNumber] = { weekNumber: r.weekNumber, weekStartDate: r.weekStartDate, reports: [] };
+            weekMap[r.weekNumber].reports.push(r);
+          }
+          const weekGroups = Object.values(weekMap).sort((a, b) => b.weekNumber - a.weekNumber);
+
+          // Helpers
+          const fmtShortDate = (iso) => new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+          const fmtWeekRange = (wsd) => {
+            const mon = new Date(wsd + 'T00:00:00');
+            const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
+            return `${fmtShortDate(mon.toISOString())} – ${fmtShortDate(sun.toISOString())}`;
+          };
+
+          // Next Sunday
+          const now = new Date();
+          const daysUntilSun = now.getDay() === 0 ? 7 : 7 - now.getDay();
+          const nextSun = new Date(now); nextSun.setDate(now.getDate() + daysUntilSun);
+          const nextSunStr = nextSun.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+
+          // Current ISO week number (YYYYWW)
+          const d = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
+          const dayNum = d.getUTCDay() || 7;
+          d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+          const ys = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+          const curWeekNum = parseInt(`${d.getUTCFullYear()}${String(Math.ceil((((d - ys) / 86400000) + 1) / 7)).padStart(2, '0')}`);
+
+          // Toggle week expansion: null=first open, -1=all closed, N=week N open
+          const isWeekOpen = (wn, i) => expandedWeek === null ? i === 0 : expandedWeek === wn;
+          const toggleWeekOpen = (wn, i) => {
+            if (expandedWeek === null) setExpandedWeek(i === 0 ? -1 : wn);
+            else setExpandedWeek(prev => prev === wn ? -1 : wn);
+          };
+
+          return (
+            <>
+              {/* ═══ HERO HEADER ═══ */}
+              <div style={{
+                background: 'linear-gradient(135deg, #0F1F3D 0%, #162848 60%, #0F1F3D 100%)',
+                borderRadius: '18px', padding: '32px 36px', marginBottom: '28px',
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                position: 'relative', overflow: 'hidden',
+              }}>
+                <div style={{ position: 'absolute', right: '-30px', top: '-50px', width: '220px', height: '220px', borderRadius: '50%', border: '1px solid rgba(232,168,48,0.1)', background: 'rgba(232,168,48,0.04)' }} />
+                <div style={{ position: 'absolute', right: '100px', bottom: '-70px', width: '150px', height: '150px', borderRadius: '50%', border: '1px solid rgba(232,168,48,0.06)' }} />
+                <div style={{ position: 'relative' }}>
+                  <div style={{ fontSize: '10px', color: 'rgba(232,168,48,0.65)', textTransform: 'uppercase', letterSpacing: '2px', fontWeight: 600, marginBottom: '10px' }}>Parent Dashboard</div>
+                  <div style={{ fontFamily: 'var(--font-serif)', fontSize: '26px', fontWeight: 700, color: '#FDF8F0', marginBottom: '6px', lineHeight: 1.2 }}>{firstName}'s Progress Report</div>
+                  <div style={{ fontSize: '13px', color: 'rgba(253,248,240,0.45)', marginBottom: '4px' }}>
+                    {profile?.studentProfile?.examTarget || 'Exam'} {profile?.studentProfile?.targetYear || ''} · {profile?.studentProfile?.grade || ''} Batch
+                  </div>
+                  <div style={{ fontSize: '13px', color: 'rgba(253,248,240,0.4)' }}>
+                    Sent every Sunday · <span style={{ color: 'var(--gold)', fontWeight: 500 }}>Next: {nextSunStr}</span>
+                  </div>
                 </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        <div className="card mb">
-          <div className="sh-title" style={{ marginBottom: '14px' }}>Mentor's Note to Parents — Week 11</div>
-          <div style={{ background: 'var(--cream2)', borderRadius: 'var(--r)', padding: '18px', borderLeft: '4px solid var(--gold)' }}>
-            <div style={{ fontFamily: 'var(--font-serif)', fontSize: '14px', fontStyle: 'italic', color: 'var(--text2)', lineHeight: 1.85, marginBottom: '12px' }}>
-              {`"${firstName} has had a genuinely strong week. His Mathematics accuracy is now consistently above 80% — a transformation from where he started. The one area requiring your awareness: Organic Chemistry is still below target. We have scheduled two extra sessions this week to address this specifically. No concern needed — this is expected at this stage and is being actively managed. The trajectory is on track for the June milestone."`}
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <div style={{ width: '36px', height: '36px', borderRadius: '50%', border: '2px solid var(--gold)', background: 'var(--gold-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-serif)', fontSize: '13px', fontWeight: 700, color: 'var(--gold)' }}>A</div>
-              <div>
-                <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text)' }}>Ajay Sharma</div>
-                <div style={{ fontSize: '11px', color: 'var(--text3)' }}>IIT-JEE &amp; NEET Specialist • Apr 13, 2026</div>
+                <div style={{ display: 'flex', gap: '14px', position: 'relative' }}>
+                  {[
+                    { val: prAllReports.length, label: 'Reports Sent' },
+                    { val: prSubjects.filter(s => s.latestReport).length, label: 'Subjects Active' },
+                  ].map(({ val, label }) => (
+                    <div key={label} style={{ textAlign: 'center', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.09)', borderRadius: '14px', padding: '18px 22px', minWidth: '90px' }}>
+                      <div style={{ fontFamily: 'var(--font-serif)', fontSize: '36px', fontWeight: 700, color: 'var(--gold)', lineHeight: 1 }}>{val}</div>
+                      <div style={{ fontSize: '10px', color: 'rgba(253,248,240,0.45)', marginTop: '6px', textTransform: 'uppercase', letterSpacing: '0.8px' }}>{label}</div>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
-          </div>
-        </div>
+
+              {/* ═══ SUBJECT MENTOR CARDS ═══ */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '28px' }}>
+                {prSubjects.map((sf) => {
+                  const r = sf.latestReport;
+                  const col = SUBJ_COLOR[sf.subject] || 'var(--gold)';
+                  const initial = sf.facultyName?.charAt(0).toUpperCase() || '?';
+                  const isThisWeek = r && r.weekNumber === curWeekNum;
+                  const pct = r?.testScore != null ? Math.round(r.testScore / (r.testTotalMarks || 100) * 100) : null;
+                  return (
+                    <div key={sf.subject} style={{ background: 'var(--cream)', borderRadius: '14px', border: '1px solid var(--border)', boxShadow: '0 2px 12px rgba(15,31,61,0.06)', overflow: 'hidden' }}>
+                      {/* 4px color bar */}
+                      <div style={{ height: '4px', background: col }} />
+                      <div style={{ padding: '18px 20px 20px' }}>
+                        {/* Subject + badge */}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+                          <span style={{ fontSize: '11px', fontWeight: 800, color: col, textTransform: 'uppercase', letterSpacing: '1px' }}>{sf.subject}</span>
+                          {isThisWeek && <span style={{ fontSize: '9px', fontWeight: 700, color: 'var(--text3)', background: 'var(--cream2)', padding: '2px 8px', borderRadius: '20px', border: '1px solid var(--border)' }}>This week</span>}
+                        </div>
+                        {r ? (
+                          <>
+                            {/* Faculty avatar + info */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
+                              <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'var(--cream2)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', fontWeight: 700, color: 'var(--text2)', flexShrink: 0 }}>{initial}</div>
+                              <div>
+                                <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text)' }}>{sf.facultyName}</div>
+                                <div style={{ fontSize: '11px', color: 'var(--text3)', marginTop: '1px' }}>Sent {fmtShortDate(r.sentAt)}</div>
+                              </div>
+                            </div>
+                            {/* Stars + score inline */}
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: pct != null ? '12px' : '0' }}>
+                              {r.overallRating != null && (
+                                <div style={{ display: 'flex', gap: '2px' }}>
+                                  {Array.from({ length: 5 }, (_, i) => (
+                                    <span key={i} style={{ fontSize: '14px', color: i < r.overallRating ? '#E8A830' : 'rgba(15,31,61,0.12)', lineHeight: 1 }}>★</span>
+                                  ))}
+                                </div>
+                              )}
+                              {pct != null && (
+                                <span style={{ fontSize: '12px', color: 'var(--text3)' }}>
+                                  <strong style={{ fontSize: '14px', color: 'var(--text)', fontWeight: 700 }}>{r.testScore}</strong>/{r.testTotalMarks ?? 100} · {pct}%
+                                </span>
+                              )}
+                            </div>
+                            {/* Progress bar */}
+                            {pct != null && (
+                              <div style={{ height: '5px', background: 'rgba(15,31,61,0.08)', borderRadius: '10px', overflow: 'hidden', marginBottom: r.mentorNote ? '12px' : '0' }}>
+                                <div style={{ height: '100%', width: `${pct}%`, background: 'var(--gold)', borderRadius: '10px', transition: 'width 0.6s ease' }} />
+                              </div>
+                            )}
+                            {/* Note — single line */}
+                            {r.mentorNote && (
+                              <div style={{ fontSize: '11.5px', fontStyle: 'italic', color: 'var(--text3)', lineHeight: 1.5, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
+                                "{r.mentorNote}"
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          <div style={{ padding: '16px 0 4px' }}>
+                            <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text3)', marginBottom: '3px' }}>No report yet</div>
+                            <div style={{ fontSize: '11px', color: 'var(--text3)', opacity: 0.7 }}>Dispatched every Sunday</div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* ═══ PERFORMANCE SNAPSHOT ═══ */}
+              {weeks.length > 0 && (
+                <div style={{ background: 'var(--cream)', border: '1px solid var(--border)', borderRadius: '16px', padding: '24px 28px', marginBottom: '28px', boxShadow: '0 2px 16px rgba(15,31,61,0.06)' }}>
+                  <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '20px' }}>Score Snapshot</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '28px' }}>
+                    {/* Last week */}
+                    <div style={{ textAlign: 'center', flexShrink: 0 }}>
+                      <div style={{ fontSize: '11px', color: 'var(--text3)', marginBottom: '6px' }}>Last Week</div>
+                      <div style={{ fontFamily: 'var(--font-serif)', fontSize: '42px', fontWeight: 700, color: 'var(--text)', lineHeight: 1 }}>{weeks.length >= 2 ? toM(weeks[weeks.length - 2].avgPct) : '—'}</div>
+                    </div>
+                    {/* Trend */}
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+                      <div style={{ width: '100%', height: '2px', background: 'linear-gradient(90deg, rgba(15,31,61,0.08) 0%, var(--gold) 100%)', borderRadius: '2px' }} />
+                      {weeks.length >= 2 && (() => {
+                        const diff = toM(weeks[weeks.length - 1].avgPct) - toM(weeks[weeks.length - 2].avgPct);
+                        return <span style={{ fontSize: '12px', fontWeight: 700, color: diff >= 0 ? 'var(--green)' : '#ef4444' }}>{diff >= 0 ? '+' : ''}{diff} marks</span>;
+                      })()}
+                    </div>
+                    {/* This week */}
+                    <div style={{ textAlign: 'center', flexShrink: 0 }}>
+                      <div style={{ fontSize: '11px', color: 'var(--text3)', marginBottom: '6px' }}>This Week</div>
+                      <div style={{ fontFamily: 'var(--font-serif)', fontSize: '42px', fontWeight: 700, color: 'var(--gold)', lineHeight: 1 }}>{currentMarks ?? '—'}</div>
+                    </div>
+                    {/* Divider */}
+                    <div style={{ width: '1px', height: '70px', background: 'var(--border)', flexShrink: 0 }} />
+                    {/* Per-subject bars */}
+                    <div style={{ flex: 2, minWidth: 0 }}>
+                      {(weeks[weeks.length - 1]?.subjects || []).map(s => {
+                        const sPct = s.totalMarks > 0 ? Math.round(s.score / s.totalMarks * 100) : 0;
+                        const sCol = SUBJ_COLOR[s.subject] || 'var(--gold)';
+                        return (
+                          <div key={s.subject} style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '10px' }}>
+                            <span style={{ fontSize: '11px', color: 'var(--text3)', width: '76px', flexShrink: 0 }}>{s.subject}</span>
+                            <div style={{ flex: 1, height: '7px', background: 'rgba(15,31,61,0.07)', borderRadius: '10px', overflow: 'hidden' }}>
+                              <div style={{ height: '100%', width: `${sPct}%`, background: 'var(--gold)', borderRadius: '10px', transition: 'width 0.6s ease' }} />
+                            </div>
+                            <span style={{ fontSize: '12px', fontWeight: 700, color: sCol, width: '32px', textAlign: 'right', flexShrink: 0 }}>{s.score}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* ═══ REPORT HISTORY ═══ */}
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+                  <div style={{ fontFamily: 'var(--font-serif)', fontSize: '18px', fontWeight: 700, color: 'var(--text)' }}>Report History</div>
+                  <span style={{ fontSize: '11px', color: 'var(--text3)' }}>{weekGroups.length} week{weekGroups.length !== 1 ? 's' : ''} · newest first</span>
+                </div>
+
+                {weekGroups.length === 0 ? (
+                  <div style={{ background: 'var(--cream)', border: '1px solid var(--border)', borderRadius: '16px', textAlign: 'center', padding: '52px 24px', boxShadow: '0 2px 12px rgba(15,31,61,0.05)' }}>
+                    <div style={{ fontSize: '40px', marginBottom: '14px', opacity: 0.2 }}>📋</div>
+                    <div style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text2)', marginBottom: '6px' }}>No reports sent yet</div>
+                    <div style={{ fontSize: '13px', color: 'var(--text3)' }}>Reports appear here after approval and Sunday dispatch.</div>
+                  </div>
+                ) : weekGroups.map(({ weekNumber, weekStartDate, reports: wReports }, i) => {
+                  const open = isWeekOpen(weekNumber, i);
+                  return (
+                    <div key={weekNumber} style={{ marginBottom: '12px' }}>
+                      {/* Week header */}
+                      <div
+                        style={{
+                          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                          padding: '14px 22px',
+                          background: open ? 'linear-gradient(135deg, #0F1F3D 0%, #162848 100%)' : 'var(--cream)',
+                          borderRadius: open ? '16px 16px 0 0' : '16px',
+                          border: `1px solid ${open ? 'transparent' : 'var(--border)'}`,
+                          borderBottom: open ? 'none' : undefined,
+                          cursor: 'pointer', userSelect: 'none',
+                          boxShadow: open ? '0 4px 20px rgba(15,31,61,0.25)' : '0 2px 10px rgba(15,31,61,0.06)',
+                        }}
+                        onClick={() => toggleWeekOpen(weekNumber, i)}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                          <div style={{ fontFamily: 'var(--font-serif)', fontSize: '15px', fontWeight: 700, color: open ? '#FDF8F0' : 'var(--text)' }}>Week {weekNumber % 100}</div>
+                          <span style={{ fontSize: '12px', color: open ? 'rgba(253,248,240,0.5)' : 'var(--text3)' }}>{fmtWeekRange(weekStartDate)}</span>
+                          {weekNumber === curWeekNum && <span style={{ fontSize: '10px', fontWeight: 700, background: 'var(--gold)', color: '#0F1F3D', padding: '3px 10px', borderRadius: '20px', letterSpacing: '0.3px' }}>CURRENT</span>}
+                          <span style={{ fontSize: '11px', background: open ? 'rgba(255,255,255,0.09)' : 'var(--cream2)', border: `1px solid ${open ? 'rgba(255,255,255,0.1)' : 'var(--border)'}`, borderRadius: '20px', padding: '2px 10px', color: open ? 'rgba(253,248,240,0.55)' : 'var(--text3)' }}>
+                            {wReports.length} report{wReports.length !== 1 ? 's' : ''}
+                          </span>
+                        </div>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={open ? 'rgba(253,248,240,0.45)' : 'var(--text3)'} strokeWidth="2.5" style={{ transform: open ? 'rotate(180deg)' : '', transition: 'transform 0.2s', flexShrink: 0 }}>
+                          <path d="M6 9l6 6 6-6"/>
+                        </svg>
+                      </div>
+
+                      {/* Report cards */}
+                      {open && (
+                        <div style={{ background: 'rgba(15,31,61,0.03)', border: '1px solid var(--border)', borderTop: 'none', borderRadius: '0 0 16px 16px', padding: '14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                          {wReports.map(r => {
+                            const col = SUBJ_COLOR[r.subject] || 'var(--gold)';
+                            const init = r.facultyName?.charAt(0).toUpperCase() || '?';
+                            const isExpanded = expandedReportId === r.id;
+                            const sPct = r.testScore != null ? Math.round(r.testScore / (r.testTotalMarks || 100) * 100) : null;
+                            return (
+                              <div key={r.id} style={{ background: 'var(--cream)', borderRadius: '14px', border: '1px solid var(--border)', boxShadow: '0 2px 10px rgba(15,31,61,0.06)', overflow: 'hidden', display: 'flex' }}>
+                                {/* Left color strip */}
+                                <div style={{ width: '5px', background: `linear-gradient(180deg, ${col} 0%, ${col}66 100%)`, flexShrink: 0 }} />
+                                <div style={{ flex: 1, padding: '14px 18px' }}>
+                                  {/* Report summary row */}
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                    <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: `linear-gradient(135deg, ${col}28 0%, ${col}0E 100%)`, border: `2px solid ${col}35`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', fontWeight: 700, color: col, flexShrink: 0 }}>{init}</div>
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                                        <span style={{ fontSize: '13.5px', fontWeight: 600, color: 'var(--text)' }}>{r.facultyName}</span>
+                                        <span style={{ fontSize: '10px', fontWeight: 800, background: col + '18', color: col, padding: '2px 8px', borderRadius: '20px', letterSpacing: '0.5px', textTransform: 'uppercase' }}>{r.subject}</span>
+                                      </div>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                        {r.overallRating && <span style={{ fontSize: '13px', color: 'var(--gold)', letterSpacing: '1.5px' }}>{'★'.repeat(r.overallRating)}{'☆'.repeat(5 - r.overallRating)}</span>}
+                                        {r.testScore != null && <span style={{ fontSize: '12px', color: 'var(--text3)' }}>· <strong style={{ color: col, fontSize: '13px' }}>{r.testScore}</strong><span style={{ fontSize: '10px' }}>/{r.testTotalMarks ?? 100}</span></span>}
+                                        <span style={{ fontSize: '11px', color: 'var(--text3)' }}>· {fmtShortDate(r.sentAt)}</span>
+                                      </div>
+                                    </div>
+                                    <button
+                                      className="btn btn-ghost btn-sm"
+                                      style={{ flexShrink: 0, minWidth: '72px' }}
+                                      onClick={() => setExpandedReportId(isExpanded ? null : r.id)}
+                                    >{isExpanded ? 'Hide ▲' : 'View ▼'}</button>
+                                  </div>
+
+                                  {/* Full detail */}
+                                  {isExpanded && (
+                                    <div style={{ marginTop: '14px', paddingTop: '14px', borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                      {r.testScore != null && (
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                                          <span style={{ fontSize: '11px', color: 'var(--text3)', flexShrink: 0 }}>Score</span>
+                                          <strong style={{ fontSize: '14px', color: 'var(--text)' }}>{r.testScore}/{r.testTotalMarks ?? 100}</strong>
+                                          <div style={{ flex: 1, height: '5px', background: 'rgba(15,31,61,0.08)', borderRadius: '10px', overflow: 'hidden' }}>
+                                            <div style={{ height: '100%', width: `${sPct}%`, background: 'var(--gold)', borderRadius: '10px' }} />
+                                          </div>
+                                          <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text2)', flexShrink: 0 }}>{sPct}%</span>
+                                        </div>
+                                      )}
+                                      {r.mentorNote && (
+                                        <div>
+                                          <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '5px' }}>Note to Parents</div>
+                                          <div style={{ fontSize: '13px', fontStyle: 'italic', color: 'var(--text2)', lineHeight: 1.7 }}>"{r.mentorNote}"</div>
+                                        </div>
+                                      )}
+                                      {r.strengths && (
+                                        <div>
+                                          <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '5px' }}>Strengths</div>
+                                          <div style={{ fontSize: '13px', color: 'var(--text2)', lineHeight: 1.65 }}>{r.strengths}</div>
+                                        </div>
+                                      )}
+                                      {r.improvements && (
+                                        <div>
+                                          <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '5px' }}>Areas to Work On</div>
+                                          <div style={{ fontSize: '13px', color: 'var(--text2)', lineHeight: 1.65 }}>{r.improvements}</div>
+                                        </div>
+                                      )}
+                                      {r.nextWeekPlan && (
+                                        <div>
+                                          <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: '5px' }}>Plan for Next Week</div>
+                                          <div style={{ fontSize: '13px', color: 'var(--text2)', lineHeight: 1.65 }}>{r.nextWeekPlan}</div>
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          );
+        })()}
       </div>
 
       {/* ══════════ NOTIFICATIONS ══════════ */}

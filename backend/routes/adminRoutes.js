@@ -380,12 +380,30 @@ router.post('/reports/send', requireAuth, async (req, res) => {
     const ap = await prisma.adminProfile.findUnique({ where: { userId: req.user.id } });
     if (!ap) return res.status(403).json({ error: 'Not an admin' });
 
-    const result = await prisma.weeklyReport.updateMany({
+    const approved = await prisma.weeklyReport.findMany({
       where: { status: 'approved' },
-      data: { status: 'sent', sentAt: new Date() },
+      include: { faculty: { include: { user: { select: { name: true } } } } },
     });
 
-    res.json({ success: true, sent: result.count });
+    if (approved.length === 0) return res.json({ success: true, sent: 0 });
+
+    const now = new Date();
+    await prisma.$transaction([
+      prisma.weeklyReport.updateMany({
+        where: { status: 'approved' },
+        data: { status: 'sent', sentAt: now },
+      }),
+      prisma.facultyNotification.createMany({
+        data: approved.map(r => ({
+          content: `Your weekly report from ${r.faculty.user.name} for Week ${r.weekNumber % 100} is now available.`,
+          type: 'Weekly Report',
+          studentId: r.studentId,
+          facultyId: r.facultyId,
+        })),
+      }),
+    ]);
+
+    res.json({ success: true, sent: approved.length });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to send reports' });

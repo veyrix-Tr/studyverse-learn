@@ -351,4 +351,71 @@ router.get('/resources', requireAuth, async (req, res) => {
   }
 });
 
+// GET /api/student/reports — all sent WeeklyReports + per-subject latest note
+router.get('/reports', requireAuth, async (req, res) => {
+  try {
+    const profile = await prisma.studentProfile.findUnique({ where: { userId: req.user.id } });
+    if (!profile) return res.json({ subjects: [], reports: [] });
+
+    const subjects = EXAM_SUBJECTS[profile.examTarget] || [];
+
+    // Find faculty for each subject via sessions
+    const subjectFaculties = await Promise.all(
+      subjects.map(async (subject) => {
+        const session = await prisma.session.findFirst({
+          where: { subject, grade: profile.grade },
+          include: { faculty: { include: { user: { select: { name: true } } } } },
+        });
+        return session
+          ? { subject, facultyId: session.facultyId, facultyName: session.faculty.user.name }
+          : { subject, facultyId: null, facultyName: null };
+      })
+    );
+
+    // facultyId → exam subject map for labeling reports
+    const facultySubjectMap = {};
+    for (const sf of subjectFaculties) {
+      if (sf.facultyId) facultySubjectMap[sf.facultyId] = sf.subject;
+    }
+
+    // All sent reports for this student, newest first
+    const reports = await prisma.weeklyReport.findMany({
+      where: { studentId: profile.id, status: 'sent' },
+      orderBy: [{ weekNumber: 'desc' }, { sentAt: 'desc' }],
+      include: { faculty: { include: { user: { select: { name: true } } } } },
+    });
+
+    const mappedReports = reports.map(r => ({
+      id: r.id,
+      weekNumber: r.weekNumber,
+      weekStartDate: r.weekStartDate,
+      overallRating: r.overallRating,
+      strengths: r.strengths,
+      improvements: r.improvements,
+      mentorNote: r.mentorNote,
+      nextWeekPlan: r.nextWeekPlan,
+      testScore: r.testScore,
+      testTotalMarks: r.testTotalMarks,
+      testSubject: r.testSubject,
+      sentAt: r.sentAt,
+      facultyId: r.facultyId,
+      facultyName: r.faculty.user.name,
+      subject: facultySubjectMap[r.facultyId] || r.testSubject || null,
+    }));
+
+    // Each subject with their latest sent report (for top cards)
+    const subjectsWithLatest = subjectFaculties.map(sf => ({
+      subject: sf.subject,
+      facultyId: sf.facultyId,
+      facultyName: sf.facultyName,
+      latestReport: sf.facultyId ? (mappedReports.find(r => r.facultyId === sf.facultyId) || null) : null,
+    }));
+
+    res.json({ subjects: subjectsWithLatest, reports: mappedReports });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch parent reports' });
+  }
+});
+
 module.exports = router;
