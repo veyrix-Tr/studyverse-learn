@@ -287,22 +287,38 @@ async function main() {
     { studentId: ishaanProfile.id, weekNumber: 4, subject: 'Chemistry', score: 70, totalMarks: 100, testDate: new Date('2026-05-26') },
   ]});
 
-  // ── Weekly Reports — Priya (sent, 2 weeks) ────────
-  // Week 21: May 18–24 → Kavita (Physics) + Suresh (Biology)
-  // Week 22: May 25–31 → Kavita (Physics) + Neha (Chemistry) + Suresh (Biology)
+  // ── Weekly Reports — Priya (6 reports across 2 weeks, all 3 subjects each) ──
+  // Week 21: May 18–24 → sent (approved by superAdmin, visible to Priya + superAdmin)
+  // Week 22: May 25–31 → submitted (pending admin review — admins can approve to test workflow)
   await prisma.weeklyReport.createMany({ data: [
-    // ── Week 21 ──
+
+    // ── Week 21 — sent ──
     {
       weekNumber: 202621, weekStartDate: '2026-05-18',
       studentId: priyaProfile.id, facultyId: kavitaProfile.id,
       overallRating: 4,
-      strengths: 'Strong grasp of Newton\'s Laws. Ray optics problems solved with good accuracy. Speed has improved significantly compared to week 19.',
+      strengths: 'Strong grasp of Newton\'s Laws. Ray optics problems solved with good accuracy. Speed has improved significantly.',
       improvements: 'Numerical problems in electrostatics still take too long. Need to practice circuit-based questions.',
-      mentorNote: 'Priya is making steady progress in Physics. Her conceptual understanding is solid and her accuracy in optics has crossed 80%. The focus for the coming week should be electrostatics numericals — I have assigned specific problem sets.',
+      mentorNote: 'Priya is making steady progress in Physics. Her conceptual understanding is solid and her accuracy in optics has crossed 80%. The focus for the coming week should be electrostatics numericals.',
       nextWeekPlan: 'Complete 30 electrostatics numericals. Revise electric field and potential formulas. Attempt 1 full-length Physics mock.',
       testScore: 71, testTotalMarks: 100, testSubject: 'Physics',
       status: 'sent',
       submittedAt: new Date('2026-05-23T10:00:00'),
+      approvedAt:  new Date('2026-05-24T14:00:00'),
+      sentAt:      new Date('2026-05-24T06:30:00'),
+      approvedById: superAdmin.id,
+    },
+    {
+      weekNumber: 202621, weekStartDate: '2026-05-18',
+      studentId: priyaProfile.id, facultyId: nehaProfile.id,
+      overallRating: 3,
+      strengths: 'Good understanding of atomic structure and periodic trends. Mole concept calculations are improving.',
+      improvements: 'Organic chemistry fundamentals are shaky — IUPAC naming and isomerism need revision. Reaction mechanisms take too long.',
+      mentorNote: 'Priya is building a solid foundation in inorganic Chemistry. This week\'s focus should shift to organic basics — the gap there needs to be closed before we move to advanced topics.',
+      nextWeekPlan: 'Revise IUPAC naming and isomerism. Complete GOC (General Organic Chemistry) chapter. Attempt 20 MCQs on organic basics.',
+      testScore: 64, testTotalMarks: 100, testSubject: 'Chemistry',
+      status: 'sent',
+      submittedAt: new Date('2026-05-23T11:30:00'),
       approvedAt:  new Date('2026-05-24T14:00:00'),
       sentAt:      new Date('2026-05-24T06:30:00'),
       approvedById: superAdmin.id,
@@ -317,27 +333,24 @@ async function main() {
       nextWeekPlan: 'Focus on Ecology and Biodiversity chapters. Attempt previous-year NEET Biology questions from 2020–2023.',
       testScore: 84, testTotalMarks: 100, testSubject: 'Biology',
       status: 'sent',
-      submittedAt: new Date('2026-05-23T11:00:00'),
+      submittedAt: new Date('2026-05-23T12:00:00'),
       approvedAt:  new Date('2026-05-24T14:00:00'),
       sentAt:      new Date('2026-05-24T06:30:00'),
       approvedById: superAdmin.id,
     },
 
-    // ── Week 22 ──
+    // ── Week 22 — submitted (pending admin review) ──
     {
       weekNumber: 202622, weekStartDate: '2026-05-25',
       studentId: priyaProfile.id, facultyId: kavitaProfile.id,
       overallRating: 4,
       strengths: 'Electrostatics numericals have improved noticeably. Thermodynamics concepts are clear. Time management in mock tests has improved.',
       improvements: 'Wave optics derivations still weak. Need to revisit Huygens principle.',
-      mentorNote: 'Great week for Priya in Physics. The extra practice on electrostatics paid off — she attempted 3 more problems correctly in this week\'s test compared to last week. The trajectory is on track for the June milestone.',
+      mentorNote: 'Great week for Priya in Physics. The extra practice on electrostatics paid off — she attempted 3 more problems correctly compared to last week. The trajectory is on track for the June milestone.',
       nextWeekPlan: 'Complete wave optics module. Practice Huygens principle problems. Attempt 2 chapter-wise Physics tests.',
       testScore: 76, testTotalMarks: 100, testSubject: 'Physics',
-      status: 'sent',
+      status: 'submitted',
       submittedAt: new Date('2026-05-30T10:00:00'),
-      approvedAt:  new Date('2026-05-31T09:00:00'),
-      sentAt:      new Date('2026-05-31T06:30:00'),
-      approvedById: superAdmin.id,
     },
     {
       weekNumber: 202622, weekStartDate: '2026-05-25',
@@ -345,14 +358,11 @@ async function main() {
       overallRating: 3,
       strengths: 'Electrochemistry basics understood well. Good recall of redox reactions and oxidation states.',
       improvements: 'Organic reaction mechanisms still need work — especially named reactions (Aldol, Cannizzaro). Chemical kinetics numericals are slow.',
-      mentorNote: 'Priya\'s Chemistry score has been improving week over week, which is encouraging. However, we need to give more time to organic mechanisms. I have prepared a focused sheet of 15 named reactions that she should memorise and practise over the next 7 days.',
+      mentorNote: 'Priya\'s Chemistry score is improving week over week, which is encouraging. However, we need to give more time to organic mechanisms. I have prepared a focused sheet of 15 named reactions that she should memorise and practise.',
       nextWeekPlan: 'Memorise 15 key named reactions. Complete chemical kinetics problem set. Attempt 1 Organic Chemistry mock.',
       testScore: 73, testTotalMarks: 100, testSubject: 'Chemistry',
-      status: 'sent',
+      status: 'submitted',
       submittedAt: new Date('2026-05-30T11:00:00'),
-      approvedAt:  new Date('2026-05-31T09:00:00'),
-      sentAt:      new Date('2026-05-31T06:30:00'),
-      approvedById: superAdmin.id,
     },
     {
       weekNumber: 202622, weekStartDate: '2026-05-25',
@@ -360,18 +370,15 @@ async function main() {
       overallRating: 4,
       strengths: 'Ecology chapter completed with good accuracy. Biodiversity classification much cleaner than last week. Animal kingdom revision solid.',
       improvements: 'Reproduction in plants chapter has gaps — especially double fertilisation and embryo development.',
-      mentorNote: 'Priya has addressed the Ecology gaps from last week very well. Her Biology score of 88 this week is excellent and reflects her dedication. The next focus area is plant reproduction — a topic with high NEET weightage.',
-      nextWeekPlan: 'Complete Plant Reproduction chapter (NCERT + additional notes). Practice 40 NEET-level Biology MCQs. Revise animal kingdom one more time.',
+      mentorNote: 'Priya has addressed the Ecology gaps from last week very well. Her Biology score of 88 this week is excellent. The next focus area is plant reproduction — a topic with high NEET weightage.',
+      nextWeekPlan: 'Complete Plant Reproduction chapter. Practice 40 NEET-level Biology MCQs. Revise animal kingdom one more time.',
       testScore: 88, testTotalMarks: 100, testSubject: 'Biology',
-      status: 'sent',
+      status: 'submitted',
       submittedAt: new Date('2026-05-30T12:00:00'),
-      approvedAt:  new Date('2026-05-31T09:00:00'),
-      sentAt:      new Date('2026-05-31T06:30:00'),
-      approvedById: superAdmin.id,
     },
   ]});
 
-  console.log('Seeded: 4 students (2 free, 2 premium), 4 faculty (Kavita/Physics, Neha/Chemistry, Suresh/Biology, Amit/Maths), 1 superadmin + 2 admins, 17 sessions, 6 doubts, 24 weekly scores, 5 weekly reports (2 weeks for Priya)');
+  console.log('Seeded: 4 students, 4 faculty, 1 superadmin + 2 admins, 17 sessions, 6 doubts, 24 weekly scores, 6 weekly reports (week 21 sent + week 22 submitted for Priya)');
 }
 
 main()

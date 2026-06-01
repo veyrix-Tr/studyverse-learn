@@ -374,6 +374,24 @@ router.put('/reports/:id/reject', requireAuth, async (req, res) => {
   }
 });
 
+// POST /api/admin/reports/approve-all — approve all submitted reports for this admin
+router.post('/reports/approve-all', requireAuth, async (req, res) => {
+  try {
+    const ap = await prisma.adminProfile.findUnique({ where: { userId: req.user.id } });
+    if (!ap) return res.status(403).json({ error: 'Not an admin' });
+
+    const result = await prisma.weeklyReport.updateMany({
+      where: { status: 'submitted' },
+      data: { status: 'approved', approvedAt: new Date(), approvedById: ap.id },
+    });
+
+    res.json({ success: true, approved: result.count });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to approve reports' });
+  }
+});
+
 // POST /api/admin/reports/send — mark approved reports as sent (called by cron or manually)
 router.post('/reports/send', requireAuth, async (req, res) => {
   try {

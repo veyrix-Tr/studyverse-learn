@@ -80,6 +80,32 @@ const FacultyLMS = () => {
     toastTimer.current = setTimeout(() => setToast(t => ({ ...t, show: false })), 3200);
   };
 
+  // Poll reports every 15s — toast when a submitted report gets approved/rejected/sent
+  useEffect(() => {
+    if (!profile) return;
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    const id = setInterval(() => {
+      fetch('http://localhost:5000/api/faculty/reports', { headers: { Authorization: `Bearer ${token}` } })
+        .then(r => r.ok ? r.json() : null)
+        .then(fresh => {
+          if (!Array.isArray(fresh)) return;
+          setWeeklyReports(prev => {
+            fresh.forEach(fr => {
+              const old = prev.find(r => r.id === fr.id);
+              if (!old || old.status === fr.status) return;
+              if (fr.status === 'approved') showToast(`Report for ${fr.studentName} (Week ${String(fr.weekNumber).slice(-2)}) approved ✓`);
+              if (fr.status === 'rejected') showToast(`Report for ${fr.studentName} (Week ${String(fr.weekNumber).slice(-2)}) needs revision`);
+              if (fr.status === 'sent')     showToast(`Report for ${fr.studentName} (Week ${String(fr.weekNumber).slice(-2)}) sent to parents ✓`);
+            });
+            return fresh;
+          });
+        })
+        .catch(() => {});
+    }, 15000);
+    return () => clearInterval(id);
+  }, [profile]);
+
   return (
     <div className="faculty-app">
       <FacultySidebar

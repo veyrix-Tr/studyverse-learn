@@ -1,23 +1,44 @@
 const cron = require('node-cron');
 const prisma = require('../lib/prisma');
 
-// Runs every Sunday at 6:00 AM IST (UTC+5:30 → 00:30 UTC)
-// cron expression: second(0) minute(30) hour(0) day(*) month(*) weekday(0=Sunday)
+// Runs every Saturday and Sunday at 6:00 AM IST
 function startCronJobs() {
-  cron.schedule('0 30 0 * * 0', async () => {
-    console.log('[cron] Sunday auto-send: marking approved reports as sent');
+  cron.schedule('0 0 6 * * 6,0', async () => {
+    console.log('[cron] Weekend auto-send: marking approved reports as sent');
     try {
-      const result = await prisma.weeklyReport.updateMany({
+      const approved = await prisma.weeklyReport.findMany({
         where: { status: 'approved' },
-        data: { status: 'sent', sentAt: new Date() },
+        include: { faculty: { include: { user: { select: { name: true } } } } },
       });
-      console.log(`[cron] Sent ${result.count} report(s)`);
+
+      if (approved.length === 0) {
+        console.log('[cron] No approved reports to send');
+        return;
+      }
+
+      const now = new Date();
+      await prisma.$transaction([
+        prisma.weeklyReport.updateMany({
+          where: { status: 'approved' },
+          data: { status: 'sent', sentAt: now },
+        }),
+        prisma.facultyNotification.createMany({
+          data: approved.map(r => ({
+            content: `Your weekly report from ${r.faculty.user.name} for Week ${r.weekNumber % 100} is now available.`,
+            type: 'Weekly Report',
+            studentId: r.studentId,
+            facultyId: r.facultyId,
+          })),
+        }),
+      ]);
+
+      console.log(`[cron] Sent ${approved.length} report(s) and created notifications`);
     } catch (err) {
       console.error('[cron] Failed to send reports:', err.message);
     }
   }, { timezone: 'Asia/Kolkata' });
 
-  console.log('[cron] Weekly report auto-send scheduled (Sunday 6:00 AM IST)');
+  console.log('[cron] Weekly report auto-send scheduled (Sat & Sun 6:00 AM IST)');
 }
 
 module.exports = { startCronJobs };

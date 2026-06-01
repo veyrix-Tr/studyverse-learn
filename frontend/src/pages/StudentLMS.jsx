@@ -128,10 +128,18 @@ const StudentLMS = () => {
           if (!Array.isArray(fresh)) return;
           setNotifications(prev => {
             const newOnes = fresh.filter(fn => !fn.readAt && !prev.some(n => n.id === fn.id));
+            const hasNewReport = newOnes.some(n => n.type === 'Weekly Report');
             newOnes.forEach(n => {
               const page = NOTIF_NAV[n.type] || 'notif';
               showToast(`${n.type}: ${n.content.length > 60 ? n.content.slice(0, 60) + '…' : n.content}`, () => setActivePage(page));
             });
+            // Immediately refresh reports when a new Weekly Report notification arrives
+            if (hasNewReport) {
+              fetch('http://localhost:5000/api/student/reports', { headers: { Authorization: `Bearer ${token}` } })
+                .then(r => r.ok ? r.json() : null)
+                .then(rd => { if (rd && (rd.subjects || rd.reports)) setParentReports(rd); })
+                .catch(() => {});
+            }
             return fresh;
           });
         })

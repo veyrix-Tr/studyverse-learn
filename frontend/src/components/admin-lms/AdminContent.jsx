@@ -29,7 +29,7 @@ const fmtWeekRange = (weekStartDate) => {
   return `${fmt(mon)} – ${fmt(sun)}`;
 };
 
-const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, students = [], onOpenMessage, isSuperAdmin, adminAccounts = [], onDeactivateAdmin, onReactivateAdmin, resources = [], onApproveResource, onDeclineResource, sentMessages = [], onSendMessage, parentReports = [], onApproveReport, onRejectReport, onSendReports }) => {
+const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, students = [], onOpenMessage, isSuperAdmin, adminAccounts = [], onDeactivateAdmin, onReactivateAdmin, resources = [], onApproveResource, onDeclineResource, sentMessages = [], onSendMessage, parentReports = [], onApproveReport, onRejectReport, onSendReports, onApproveAllReports }) => {
   const firstName = profile?.name?.split(' ')[0] || 'there';
   const [studentsTab, setStudentsTab] = useState(0);
   const [approvalsTab, setApprovalsTab] = useState(0);
@@ -788,11 +788,18 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
                     <div key={i} className={`tab${reportsTab === i ? ' on' : ''}`} onClick={() => { setReportsTab(i); setExpandedReportId(null); setRejectingReportId(null); }}>{t}</div>
                   ))}
                 </div>
-                {approvedReports.length > 0 && (
-                  <button className="btn btn-gold btn-sm" disabled={sendingReports} onClick={async () => { setSendingReports(true); await onSendReports?.(); setSendingReports(false); }}>
-                    {sendingReports ? 'Sending…' : `Send All Approved (${approvedReports.length}) ✓`}
-                  </button>
-                )}
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  {submittedReports.length > 0 && (
+                    <button className="btn btn-green btn-sm" disabled={sendingReports} onClick={async () => { setSendingReports(true); await onApproveAllReports?.(); setSendingReports(false); }}>
+                      {sendingReports ? 'Approving…' : `Approve All (${submittedReports.length})`}
+                    </button>
+                  )}
+                  {approvedReports.length > 0 && (
+                    <button className="btn btn-gold btn-sm" disabled={sendingReports} onClick={async () => { setSendingReports(true); await onSendReports?.(); setSendingReports(false); }}>
+                      {sendingReports ? 'Sending…' : `Send All Approved (${approvedReports.length}) ✓`}
+                    </button>
+                  )}
+                </div>
               </div>
 
               {shown.length === 0 ? (

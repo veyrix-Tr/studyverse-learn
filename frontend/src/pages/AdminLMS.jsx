@@ -67,6 +67,28 @@ const AdminLMS = ({ expectedRole }) => {
       .catch(() => {});
   }, []);
 
+  // Poll reports every 20s — show toast when new submissions arrive
+  useEffect(() => {
+    if (!profile) return;
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    const id = setInterval(() => {
+      fetch('http://localhost:5000/api/admin/reports', { headers: { Authorization: `Bearer ${token}` } })
+        .then(r => r.ok ? r.json() : null)
+        .then(fresh => {
+          if (!Array.isArray(fresh)) return;
+          setParentReports(prev => {
+            const prevSubmitted = prev.filter(r => r.status === 'submitted').length;
+            const freshSubmitted = fresh.filter(r => r.status === 'submitted').length;
+            if (freshSubmitted > prevSubmitted) showToast(`${freshSubmitted - prevSubmitted} new report(s) submitted for review`);
+            return fresh;
+          });
+        })
+        .catch(() => {});
+    }, 20000);
+    return () => clearInterval(id);
+  }, [profile]);
+
   const showToast = (msg) => {
     setToast({ show: true, msg });
     clearTimeout(toastTimer.current);
@@ -186,6 +208,23 @@ const AdminLMS = ({ expectedRole }) => {
       if (!res.ok) throw new Error(data.error || 'Failed');
       setParentReports(prev => prev.map(r => r.id === id ? { ...r, ...data.report } : r));
       showToast('Report sent back for revision.');
+    } catch (err) {
+      showToast(`Failed: ${err.message}`);
+    }
+  };
+
+  const approveAllReports = async () => {
+    const token = localStorage.getItem('token');
+    try {
+      const res = await fetch('http://localhost:5000/api/admin/reports/approve-all', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed');
+      const now = new Date().toISOString();
+      setParentReports(prev => prev.map(r => r.status === 'submitted' ? { ...r, status: 'approved', approvedAt: now } : r));
+      showToast(`${data.approved} report${data.approved !== 1 ? 's' : ''} approved ✓`);
     } catch (err) {
       showToast(`Failed: ${err.message}`);
     }
@@ -316,6 +355,7 @@ const AdminLMS = ({ expectedRole }) => {
           parentReports={parentReports}
           onApproveReport={approveReport}
           onRejectReport={rejectReport}
+          onApproveAllReports={approveAllReports}
           onSendReports={sendApprovedReports}
         />
       </div>
