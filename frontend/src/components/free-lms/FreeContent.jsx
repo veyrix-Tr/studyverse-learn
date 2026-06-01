@@ -903,13 +903,13 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, onD
       {/* ══════════ RESOURCES ══════════ */}
       <div className={p('resources')}>
         {[
-          { icon: '📕', name: 'NCERT Chemistry Class XI', meta: 'PDF • 18.4 MB • Free' },
-          { icon: '📗', name: 'NCERT Mathematics Class XII', meta: 'PDF • 22.1 MB • Free' },
+          { icon: '📕', name: 'NCERT Chemistry Class XI',   meta: 'PDF • 18.4 MB • Free', url: 'https://ncert.nic.in/textbook.php?kech1=0-14' },
+          { icon: '📗', name: 'NCERT Mathematics Class XII', meta: 'PDF • 22.1 MB • Free', url: 'https://ncert.nic.in/textbook.php?lemh1=0-13' },
         ].map((r, i) => (
-          <div key={i} className="res-row" style={{ cursor: 'pointer' }} onClick={() => onShowToast('Downloading...')}>
+          <div key={i} className="res-row" style={{ cursor: 'pointer' }} onClick={() => window.open(r.url, '_blank', 'noreferrer')}>
             <div className="rr-icon">{r.icon}</div>
             <div><div className="rr-name">{r.name}</div><div className="rr-meta">{r.meta}</div></div>
-            <button className="btn btn-sm btn-ghost" style={{ marginLeft: 'auto', flexShrink: 0 }}>↓ Download</button>
+            <button className="btn btn-sm btn-ghost" style={{ marginLeft: 'auto', flexShrink: 0 }} onClick={e => { e.stopPropagation(); window.open(r.url, '_blank', 'noreferrer'); }}>↓ Download</button>
           </div>
         ))}
         <div className="lock-wrap" style={{ marginTop: '4px' }}>

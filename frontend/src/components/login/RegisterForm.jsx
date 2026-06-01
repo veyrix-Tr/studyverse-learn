@@ -130,9 +130,9 @@ const RegisterForm = ({ onSwitchToLogin, googleName = '', googleEmail = '', isGo
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name:       formData.name,
-          email:      formData.email,
-          password:   formData.password,
+          name:        formData.name,
+          email:       formData.email,
+          password:    formData.password,
           examTarget: formData.exam,
           targetYear: formData.targetYear,
           grade:      formData.grade,

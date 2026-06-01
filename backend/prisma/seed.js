@@ -47,7 +47,7 @@ async function main() {
           targetYear: '2027',
           grade: 'Dropper',
           parentPhone: '9876543210',
-          planEndDate: new Date('2026-12-31'),
+           planEndDate: new Date('2026-12-31'),
         },
       },
     },

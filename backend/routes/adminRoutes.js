@@ -106,9 +106,9 @@ router.get('/admins', requireAuth, async (req, res) => {
 router.put('/admins/:id/deactivate', requireAuth, async (req, res) => {
   try {
     if (req.user.role !== 'superadmin') return res.status(403).json({ error: 'Superadmin only' });
-    const id = parseInt(req.params.id);
-    if (isNaN(id)) return res.status(400).json({ error: 'Invalid ID' });
-    await prisma.adminProfile.update({ where: { userId: id }, data: { isActive: false } });
+    const userId = req.params.id;
+    if (!userId) return res.status(400).json({ error: 'Invalid ID' });
+    await prisma.adminProfile.update({ where: { userId }, data: { isActive: false } });
     res.json({ success: true });
   } catch (err) {
     console.error(err);
@@ -120,9 +120,9 @@ router.put('/admins/:id/deactivate', requireAuth, async (req, res) => {
 router.put('/admins/:id/reactivate', requireAuth, async (req, res) => {
   try {
     if (req.user.role !== 'superadmin') return res.status(403).json({ error: 'Superadmin only' });
-    const id = parseInt(req.params.id);
-    if (isNaN(id)) return res.status(400).json({ error: 'Invalid ID' });
-    await prisma.adminProfile.update({ where: { userId: id }, data: { isActive: true } });
+    const userId = req.params.id;
+    if (!userId) return res.status(400).json({ error: 'Invalid ID' });
+    await prisma.adminProfile.update({ where: { userId }, data: { isActive: true } });
     res.json({ success: true });
   } catch (err) {
     console.error(err);
