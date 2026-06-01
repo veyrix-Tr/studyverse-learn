@@ -382,11 +382,15 @@ router.get('/reports', requireAuth, async (req, res) => {
     const reports = await prisma.weeklyReport.findMany({
       where: { studentId: profile.id, status: 'sent' },
       orderBy: [{ weekNumber: 'desc' }, { sentAt: 'desc' }],
-      include: { faculty: { include: { user: { select: { name: true } } } } },
+      include: {
+        faculty: { include: { user: { select: { name: true } } } },
+        feedback: true,
+      },
     });
 
     const mappedReports = reports.map(r => ({
       id: r.id,
+      status: r.status,
       weekNumber: r.weekNumber,
       weekStartDate: r.weekStartDate,
       overallRating: r.overallRating,
@@ -401,6 +405,7 @@ router.get('/reports', requireAuth, async (req, res) => {
       facultyId: r.facultyId,
       facultyName: r.faculty.user.name,
       subject: facultySubjectMap[r.facultyId] || r.testSubject || null,
+      feedback: r.feedback ? { rating: r.feedback.rating, comment: r.feedback.comment } : null,
     }));
 
     // Each subject with their latest sent report (for top cards)
@@ -415,6 +420,43 @@ router.get('/reports', requireAuth, async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to fetch parent reports' });
+  }
+});
+
+// POST /api/student/feedback — one feedback per report, within the Mon–Sun week it was sent
+router.post('/feedback', requireAuth, async (req, res) => {
+  try {
+    const profile = await prisma.studentProfile.findUnique({ where: { userId: req.user.id } });
+    if (!profile) return res.status(403).json({ error: 'Not a student' });
+
+    const { reportId, rating, comment } = req.body;
+    if (!reportId || !rating || rating < 1 || rating > 5)
+      return res.status(400).json({ error: 'reportId and rating (1–5) are required' });
+
+    const report = await prisma.weeklyReport.findUnique({ where: { id: parseInt(reportId) } });
+    if (!report || report.studentId !== profile.id || report.status !== 'sent')
+      return res.status(404).json({ error: 'Report not found or not yet sent' });
+
+    // Deadline = Sunday 23:59:59 of the week the report was sent
+    const sentDate = new Date(report.sentAt);
+    const daysUntilSun = sentDate.getDay() === 0 ? 0 : 7 - sentDate.getDay();
+    const deadline = new Date(sentDate);
+    deadline.setDate(sentDate.getDate() + daysUntilSun);
+    deadline.setHours(23, 59, 59, 999);
+    if (new Date() > deadline)
+      return res.status(403).json({ error: 'Feedback window has closed for this report' });
+
+    const existing = await prisma.parentFeedback.findUnique({ where: { reportId: parseInt(reportId) } });
+    if (existing) return res.status(409).json({ error: 'Feedback already submitted for this report' });
+
+    const feedback = await prisma.parentFeedback.create({
+      data: { reportId: parseInt(reportId), studentId: profile.id, rating, comment: comment || null },
+    });
+
+    res.json({ success: true, feedback });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to submit feedback' });
   }
 });
 

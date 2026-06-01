@@ -339,7 +339,7 @@ async function main() {
       approvedById: superAdmin.id,
     },
 
-    // ── Week 22 — submitted (pending admin review) ──
+    // ── Week 22 — sent ──
     {
       weekNumber: 202622, weekStartDate: '2026-05-25',
       studentId: priyaProfile.id, facultyId: kavitaProfile.id,
@@ -349,8 +349,11 @@ async function main() {
       mentorNote: 'Great week for Priya in Physics. The extra practice on electrostatics paid off — she attempted 3 more problems correctly compared to last week. The trajectory is on track for the June milestone.',
       nextWeekPlan: 'Complete wave optics module. Practice Huygens principle problems. Attempt 2 chapter-wise Physics tests.',
       testScore: 76, testTotalMarks: 100, testSubject: 'Physics',
-      status: 'submitted',
+      status: 'sent',
       submittedAt: new Date('2026-05-30T10:00:00'),
+      approvedAt:  new Date('2026-05-31T08:00:00'),
+      sentAt:      new Date('2026-06-01T06:30:00'),
+      approvedById: superAdmin.id,
     },
     {
       weekNumber: 202622, weekStartDate: '2026-05-25',
@@ -361,8 +364,11 @@ async function main() {
       mentorNote: 'Priya\'s Chemistry score is improving week over week, which is encouraging. However, we need to give more time to organic mechanisms. I have prepared a focused sheet of 15 named reactions that she should memorise and practise.',
       nextWeekPlan: 'Memorise 15 key named reactions. Complete chemical kinetics problem set. Attempt 1 Organic Chemistry mock.',
       testScore: 73, testTotalMarks: 100, testSubject: 'Chemistry',
-      status: 'submitted',
+      status: 'sent',
       submittedAt: new Date('2026-05-30T11:00:00'),
+      approvedAt:  new Date('2026-05-31T08:00:00'),
+      sentAt:      new Date('2026-06-01T06:30:00'),
+      approvedById: superAdmin.id,
     },
     {
       weekNumber: 202622, weekStartDate: '2026-05-25',
@@ -373,12 +379,31 @@ async function main() {
       mentorNote: 'Priya has addressed the Ecology gaps from last week very well. Her Biology score of 88 this week is excellent. The next focus area is plant reproduction — a topic with high NEET weightage.',
       nextWeekPlan: 'Complete Plant Reproduction chapter. Practice 40 NEET-level Biology MCQs. Revise animal kingdom one more time.',
       testScore: 88, testTotalMarks: 100, testSubject: 'Biology',
-      status: 'submitted',
+      status: 'sent',
       submittedAt: new Date('2026-05-30T12:00:00'),
+      approvedAt:  new Date('2026-05-31T08:00:00'),
+      sentAt:      new Date('2026-06-01T06:30:00'),
+      approvedById: superAdmin.id,
     },
   ]});
 
-  console.log('Seeded: 4 students, 4 faculty, 1 superadmin + 2 admins, 17 sessions, 6 doubts, 24 weekly scores, 6 weekly reports (week 21 sent + week 22 submitted for Priya)');
+  // Seed one ParentFeedback for week 21 Physics — so week 21 shows 1 submitted + 2 locked
+  const physicsW21 = await prisma.weeklyReport.findFirst({
+    where: { studentId: priyaProfile.id, weekNumber: 202621, testSubject: 'Physics' },
+  });
+  if (physicsW21) {
+    await prisma.parentFeedback.create({
+      data: {
+        reportId: physicsW21.id,
+        studentId: priyaProfile.id,
+        rating: 5,
+        comment: 'Very detailed and helpful report. Thank you for the clear plan for next week!',
+        createdAt: new Date('2026-05-28T18:45:00'),
+      },
+    });
+  }
+
+  console.log('Seeded: 4 students, 4 faculty, 1 superadmin + 2 admins, 17 sessions, 6 doubts, 24 weekly scores, 6 weekly reports (week 21 + week 22 sent), 1 weekly feedback');
 }
 
 main()

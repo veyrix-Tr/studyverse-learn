@@ -660,4 +660,35 @@ router.delete('/resources/:id', requireAuth, async (req, res) => {
   }
 });
 
+// GET /api/faculty/feedback — all parent feedback for this faculty's sent reports
+router.get('/feedback', requireAuth, async (req, res) => {
+  try {
+    const fp = await prisma.facultyProfile.findUnique({ where: { userId: req.user.id } });
+    if (!fp) return res.status(403).json({ error: 'Not a faculty member' });
+
+    const feedbacks = await prisma.parentFeedback.findMany({
+      where: { report: { facultyId: fp.id } },
+      include: {
+        report: { select: { weekNumber: true, weekStartDate: true, testSubject: true } },
+        student: { include: { user: { select: { name: true } } } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    res.json(feedbacks.map(f => ({
+      id: f.id,
+      rating: f.rating,
+      comment: f.comment,
+      createdAt: f.createdAt,
+      weekNumber: f.report.weekNumber,
+      weekStartDate: f.report.weekStartDate,
+      subject: f.report.testSubject,
+      studentName: f.student.user.name,
+    })));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch feedback' });
+  }
+});
+
 module.exports = router;

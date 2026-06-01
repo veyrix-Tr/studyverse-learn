@@ -43,6 +43,7 @@ model StudentProfile {
   facultyNotifications FacultyNotification[]
   habitLogs            HabitLog[]
   weeklyReports        WeeklyReport[]
+  parentFeedback       ParentFeedback[]
 }
 
 model FacultyProfile {
@@ -198,8 +199,21 @@ model WeeklyReport {
   faculty      FacultyProfile @relation(fields: [facultyId], references: [id], onDelete: Cascade)
   approvedById Int?
   approvedBy   AdminProfile?  @relation(fields: [approvedById], references: [id])
+  feedback     ParentFeedback?
 
   @@unique([studentId, facultyId, weekNumber])
+}
+
+model ParentFeedback {
+  id        Int      @id @default(autoincrement())
+  rating    Int      // 1–5
+  comment   String?
+  createdAt DateTime @default(now())
+
+  reportId  Int            @unique
+  report    WeeklyReport   @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  studentId Int
+  student   StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
 }
 
 model HabitLog {

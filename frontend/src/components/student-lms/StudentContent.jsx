@@ -247,6 +247,7 @@ const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
   const [helpfulState, setHelpfulState] = useState({});
   const [expandedWeek, setExpandedWeek] = useState(null); // null=first open, -1=all closed, N=weekNumber open
   const [expandedReportId, setExpandedReportId] = useState(null);
+  const [feedbackState, setFeedbackState] = useState({}); // { [reportId]: { rating, comment, submitted, submitting } }
 
   const toggleWR = (i) => {
     setOpenWR(prev => {
@@ -1190,6 +1191,168 @@ const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
                   );
                 })}
               </div>
+            </>
+          );
+        })()}
+      </div>
+
+      {/* ══════════ PARENT FEEDBACK ══════════ */}
+      <div className={p('feedback')}>
+        {(() => {
+          const allReports = parentReports?.reports || [];
+          const fmtShortDate = (iso) => new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+          const fmtWeekRange = (wsd) => {
+            const mon = new Date(wsd + 'T00:00:00');
+            const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
+            return `${fmtShortDate(mon.toISOString())} – ${fmtShortDate(sun.toISOString())}`;
+          };
+          const SUBJ_COLOR = { Physics: '#4F8EF7', Chemistry: '#22C55E', Mathematics: '#A855F7', Biology: '#F97316', Maths: '#A855F7' };
+
+          // Group by week, newest first
+          const weekMap = {};
+          for (const r of allReports) {
+            if (!weekMap[r.weekNumber]) weekMap[r.weekNumber] = { weekNumber: r.weekNumber, weekStartDate: r.weekStartDate, reports: [] };
+            weekMap[r.weekNumber].reports.push(r);
+          }
+          const weekGroups = Object.values(weekMap).sort((a, b) => b.weekNumber - a.weekNumber);
+
+          // Deadline = Sunday 23:59:59 of the week the report was sent
+          const isWindowOpen = (sentAt) => {
+            if (!sentAt) return false;
+            const d = new Date(sentAt);
+            const daysUntilSun = d.getDay() === 0 ? 0 : 7 - d.getDay();
+            const deadline = new Date(d);
+            deadline.setDate(d.getDate() + daysUntilSun);
+            deadline.setHours(23, 59, 59, 999);
+            return new Date() <= deadline;
+          };
+
+          const submitFeedback = async (r) => {
+            const fb = feedbackState[r.id] || {};
+            if (!fb.rating) return;
+            setFeedbackState(prev => ({ ...prev, [r.id]: { ...prev[r.id], submitting: true } }));
+            const token = localStorage.getItem('token');
+            const res = await fetch('http://localhost:5000/api/student/feedback', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+              body: JSON.stringify({ reportId: r.id, rating: fb.rating, comment: fb.comment || '' }),
+            }).catch(() => null);
+            if (res?.ok || res?.status === 409) {
+              setFeedbackState(prev => ({ ...prev, [r.id]: { ...prev[r.id], submitting: false, submitted: true } }));
+            } else {
+              setFeedbackState(prev => ({ ...prev, [r.id]: { ...prev[r.id], submitting: false } }));
+              onShowToast?.('Failed to submit feedback. Please try again.');
+            }
+          };
+
+          return (
+            <>
+              <div className="sh" style={{ marginBottom: '20px' }}>
+                <div className="sh-title">Weekly Feedback</div>
+                <div style={{ fontSize: '13px', color: 'var(--text3)' }}>{weekGroups.length} week{weekGroups.length !== 1 ? 's' : ''} · one feedback per report</div>
+              </div>
+
+              {weekGroups.length === 0 ? (
+                <div className="card" style={{ textAlign: 'center', padding: '40px 24px', color: 'var(--text3)', fontSize: '14px' }}>
+                  No reports sent yet. Feedback will appear here once your faculty's reports are delivered.
+                </div>
+              ) : weekGroups.map(({ weekNumber, weekStartDate, reports: wReports }) => {
+                const windowOpen = isWindowOpen(wReports[0]?.sentAt);
+                const submittedCount = wReports.filter(r => r.feedback || feedbackState[r.id]?.submitted).length;
+                return (
+                  <div key={weekNumber} style={{ marginBottom: '28px' }}>
+                    {/* Week header */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+                      <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text2)' }}>
+                        Week {String(weekNumber).slice(-2)}
+                        {weekStartDate ? ` · ${fmtWeekRange(weekStartDate)}` : ''}
+                      </div>
+                      {windowOpen
+                        ? <span style={{ fontSize: '11px', color: 'var(--gold)', fontWeight: 600, background: 'rgba(232,168,48,0.1)', borderRadius: '20px', padding: '2px 10px' }}>
+                            {submittedCount}/{wReports.length} submitted · window open
+                          </span>
+                        : submittedCount === wReports.length
+                          ? <span style={{ fontSize: '11px', color: 'var(--green)', fontWeight: 600, background: 'rgba(34,197,94,0.1)', borderRadius: '20px', padding: '2px 10px' }}>All submitted</span>
+                          : <span style={{ fontSize: '11px', color: 'var(--text3)', fontWeight: 600, background: 'rgba(0,0,0,0.05)', borderRadius: '20px', padding: '2px 10px' }}>
+                              {submittedCount}/{wReports.length} submitted · window closed
+                            </span>
+                      }
+                    </div>
+
+                    {wReports.map(r => {
+                      const fb = feedbackState[r.id] || {};
+                      const existing = r.feedback;
+                      const hasSubmitted = existing || fb.submitted;
+                      const missed = !hasSubmitted && !windowOpen;
+                      const dispRating = fb.submitted ? fb.rating : existing?.rating;
+                      const dispComment = fb.submitted ? fb.comment : existing?.comment;
+                      const dotColor = SUBJ_COLOR[r.testSubject] || 'var(--gold)';
+
+                      return (
+                        <div key={r.id} className="card" style={{ marginBottom: '10px', padding: '18px 20px', opacity: missed ? 0.55 : 1 }}>
+                          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '12px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                              <div style={{ width: '9px', height: '9px', borderRadius: '50%', background: dotColor, flexShrink: 0 }} />
+                              <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text)' }}>{r.testSubject}</div>
+                              <div style={{ fontSize: '12px', color: 'var(--text3)' }}>{r.facultyName || ''}</div>
+                            </div>
+                            {r.testScore != null && (
+                              <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text2)', flexShrink: 0 }}>{r.testScore}/{r.testTotalMarks ?? 100}</div>
+                            )}
+                          </div>
+
+                          {hasSubmitted ? (
+                            <div style={{ paddingTop: '12px', borderTop: '1px solid var(--border)' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: dispComment ? '5px' : 0 }}>
+                                <span style={{ color: '#E8A830', fontSize: '17px', letterSpacing: '2px' }}>{'★'.repeat(dispRating)}{'☆'.repeat(5 - dispRating)}</span>
+                                <span style={{ fontSize: '12px', color: 'var(--text3)' }}>Your feedback</span>
+                              </div>
+                              {dispComment && <div style={{ fontSize: '13px', color: 'var(--text2)', fontStyle: 'italic' }}>"{dispComment}"</div>}
+                            </div>
+                          ) : missed ? (
+                            <div style={{ paddingTop: '12px', borderTop: '1px solid var(--border)', fontSize: '12px', color: 'var(--text3)', fontStyle: 'italic' }}>
+                              Missed — feedback window closed
+                            </div>
+                          ) : (
+                            <div style={{ paddingTop: '12px', borderTop: '1px solid var(--border)' }}>
+                              <div style={{ display: 'flex', gap: '1px', marginBottom: '10px' }}>
+                                {[1, 2, 3, 4, 5].map(star => (
+                                  <button
+                                    key={star}
+                                    onClick={() => setFeedbackState(prev => ({ ...prev, [r.id]: { ...prev[r.id], rating: star } }))}
+                                    style={{
+                                      background: 'none', border: 'none', cursor: 'pointer', padding: '3px 4px',
+                                      fontSize: '26px', color: (fb.rating >= star) ? '#E8A830' : 'var(--border)',
+                                      lineHeight: 1, transition: 'color 0.15s',
+                                    }}
+                                  >★</button>
+                                ))}
+                              </div>
+                              <textarea
+                                placeholder="Any comments for the faculty? (optional)"
+                                value={fb.comment || ''}
+                                onChange={e => setFeedbackState(prev => ({ ...prev, [r.id]: { ...prev[r.id], comment: e.target.value } }))}
+                                rows={2}
+                                style={{
+                                  width: '100%', boxSizing: 'border-box', resize: 'none',
+                                  border: '1px solid var(--border)', borderRadius: '8px',
+                                  padding: '8px 12px', fontSize: '13px', color: 'var(--text)',
+                                  background: 'var(--card)', fontFamily: 'inherit', marginBottom: '10px',
+                                }}
+                              />
+                              <button
+                                className="btn btn-gold btn-sm"
+                                disabled={!fb.rating || fb.submitting}
+                                onClick={() => submitFeedback(r)}
+                              >{fb.submitting ? 'Submitting…' : 'Submit Feedback'}</button>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })}
             </>
           );
         })()}

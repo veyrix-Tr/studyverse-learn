@@ -88,7 +88,7 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
   const approvalSettings = [
     { label: 'Faculty can assign tests', desc: 'Require admin approval before tests appear to students' },
     { label: 'Faculty can assign resources', desc: 'Require admin approval before resources appear' },
-    { label: 'Parent feedback visible to faculty', desc: 'Faculty can read parent feedback about their sessions' },
+    { label: 'Weekly feedback visible to faculty', desc: 'Faculty can read weekly feedback submitted after each report' },
   ];
 
   return (

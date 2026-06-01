@@ -17,6 +17,7 @@ const FacultyLMS = () => {
   const [students, setStudents] = useState([]);
   const [resources, setResources] = useState([]);
   const [weeklyReports, setWeeklyReports] = useState([]);
+  const [parentFeedback, setParentFeedback] = useState([]);
   const toastTimer = useRef(null);
 
   useEffect(() => {
@@ -72,6 +73,13 @@ const FacultyLMS = () => {
       .then(r => r.ok ? r.json() : null)
       .then(data => { if (Array.isArray(data)) setWeeklyReports(data); })
       .catch(() => {});
+
+    fetch('http://localhost:5000/api/faculty/feedback', {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (Array.isArray(data)) setParentFeedback(data); })
+      .catch(() => {});
   }, []);
 
   const showToast = (msg) => {
@@ -103,6 +111,29 @@ const FacultyLMS = () => {
         })
         .catch(() => {});
     }, 15000);
+    return () => clearInterval(id);
+  }, [profile]);
+
+  // Poll feedback every 20s — toast + auto-update when new weekly feedback arrives
+  useEffect(() => {
+    if (!profile) return;
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    const id = setInterval(() => {
+      fetch('http://localhost:5000/api/faculty/feedback', { headers: { Authorization: `Bearer ${token}` } })
+        .then(r => r.ok ? r.json() : null)
+        .then(fresh => {
+          if (!Array.isArray(fresh)) return;
+          setParentFeedback(prev => {
+            fresh.forEach(ff => {
+              const exists = prev.find(p => p.id === ff.id);
+              if (!exists) showToast(`New feedback from ${ff.studentName} — ${ff.subject} Week ${String(ff.weekNumber).slice(-2)} ${'★'.repeat(ff.rating)}`);
+            });
+            return fresh;
+          });
+        })
+        .catch(() => {});
+    }, 20000);
     return () => clearInterval(id);
   }, [profile]);
 
@@ -148,6 +179,7 @@ const FacultyLMS = () => {
           onReportUpdated={(r) => setWeeklyReports(prev => prev.map(x => x.id === r.id ? { ...x, ...r } : x))}
           onReportSubmitted={(r) => setWeeklyReports(prev => prev.map(x => x.id === r.id ? { ...x, ...r } : x))}
           onReportDeleted={(id) => setWeeklyReports(prev => prev.filter(x => x.id !== id))}
+          parentFeedback={parentFeedback}
         />
       </div>
       <FacultyModals

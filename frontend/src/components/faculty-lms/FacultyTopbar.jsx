@@ -6,7 +6,7 @@ const pageTitles = {
   resources: 'Resources',
   tests: 'Assign Tests',
   reports: 'Weekly Reports',
-  feedback: 'Parent Feedback'
+  feedback: 'Weekly Feedback'
 };
 
 const FacultyTopbar = ({ activePage, onOpenModal, onNav, onShowToast, pendingDoubts = 0 }) => {

@@ -131,7 +131,7 @@ const pctColor = (p) => p >= 75 ? 'var(--green)' : p >= 60 ? 'var(--gold)' : p >
 const pctBar   = (p) => p >= 75 ? 'pb-green' : p >= 60 ? 'pb-gold' : p >= 45 ? 'pb-orange' : 'pb-red';
 const pctFlag  = (p) => p >= 75 ? ['On track', 'pp'] : p >= 60 ? ['Progressing', 'po'] : ['Needs support', 'pr'];
 
-const FacultyContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, sessions = [], doubts = [], students = [], resources = [], onDoubtAnswered, onSessionNoteUpdated, onResourceDeleted, weeklyReports = [], onReportCreated, onReportUpdated, onReportSubmitted, onReportDeleted }) => {
+const FacultyContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, sessions = [], doubts = [], students = [], resources = [], onDoubtAnswered, onSessionNoteUpdated, onResourceDeleted, weeklyReports = [], onReportCreated, onReportUpdated, onReportSubmitted, onReportDeleted, parentFeedback = [] }) => {
   const firstName = profile?.name?.split(' ').find(p => !p.startsWith('Dr')) || profile?.name?.split(' ')[0] || 'there';
   const [scheduleTab, setScheduleTab] = useState(0);
   const [doubtsTab, setDoubtsTab] = useState(0);
@@ -1020,48 +1020,33 @@ const FacultyContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
         </div>
       </div>
 
-      {/* ══════════ PARENT FEEDBACK ══════════ */}
+      {/* ══════════ WEEKLY FEEDBACK ══════════ */}
       <div className={`page${activePage === 'feedback' ? ' on' : ''}`}>
-        <div style={{ fontSize: '13px', color: 'var(--text2)', marginBottom: '18px' }}>Parent feedback collected after each weekly report. Read them — they tell you what matters most to each family.</div>
-
-        <div className="feedback-item">
-          <div className="fi-top">
-            <div>
-              <div className="fi-student">Rahul Mehta's Parents</div>
-              <div className="fi-parent">Mr. Suresh Mehta • Apr 13, after Week 8 report</div>
-            </div>
-            <div style={{ textAlign: 'right' }}><div className="fi-stars">★★★★★</div><div style={{ fontSize: '10px', color: 'var(--text3)', marginTop: '2px' }}>5 / 5</div></div>
-          </div>
-          <div className="fi-quote">"Ajay's weekly notes are the most useful thing about this program. We finally understand exactly where Rahul stands each week — not just a number, but what actually happened in the sessions. The Physics gap you flagged early helped us have a real conversation with Rahul at home. Thank you."</div>
-          <div className="fi-date">Week 8 • Received Apr 13</div>
+        <div style={{ fontSize: '13px', color: 'var(--text2)', marginBottom: '18px' }}>
+          Feedback submitted after each weekly report. Read them to understand how each student is experiencing their progress.
         </div>
-
-        <div className="feedback-item">
-          <div className="fi-top">
-            <div>
-              <div className="fi-student">Sneha Kapoor's Parents</div>
-              <div className="fi-parent">Mrs. Anita Kapoor • Apr 13, after Week 10 report</div>
+        {parentFeedback.length === 0 ? (
+          <div className="card" style={{ textAlign: 'center', padding: '48px 24px' }}>
+            <div style={{ fontSize: '32px', marginBottom: '12px', opacity: 0.25 }}>💬</div>
+            <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text2)', marginBottom: '4px' }}>No feedback yet</div>
+            <div style={{ fontSize: '12px', color: 'var(--text3)' }}>Feedback will appear here after weekly reports are delivered.</div>
+          </div>
+        ) : parentFeedback.map(f => (
+          <div key={f.id} className="feedback-item">
+            <div className="fi-top">
+              <div>
+                <div className="fi-student">{f.studentName}</div>
+                <div className="fi-parent">Week {String(f.weekNumber).slice(-2)}{f.subject ? ` · ${f.subject}` : ''} · {new Date(f.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</div>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <div className="fi-stars">{'★'.repeat(f.rating)}{'☆'.repeat(5 - f.rating)}</div>
+                <div style={{ fontSize: '10px', color: 'var(--text3)', marginTop: '2px' }}>{f.rating} / 5</div>
+              </div>
             </div>
-            <div style={{ textAlign: 'right' }}><div className="fi-stars">★★★★★</div><div style={{ fontSize: '10px', color: 'var(--text3)', marginTop: '2px' }}>5 / 5</div></div>
+            {f.comment && <div className="fi-quote">"{f.comment}"</div>}
+            <div className="fi-date">Week {String(f.weekNumber).slice(-2)} · Received {new Date(f.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</div>
           </div>
-          <div className="fi-quote">"Sneha has gone from dreading Maths to looking forward to her sessions. I asked her what changed and she said 'Ajay explains it like it makes sense.' The score going from 420 to 511 in 11 weeks is proof. We are extremely happy."</div>
-          <div className="fi-date">Week 10 • Received Apr 13</div>
-        </div>
-
-        <div className="feedback-item">
-          <div className="fi-top">
-            <div>
-              <div className="fi-student">Priya Desai's Parents</div>
-              <div className="fi-parent">Mr. Nilesh Desai • Apr 6, after Week 6 report</div>
-            </div>
-            <div style={{ textAlign: 'right' }}><div className="fi-stars">★★★★☆</div><div style={{ fontSize: '10px', color: 'var(--text3)', marginTop: '2px' }}>4 / 5</div></div>
-          </div>
-          <div className="fi-quote">"Progress in Biology and Chemistry is clear. Physics is still a concern for us — Priya mentioned she finds it hard to follow when the pace increases. Can the Physics sessions be slightly slower in the beginning? She understands when given time."</div>
-          <div className="fi-date">Week 6 • Received Apr 6</div>
-          <div style={{ marginTop: '12px', background: 'var(--gold-dim)', border: '1px solid var(--gold-b)', borderRadius: 'var(--r)', padding: '10px 12px', fontSize: '12.5px', color: 'var(--text2)' }}>
-            <strong style={{ color: 'var(--text)' }}>Action taken:</strong> Reduced Physics pace for Priya — spending more time on intuition building before formula application. Will note in Week 7 report.
-          </div>
-        </div>
+        ))}
       </div>
 
     </div>
