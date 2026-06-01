@@ -1,6 +1,9 @@
 import { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const GoogleCallback = () => {
+  const navigate = useNavigate();
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const token  = params.get('token');
@@ -8,7 +11,7 @@ const GoogleCallback = () => {
     const error  = params.get('error');
 
     if (error || !token || !user) {
-      window.location.href = '/login?error=google-failed';
+      navigate('/login', { replace: true });
       return;
     }
 
@@ -19,15 +22,15 @@ const GoogleCallback = () => {
       localStorage.setItem('user', JSON.stringify(parsedUser));
 
       const { role, plan } = parsedUser;
-      if (role === 'superadmin')    window.location.replace('/superadmin');
-      else if (role === 'admin')    window.location.replace('/admin');
-      else if (role === 'faculty')  window.location.replace('/faculty');
-      else if (plan === 'premium')  window.location.replace('/student-v2');
-      else                          window.location.replace('/student');
+      if (role === 'superadmin')    navigate('/superadmin', { replace: true });
+      else if (role === 'admin')    navigate('/admin', { replace: true });
+      else if (role === 'faculty')  navigate('/faculty', { replace: true });
+      else if (plan === 'premium')  navigate('/student-v2', { replace: true });
+      else                          navigate('/student', { replace: true });
     } catch {
-      window.location.href = '/login?error=google-failed';
+      navigate('/login', { replace: true });
     }
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', fontFamily: 'sans-serif', color: '#0F1F3D' }}>

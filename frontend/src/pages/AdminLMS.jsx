@@ -1,4 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useActivePage } from '../hooks/useActivePage';
 import '../components/admin-lms/AdminStyles.css';
 import AdminSidebar from '../components/admin-lms/AdminSidebar';
 import AdminTopbar from '../components/admin-lms/AdminTopbar';
@@ -6,7 +8,9 @@ import AdminContent from '../components/admin-lms/AdminContent';
 import AdminModals from '../components/admin-lms/AdminModals';
 
 const AdminLMS = ({ expectedRole }) => {
-  const [activePage, setActivePage] = useState('dashboard');
+  const basePath = expectedRole === 'superadmin' ? '/superadmin' : '/admin';
+  const [activePage, setActivePage] = useActivePage(basePath, 'dashboard');
+  const navigate = useNavigate();
   const [openModal, setOpenModal] = useState(null);
   const [messageStudentId, setMessageStudentId] = useState(null);
   const [toast, setToast] = useState({ show: false, msg: '' });
@@ -41,7 +45,7 @@ const AdminLMS = ({ expectedRole }) => {
         if (!data || data.error) return;
         setProfile(data);
         if (expectedRole && data.role !== expectedRole) {
-          window.location.replace(data.role === 'superadmin' ? '/superadmin' : '/admin');
+          navigate(data.role === 'superadmin' ? '/superadmin' : '/admin', { replace: true });
           return;
         }
         if (data.role === 'admin' && data.adminProfile?.isActive === false) {

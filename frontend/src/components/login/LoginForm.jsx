@@ -1,6 +1,8 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const LoginForm = ({ onSwitchToRegister }) => {
+  const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
@@ -35,11 +37,11 @@ const LoginForm = ({ onSwitchToRegister }) => {
       localStorage.setItem('user', JSON.stringify(data.user));
 
       const { role, plan } = data.user;
-      if (role === 'superadmin')    window.location.replace('/superadmin');
-      else if (role === 'admin')    window.location.replace('/admin');
-      else if (role === 'faculty')  window.location.replace('/faculty');
-      else if (plan === 'premium')  window.location.replace('/student-v2');
-      else                          window.location.replace('/student');
+      if (role === 'superadmin')    navigate('/superadmin', { replace: true });
+      else if (role === 'admin')    navigate('/admin', { replace: true });
+      else if (role === 'faculty')  navigate('/faculty', { replace: true });
+      else if (plan === 'premium')  navigate('/student-v2', { replace: true });
+      else                          navigate('/student', { replace: true });
 
     } catch {
       triggerToast('Cannot connect to server');

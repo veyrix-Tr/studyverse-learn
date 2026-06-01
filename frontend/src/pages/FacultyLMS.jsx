@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { useActivePage } from '../hooks/useActivePage';
 import '../components/faculty-lms/FacultyStyles.css';
 import FacultySidebar from '../components/faculty-lms/FacultySidebar';
 import FacultyTopbar from '../components/faculty-lms/FacultyTopbar';
@@ -6,7 +7,7 @@ import FacultyContent from '../components/faculty-lms/FacultyContent';
 import FacultyModals from '../components/faculty-lms/FacultyModals';
 
 const FacultyLMS = () => {
-  const [activePage, setActivePage] = useState('dashboard');
+  const [activePage, setActivePage] = useActivePage('/faculty', 'dashboard');
   const [openModal, setOpenModal] = useState(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [selectedStudent] = useState(null);

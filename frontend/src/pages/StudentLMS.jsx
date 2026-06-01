@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { useActivePage } from '../hooks/useActivePage';
 import '../components/student-lms/StudentStyles.css';
 import StudentSidebar from '../components/student-lms/StudentSidebar';
 import StudentTopbar from '../components/student-lms/StudentTopbar';
@@ -16,7 +17,7 @@ const NOTIF_NAV = {
 };
 
 const StudentLMS = () => {
-  const [activePage, setActivePage] = useState('dashboard');
+  const [activePage, setActivePage] = useActivePage('/student-v2', 'dashboard');
   const [openModal, setOpenModal] = useState(null);
   const [toast, setToast] = useState({ show: false, msg: '' });
   const [profile, setProfile] = useState(null);

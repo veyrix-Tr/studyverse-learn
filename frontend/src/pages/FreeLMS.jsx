@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useActivePage } from '../hooks/useActivePage';
 import '../components/free-lms/FreeStyles.css';
 import FreeSidebar from '../components/free-lms/FreeSidebar';
 import FreeTopbar from '../components/free-lms/FreeTopbar';
@@ -6,7 +7,7 @@ import FreeContent from '../components/free-lms/FreeContent';
 import FreeModals from '../components/free-lms/FreeModals';
 
 const FreeLMS = () => {
-  const [activePage, setActivePage] = useState('home');
+  const [activePage, setActivePage] = useActivePage('/student', 'home');
   const [openModal, setOpenModal] = useState(null);
   const [toast, setToast] = useState({ show: false, msg: '' });
   const [profile, setProfile] = useState(null);

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const EyeIcon = ({ crossed }) => crossed ? (
   <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
@@ -16,6 +17,7 @@ const EyeIcon = ({ crossed }) => crossed ? (
 const isValidEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email);
 
 const RegisterForm = ({ onSwitchToLogin, googleName = '', googleEmail = '', isGoogle = false }) => {
+  const navigate = useNavigate();
   const [step, setStep]                               = useState(1);
   const [otpSent, setOtpSent]                         = useState(false);
   const [showPassword, setShowPassword]               = useState(false);
@@ -153,10 +155,9 @@ const RegisterForm = ({ onSwitchToLogin, googleName = '', googleEmail = '', isGo
         localStorage.setItem('token', loginData.token);
         localStorage.setItem('user', JSON.stringify(loginData.user));
         const plan = loginData.user?.plan;
-        window.location.href = plan === 'premium' ? '/student-v2' : '/student';
+        navigate(plan === 'premium' ? '/student-v2' : '/student', { replace: true });
       } else {
-        // Login failed for some reason — fall back to sign-in page
-        window.location.href = '/login';
+        navigate('/login', { replace: true });
       }
     } catch {
       showToast('Cannot connect to server');

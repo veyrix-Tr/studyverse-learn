@@ -9,7 +9,7 @@ datasource db {
 }
 
 model User {
-  id        Int      @id @default(autoincrement())
+  id        String   @id @default(cuid())
   name      String
   email     String   @unique
   password  String
@@ -24,7 +24,7 @@ model User {
 
 model StudentProfile {
   id          Int       @id @default(autoincrement())
-  userId      Int       @unique
+  userId      String    @unique
   plan            String    @default("free")
   examTarget      String?
   targetYear      String?
@@ -48,7 +48,7 @@ model StudentProfile {
 
 model FacultyProfile {
   id            Int      @id @default(autoincrement())
-  userId        Int      @unique
+  userId        String   @unique
   subject       String?
   department    String?
   qualification String?
@@ -78,7 +78,7 @@ model AdminMessage {
 
 model AdminProfile {
   id         Int      @id @default(autoincrement())
-  userId     Int      @unique
+  userId     String   @unique
   department String?
   isActive   Boolean  @default(true)
   createdAt  DateTime @default(now())
