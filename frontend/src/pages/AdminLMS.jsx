@@ -17,7 +17,11 @@ const AdminLMS = ({ expectedRole }) => {
   const [sentMessages, setSentMessages] = useState([]);
   const [parentReports, setParentReports] = useState([]);
   const [deactivated, setDeactivated] = useState(false);
-  const toastTimer = useRef(null);
+  const toastTimer   = useRef(null);
+  const reportsRef   = useRef([]);
+  const resourcesRef = useRef([]);
+  useEffect(() => { reportsRef.current   = parentReports; }, [parentReports]);
+  useEffect(() => { resourcesRef.current = resources;     }, [resources]);
 
   useEffect(() => {
     document.documentElement.classList.add('admin-mode');
@@ -77,12 +81,31 @@ const AdminLMS = ({ expectedRole }) => {
         .then(r => r.ok ? r.json() : null)
         .then(fresh => {
           if (!Array.isArray(fresh)) return;
-          setParentReports(prev => {
-            const prevSubmitted = prev.filter(r => r.status === 'submitted').length;
-            const freshSubmitted = fresh.filter(r => r.status === 'submitted').length;
-            if (freshSubmitted > prevSubmitted) showToast(`${freshSubmitted - prevSubmitted} new report(s) submitted for review`);
-            return fresh;
-          });
+          const prev = reportsRef.current;
+          const prevSubmitted  = prev.filter(r => r.status === 'submitted').length;
+          const freshSubmitted = fresh.filter(r => r.status === 'submitted').length;
+          if (freshSubmitted > prevSubmitted) showToast(`${freshSubmitted - prevSubmitted} new report(s) submitted for review`);
+          setParentReports(fresh);
+        })
+        .catch(() => {});
+    }, 20000);
+    return () => clearInterval(id);
+  }, [profile]);
+
+  // Poll resources every 20s — toast when faculty submits a new pending resource
+  useEffect(() => {
+    if (!profile) return;
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    const id = setInterval(() => {
+      fetch('http://localhost:5000/api/admin/resources', { headers: { Authorization: `Bearer ${token}` } })
+        .then(r => r.ok ? r.json() : null)
+        .then(fresh => {
+          if (!Array.isArray(fresh)) return;
+          const prev = resourcesRef.current;
+          const newPending = fresh.filter(r => r.status === 'pending' && !prev.some(p => p.id === r.id));
+          if (newPending.length > 0) showToast(`${newPending.length} new resource${newPending.length > 1 ? 's' : ''} submitted for review`);
+          setResources(fresh);
         })
         .catch(() => {});
     }, 20000);
@@ -132,9 +155,10 @@ const AdminLMS = ({ expectedRole }) => {
       body: JSON.stringify({ studentId: to, content: content.trim(), type }),
     });
     if (!res.ok) throw new Error('Failed to send');
+    const data = await res.json();
     const recipient = to === 'all' ? 'All Students' : students.find(s => String(s.id) === String(to))?.name || 'Student';
     setSentMessages(prev => [{
-      id: Date.now(),
+      id: data.id ?? Date.now(),
       content,
       type,
       recipient,

@@ -26,7 +26,11 @@ const StudentLMS = () => {
   const [notifications, setNotifications] = useState([]);
   const [resources, setResources] = useState([]);
   const [parentReports, setParentReports] = useState(null);
-  const toastTimer = useRef(null);
+  const toastTimer        = useRef(null);
+  const doubtsRef         = useRef([]);
+  const notificationsRef  = useRef([]);
+  useEffect(() => { doubtsRef.current        = doubts;        }, [doubts]);
+  useEffect(() => { notificationsRef.current = notifications; }, [notifications]);
 
   useEffect(() => {
     document.documentElement.classList.add('student-mode');
@@ -108,15 +112,15 @@ const StudentLMS = () => {
         .then(r => r.ok ? r.json() : null)
         .then(fresh => {
           if (!Array.isArray(fresh)) return;
-          setDoubts(prev => {
-            fresh
-              .filter(nd => nd.answeredAt && !prev.some(d => d.id === nd.id && d.answeredAt))
-              .forEach(d => showToast(
-                `${d.facultyName} answered your ${d.subject} doubt — tap to view`,
-                () => setActivePage('doubt')
-              ));
-            return fresh;
+          const prev = doubtsRef.current;
+          fresh.forEach(nd => {
+            const old = prev.find(d => d.id === nd.id);
+            if (nd.answeredAt && old && !old.answeredAt)
+              showToast(`${nd.facultyName} answered your ${nd.subject} doubt — tap to view`, () => setActivePage('doubt'));
+            else if (nd.answeredAt && old && old.answeredAt && old.answer !== nd.answer)
+              showToast(`${nd.facultyName} updated their ${nd.subject} answer — tap to view`, () => setActivePage('doubt'));
           });
+          setDoubts(fresh);
         })
         .catch(() => {});
 
@@ -126,22 +130,34 @@ const StudentLMS = () => {
         .then(r => r.ok ? r.json() : null)
         .then(fresh => {
           if (!Array.isArray(fresh)) return;
-          setNotifications(prev => {
-            const newOnes = fresh.filter(fn => !fn.readAt && !prev.some(n => n.id === fn.id));
-            const hasNewReport = newOnes.some(n => n.type === 'Weekly Report');
-            newOnes.forEach(n => {
-              const page = NOTIF_NAV[n.type] || 'notif';
-              showToast(`${n.type}: ${n.content.length > 60 ? n.content.slice(0, 60) + '…' : n.content}`, () => setActivePage(page));
-            });
-            // Immediately refresh reports when a new Weekly Report notification arrives
-            if (hasNewReport) {
-              fetch('http://localhost:5000/api/student/reports', { headers: { Authorization: `Bearer ${token}` } })
-                .then(r => r.ok ? r.json() : null)
-                .then(rd => { if (rd && (rd.subjects || rd.reports)) setParentReports(rd); })
-                .catch(() => {});
-            }
-            return fresh;
+          const prev = notificationsRef.current;
+          const newOnes = fresh.filter(fn => !fn.readAt && !prev.some(n => n.id === fn.id));
+          const hasNewReport   = newOnes.some(n => n.type === 'Weekly Report');
+          const hasNewResource = newOnes.some(n => n.type === 'New Resource');
+          const hasSessionNote = newOnes.some(n => n.type === 'Session Note' || n.type === 'Reminder');
+          newOnes.forEach(n => {
+            const page = NOTIF_NAV[n.type] || 'notif';
+            showToast(`${n.type}: ${n.content.length > 60 ? n.content.slice(0, 60) + '…' : n.content}`, () => setActivePage(page));
           });
+          setNotifications(fresh);
+          if (hasNewReport) {
+            fetch('http://localhost:5000/api/student/reports', { headers: { Authorization: `Bearer ${token}` } })
+              .then(r => r.ok ? r.json() : null)
+              .then(rd => { if (rd && (rd.subjects || rd.reports)) setParentReports(rd); })
+              .catch(() => {});
+          }
+          if (hasNewResource) {
+            fetch('http://localhost:5000/api/student/resources', { headers: { Authorization: `Bearer ${token}` } })
+              .then(r => r.ok ? r.json() : null)
+              .then(rd => { if (Array.isArray(rd)) setResources(rd); })
+              .catch(() => {});
+          }
+          if (hasSessionNote) {
+            fetch('http://localhost:5000/api/student/sessions', { headers: { Authorization: `Bearer ${token}` } })
+              .then(r => r.ok ? r.json() : null)
+              .then(rd => { if (Array.isArray(rd)) setSessions(rd); })
+              .catch(() => {});
+          }
         })
         .catch(() => {});
     }, 15000);

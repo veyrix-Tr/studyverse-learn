@@ -38,7 +38,6 @@ function startCronJobs() {
     }
   }, { timezone: 'Asia/Kolkata' });
 
-  console.log('[cron] Weekly report auto-send scheduled (Sat & Sun 6:00 AM IST)');
 }
 
 module.exports = { startCronJobs };

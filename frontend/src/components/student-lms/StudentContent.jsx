@@ -1,4 +1,4 @@
-import { useState, Fragment } from 'react';
+import { useState, useEffect, Fragment } from 'react';
 
 const SUBJ_COLOR = {
   Physics:     '#4F8EF7',
@@ -245,6 +245,23 @@ const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
   const [openWR, setOpenWR] = useState(new Set([0]));
   const [openSessionNote, setOpenSessionNote] = useState(null);
   const [helpfulState, setHelpfulState] = useState({});
+
+  // When doubts refresh from server (e.g. faculty re-answered → helpful reset to null),
+  // drop any local override so the UI reflects the server state.
+  useEffect(() => {
+    setHelpfulState(prev => {
+      const next = { ...prev };
+      let changed = false;
+      doubts.forEach(d => {
+        if (d.helpful === null && next[d.id] !== undefined) {
+          delete next[d.id];
+          changed = true;
+        }
+      });
+      return changed ? next : prev;
+    });
+  }, [doubts]);
+
   const [expandedWeek, setExpandedWeek] = useState(null); // null=first open, -1=all closed, N=weekNumber open
   const [expandedReportId, setExpandedReportId] = useState(null);
   const [feedbackState, setFeedbackState] = useState({}); // { [reportId]: { rating, comment, submitted, submitting } }

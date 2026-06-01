@@ -18,7 +18,15 @@ const FacultyLMS = () => {
   const [resources, setResources] = useState([]);
   const [weeklyReports, setWeeklyReports] = useState([]);
   const [parentFeedback, setParentFeedback] = useState([]);
-  const toastTimer = useRef(null);
+  const toastTimer        = useRef(null);
+  const doubtsRef         = useRef([]);
+  const reportsRef        = useRef([]);
+  const feedbackRef       = useRef([]);
+  const resourcesRef      = useRef([]);
+  useEffect(() => { doubtsRef.current    = doubts;         }, [doubts]);
+  useEffect(() => { reportsRef.current   = weeklyReports;  }, [weeklyReports]);
+  useEffect(() => { feedbackRef.current  = parentFeedback; }, [parentFeedback]);
+  useEffect(() => { resourcesRef.current = resources;      }, [resources]);
 
   useEffect(() => {
     document.documentElement.classList.add('faculty-mode');
@@ -88,6 +96,31 @@ const FacultyLMS = () => {
     toastTimer.current = setTimeout(() => setToast(t => ({ ...t, show: false })), 3200);
   };
 
+  // Poll doubts every 15s — toast when a new doubt is submitted by a student
+  useEffect(() => {
+    if (!profile) return;
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    const id = setInterval(() => {
+      fetch('http://localhost:5000/api/faculty/doubts', { headers: { Authorization: `Bearer ${token}` } })
+        .then(r => r.ok ? r.json() : null)
+        .then(fresh => {
+          if (!Array.isArray(fresh)) return;
+          const prev = doubtsRef.current;
+          fresh.forEach(fd => {
+            const old = prev.find(d => d.id === fd.id);
+            if (!old)
+              showToast(`New doubt from ${fd.studentName} — ${fd.subject}: "${fd.question.length > 50 ? fd.question.slice(0, 50) + '…' : fd.question}"`);
+            else if (old.helpful === null && fd.helpful !== null)
+              showToast(`${fd.studentName} marked your ${fd.subject} answer ${fd.helpful ? 'helpful ✓' : 'not helpful'}`);
+          });
+          setDoubts(fresh);
+        })
+        .catch(() => {});
+    }, 15000);
+    return () => clearInterval(id);
+  }, [profile]);
+
   // Poll reports every 15s — toast when a submitted report gets approved/rejected/sent
   useEffect(() => {
     if (!profile) return;
@@ -98,16 +131,15 @@ const FacultyLMS = () => {
         .then(r => r.ok ? r.json() : null)
         .then(fresh => {
           if (!Array.isArray(fresh)) return;
-          setWeeklyReports(prev => {
-            fresh.forEach(fr => {
-              const old = prev.find(r => r.id === fr.id);
-              if (!old || old.status === fr.status) return;
-              if (fr.status === 'approved') showToast(`Report for ${fr.studentName} (Week ${String(fr.weekNumber).slice(-2)}) approved ✓`);
-              if (fr.status === 'rejected') showToast(`Report for ${fr.studentName} (Week ${String(fr.weekNumber).slice(-2)}) needs revision`);
-              if (fr.status === 'sent')     showToast(`Report for ${fr.studentName} (Week ${String(fr.weekNumber).slice(-2)}) sent to parents ✓`);
-            });
-            return fresh;
+          const prev = reportsRef.current;
+          fresh.forEach(fr => {
+            const old = prev.find(r => r.id === fr.id);
+            if (!old || old.status === fr.status) return;
+            if (fr.status === 'approved') showToast(`Report for ${fr.studentName} (Week ${String(fr.weekNumber).slice(-2)}) approved ✓`);
+            if (fr.status === 'rejected') showToast(`Report for ${fr.studentName} (Week ${String(fr.weekNumber).slice(-2)}) needs revision`);
+            if (fr.status === 'sent')     showToast(`Report for ${fr.studentName} (Week ${String(fr.weekNumber).slice(-2)}) sent to parents ✓`);
           });
+          setWeeklyReports(fresh);
         })
         .catch(() => {});
     }, 15000);
@@ -124,13 +156,36 @@ const FacultyLMS = () => {
         .then(r => r.ok ? r.json() : null)
         .then(fresh => {
           if (!Array.isArray(fresh)) return;
-          setParentFeedback(prev => {
-            fresh.forEach(ff => {
-              const exists = prev.find(p => p.id === ff.id);
-              if (!exists) showToast(`New feedback from ${ff.studentName} — ${ff.subject} Week ${String(ff.weekNumber).slice(-2)} ${'★'.repeat(ff.rating)}`);
-            });
-            return fresh;
+          const prev = feedbackRef.current;
+          fresh.forEach(ff => {
+            if (!prev.find(p => p.id === ff.id))
+              showToast(`New feedback from ${ff.studentName} — ${ff.subject} Week ${String(ff.weekNumber).slice(-2)} ${'★'.repeat(ff.rating)}`);
           });
+          setParentFeedback(fresh);
+        })
+        .catch(() => {});
+    }, 20000);
+    return () => clearInterval(id);
+  }, [profile]);
+
+  // Poll resources every 20s — toast when admin approves or declines a submitted resource
+  useEffect(() => {
+    if (!profile) return;
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    const id = setInterval(() => {
+      fetch('http://localhost:5000/api/faculty/resources', { headers: { Authorization: `Bearer ${token}` } })
+        .then(r => r.ok ? r.json() : null)
+        .then(fresh => {
+          if (!Array.isArray(fresh)) return;
+          const prev = resourcesRef.current;
+          fresh.forEach(fr => {
+            const old = prev.find(r => r.id === fr.id);
+            if (!old || old.status === fr.status) return;
+            if (fr.status === 'approved') showToast(`Your ${fr.subject} resource "${fr.title}" was approved ✓`);
+            if (fr.status === 'declined') showToast(`Your ${fr.subject} resource "${fr.title}" was declined`);
+          });
+          setResources(fresh);
         })
         .catch(() => {});
     }, 20000);

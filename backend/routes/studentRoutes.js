@@ -165,6 +165,7 @@ router.post('/doubts', requireAuth, async (req, res) => {
       subject: doubt.subject,
       answer: doubt.answer,
       answeredAt: doubt.answeredAt,
+      helpful: doubt.helpful,
       createdAt: doubt.createdAt,
       facultyName: doubt.faculty.user.name,
     });
