@@ -7,7 +7,7 @@ import FacultyContent from '../components/faculty-lms/FacultyContent';
 import FacultyModals from '../components/faculty-lms/FacultyModals';
 
 const FacultyLMS = () => {
-  const [activePage, setActivePage] = useActivePage('/faculty', 'dashboard');
+  const [activePage, setActivePage, userId] = useActivePage('/faculty', 'dashboard');
   const [openModal, setOpenModal] = useState(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [selectedStudent] = useState(null);
@@ -41,49 +41,52 @@ const FacultyLMS = () => {
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token) return;
-    fetch('http://localhost:5000/api/faculty/me', {
+    fetch(`http://localhost:5000/api/faculty/${userId}/me`, {
       headers: { Authorization: `Bearer ${token}` },
     })
-      .then(r => r.ok ? r.json() : null)
+      .then(r => {
+        if (!r.ok) { localStorage.removeItem('token'); window.location.href = '/'; return null; }
+        return r.json();
+      })
       .then(data => { if (data && !data.error) setProfile(data); })
       .catch(() => {});
 
-    fetch('http://localhost:5000/api/faculty/sessions', {
+    fetch(`http://localhost:5000/api/faculty/${userId}/sessions`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then(r => r.ok ? r.json() : null)
       .then(data => { if (Array.isArray(data)) setSessions(data); })
       .catch(() => {});
 
-    fetch('http://localhost:5000/api/faculty/doubts', {
+    fetch(`http://localhost:5000/api/faculty/${userId}/doubts`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then(r => r.ok ? r.json() : null)
       .then(data => { if (Array.isArray(data)) setDoubts(data); })
       .catch(() => {});
 
-    fetch('http://localhost:5000/api/faculty/students', {
+    fetch(`http://localhost:5000/api/faculty/${userId}/students`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then(r => r.ok ? r.json() : null)
       .then(data => { if (Array.isArray(data)) setStudents(data); })
       .catch(() => {});
 
-    fetch('http://localhost:5000/api/faculty/resources', {
+    fetch(`http://localhost:5000/api/faculty/${userId}/resources`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then(r => r.ok ? r.json() : null)
       .then(data => { if (Array.isArray(data)) setResources(data); })
       .catch(() => {});
 
-    fetch('http://localhost:5000/api/faculty/reports', {
+    fetch(`http://localhost:5000/api/faculty/${userId}/reports`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then(r => r.ok ? r.json() : null)
       .then(data => { if (Array.isArray(data)) setWeeklyReports(data); })
       .catch(() => {});
 
-    fetch('http://localhost:5000/api/faculty/feedback', {
+    fetch(`http://localhost:5000/api/faculty/${userId}/feedback`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then(r => r.ok ? r.json() : null)
@@ -103,7 +106,7 @@ const FacultyLMS = () => {
     const token = localStorage.getItem('token');
     if (!token) return;
     const id = setInterval(() => {
-      fetch('http://localhost:5000/api/faculty/doubts', { headers: { Authorization: `Bearer ${token}` } })
+      fetch(`http://localhost:5000/api/faculty/${userId}/doubts`, { headers: { Authorization: `Bearer ${token}` } })
         .then(r => r.ok ? r.json() : null)
         .then(fresh => {
           if (!Array.isArray(fresh)) return;
@@ -128,7 +131,7 @@ const FacultyLMS = () => {
     const token = localStorage.getItem('token');
     if (!token) return;
     const id = setInterval(() => {
-      fetch('http://localhost:5000/api/faculty/reports', { headers: { Authorization: `Bearer ${token}` } })
+      fetch(`http://localhost:5000/api/faculty/${userId}/reports`, { headers: { Authorization: `Bearer ${token}` } })
         .then(r => r.ok ? r.json() : null)
         .then(fresh => {
           if (!Array.isArray(fresh)) return;
@@ -153,7 +156,7 @@ const FacultyLMS = () => {
     const token = localStorage.getItem('token');
     if (!token) return;
     const id = setInterval(() => {
-      fetch('http://localhost:5000/api/faculty/feedback', { headers: { Authorization: `Bearer ${token}` } })
+      fetch(`http://localhost:5000/api/faculty/${userId}/feedback`, { headers: { Authorization: `Bearer ${token}` } })
         .then(r => r.ok ? r.json() : null)
         .then(fresh => {
           if (!Array.isArray(fresh)) return;
@@ -175,7 +178,7 @@ const FacultyLMS = () => {
     const token = localStorage.getItem('token');
     if (!token) return;
     const id = setInterval(() => {
-      fetch('http://localhost:5000/api/faculty/resources', { headers: { Authorization: `Bearer ${token}` } })
+      fetch(`http://localhost:5000/api/faculty/${userId}/resources`, { headers: { Authorization: `Bearer ${token}` } })
         .then(r => r.ok ? r.json() : null)
         .then(fresh => {
           if (!Array.isArray(fresh)) return;

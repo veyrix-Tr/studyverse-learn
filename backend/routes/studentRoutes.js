@@ -1,5 +1,5 @@
 const express  = require('express');
-const router   = express.Router();
+const router   = express.Router({ mergeParams: true });
 const prisma   = require('../lib/prisma');
 const { requireAuth } = require('../middleware/auth');
 
@@ -7,7 +7,7 @@ const { requireAuth } = require('../middleware/auth');
 router.get('/me', requireAuth, async (req, res) => {
   try {
     const user = await prisma.user.findUnique({
-      where: { id: req.user.id },
+      where: { id: req.params.userId },
       select: {
         id: true, name: true, email: true, role: true,
         studentProfile: {
@@ -37,7 +37,7 @@ router.post('/diagnostic', requireAuth, async (req, res) => {
     if (typeof score !== 'number' || score < 0 || score > 100)
       return res.status(400).json({ error: 'Invalid score' });
 
-    const profile = await prisma.studentProfile.findUnique({ where: { userId: req.user.id } });
+    const profile = await prisma.studentProfile.findUnique({ where: { userId: req.params.userId } });
     if (!profile) return res.status(403).json({ error: 'Not found' });
 
     if (profile.diagnosticTakenAt) {
@@ -63,7 +63,7 @@ router.post('/diagnostic', requireAuth, async (req, res) => {
 // GET /api/student/scores
 router.get('/scores', requireAuth, async (req, res) => {
   try {
-    const profile = await prisma.studentProfile.findUnique({ where: { userId: req.user.id } });
+    const profile = await prisma.studentProfile.findUnique({ where: { userId: req.params.userId } });
     if (!profile) return res.json({ weeks: [] });
 
     const rows = await prisma.weeklyScore.findMany({
@@ -105,7 +105,7 @@ const EXAM_SUBJECTS = {
 // GET /api/student/sessions
 router.get('/sessions', requireAuth, async (req, res) => {
   try {
-    const profile = await prisma.studentProfile.findUnique({ where: { userId: req.user.id } });
+    const profile = await prisma.studentProfile.findUnique({ where: { userId: req.params.userId } });
     if (!profile || profile.plan !== 'premium') return res.json([]);
 
     const subjects = EXAM_SUBJECTS[profile.examTarget] || [];
@@ -141,7 +141,7 @@ router.post('/doubts', requireAuth, async (req, res) => {
     if (!question || !question.trim()) return res.status(400).json({ error: 'Question is required' });
     if (!subject) return res.status(400).json({ error: 'Subject is required' });
 
-    const profile = await prisma.studentProfile.findUnique({ where: { userId: req.user.id } });
+    const profile = await prisma.studentProfile.findUnique({ where: { userId: req.params.userId } });
     if (!profile) return res.status(403).json({ error: 'Student not found' });
 
     const validSubjects = EXAM_SUBJECTS[profile.examTarget] || [];
@@ -178,7 +178,7 @@ router.post('/doubts', requireAuth, async (req, res) => {
 // GET /api/student/doubts
 router.get('/doubts', requireAuth, async (req, res) => {
   try {
-    const profile = await prisma.studentProfile.findUnique({ where: { userId: req.user.id } });
+    const profile = await prisma.studentProfile.findUnique({ where: { userId: req.params.userId } });
     if (!profile) return res.json([]);
 
     const doubts = await prisma.doubt.findMany({
@@ -209,7 +209,7 @@ router.put('/doubts/:id/helpful', requireAuth, async (req, res) => {
     const { helpful } = req.body;
     if (typeof helpful !== 'boolean') return res.status(400).json({ error: 'helpful must be a boolean' });
 
-    const profile = await prisma.studentProfile.findUnique({ where: { userId: req.user.id } });
+    const profile = await prisma.studentProfile.findUnique({ where: { userId: req.params.userId } });
     if (!profile) return res.status(403).json({ error: 'Not found' });
 
     const id = parseInt(req.params.id);
@@ -229,7 +229,7 @@ router.put('/doubts/:id/helpful', requireAuth, async (req, res) => {
 // GET /api/student/notifications
 router.get('/notifications', requireAuth, async (req, res) => {
   try {
-    const profile = await prisma.studentProfile.findUnique({ where: { userId: req.user.id } });
+    const profile = await prisma.studentProfile.findUnique({ where: { userId: req.params.userId } });
     if (!profile) return res.json([]);
 
     const [adminMsgs, facultyNotifs] = await Promise.all([
@@ -252,7 +252,7 @@ router.get('/notifications', requireAuth, async (req, res) => {
 // PUT /api/student/notifications/:id/read  (id format: "a-123" or "f-123")
 router.put('/notifications/:id/read', requireAuth, async (req, res) => {
   try {
-    const profile = await prisma.studentProfile.findUnique({ where: { userId: req.user.id } });
+    const profile = await prisma.studentProfile.findUnique({ where: { userId: req.params.userId } });
     if (!profile) return res.status(403).json({ error: 'Not found' });
 
     const raw = req.params.id;
@@ -276,7 +276,7 @@ router.put('/notifications/:id/read', requireAuth, async (req, res) => {
 // GET /api/student/habits  — last 14 days of habit logs
 router.get('/habits', requireAuth, async (req, res) => {
   try {
-    const profile = await prisma.studentProfile.findUnique({ where: { userId: req.user.id } });
+    const profile = await prisma.studentProfile.findUnique({ where: { userId: req.params.userId } });
     if (!profile) return res.json([]);
 
     // Last 14 dates in IST (YYYY-MM-DD)
@@ -302,7 +302,7 @@ router.post('/habits', requireAuth, async (req, res) => {
         return res.status(400).json({ error: `${key} must be boolean` });
     }
 
-    const profile = await prisma.studentProfile.findUnique({ where: { userId: req.user.id } });
+    const profile = await prisma.studentProfile.findUnique({ where: { userId: req.params.userId } });
     if (!profile) return res.status(403).json({ error: 'Not found' });
 
     // Today in IST (UTC+5:30)
@@ -326,7 +326,7 @@ router.post('/habits', requireAuth, async (req, res) => {
 // GET /api/student/resources — approved resources matching student's exam subjects
 router.get('/resources', requireAuth, async (req, res) => {
   try {
-    const profile = await prisma.studentProfile.findUnique({ where: { userId: req.user.id } });
+    const profile = await prisma.studentProfile.findUnique({ where: { userId: req.params.userId } });
     if (!profile) return res.json([]);
 
     const subjects = EXAM_SUBJECTS[profile.examTarget] || [];
@@ -355,7 +355,7 @@ router.get('/resources', requireAuth, async (req, res) => {
 // GET /api/student/reports — all sent WeeklyReports + per-subject latest note
 router.get('/reports', requireAuth, async (req, res) => {
   try {
-    const profile = await prisma.studentProfile.findUnique({ where: { userId: req.user.id } });
+    const profile = await prisma.studentProfile.findUnique({ where: { userId: req.params.userId } });
     if (!profile) return res.json({ subjects: [], reports: [] });
 
     const subjects = EXAM_SUBJECTS[profile.examTarget] || [];
@@ -427,7 +427,7 @@ router.get('/reports', requireAuth, async (req, res) => {
 // POST /api/student/feedback — one feedback per report, within the Mon–Sun week it was sent
 router.post('/feedback', requireAuth, async (req, res) => {
   try {
-    const profile = await prisma.studentProfile.findUnique({ where: { userId: req.user.id } });
+    const profile = await prisma.studentProfile.findUnique({ where: { userId: req.params.userId } });
     if (!profile) return res.status(403).json({ error: 'Not a student' });
 
     const { reportId, rating, comment } = req.body;

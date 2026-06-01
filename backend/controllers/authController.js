@@ -70,9 +70,9 @@ const login = async (req, res) => {
       return res.status(403).json({ error: 'Your account has been deactivated. Please contact your superadmin.' });
     }
 
-    // Create a JWT token with user id and role inside
+    // Create a JWT token with user id, role, and plan inside
     const token = jwt.sign(
-      { id: user.id, role: user.role },
+      { id: user.id, role: user.role, plan: user.studentProfile?.plan || null },
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );

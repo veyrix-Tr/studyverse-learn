@@ -5,7 +5,6 @@ const AdminSidebar = ({ activePage, isSuperAdmin, onNav, onShowToast, profile, s
   const initial = name.charAt(0).toUpperCase();
   const handleLogout = () => {
     localStorage.removeItem('token');
-    localStorage.removeItem('user');
     onShowToast('Signing out...');
     setTimeout(() => { window.location.href = '/'; }, 1000);
   };

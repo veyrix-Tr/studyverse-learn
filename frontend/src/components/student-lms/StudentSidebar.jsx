@@ -123,7 +123,7 @@ const StudentSidebar = ({ activePage, onNav, profile, upcomingSessionsCount = 0,
             )}
           </div>
         </div>
-        <div className="logout-btn" onClick={() => { localStorage.removeItem('token'); localStorage.removeItem('user'); window.location.href = '/'; }} style={{ marginTop: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: 'rgba(253,248,240,0.5)', padding: '8px 0' }}>
+        <div className="logout-btn" onClick={() => { localStorage.removeItem('token'); window.location.href = '/'; }} style={{ marginTop: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: 'rgba(253,248,240,0.5)', padding: '8px 0' }}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>
           </svg>

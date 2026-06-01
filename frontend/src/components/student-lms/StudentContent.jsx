@@ -1,4 +1,5 @@
 import { useState, useEffect, Fragment } from 'react';
+import { useParams } from 'react-router-dom';
 
 const SUBJ_COLOR = {
   Physics:     '#4F8EF7',
@@ -198,6 +199,7 @@ const timeAgo = (iso) => {
 const TYPE_DOT = { 'Reminder': 'var(--gold)', 'Motivational Note': 'var(--green)', 'Schedule Update': 'var(--navy)', 'Announcement': 'var(--gold)', 'Session Note': 'var(--navy)', 'Doubt Answered': 'var(--green)', 'Weekly Report': 'var(--gold)' };
 
 const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, scores, sessions = [], doubts = [], notifications = [], onMarkNotificationsRead, onNotificationClick, resources = [], parentReports = null }) => {
+  const { id: userId } = useParams();
   const firstName = profile?.name?.split(' ')[0] || 'there';
   const examTarget = profile?.studentProfile?.examTarget || 'your exam';
   const targetYear = profile?.studentProfile?.targetYear;
@@ -839,7 +841,7 @@ const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
             const markHelpful = async (val) => {
               const token = localStorage.getItem('token');
               try {
-                const res = await fetch(`http://localhost:5000/api/student/doubts/${d.id}/helpful`, {
+                const res = await fetch(`http://localhost:5000/api/student/${userId}/doubts/${d.id}/helpful`, {
                   method: 'PUT',
                   headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
                   body: JSON.stringify({ helpful: val }),
@@ -1249,7 +1251,7 @@ const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
             if (!fb.rating) return;
             setFeedbackState(prev => ({ ...prev, [r.id]: { ...prev[r.id], submitting: true } }));
             const token = localStorage.getItem('token');
-            const res = await fetch('http://localhost:5000/api/student/feedback', {
+            const res = await fetch(`http://localhost:5000/api/student/${userId}/feedback`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
               body: JSON.stringify({ reportId: r.id, rating: fb.rating, comment: fb.comment || '' }),

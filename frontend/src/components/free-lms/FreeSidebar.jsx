@@ -9,7 +9,6 @@ const FreeSidebar = ({ activePage, onNav, profile }) => {
 
   const handleLogout = () => {
     localStorage.removeItem('token');
-    localStorage.removeItem('user');
     window.location.href = '/';
   };
 

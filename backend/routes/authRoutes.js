@@ -27,7 +27,7 @@ router.get('/google/callback',
       // ── Existing user → login directly ──────────────────
       if (existingUser && existingUser.password !== '') {
         const token = jwt.sign(
-          { id: existingUser.id, role: existingUser.role },
+          { id: existingUser.id, role: existingUser.role, plan: existingUser.studentProfile?.plan || null },
           process.env.JWT_SECRET,
           { expiresIn: '7d' }
         );

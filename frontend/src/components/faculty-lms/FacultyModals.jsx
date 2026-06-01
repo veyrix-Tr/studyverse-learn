@@ -1,9 +1,11 @@
 import React, { useState, useRef } from 'react';
+import { useParams } from 'react-router-dom';
 
 const CLOUD_NAME    = 'dnotkgppz';
 const UPLOAD_PRESET = 'faculty_resources';
 
 const FacultyModals = ({ openModal, onClose, onShowToast, toast, detailOpen, selectedStudent, onCloseDetail, onOpenModal, onNav, onResourceAdded }) => {
+  const { id: userId } = useParams();
   const isOpen = (id) => openModal === id ? ' open' : '';
   const s = selectedStudent || {};
   const [broadcastText, setBroadcastText] = useState('');
@@ -45,7 +47,7 @@ const FacultyModals = ({ openModal, onClose, onShowToast, toast, detailOpen, sel
 
       // 2. Save metadata to backend
       const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:5000/api/faculty/resources', {
+      const res = await fetch(`http://localhost:5000/api/faculty/${userId}/resources`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
@@ -76,7 +78,7 @@ const FacultyModals = ({ openModal, onClose, onShowToast, toast, detailOpen, sel
     const token = localStorage.getItem('token');
     setBroadcasting(true);
     try {
-      const res = await fetch('http://localhost:5000/api/faculty/broadcast', {
+      const res = await fetch(`http://localhost:5000/api/faculty/${userId}/broadcast`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ message: broadcastText.trim() }),

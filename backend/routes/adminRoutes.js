@@ -1,5 +1,5 @@
 const express  = require('express');
-const router   = express.Router();
+const router   = express.Router({ mergeParams: true });
 const prisma   = require('../lib/prisma');
 const { requireAuth } = require('../middleware/auth');
 
@@ -13,7 +13,7 @@ const EXAM_SUBJECTS = {
 router.get('/me', requireAuth, async (req, res) => {
   try {
     const user = await prisma.user.findUnique({
-      where: { id: req.user.id },
+      where: { id: req.params.userId },
       select: {
         id: true, name: true, email: true, role: true,
         adminProfile: {
@@ -136,7 +136,7 @@ router.post('/messages', requireAuth, async (req, res) => {
     const { studentId, content, type } = req.body;
     if (!content || !content.trim()) return res.status(400).json({ error: 'Message content is required' });
 
-    const ap = await prisma.adminProfile.findUnique({ where: { userId: req.user.id } });
+    const ap = await prisma.adminProfile.findUnique({ where: { userId: req.params.userId } });
     if (!ap) return res.status(403).json({ error: 'Not an admin' });
 
     if (studentId === 'all') {
@@ -162,7 +162,7 @@ router.post('/messages', requireAuth, async (req, res) => {
 // GET /api/admin/messages — sent messages (deduplicated broadcasts)
 router.get('/messages', requireAuth, async (req, res) => {
   try {
-    const ap = await prisma.adminProfile.findUnique({ where: { userId: req.user.id } });
+    const ap = await prisma.adminProfile.findUnique({ where: { userId: req.params.userId } });
     if (!ap) return res.status(403).json({ error: 'Not an admin' });
 
     const msgs = await prisma.adminMessage.findMany({
@@ -196,7 +196,7 @@ router.get('/messages', requireAuth, async (req, res) => {
 // GET /api/admin/resources — all resources pending/approved/declined
 router.get('/resources', requireAuth, async (req, res) => {
   try {
-    const ap = await prisma.adminProfile.findUnique({ where: { userId: req.user.id } });
+    const ap = await prisma.adminProfile.findUnique({ where: { userId: req.params.userId } });
     if (!ap) return res.status(403).json({ error: 'Not an admin' });
 
     const resources = await prisma.resource.findMany({
@@ -220,7 +220,7 @@ router.get('/resources', requireAuth, async (req, res) => {
 // PUT /api/admin/resources/:id/approve
 router.put('/resources/:id/approve', requireAuth, async (req, res) => {
   try {
-    const ap = await prisma.adminProfile.findUnique({ where: { userId: req.user.id } });
+    const ap = await prisma.adminProfile.findUnique({ where: { userId: req.params.userId } });
     if (!ap) return res.status(403).json({ error: 'Not an admin' });
 
     const id = parseInt(req.params.id);
@@ -261,7 +261,7 @@ router.put('/resources/:id/approve', requireAuth, async (req, res) => {
 router.put('/resources/:id/decline', requireAuth, async (req, res) => {
   try {
     const { reason } = req.body;
-    const ap = await prisma.adminProfile.findUnique({ where: { userId: req.user.id } });
+    const ap = await prisma.adminProfile.findUnique({ where: { userId: req.params.userId } });
     if (!ap) return res.status(403).json({ error: 'Not an admin' });
 
     const id = parseInt(req.params.id);
@@ -283,7 +283,7 @@ router.put('/resources/:id/decline', requireAuth, async (req, res) => {
 // GET /api/admin/reports — all submitted/approved/rejected/sent reports
 router.get('/reports', requireAuth, async (req, res) => {
   try {
-    const ap = await prisma.adminProfile.findUnique({ where: { userId: req.user.id } });
+    const ap = await prisma.adminProfile.findUnique({ where: { userId: req.params.userId } });
     if (!ap) return res.status(403).json({ error: 'Not an admin' });
 
     const reports = await prisma.weeklyReport.findMany({
@@ -326,7 +326,7 @@ router.get('/reports', requireAuth, async (req, res) => {
 // PUT /api/admin/reports/:id/approve
 router.put('/reports/:id/approve', requireAuth, async (req, res) => {
   try {
-    const ap = await prisma.adminProfile.findUnique({ where: { userId: req.user.id } });
+    const ap = await prisma.adminProfile.findUnique({ where: { userId: req.params.userId } });
     if (!ap) return res.status(403).json({ error: 'Not an admin' });
 
     const id = parseInt(req.params.id);
@@ -352,7 +352,7 @@ router.put('/reports/:id/approve', requireAuth, async (req, res) => {
 router.put('/reports/:id/reject', requireAuth, async (req, res) => {
   try {
     const { reason } = req.body;
-    const ap = await prisma.adminProfile.findUnique({ where: { userId: req.user.id } });
+    const ap = await prisma.adminProfile.findUnique({ where: { userId: req.params.userId } });
     if (!ap) return res.status(403).json({ error: 'Not an admin' });
 
     const id = parseInt(req.params.id);
@@ -377,7 +377,7 @@ router.put('/reports/:id/reject', requireAuth, async (req, res) => {
 // POST /api/admin/reports/approve-all — approve all submitted reports for this admin
 router.post('/reports/approve-all', requireAuth, async (req, res) => {
   try {
-    const ap = await prisma.adminProfile.findUnique({ where: { userId: req.user.id } });
+    const ap = await prisma.adminProfile.findUnique({ where: { userId: req.params.userId } });
     if (!ap) return res.status(403).json({ error: 'Not an admin' });
 
     const result = await prisma.weeklyReport.updateMany({
@@ -395,7 +395,7 @@ router.post('/reports/approve-all', requireAuth, async (req, res) => {
 // POST /api/admin/reports/send — mark approved reports as sent (called by cron or manually)
 router.post('/reports/send', requireAuth, async (req, res) => {
   try {
-    const ap = await prisma.adminProfile.findUnique({ where: { userId: req.user.id } });
+    const ap = await prisma.adminProfile.findUnique({ where: { userId: req.params.userId } });
     if (!ap) return res.status(403).json({ error: 'Not an admin' });
 
     const approved = await prisma.weeklyReport.findMany({

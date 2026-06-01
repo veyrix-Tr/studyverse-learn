@@ -7,7 +7,7 @@ import FreeContent from '../components/free-lms/FreeContent';
 import FreeModals from '../components/free-lms/FreeModals';
 
 const FreeLMS = () => {
-  const [activePage, setActivePage] = useActivePage('/student', 'home');
+  const [activePage, setActivePage, userId] = useActivePage('/student', 'home');
   const [openModal, setOpenModal] = useState(null);
   const [toast, setToast] = useState({ show: false, msg: '' });
   const [profile, setProfile] = useState(null);
@@ -26,14 +26,17 @@ const FreeLMS = () => {
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token) return;
-    fetch('http://localhost:5000/api/student/me', {
+    fetch(`http://localhost:5000/api/student/${userId}/me`, {
       headers: { Authorization: `Bearer ${token}` },
     })
-      .then(r => r.ok ? r.json() : null)
+      .then(r => {
+        if (!r.ok) { localStorage.removeItem('token'); window.location.href = '/'; return null; }
+        return r.json();
+      })
       .then(data => { if (data && !data.error) setProfile(data); })
       .catch(() => {});
 
-    fetch('http://localhost:5000/api/student/habits', {
+    fetch(`http://localhost:5000/api/student/${userId}/habits`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then(r => r.ok ? r.json() : null)

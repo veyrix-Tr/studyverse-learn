@@ -1,4 +1,5 @@
 import { useState, Fragment } from 'react';
+import { useParams } from 'react-router-dom';
 
 const fmtTime = (iso) => new Date(iso).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
 const fmtDate = (iso) => new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
@@ -132,6 +133,7 @@ const pctBar   = (p) => p >= 75 ? 'pb-green' : p >= 60 ? 'pb-gold' : p >= 45 ? '
 const pctFlag  = (p) => p >= 75 ? ['On track', 'pp'] : p >= 60 ? ['Progressing', 'po'] : ['Needs support', 'pr'];
 
 const FacultyContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, sessions = [], doubts = [], students = [], resources = [], onDoubtAnswered, onSessionNoteUpdated, onResourceDeleted, weeklyReports = [], onReportCreated, onReportUpdated, onReportSubmitted, onReportDeleted, parentFeedback = [] }) => {
+  const { id: userId } = useParams();
   const firstName = profile?.name?.split(' ').find(p => !p.startsWith('Dr')) || profile?.name?.split(' ')[0] || 'there';
   const [scheduleTab, setScheduleTab] = useState(0);
   const [doubtsTab, setDoubtsTab] = useState(0);
@@ -178,7 +180,7 @@ const FacultyContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
     setCreatingReportFor(studentId);
     const token = localStorage.getItem('token');
     try {
-      const res = await fetch('http://localhost:5000/api/faculty/reports', {
+      const res = await fetch(`http://localhost:5000/api/faculty/${userId}/reports`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ studentId }),
@@ -205,7 +207,7 @@ const FacultyContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
     setSavingReport(true);
     const token = localStorage.getItem('token');
     try {
-      const res = await fetch(`http://localhost:5000/api/faculty/reports/${activeReport.id}`, {
+      const res = await fetch(`http://localhost:5000/api/faculty/${userId}/reports/${activeReport.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify(reportFields),
@@ -228,12 +230,12 @@ const FacultyContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
     setSubmittingReport(true);
     const token = localStorage.getItem('token');
     try {
-      await fetch(`http://localhost:5000/api/faculty/reports/${activeReport.id}`, {
+      await fetch(`http://localhost:5000/api/faculty/${userId}/reports/${activeReport.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify(reportFields),
       });
-      const res = await fetch(`http://localhost:5000/api/faculty/reports/${activeReport.id}/submit`, {
+      const res = await fetch(`http://localhost:5000/api/faculty/${userId}/reports/${activeReport.id}/submit`, {
         method: 'PUT',
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -252,7 +254,7 @@ const FacultyContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
   const deleteReportDraft = async (id) => {
     const token = localStorage.getItem('token');
     try {
-      const res = await fetch(`http://localhost:5000/api/faculty/reports/${id}`, {
+      const res = await fetch(`http://localhost:5000/api/faculty/${userId}/reports/${id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -269,7 +271,7 @@ const FacultyContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
     setDeletingResourceId(id);
     try {
       const token = localStorage.getItem('token');
-      const r = await fetch(`http://localhost:5000/api/faculty/resources/${id}`, {
+      const r = await fetch(`http://localhost:5000/api/faculty/${userId}/resources/${id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -330,7 +332,7 @@ const FacultyContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
     const token = localStorage.getItem('token');
     setSendingReminder(id);
     try {
-      const res = await fetch(`http://localhost:5000/api/faculty/sessions/${id}/remind`, {
+      const res = await fetch(`http://localhost:5000/api/faculty/${userId}/sessions/${id}/remind`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -349,7 +351,7 @@ const FacultyContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
     const token = localStorage.getItem('token');
     setSavingNote(id);
     try {
-      const res = await fetch(`http://localhost:5000/api/faculty/sessions/${id}/note`, {
+      const res = await fetch(`http://localhost:5000/api/faculty/${userId}/sessions/${id}/note`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ note: text }),
@@ -369,7 +371,7 @@ const FacultyContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
   const discussInSession = async (id) => {
     const token = localStorage.getItem('token');
     try {
-      const res = await fetch(`http://localhost:5000/api/faculty/doubts/${id}/discuss`, {
+      const res = await fetch(`http://localhost:5000/api/faculty/${userId}/doubts/${id}/discuss`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -386,7 +388,7 @@ const FacultyContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
     if (!text.trim()) { onShowToast('Please type a reply before sending'); return; }
     const token = localStorage.getItem('token');
     try {
-      const res = await fetch(`http://localhost:5000/api/faculty/doubts/${id}/answer`, {
+      const res = await fetch(`http://localhost:5000/api/faculty/${userId}/doubts/${id}/answer`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ answer: text.trim() }),

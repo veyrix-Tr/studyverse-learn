@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
 
 const mcqData = [
   { id: 1, qHtml: 'Q1. If f(x) = x² – 3x + 2, find lim<sub>x→2</sub> [f(x)/(x–2)]', opts: ['A. 0', 'B. 1', 'C. 2', "D. Doesn't exist"], correct: 'B' },
@@ -96,6 +97,7 @@ const guidanceConfig = [
 ];
 
 const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, onDiagnosticSaved, habitLogs = [], onHabitSaved }) => {
+  const { id: userId } = useParams();
   const p = (name) => `page${activePage === name ? ' on' : ''}`;
   const firstName = profile?.name?.split(' ')[0] || 'there';
   const examTarget = profile?.studentProfile?.examTarget || 'your exam';
@@ -187,7 +189,7 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, onD
     const finalScore = Math.round(selfAvg * 0.7 + mcqScore * 0.3);
     const token = localStorage.getItem('token');
     try {
-      const res = await fetch('http://localhost:5000/api/student/diagnostic', {
+      const res = await fetch(`http://localhost:5000/api/student/${userId}/diagnostic`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ score: finalScore }),
@@ -234,7 +236,7 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, onD
     const token = localStorage.getItem('token');
     try {
       const body = Object.fromEntries(HABIT_KEYS.map(k => [k, habitState[k] === 'yes']));
-      const res = await fetch('http://localhost:5000/api/student/habits', {
+      const res = await fetch(`http://localhost:5000/api/student/${userId}/habits`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify(body),

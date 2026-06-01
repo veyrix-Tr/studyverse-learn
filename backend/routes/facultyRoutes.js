@@ -1,5 +1,5 @@
 const express    = require('express');
-const router     = express.Router();
+const router     = express.Router({ mergeParams: true });
 const prisma     = require('../lib/prisma');
 const { requireAuth } = require('../middleware/auth');
 const { v2: cloudinary } = require('cloudinary');
@@ -16,7 +16,7 @@ cloudinary.config({
 router.get('/me', requireAuth, async (req, res) => {
   try {
     const user = await prisma.user.findUnique({
-      where: { id: req.user.id },
+      where: { id: req.params.userId },
       select: {
         id: true, name: true, email: true, role: true,
         facultyProfile: {
@@ -43,7 +43,7 @@ const EXAM_SUBJECTS = {
 // GET /api/faculty/sessions
 router.get('/sessions', requireAuth, async (req, res) => {
   try {
-    const fp = await prisma.facultyProfile.findUnique({ where: { userId: req.user.id } });
+    const fp = await prisma.facultyProfile.findUnique({ where: { userId: req.params.userId } });
     if (!fp) return res.json([]);
 
     const [sessions, premiumStudents] = await Promise.all([
@@ -84,7 +84,7 @@ router.get('/sessions', requireAuth, async (req, res) => {
 // GET /api/faculty/doubts
 router.get('/doubts', requireAuth, async (req, res) => {
   try {
-    const fp = await prisma.facultyProfile.findUnique({ where: { userId: req.user.id } });
+    const fp = await prisma.facultyProfile.findUnique({ where: { userId: req.params.userId } });
     if (!fp) return res.json([]);
 
     const doubts = await prisma.doubt.findMany({
@@ -113,7 +113,7 @@ router.get('/doubts', requireAuth, async (req, res) => {
 // Students whose grade + exam curriculum includes this faculty's subject (via sessions)
 router.get('/students', requireAuth, async (req, res) => {
   try {
-    const fp = await prisma.facultyProfile.findUnique({ where: { userId: req.user.id } });
+    const fp = await prisma.facultyProfile.findUnique({ where: { userId: req.params.userId } });
     if (!fp || !fp.subject) return res.json([]);
 
     // Grades this faculty teaches for their subject
@@ -172,7 +172,7 @@ router.post('/sessions/:id/note', requireAuth, async (req, res) => {
     if (note === undefined) return res.status(400).json({ error: 'Note text is required' });
 
     const fp = await prisma.facultyProfile.findUnique({
-      where: { userId: req.user.id },
+      where: { userId: req.params.userId },
       include: { user: { select: { name: true } } },
     });
     if (!fp) return res.status(403).json({ error: 'Not a faculty member' });
@@ -225,7 +225,7 @@ router.post('/sessions/:id/note', requireAuth, async (req, res) => {
 router.post('/sessions/:id/remind', requireAuth, async (req, res) => {
   try {
     const fp = await prisma.facultyProfile.findUnique({
-      where: { userId: req.user.id },
+      where: { userId: req.params.userId },
       include: { user: { select: { name: true } } },
     });
     if (!fp) return res.status(403).json({ error: 'Not a faculty member' });
@@ -276,7 +276,7 @@ router.post('/broadcast', requireAuth, async (req, res) => {
     if (!message || !message.trim()) return res.status(400).json({ error: 'Message is required' });
 
     const fp = await prisma.facultyProfile.findUnique({
-      where: { userId: req.user.id },
+      where: { userId: req.params.userId },
       include: { user: { select: { name: true } } },
     });
     if (!fp || !fp.subject) return res.status(403).json({ error: 'Not a faculty member' });
@@ -319,7 +319,7 @@ router.post('/broadcast', requireAuth, async (req, res) => {
 router.post('/doubts/:id/discuss', requireAuth, async (req, res) => {
   try {
     const fp = await prisma.facultyProfile.findUnique({
-      where: { userId: req.user.id },
+      where: { userId: req.params.userId },
       include: { user: { select: { name: true } } },
     });
     if (!fp) return res.status(403).json({ error: 'Not a faculty member' });
@@ -366,7 +366,7 @@ router.put('/doubts/:id/answer', requireAuth, async (req, res) => {
     if (!answer || !answer.trim()) return res.status(400).json({ error: 'Answer text is required' });
 
     const fp = await prisma.facultyProfile.findUnique({
-      where: { userId: req.user.id },
+      where: { userId: req.params.userId },
       include: { user: { select: { name: true } } },
     });
     if (!fp) return res.status(403).json({ error: 'Not a faculty member' });
@@ -406,7 +406,7 @@ router.post('/resources', requireAuth, async (req, res) => {
     if (!title || !subject || !grade || !type || !cloudinaryUrl || !cloudinaryId)
       return res.status(400).json({ error: 'Missing required fields' });
 
-    const fp = await prisma.facultyProfile.findUnique({ where: { userId: req.user.id } });
+    const fp = await prisma.facultyProfile.findUnique({ where: { userId: req.params.userId } });
     if (!fp) return res.status(403).json({ error: 'Not a faculty member' });
 
     const resource = await prisma.resource.create({
@@ -423,7 +423,7 @@ router.post('/resources', requireAuth, async (req, res) => {
 // GET /api/faculty/resources — faculty sees their own resources
 router.get('/resources', requireAuth, async (req, res) => {
   try {
-    const fp = await prisma.facultyProfile.findUnique({ where: { userId: req.user.id } });
+    const fp = await prisma.facultyProfile.findUnique({ where: { userId: req.params.userId } });
     if (!fp) return res.json([]);
 
     const resources = await prisma.resource.findMany({
@@ -463,7 +463,7 @@ function getWeekInfo(date = new Date()) {
 // GET /api/faculty/reports
 router.get('/reports', requireAuth, async (req, res) => {
   try {
-    const fp = await prisma.facultyProfile.findUnique({ where: { userId: req.user.id } });
+    const fp = await prisma.facultyProfile.findUnique({ where: { userId: req.params.userId } });
     if (!fp) return res.json([]);
 
     const reports = await prisma.weeklyReport.findMany({
@@ -506,7 +506,7 @@ router.post('/reports', requireAuth, async (req, res) => {
     const { studentId, weekStartDate: wsdOverride } = req.body;
     if (!studentId) return res.status(400).json({ error: 'studentId is required' });
 
-    const fp = await prisma.facultyProfile.findUnique({ where: { userId: req.user.id } });
+    const fp = await prisma.facultyProfile.findUnique({ where: { userId: req.params.userId } });
     if (!fp) return res.status(403).json({ error: 'Not a faculty member' });
 
     const student = await prisma.studentProfile.findUnique({
@@ -552,7 +552,7 @@ router.post('/reports', requireAuth, async (req, res) => {
 // PUT /api/faculty/reports/:id — update draft fields
 router.put('/reports/:id', requireAuth, async (req, res) => {
   try {
-    const fp = await prisma.facultyProfile.findUnique({ where: { userId: req.user.id } });
+    const fp = await prisma.facultyProfile.findUnique({ where: { userId: req.params.userId } });
     if (!fp) return res.status(403).json({ error: 'Not a faculty member' });
 
     const id = parseInt(req.params.id);
@@ -585,7 +585,7 @@ router.put('/reports/:id', requireAuth, async (req, res) => {
 // PUT /api/faculty/reports/:id/submit — submit for admin review
 router.put('/reports/:id/submit', requireAuth, async (req, res) => {
   try {
-    const fp = await prisma.facultyProfile.findUnique({ where: { userId: req.user.id } });
+    const fp = await prisma.facultyProfile.findUnique({ where: { userId: req.params.userId } });
     if (!fp) return res.status(403).json({ error: 'Not a faculty member' });
 
     const id = parseInt(req.params.id);
@@ -611,7 +611,7 @@ router.put('/reports/:id/submit', requireAuth, async (req, res) => {
 // DELETE /api/faculty/reports/:id — delete a draft report
 router.delete('/reports/:id', requireAuth, async (req, res) => {
   try {
-    const fp = await prisma.facultyProfile.findUnique({ where: { userId: req.user.id } });
+    const fp = await prisma.facultyProfile.findUnique({ where: { userId: req.params.userId } });
     if (!fp) return res.status(403).json({ error: 'Not a faculty member' });
 
     const id = parseInt(req.params.id);
@@ -635,7 +635,7 @@ router.delete('/reports/:id', requireAuth, async (req, res) => {
 // DELETE /api/faculty/resources/:id — delete own pending or declined resource
 router.delete('/resources/:id', requireAuth, async (req, res) => {
   try {
-    const fp = await prisma.facultyProfile.findUnique({ where: { userId: req.user.id } });
+    const fp = await prisma.facultyProfile.findUnique({ where: { userId: req.params.userId } });
     if (!fp) return res.status(403).json({ error: 'Not a faculty member' });
 
     const id = parseInt(req.params.id);
@@ -663,7 +663,7 @@ router.delete('/resources/:id', requireAuth, async (req, res) => {
 // GET /api/faculty/feedback — all parent feedback for this faculty's sent reports
 router.get('/feedback', requireAuth, async (req, res) => {
   try {
-    const fp = await prisma.facultyProfile.findUnique({ where: { userId: req.user.id } });
+    const fp = await prisma.facultyProfile.findUnique({ where: { userId: req.params.userId } });
     if (!fp) return res.status(403).json({ error: 'Not a faculty member' });
 
     const feedbacks = await prisma.parentFeedback.findMany({

@@ -34,14 +34,13 @@ const LoginForm = ({ onSwitchToRegister }) => {
       }
 
       localStorage.setItem('token', data.token);
-      localStorage.setItem('user', JSON.stringify(data.user));
 
-      const { role, plan } = data.user;
-      if (role === 'superadmin')    navigate('/superadmin', { replace: true });
-      else if (role === 'admin')    navigate('/admin', { replace: true });
-      else if (role === 'faculty')  navigate('/faculty', { replace: true });
-      else if (plan === 'premium')  navigate('/student-v2', { replace: true });
-      else                          navigate('/student', { replace: true });
+      const { id, role, plan } = data.user;
+      if (role === 'superadmin')    navigate(`/superadmin/${id}/dashboard`, { replace: true });
+      else if (role === 'admin')    navigate(`/admin/${id}/dashboard`, { replace: true });
+      else if (role === 'faculty')  navigate(`/faculty/${id}/dashboard`, { replace: true });
+      else if (plan === 'premium')  navigate(`/student-v2/${id}/dashboard`, { replace: true });
+      else                          navigate(`/student/${id}/home`, { replace: true });
 
     } catch {
       triggerToast('Cannot connect to server');

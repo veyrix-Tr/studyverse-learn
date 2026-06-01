@@ -19,14 +19,13 @@ const GoogleCallback = () => {
       const parsedUser = JSON.parse(decodeURIComponent(user));
 
       localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify(parsedUser));
 
-      const { role, plan } = parsedUser;
-      if (role === 'superadmin')    navigate('/superadmin', { replace: true });
-      else if (role === 'admin')    navigate('/admin', { replace: true });
-      else if (role === 'faculty')  navigate('/faculty', { replace: true });
-      else if (plan === 'premium')  navigate('/student-v2', { replace: true });
-      else                          navigate('/student', { replace: true });
+      const { id, role, plan } = parsedUser;
+      if (role === 'superadmin')    navigate(`/superadmin/${id}/dashboard`, { replace: true });
+      else if (role === 'admin')    navigate(`/admin/${id}/dashboard`, { replace: true });
+      else if (role === 'faculty')  navigate(`/faculty/${id}/dashboard`, { replace: true });
+      else if (plan === 'premium')  navigate(`/student-v2/${id}/dashboard`, { replace: true });
+      else                          navigate(`/student/${id}/home`, { replace: true });
     } catch {
       navigate('/login', { replace: true });
     }

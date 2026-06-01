@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useParams } from 'react-router-dom';
 
 const EXAM_SUBJECTS = {
   'JEE Mains':    ['Physics', 'Chemistry', 'Maths'],
@@ -7,6 +8,7 @@ const EXAM_SUBJECTS = {
 };
 
 const StudentModals = ({ openModal, onClose, onShowToast, toast, profile, onDoubtPosted }) => {
+  const { id: userId } = useParams();
   const isOpen = (id) => openModal === id ? ' open' : '';
 
   const subjects = EXAM_SUBJECTS[profile?.studentProfile?.examTarget] || ['Physics', 'Chemistry', 'Maths'];
@@ -20,7 +22,7 @@ const StudentModals = ({ openModal, onClose, onShowToast, toast, profile, onDoub
     setPosting(true);
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:5000/api/student/doubts', {
+      const res = await fetch(`http://localhost:5000/api/student/${userId}/doubts`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ question: doubtQuestion.trim(), subject }),

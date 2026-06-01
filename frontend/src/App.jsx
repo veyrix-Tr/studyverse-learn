@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { Routes, Route, Navigate, useParams } from 'react-router-dom'
 import Login from './pages/Login'
 import AdminLMS from './pages/AdminLMS'
 import FacultyLMS from './pages/FacultyLMS'
@@ -14,7 +14,6 @@ export const getTokenPayload = () => {
     const payload = JSON.parse(atob(base64));
     if (payload.exp && payload.exp * 1000 < Date.now()) {
       localStorage.removeItem('token');
-      localStorage.removeItem('user');
       return null;
     }
     return payload;
@@ -24,37 +23,43 @@ export const getTokenPayload = () => {
 };
 
 export const getStoredPlan = () => {
-  try { return JSON.parse(localStorage.getItem('user') || 'null')?.plan || 'free'; }
-  catch { return 'free'; }
+  return getTokenPayload()?.plan || 'free';
 };
 
-export const homeForRole = (role) => {
-  if (role === 'superadmin') return '/superadmin';
-  if (role === 'admin')      return '/admin';
-  if (role === 'faculty')    return '/faculty';
-  return getStoredPlan() === 'premium' ? '/student-v2' : '/student';
+export const homeForRole = (role, id) => {
+  if (role === 'superadmin') return `/superadmin/${id}/dashboard`;
+  if (role === 'admin')      return `/admin/${id}/dashboard`;
+  if (role === 'faculty')    return `/faculty/${id}/dashboard`;
+  return getStoredPlan() === 'premium' ? `/student-v2/${id}/dashboard` : `/student/${id}/home`;
 };
 
-// Redirects to the correct home based on stored token
+// Redirects to the correct home based on stored token (used when no id in URL)
 function RoleRedirect() {
   const payload = getTokenPayload();
   if (!payload) return <Navigate to="/" replace />;
-  return <Navigate to={homeForRole(payload.role)} replace />;
+  return <Navigate to={homeForRole(payload.role, payload.id)} replace />;
 }
 
-// Guards a route: checks token, role, and student plan
+// Guards a route: checks token, role, and that URL id matches token id
 function AuthGuard({ expectedRole, requirePlan, children }) {
   const payload = getTokenPayload();
+  const { id } = useParams();
+
   if (!payload) return <Navigate to="/" replace />;
 
   if (payload.role !== expectedRole) {
-    return <Navigate to={homeForRole(payload.role)} replace />;
+    return <Navigate to={homeForRole(payload.role, payload.id)} replace />;
+  }
+
+  // Prevent accessing another user's URL
+  if (id && String(payload.id) !== id) {
+    return <Navigate to={homeForRole(payload.role, payload.id)} replace />;
   }
 
   if (expectedRole === 'student' && requirePlan) {
     const plan = getStoredPlan();
-    if (requirePlan === 'premium' && plan !== 'premium') return <Navigate to="/student" replace />;
-    if (requirePlan === 'free'    && plan === 'premium') return <Navigate to="/student-v2" replace />;
+    if (requirePlan === 'premium' && plan !== 'premium') return <Navigate to={`/student/${payload.id}/home`} replace />;
+    if (requirePlan === 'free'    && plan === 'premium') return <Navigate to={`/student-v2/${payload.id}/dashboard`} replace />;
   }
 
   return children;
@@ -70,26 +75,26 @@ function App() {
       <Route path="/auth/google" element={<GoogleCallback />} />
 
       {/* Student — premium */}
-      <Route path="/student-v2" element={<AuthGuard expectedRole="student" requirePlan="premium"><StudentLMS /></AuthGuard>} />
-      <Route path="/student-v2/:page" element={<AuthGuard expectedRole="student" requirePlan="premium"><StudentLMS /></AuthGuard>} />
+      <Route path="/student-v2/:id"       element={<AuthGuard expectedRole="student" requirePlan="premium"><StudentLMS /></AuthGuard>} />
+      <Route path="/student-v2/:id/:page" element={<AuthGuard expectedRole="student" requirePlan="premium"><StudentLMS /></AuthGuard>} />
 
       {/* Student — free */}
-      <Route path="/student" element={<AuthGuard expectedRole="student" requirePlan="free"><FreeLMS /></AuthGuard>} />
-      <Route path="/student/:page" element={<AuthGuard expectedRole="student" requirePlan="free"><FreeLMS /></AuthGuard>} />
+      <Route path="/student/:id"       element={<AuthGuard expectedRole="student" requirePlan="free"><FreeLMS /></AuthGuard>} />
+      <Route path="/student/:id/:page" element={<AuthGuard expectedRole="student" requirePlan="free"><FreeLMS /></AuthGuard>} />
 
       {/* Faculty */}
-      <Route path="/faculty" element={<AuthGuard expectedRole="faculty"><FacultyLMS /></AuthGuard>} />
-      <Route path="/faculty/:page" element={<AuthGuard expectedRole="faculty"><FacultyLMS /></AuthGuard>} />
+      <Route path="/faculty/:id"       element={<AuthGuard expectedRole="faculty"><FacultyLMS /></AuthGuard>} />
+      <Route path="/faculty/:id/:page" element={<AuthGuard expectedRole="faculty"><FacultyLMS /></AuthGuard>} />
 
       {/* Admin */}
-      <Route path="/admin" element={<AuthGuard expectedRole="admin"><AdminLMS expectedRole="admin" /></AuthGuard>} />
-      <Route path="/admin/:page" element={<AuthGuard expectedRole="admin"><AdminLMS expectedRole="admin" /></AuthGuard>} />
+      <Route path="/admin/:id"       element={<AuthGuard expectedRole="admin"><AdminLMS expectedRole="admin" /></AuthGuard>} />
+      <Route path="/admin/:id/:page" element={<AuthGuard expectedRole="admin"><AdminLMS expectedRole="admin" /></AuthGuard>} />
 
       {/* Superadmin */}
-      <Route path="/superadmin" element={<AuthGuard expectedRole="superadmin"><AdminLMS expectedRole="superadmin" /></AuthGuard>} />
-      <Route path="/superadmin/:page" element={<AuthGuard expectedRole="superadmin"><AdminLMS expectedRole="superadmin" /></AuthGuard>} />
+      <Route path="/superadmin/:id"       element={<AuthGuard expectedRole="superadmin"><AdminLMS expectedRole="superadmin" /></AuthGuard>} />
+      <Route path="/superadmin/:id/:page" element={<AuthGuard expectedRole="superadmin"><AdminLMS expectedRole="superadmin" /></AuthGuard>} />
 
-      {/* Catch-all */}
+      {/* Catch-all — redirects using token */}
       <Route path="*" element={<RoleRedirect />} />
     </Routes>
   );

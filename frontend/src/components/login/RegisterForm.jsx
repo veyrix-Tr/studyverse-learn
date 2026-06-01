@@ -153,9 +153,8 @@ const RegisterForm = ({ onSwitchToLogin, googleName = '', googleEmail = '', isGo
 
       if (loginRes.ok) {
         localStorage.setItem('token', loginData.token);
-        localStorage.setItem('user', JSON.stringify(loginData.user));
-        const plan = loginData.user?.plan;
-        navigate(plan === 'premium' ? '/student-v2' : '/student', { replace: true });
+        const { id, plan } = loginData.user;
+        navigate(plan === 'premium' ? `/student-v2/${id}/dashboard` : `/student/${id}/home`, { replace: true });
       } else {
         navigate('/login', { replace: true });
       }

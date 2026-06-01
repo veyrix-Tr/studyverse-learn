@@ -23,4 +23,11 @@ const requireAuth = (req, res, next) => {
   }
 };
 
-module.exports = { requireAuth };
+const validateUrlUser = (req, res, next) => {
+  if (req.params.userId && req.user.id !== req.params.userId) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+  next();
+};
+
+module.exports = { requireAuth, validateUrlUser };
