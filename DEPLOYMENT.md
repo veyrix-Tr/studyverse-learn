@@ -31,11 +31,15 @@ Push your code to GitHub before starting. Vercel and Supabase connect directly t
 2. Import your GitHub repository.
 3. Set the **Root Directory** to `backend`.
 4. Set **Framework Preset** to **Other**.
-5. Set **Build Command** to:
-   ```
-   npm install && npx prisma generate && npx prisma db push
-   ```
+5. Leave **Build Command** blank — `vercel.json` controls the build, and `prisma generate` runs automatically via the `postinstall` script in `package.json`.
 6. Leave **Output Directory** blank (not a static site).
+
+   > **First deploy only:** After the backend is live, run this once from your local machine to create the database tables:
+   > ```bash
+   > cd backend
+   > npx prisma db push
+   > ```
+   > Do not put `prisma db push` in the Vercel build command — it is not safe to run automatically on every deploy.
 7. Under **Environment Variables**, add all of the following:
 
    | Key | Value |
