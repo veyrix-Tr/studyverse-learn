@@ -9,11 +9,12 @@ router.post('/login', login);
 router.post('/check-email', checkEmail);
 
 // Step 1 — redirect user to Google login page
-router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
+// state:false + session:false → no server-side session needed (works on serverless)
+router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'], state: false, session: false }));
 
 // Step 2 — Google redirects back here after login
 router.get('/google/callback',
-  passport.authenticate('google', { failureRedirect: `${process.env.CLIENT_URL}/login?error=google-failed` }),
+  passport.authenticate('google', { failureRedirect: `${process.env.CLIENT_URL}/login?error=google-failed`, state: false, session: false }),
   async (req, res) => {
     try {
       const prisma  = require('../lib/prisma');

@@ -1,6 +1,5 @@
 const express  = require('express');
 const cors     = require('cors');
-const session  = require('express-session');
 const passport = require('./config/passport');
 require('dotenv').config();
 
@@ -13,9 +12,7 @@ const allowedOrigins = process.env.FRONTEND_URL
   : ['http://localhost:3000', 'http://localhost:5173'];
 app.use(cors({ origin: allowedOrigins, credentials: true }));
 app.use(express.json());
-app.use(session({ secret: process.env.JWT_SECRET, resave: false, saveUninitialized: false }));
 app.use(passport.initialize());
-app.use(passport.session());
 
 // Routes
 app.get('/', (req, res) => {
@@ -50,11 +47,16 @@ app.use('/api/admin/:userId', requireAuth, validateUrlUser, adminRoutes);
 const fileRoutes = require('./routes/fileRoutes');
 app.use('/api/files', fileRoutes);
 
-const { startCronJobs } = require('./services/cronService');
-startCronJobs();
+const cronRoutes = require('./routes/cronRoutes');
+app.use('/api/cron', cronRoutes);
 
-// app.listen(PORT, () => {
-//   console.log(`Server running on port ${PORT}`);
-// });
+// Local dev: run server + node-cron; Vercel imports this file as a module
+if (require.main === module) {
+  const { startCronJobs } = require('./services/cronService');
+  startCronJobs();
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+  });
+}
 
 module.exports = app;
