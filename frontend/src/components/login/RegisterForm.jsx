@@ -40,7 +40,7 @@ const RegisterForm = ({ onSwitchToLogin, googleName = '', googleEmail = '', isGo
 
   const emailAlreadyExists = async (email) => {
     try {
-      const res = await fetch('http://localhost:5000/api/auth/check-email', {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/check-email`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
@@ -65,7 +65,7 @@ const RegisterForm = ({ onSwitchToLogin, googleName = '', googleEmail = '', isGo
     }
     showToast('Sending OTP...');
     try {
-      const res = await fetch('http://localhost:5000/api/otp/send', {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/otp/send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: formData.email }),
@@ -95,7 +95,7 @@ const RegisterForm = ({ onSwitchToLogin, googleName = '', googleEmail = '', isGo
     if (formData.otp.length !== 6) { showToast('Enter a 6-digit OTP'); return; }
 
     try {
-      const res = await fetch('http://localhost:5000/api/otp/verify', {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/otp/verify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: formData.email, otp: formData.otp }),
@@ -126,7 +126,7 @@ const RegisterForm = ({ onSwitchToLogin, googleName = '', googleEmail = '', isGo
     showToast('Creating account...');
 
     try {
-      const res = await fetch('http://localhost:5000/api/auth/register', {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -144,7 +144,7 @@ const RegisterForm = ({ onSwitchToLogin, googleName = '', googleEmail = '', isGo
       if (!res.ok) { showToast(data.error || 'Registration failed'); return; }
 
       // Auto-login after registration
-      const loginRes = await fetch('http://localhost:5000/api/auth/login', {
+      const loginRes = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: formData.email, password: formData.password }),
@@ -299,7 +299,7 @@ const RegisterForm = ({ onSwitchToLogin, googleName = '', googleEmail = '', isGo
           {!isGoogle && (
             <>
               <div className="divider" style={{ margin: '18px 0' }}><span>or</span></div>
-              <button className="social-btn" onClick={() => window.location.href = 'http://localhost:5000/api/auth/google'}>
+              <button className="social-btn" onClick={() => window.location.href = `${import.meta.env.VITE_API_URL}/api/auth/google`}>
                 <svg className="social-icon" viewBox="0 0 18 18" fill="none">
                   <path d="M17.64 9.205c0-.639-.057-1.252-.164-1.841H9v3.481h4.844a4.14 4.14 0 01-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
                   <path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 009 18z" fill="#34A853"/>

@@ -39,7 +39,7 @@ const AdminLMS = ({ expectedRole }) => {
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token) return;
-    fetch(`http://localhost:5000/api/admin/${userId}/me`, { headers: { Authorization: `Bearer ${token}` } })
+    fetch(`${import.meta.env.VITE_API_URL}/api/admin/${userId}/me`, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => {
         if (!r.ok) { localStorage.removeItem('token'); window.location.href = '/'; return null; }
         return r.json();
@@ -57,22 +57,22 @@ const AdminLMS = ({ expectedRole }) => {
       })
       .catch(() => {});
 
-    fetch(`http://localhost:5000/api/admin/${userId}/students`, { headers: { Authorization: `Bearer ${token}` } })
+    fetch(`${import.meta.env.VITE_API_URL}/api/admin/${userId}/students`, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.ok ? r.json() : [])
       .then(data => { if (Array.isArray(data)) setStudents(data); })
       .catch(() => {});
 
-    fetch(`http://localhost:5000/api/admin/${userId}/resources`, { headers: { Authorization: `Bearer ${token}` } })
+    fetch(`${import.meta.env.VITE_API_URL}/api/admin/${userId}/resources`, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.ok ? r.json() : [])
       .then(data => { if (Array.isArray(data)) setResources(data); })
       .catch(() => {});
 
-    fetch(`http://localhost:5000/api/admin/${userId}/messages`, { headers: { Authorization: `Bearer ${token}` } })
+    fetch(`${import.meta.env.VITE_API_URL}/api/admin/${userId}/messages`, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.ok ? r.json() : [])
       .then(data => { if (Array.isArray(data)) setSentMessages(data); })
       .catch(() => {});
 
-    fetch(`http://localhost:5000/api/admin/${userId}/reports`, { headers: { Authorization: `Bearer ${token}` } })
+    fetch(`${import.meta.env.VITE_API_URL}/api/admin/${userId}/reports`, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.ok ? r.json() : [])
       .then(data => { if (Array.isArray(data)) setParentReports(data); })
       .catch(() => {});
@@ -84,7 +84,7 @@ const AdminLMS = ({ expectedRole }) => {
     const token = localStorage.getItem('token');
     if (!token) return;
     const id = setInterval(() => {
-      fetch(`http://localhost:5000/api/admin/${userId}/reports`, { headers: { Authorization: `Bearer ${token}` } })
+      fetch(`${import.meta.env.VITE_API_URL}/api/admin/${userId}/reports`, { headers: { Authorization: `Bearer ${token}` } })
         .then(r => r.ok ? r.json() : null)
         .then(fresh => {
           if (!Array.isArray(fresh)) return;
@@ -105,7 +105,7 @@ const AdminLMS = ({ expectedRole }) => {
     const token = localStorage.getItem('token');
     if (!token) return;
     const id = setInterval(() => {
-      fetch(`http://localhost:5000/api/admin/${userId}/resources`, { headers: { Authorization: `Bearer ${token}` } })
+      fetch(`${import.meta.env.VITE_API_URL}/api/admin/${userId}/resources`, { headers: { Authorization: `Bearer ${token}` } })
         .then(r => r.ok ? r.json() : null)
         .then(fresh => {
           if (!Array.isArray(fresh)) return;
@@ -130,7 +130,7 @@ const AdminLMS = ({ expectedRole }) => {
   useEffect(() => {
     if (!isSuperAdmin) return;
     const token = localStorage.getItem('token');
-    fetch(`http://localhost:5000/api/admin/${userId}/admins`, { headers: { Authorization: `Bearer ${token}` } })
+    fetch(`${import.meta.env.VITE_API_URL}/api/admin/${userId}/admins`, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.ok ? r.json() : [])
       .then(data => { if (Array.isArray(data)) setAdminAccounts(data); })
       .catch(() => {});
@@ -139,7 +139,7 @@ const AdminLMS = ({ expectedRole }) => {
   const deactivateAdmin = async (adminId) => {
     const token = localStorage.getItem('token');
     try {
-      const res = await fetch(`http://localhost:5000/api/admin/${userId}/admins/${adminId}/deactivate`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/${userId}/admins/${adminId}/deactivate`, {
         method: 'PUT',
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -156,7 +156,7 @@ const AdminLMS = ({ expectedRole }) => {
 
   const sendMessage = async (to, type, content) => {
     const token = localStorage.getItem('token');
-    const res = await fetch(`http://localhost:5000/api/admin/${userId}/messages`, {
+    const res = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/${userId}/messages`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({ studentId: to, content: content.trim(), type }),
@@ -177,7 +177,7 @@ const AdminLMS = ({ expectedRole }) => {
   const approveResource = async (id) => {
     const token = localStorage.getItem('token');
     try {
-      const res = await fetch(`http://localhost:5000/api/admin/${userId}/resources/${id}/approve`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/${userId}/resources/${id}/approve`, {
         method: 'PUT',
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -195,7 +195,7 @@ const AdminLMS = ({ expectedRole }) => {
   const declineResource = async (id, reason) => {
     const token = localStorage.getItem('token');
     try {
-      const res = await fetch(`http://localhost:5000/api/admin/${userId}/resources/${id}/decline`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/${userId}/resources/${id}/decline`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ reason }),
@@ -214,7 +214,7 @@ const AdminLMS = ({ expectedRole }) => {
   const approveReport = async (id) => {
     const token = localStorage.getItem('token');
     try {
-      const res = await fetch(`http://localhost:5000/api/admin/${userId}/reports/${id}/approve`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/${userId}/reports/${id}/approve`, {
         method: 'PUT',
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -230,7 +230,7 @@ const AdminLMS = ({ expectedRole }) => {
   const rejectReport = async (id, reason) => {
     const token = localStorage.getItem('token');
     try {
-      const res = await fetch(`http://localhost:5000/api/admin/${userId}/reports/${id}/reject`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/${userId}/reports/${id}/reject`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ reason }),
@@ -247,7 +247,7 @@ const AdminLMS = ({ expectedRole }) => {
   const approveAllReports = async () => {
     const token = localStorage.getItem('token');
     try {
-      const res = await fetch(`http://localhost:5000/api/admin/${userId}/reports/approve-all`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/${userId}/reports/approve-all`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -264,7 +264,7 @@ const AdminLMS = ({ expectedRole }) => {
   const sendApprovedReports = async () => {
     const token = localStorage.getItem('token');
     try {
-      const res = await fetch(`http://localhost:5000/api/admin/${userId}/reports/send`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/${userId}/reports/send`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -280,7 +280,7 @@ const AdminLMS = ({ expectedRole }) => {
   const reactivateAdmin = async (adminId) => {
     const token = localStorage.getItem('token');
     try {
-      const res = await fetch(`http://localhost:5000/api/admin/${userId}/admins/${adminId}/reactivate`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/${userId}/admins/${adminId}/reactivate`, {
         method: 'PUT',
         headers: { Authorization: `Bearer ${token}` },
       });

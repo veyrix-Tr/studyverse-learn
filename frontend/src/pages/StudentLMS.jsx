@@ -45,7 +45,7 @@ const StudentLMS = () => {
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token) return;
-    fetch(`http://localhost:5000/api/student/${userId}/me`, {
+    fetch(`${import.meta.env.VITE_API_URL}/api/student/${userId}/me`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then(r => {
@@ -55,42 +55,42 @@ const StudentLMS = () => {
       .then(data => { if (data && !data.error) setProfile(data); })
       .catch(() => {});
 
-    fetch(`http://localhost:5000/api/student/${userId}/scores`, {
+    fetch(`${import.meta.env.VITE_API_URL}/api/student/${userId}/scores`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then(r => r.ok ? r.json() : null)
       .then(data => { if (data && data.weeks) setScores(data.weeks); })
       .catch(() => {});
 
-    fetch(`http://localhost:5000/api/student/${userId}/sessions`, {
+    fetch(`${import.meta.env.VITE_API_URL}/api/student/${userId}/sessions`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then(r => r.ok ? r.json() : null)
       .then(data => { if (Array.isArray(data)) setSessions(data); })
       .catch(() => {});
 
-    fetch(`http://localhost:5000/api/student/${userId}/doubts`, {
+    fetch(`${import.meta.env.VITE_API_URL}/api/student/${userId}/doubts`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then(r => r.ok ? r.json() : null)
       .then(data => { if (Array.isArray(data)) setDoubts(data); })
       .catch(() => {});
 
-    fetch(`http://localhost:5000/api/student/${userId}/notifications`, {
+    fetch(`${import.meta.env.VITE_API_URL}/api/student/${userId}/notifications`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then(r => r.ok ? r.json() : null)
       .then(data => { if (Array.isArray(data)) setNotifications(data); })
       .catch(() => {});
 
-    fetch(`http://localhost:5000/api/student/${userId}/resources`, {
+    fetch(`${import.meta.env.VITE_API_URL}/api/student/${userId}/resources`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then(r => r.ok ? r.json() : null)
       .then(data => { if (Array.isArray(data)) setResources(data); })
       .catch(() => {});
 
-    fetch(`http://localhost:5000/api/student/${userId}/reports`, {
+    fetch(`${import.meta.env.VITE_API_URL}/api/student/${userId}/reports`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then(r => r.ok ? r.json() : null)
@@ -110,7 +110,7 @@ const StudentLMS = () => {
     const token = localStorage.getItem('token');
     if (!token) return;
     const id = setInterval(() => {
-      fetch(`http://localhost:5000/api/student/${userId}/doubts`, {
+      fetch(`${import.meta.env.VITE_API_URL}/api/student/${userId}/doubts`, {
         headers: { Authorization: `Bearer ${token}` },
       })
         .then(r => r.ok ? r.json() : null)
@@ -128,7 +128,7 @@ const StudentLMS = () => {
         })
         .catch(() => {});
 
-      fetch(`http://localhost:5000/api/student/${userId}/notifications`, {
+      fetch(`${import.meta.env.VITE_API_URL}/api/student/${userId}/notifications`, {
         headers: { Authorization: `Bearer ${token}` },
       })
         .then(r => r.ok ? r.json() : null)
@@ -145,19 +145,19 @@ const StudentLMS = () => {
           });
           setNotifications(fresh);
           if (hasNewReport) {
-            fetch(`http://localhost:5000/api/student/${userId}/reports`, { headers: { Authorization: `Bearer ${token}` } })
+            fetch(`${import.meta.env.VITE_API_URL}/api/student/${userId}/reports`, { headers: { Authorization: `Bearer ${token}` } })
               .then(r => r.ok ? r.json() : null)
               .then(rd => { if (rd && (rd.subjects || rd.reports)) setParentReports(rd); })
               .catch(() => {});
           }
           if (hasNewResource) {
-            fetch(`http://localhost:5000/api/student/${userId}/resources`, { headers: { Authorization: `Bearer ${token}` } })
+            fetch(`${import.meta.env.VITE_API_URL}/api/student/${userId}/resources`, { headers: { Authorization: `Bearer ${token}` } })
               .then(r => r.ok ? r.json() : null)
               .then(rd => { if (Array.isArray(rd)) setResources(rd); })
               .catch(() => {});
           }
           if (hasSessionNote) {
-            fetch(`http://localhost:5000/api/student/${userId}/sessions`, { headers: { Authorization: `Bearer ${token}` } })
+            fetch(`${import.meta.env.VITE_API_URL}/api/student/${userId}/sessions`, { headers: { Authorization: `Bearer ${token}` } })
               .then(r => r.ok ? r.json() : null)
               .then(rd => { if (Array.isArray(rd)) setSessions(rd); })
               .catch(() => {});
@@ -174,7 +174,7 @@ const StudentLMS = () => {
     setNotifications(prev => {
       const unread = prev.filter(n => !n.readAt);
       unread.forEach(n => {
-        fetch(`http://localhost:5000/api/student/${userId}/notifications/${n.id}/read`, {
+        fetch(`${import.meta.env.VITE_API_URL}/api/student/${userId}/notifications/${n.id}/read`, {
           method: 'PUT',
           headers: { Authorization: `Bearer ${token}` },
         }).catch(() => {});
@@ -191,7 +191,7 @@ const StudentLMS = () => {
   const handleNotificationClick = (id, type) => {
     const token = localStorage.getItem('token');
     if (token) {
-      fetch(`http://localhost:5000/api/student/${userId}/notifications/${id}/read`, {
+      fetch(`${import.meta.env.VITE_API_URL}/api/student/${userId}/notifications/${id}/read`, {
         method: 'PUT',
         headers: { Authorization: `Bearer ${token}` },
       }).catch(() => {});

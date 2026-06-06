@@ -189,7 +189,7 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, onD
     const finalScore = Math.round(selfAvg * 0.7 + mcqScore * 0.3);
     const token = localStorage.getItem('token');
     try {
-      const res = await fetch(`http://localhost:5000/api/student/${userId}/diagnostic`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/student/${userId}/diagnostic`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ score: finalScore }),
@@ -236,7 +236,7 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, onD
     const token = localStorage.getItem('token');
     try {
       const body = Object.fromEntries(HABIT_KEYS.map(k => [k, habitState[k] === 'yes']));
-      const res = await fetch(`http://localhost:5000/api/student/${userId}/habits`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/student/${userId}/habits`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify(body),

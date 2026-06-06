@@ -22,7 +22,7 @@ const StudentModals = ({ openModal, onClose, onShowToast, toast, profile, onDoub
     setPosting(true);
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:5000/api/student/${userId}/doubts`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/student/${userId}/doubts`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ question: doubtQuestion.trim(), subject }),

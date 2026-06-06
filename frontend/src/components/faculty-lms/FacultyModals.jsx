@@ -47,7 +47,7 @@ const FacultyModals = ({ openModal, onClose, onShowToast, toast, detailOpen, sel
 
       // 2. Save metadata to backend
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:5000/api/faculty/${userId}/resources`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/faculty/${userId}/resources`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
@@ -78,7 +78,7 @@ const FacultyModals = ({ openModal, onClose, onShowToast, toast, detailOpen, sel
     const token = localStorage.getItem('token');
     setBroadcasting(true);
     try {
-      const res = await fetch(`http://localhost:5000/api/faculty/${userId}/broadcast`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/faculty/${userId}/broadcast`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ message: broadcastText.trim() }),

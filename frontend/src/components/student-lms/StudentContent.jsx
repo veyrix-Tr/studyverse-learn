@@ -808,8 +808,8 @@ const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
                 {r.description && <div style={{ fontSize: '12px', color: 'var(--text3)', marginTop: '3px' }}>{r.description}</div>}
               </div>
               <div style={{ marginLeft: 'auto', display: 'flex', gap: '6px' }}>
-                <a href={`http://localhost:5000/api/files/proxy?url=${encodeURIComponent(r.cloudinaryUrl)}`} target="_blank" rel="noreferrer" className="btn btn-ghost btn-sm" style={{ textDecoration: 'none' }}>↗ View</a>
-                <a href={`http://localhost:5000/api/files/proxy?url=${encodeURIComponent(r.cloudinaryUrl)}&download=1`} target="_blank" rel="noreferrer" className="btn btn-ghost btn-sm" style={{ textDecoration: 'none' }}>↓ Download</a>
+                <a href={`${import.meta.env.VITE_API_URL}/api/files/proxy?url=${encodeURIComponent(r.cloudinaryUrl)}`} target="_blank" rel="noreferrer" className="btn btn-ghost btn-sm" style={{ textDecoration: 'none' }}>↗ View</a>
+                <a href={`${import.meta.env.VITE_API_URL}/api/files/proxy?url=${encodeURIComponent(r.cloudinaryUrl)}&download=1`} target="_blank" rel="noreferrer" className="btn btn-ghost btn-sm" style={{ textDecoration: 'none' }}>↓ Download</a>
               </div>
             </div>
           ));
@@ -841,7 +841,7 @@ const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
             const markHelpful = async (val) => {
               const token = localStorage.getItem('token');
               try {
-                const res = await fetch(`http://localhost:5000/api/student/${userId}/doubts/${d.id}/helpful`, {
+                const res = await fetch(`${import.meta.env.VITE_API_URL}/api/student/${userId}/doubts/${d.id}/helpful`, {
                   method: 'PUT',
                   headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
                   body: JSON.stringify({ helpful: val }),
@@ -1251,7 +1251,7 @@ const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
             if (!fb.rating) return;
             setFeedbackState(prev => ({ ...prev, [r.id]: { ...prev[r.id], submitting: true } }));
             const token = localStorage.getItem('token');
-            const res = await fetch(`http://localhost:5000/api/student/${userId}/feedback`, {
+            const res = await fetch(`${import.meta.env.VITE_API_URL}/api/student/${userId}/feedback`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
               body: JSON.stringify({ reportId: r.id, rating: fb.rating, comment: fb.comment || '' }),

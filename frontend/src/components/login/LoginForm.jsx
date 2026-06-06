@@ -20,7 +20,7 @@ const LoginForm = ({ onSwitchToRegister }) => {
     triggerToast('Signing in...');
 
     try {
-      const res = await fetch('http://localhost:5000/api/auth/login', {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
@@ -137,7 +137,7 @@ const LoginForm = ({ onSwitchToRegister }) => {
 
       <div className="divider"><span>or continue with</span></div>
 
-      <button className="social-btn" onClick={() => window.location.href = 'http://localhost:5000/api/auth/google'}>
+      <button className="social-btn" onClick={() => window.location.href = `${import.meta.env.VITE_API_URL}/api/auth/google`}>
         <svg className="social-icon" viewBox="0 0 18 18" fill="none">
           <path d="M17.64 9.205c0-.639-.057-1.252-.164-1.841H9v3.481h4.844a4.14 4.14 0 01-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
           <path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 009 18z" fill="#34A853"/>

@@ -26,7 +26,7 @@ const FreeLMS = () => {
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token) return;
-    fetch(`http://localhost:5000/api/student/${userId}/me`, {
+    fetch(`${import.meta.env.VITE_API_URL}/api/student/${userId}/me`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then(r => {
@@ -36,7 +36,7 @@ const FreeLMS = () => {
       .then(data => { if (data && !data.error) setProfile(data); })
       .catch(() => {});
 
-    fetch(`http://localhost:5000/api/student/${userId}/habits`, {
+    fetch(`${import.meta.env.VITE_API_URL}/api/student/${userId}/habits`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then(r => r.ok ? r.json() : null)

@@ -578,7 +578,7 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
               </div>
               {item.cloudinaryUrl && (
                 <a
-                  href={`http://localhost:5000/api/files/proxy?url=${encodeURIComponent(item.cloudinaryUrl)}`}
+                  href={`${import.meta.env.VITE_API_URL}/api/files/proxy?url=${encodeURIComponent(item.cloudinaryUrl)}`}
                   target="_blank"
                   rel="noreferrer"
                   className="btn btn-ghost btn-sm"

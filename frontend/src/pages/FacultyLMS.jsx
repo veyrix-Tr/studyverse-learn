@@ -41,7 +41,7 @@ const FacultyLMS = () => {
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token) return;
-    fetch(`http://localhost:5000/api/faculty/${userId}/me`, {
+    fetch(`${import.meta.env.VITE_API_URL}/api/faculty/${userId}/me`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then(r => {
@@ -51,42 +51,42 @@ const FacultyLMS = () => {
       .then(data => { if (data && !data.error) setProfile(data); })
       .catch(() => {});
 
-    fetch(`http://localhost:5000/api/faculty/${userId}/sessions`, {
+    fetch(`${import.meta.env.VITE_API_URL}/api/faculty/${userId}/sessions`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then(r => r.ok ? r.json() : null)
       .then(data => { if (Array.isArray(data)) setSessions(data); })
       .catch(() => {});
 
-    fetch(`http://localhost:5000/api/faculty/${userId}/doubts`, {
+    fetch(`${import.meta.env.VITE_API_URL}/api/faculty/${userId}/doubts`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then(r => r.ok ? r.json() : null)
       .then(data => { if (Array.isArray(data)) setDoubts(data); })
       .catch(() => {});
 
-    fetch(`http://localhost:5000/api/faculty/${userId}/students`, {
+    fetch(`${import.meta.env.VITE_API_URL}/api/faculty/${userId}/students`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then(r => r.ok ? r.json() : null)
       .then(data => { if (Array.isArray(data)) setStudents(data); })
       .catch(() => {});
 
-    fetch(`http://localhost:5000/api/faculty/${userId}/resources`, {
+    fetch(`${import.meta.env.VITE_API_URL}/api/faculty/${userId}/resources`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then(r => r.ok ? r.json() : null)
       .then(data => { if (Array.isArray(data)) setResources(data); })
       .catch(() => {});
 
-    fetch(`http://localhost:5000/api/faculty/${userId}/reports`, {
+    fetch(`${import.meta.env.VITE_API_URL}/api/faculty/${userId}/reports`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then(r => r.ok ? r.json() : null)
       .then(data => { if (Array.isArray(data)) setWeeklyReports(data); })
       .catch(() => {});
 
-    fetch(`http://localhost:5000/api/faculty/${userId}/feedback`, {
+    fetch(`${import.meta.env.VITE_API_URL}/api/faculty/${userId}/feedback`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then(r => r.ok ? r.json() : null)
@@ -106,7 +106,7 @@ const FacultyLMS = () => {
     const token = localStorage.getItem('token');
     if (!token) return;
     const id = setInterval(() => {
-      fetch(`http://localhost:5000/api/faculty/${userId}/doubts`, { headers: { Authorization: `Bearer ${token}` } })
+      fetch(`${import.meta.env.VITE_API_URL}/api/faculty/${userId}/doubts`, { headers: { Authorization: `Bearer ${token}` } })
         .then(r => r.ok ? r.json() : null)
         .then(fresh => {
           if (!Array.isArray(fresh)) return;
@@ -131,7 +131,7 @@ const FacultyLMS = () => {
     const token = localStorage.getItem('token');
     if (!token) return;
     const id = setInterval(() => {
-      fetch(`http://localhost:5000/api/faculty/${userId}/reports`, { headers: { Authorization: `Bearer ${token}` } })
+      fetch(`${import.meta.env.VITE_API_URL}/api/faculty/${userId}/reports`, { headers: { Authorization: `Bearer ${token}` } })
         .then(r => r.ok ? r.json() : null)
         .then(fresh => {
           if (!Array.isArray(fresh)) return;
@@ -156,7 +156,7 @@ const FacultyLMS = () => {
     const token = localStorage.getItem('token');
     if (!token) return;
     const id = setInterval(() => {
-      fetch(`http://localhost:5000/api/faculty/${userId}/feedback`, { headers: { Authorization: `Bearer ${token}` } })
+      fetch(`${import.meta.env.VITE_API_URL}/api/faculty/${userId}/feedback`, { headers: { Authorization: `Bearer ${token}` } })
         .then(r => r.ok ? r.json() : null)
         .then(fresh => {
           if (!Array.isArray(fresh)) return;
@@ -178,7 +178,7 @@ const FacultyLMS = () => {
     const token = localStorage.getItem('token');
     if (!token) return;
     const id = setInterval(() => {
-      fetch(`http://localhost:5000/api/faculty/${userId}/resources`, { headers: { Authorization: `Bearer ${token}` } })
+      fetch(`${import.meta.env.VITE_API_URL}/api/faculty/${userId}/resources`, { headers: { Authorization: `Bearer ${token}` } })
         .then(r => r.ok ? r.json() : null)
         .then(fresh => {
           if (!Array.isArray(fresh)) return;
