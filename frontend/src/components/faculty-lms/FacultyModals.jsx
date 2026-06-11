@@ -16,19 +16,20 @@ const FacultyModals = ({ openModal, onClose, onShowToast, toast, detailOpen, sel
   const [resDescription, setResDescription] = useState('');
   const [resSubject, setResSubject] = useState('Physics');
   const [resGrade, setResGrade] = useState('11');
-  const [resType, setResType] = useState('Study Material');
+  const [resType, setResType] = useState('');
   const [resFile, setResFile] = useState(null);
   const [resUploading, setResUploading] = useState(false);
   const fileInputRef = useRef(null);
 
   const resetResForm = () => {
     setResTitle(''); setResDescription(''); setResSubject('Physics');
-    setResGrade('11'); setResType('Study Material'); setResFile(null);
+    setResGrade('11'); setResType(''); setResFile(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const submitResource = async () => {
     if (!resTitle.trim()) { onShowToast('Please enter a title'); return; }
+    if (!resType) { onShowToast('Please select a type'); return; }
     if (!resFile) { onShowToast('Please select a file to upload'); return; }
     setResUploading(true);
     try {
@@ -250,11 +251,12 @@ const FacultyModals = ({ openModal, onClose, onShowToast, toast, detailOpen, sel
           </div>
           <div className="fg"><label>Type</label>
             <select className="finput" value={resType} onChange={e => setResType(e.target.value)}>
-              <optgroup label="Resources">
-                <option>Study Material</option><option>Previous Years</option><option>Formula Sheet</option><option>Session Notes</option>
+              <option value="" disabled>— Select type —</option>
+              <optgroup label="Study Materials">
+                <option>Study Material</option><option>Formula Sheet</option><option>Session Notes</option>
               </optgroup>
               <optgroup label="Question Bank">
-                <option>MCQ Bank</option><option>Previous Papers</option><option>Practice Set</option>
+                <option>MCQ Bank</option><option>Previous Year Papers</option><option>Practice Set</option>
               </optgroup>
             </select>
           </div>

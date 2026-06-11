@@ -239,6 +239,7 @@ body.student-mode .tb-btn {
 }
 
 body.student-mode .tb-btn:hover { background: var(--cream3); color: var(--text); }
+body.student-mode .tb-btn.active { background: rgba(232,168,48,0.12); color: var(--gold); border-color: rgba(232,168,48,0.3); }
 
 body.student-mode .notif-pip {
   position: absolute;

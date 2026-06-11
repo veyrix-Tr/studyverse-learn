@@ -9,6 +9,8 @@ const EXAM_SUBJECTS = {
   'NEET':         ['Physics', 'Chemistry', 'Biology'],
 };
 
+const QUESTION_BANK_TYPES = ['MCQ Bank', 'Previous Year Papers', 'Practice Set'];
+
 // GET /api/admin/me
 router.get('/me', requireAuth, async (req, res) => {
   try {
@@ -243,7 +245,7 @@ router.put('/resources/:id/approve', requireAuth, async (req, res) => {
       await prisma.facultyNotification.createMany({
         data: relevantStudents.map(s => ({
           content: `New ${resource.type} available: "${resource.title}" (${resource.subject})`,
-          type:      'New Resource',
+          type:      QUESTION_BANK_TYPES.includes(resource.type) ? 'New Question Bank' : 'New Resource',
           studentId: s.id,
           facultyId: resource.facultyId,
         })),

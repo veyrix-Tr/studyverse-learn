@@ -323,8 +323,8 @@ router.post('/habits', requireAuth, async (req, res) => {
   }
 });
 
-const RESOURCE_TYPES      = ['Study Material', 'Previous Years', 'Formula Sheet', 'Session Notes'];
-const QUESTION_BANK_TYPES = ['MCQ Bank', 'Previous Papers', 'Practice Set'];
+const RESOURCE_TYPES      = ['Study Material', 'Formula Sheet', 'Session Notes'];
+const QUESTION_BANK_TYPES = ['MCQ Bank', 'Previous Year Papers', 'Practice Set'];
 
 // GET /api/student/resources — approved resources matching student's exam subjects
 router.get('/resources', requireAuth, async (req, res) => {

@@ -14,6 +14,8 @@ const NOTIF_NAV = {
   'Announcement':      'notif',
   'Doubt Answered':    'doubt',
   'Weekly Report':     'parent',
+  'New Resource':      'resources',
+  'New Question Bank': 'question-bank',
 };
 
 const StudentLMS = () => {
@@ -144,9 +146,10 @@ const StudentLMS = () => {
           if (!Array.isArray(fresh)) return;
           const prev = notificationsRef.current;
           const newOnes = fresh.filter(fn => !fn.readAt && !prev.some(n => n.id === fn.id));
-          const hasNewReport   = newOnes.some(n => n.type === 'Weekly Report');
-          const hasNewResource = newOnes.some(n => n.type === 'New Resource');
-          const hasSessionNote = newOnes.some(n => n.type === 'Session Note' || n.type === 'Reminder');
+          const hasNewReport       = newOnes.some(n => n.type === 'Weekly Report');
+          const hasNewResource     = newOnes.some(n => n.type === 'New Resource');
+          const hasNewQuestionBank = newOnes.some(n => n.type === 'New Question Bank');
+          const hasSessionNote     = newOnes.some(n => n.type === 'Session Note' || n.type === 'Reminder');
           newOnes.forEach(n => {
             const page = NOTIF_NAV[n.type] || 'notif';
             showToast(`${n.type}: ${n.content.length > 60 ? n.content.slice(0, 60) + '…' : n.content}`, () => setActivePage(page));
@@ -162,6 +165,12 @@ const StudentLMS = () => {
             fetch(`${import.meta.env.VITE_API_URL}/api/student/${userId}/resources`, { headers: { Authorization: `Bearer ${token}` } })
               .then(r => r.ok ? r.json() : null)
               .then(rd => { if (Array.isArray(rd)) setResources(rd); })
+              .catch(() => {});
+          }
+          if (hasNewQuestionBank) {
+            fetch(`${import.meta.env.VITE_API_URL}/api/student/${userId}/question-bank`, { headers: { Authorization: `Bearer ${token}` } })
+              .then(r => r.ok ? r.json() : null)
+              .then(rd => { if (Array.isArray(rd)) setQuestionBank(rd); })
               .catch(() => {});
           }
           if (hasSessionNote) {

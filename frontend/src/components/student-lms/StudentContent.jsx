@@ -785,19 +785,19 @@ const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
         </div>
       </div>
 
-      {/* ══════════ RESOURCES ══════════ */}
+      {/* ══════════ STUDY MATERIALS ══════════ */}
       <div className={p('resources')}>
         <div className="tabs">
-          {['Study Material', 'Previous Years', 'Formula Sheet', 'Session Notes', 'All'].map((t, i) => (
+          {['Study Material', 'Formula Sheet', 'Session Notes', 'All'].map((t, i) => (
             <div key={t} className={`tab${resourcesTab === i ? ' on' : ''}`} onClick={() => setResourcesTab(i)}>{t}</div>
           ))}
         </div>
         {(() => {
-          const typeMap = ['Study Material', 'Previous Years', 'Formula Sheet', 'Session Notes'];
-          const filtered = resourcesTab < 4 ? resources.filter(r => r.type === typeMap[resourcesTab]) : resources;
+          const typeMap = ['Study Material', 'Formula Sheet', 'Session Notes'];
+          const filtered = resourcesTab < 3 ? resources.filter(r => r.type === typeMap[resourcesTab]) : resources;
           if (filtered.length === 0) return (
             <div style={{ fontSize: '13px', color: 'var(--text3)', padding: '32px 0', textAlign: 'center' }}>
-              No resources available{resourcesTab < 4 ? ` for ${typeMap[resourcesTab]}` : ''}.
+              No study materials available{resourcesTab < 3 ? ` for ${typeMap[resourcesTab]}` : ''}.
             </div>
           );
           return filtered.map(r => (
@@ -820,12 +820,12 @@ const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
       {/* ══════════ QUESTION BANK ══════════ */}
       <div className={p('question-bank')}>
         <div className="tabs">
-          {['MCQ Bank', 'Previous Papers', 'Practice Set', 'All'].map((t, i) => (
+          {['MCQ Bank', 'Previous Year Papers', 'Practice Set', 'All'].map((t, i) => (
             <div key={t} className={`tab${questionBankTab === i ? ' on' : ''}`} onClick={() => setQuestionBankTab(i)}>{t}</div>
           ))}
         </div>
         {(() => {
-          const typeMap = ['MCQ Bank', 'Previous Papers', 'Practice Set'];
+          const typeMap = ['MCQ Bank', 'Previous Year Papers', 'Practice Set'];
           const filtered = questionBankTab < 3 ? questionBank.filter(r => r.type === typeMap[questionBankTab]) : questionBank;
           if (filtered.length === 0) return (
             <div style={{ fontSize: '13px', color: 'var(--text3)', padding: '32px 0', textAlign: 'center' }}>
