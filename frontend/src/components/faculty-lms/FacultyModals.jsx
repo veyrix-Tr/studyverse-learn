@@ -250,7 +250,12 @@ const FacultyModals = ({ openModal, onClose, onShowToast, toast, detailOpen, sel
           </div>
           <div className="fg"><label>Type</label>
             <select className="finput" value={resType} onChange={e => setResType(e.target.value)}>
-              <option>Study Material</option><option>Previous Years</option><option>Formula Sheet</option><option>Session Notes</option>
+              <optgroup label="Resources">
+                <option>Study Material</option><option>Previous Years</option><option>Formula Sheet</option><option>Session Notes</option>
+              </optgroup>
+              <optgroup label="Question Bank">
+                <option>MCQ Bank</option><option>Previous Papers</option><option>Practice Set</option>
+              </optgroup>
             </select>
           </div>
           <div className="fg">

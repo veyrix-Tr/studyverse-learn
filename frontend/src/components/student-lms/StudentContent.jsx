@@ -198,7 +198,7 @@ const timeAgo = (iso) => {
 
 const TYPE_DOT = { 'Reminder': 'var(--gold)', 'Motivational Note': 'var(--green)', 'Schedule Update': 'var(--navy)', 'Announcement': 'var(--gold)', 'Session Note': 'var(--navy)', 'Doubt Answered': 'var(--green)', 'Weekly Report': 'var(--gold)' };
 
-const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, scores, sessions = [], doubts = [], notifications = [], onMarkNotificationsRead, onNotificationClick, resources = [], parentReports = null }) => {
+const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, scores, sessions = [], doubts = [], notifications = [], onMarkNotificationsRead, onNotificationClick, resources = [], questionBank = [], parentReports = null }) => {
   const { id: userId } = useParams();
   const firstName = profile?.name?.split(' ')[0] || 'there';
   const examTarget = profile?.studentProfile?.examTarget || 'your exam';
@@ -243,6 +243,7 @@ const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
   const [videoTab, setVideoTab] = useState(0);
   const [sessionsTab, setSessionsTab] = useState(0);
   const [resourcesTab, setResourcesTab] = useState(0);
+  const [questionBankTab, setQuestionBankTab] = useState(0);
   const [doubtTab, setDoubtTab] = useState(0);
   const [openWR, setOpenWR] = useState(new Set([0]));
   const [openSessionNote, setOpenSessionNote] = useState(null);
@@ -802,6 +803,38 @@ const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
           return filtered.map(r => (
             <div key={r.id} className="res-item">
               <div className="res-icon">📄</div>
+              <div>
+                <div className="res-name">{r.title}</div>
+                <div className="res-meta">{r.subject} · Grade {r.grade} · {r.type} · By {r.facultyName}</div>
+                {r.description && <div style={{ fontSize: '12px', color: 'var(--text3)', marginTop: '3px' }}>{r.description}</div>}
+              </div>
+              <div style={{ marginLeft: 'auto', display: 'flex', gap: '6px' }}>
+                <a href={`${import.meta.env.VITE_API_URL}/api/files/proxy?url=${encodeURIComponent(r.cloudinaryUrl)}`} target="_blank" rel="noreferrer" className="btn btn-ghost btn-sm" style={{ textDecoration: 'none' }}>↗ View</a>
+                <a href={`${import.meta.env.VITE_API_URL}/api/files/proxy?url=${encodeURIComponent(r.cloudinaryUrl)}&download=1`} target="_blank" rel="noreferrer" className="btn btn-ghost btn-sm" style={{ textDecoration: 'none' }}>↓ Download</a>
+              </div>
+            </div>
+          ));
+        })()}
+      </div>
+
+      {/* ══════════ QUESTION BANK ══════════ */}
+      <div className={p('question-bank')}>
+        <div className="tabs">
+          {['MCQ Bank', 'Previous Papers', 'Practice Set', 'All'].map((t, i) => (
+            <div key={t} className={`tab${questionBankTab === i ? ' on' : ''}`} onClick={() => setQuestionBankTab(i)}>{t}</div>
+          ))}
+        </div>
+        {(() => {
+          const typeMap = ['MCQ Bank', 'Previous Papers', 'Practice Set'];
+          const filtered = questionBankTab < 3 ? questionBank.filter(r => r.type === typeMap[questionBankTab]) : questionBank;
+          if (filtered.length === 0) return (
+            <div style={{ fontSize: '13px', color: 'var(--text3)', padding: '32px 0', textAlign: 'center' }}>
+              No question bank items available{questionBankTab < 3 ? ` for ${typeMap[questionBankTab]}` : ''}.
+            </div>
+          );
+          return filtered.map(r => (
+            <div key={r.id} className="res-item">
+              <div className="res-icon">📝</div>
               <div>
                 <div className="res-name">{r.title}</div>
                 <div className="res-meta">{r.subject} · Grade {r.grade} · {r.type} · By {r.facultyName}</div>

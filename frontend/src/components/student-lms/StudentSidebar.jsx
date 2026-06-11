@@ -88,6 +88,14 @@ const StudentSidebar = ({ activePage, onNav, profile, upcomingSessionsCount = 0,
           Resources
         </div>
 
+        <div className={ni('question-bank')} onClick={() => onNav('question-bank')}>
+          <svg className="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M12 17h.01"/>
+          </svg>
+          Question Bank
+        </div>
+
         <div className={ni('doubt')} onClick={() => onNav('doubt')}>
           <svg className="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>

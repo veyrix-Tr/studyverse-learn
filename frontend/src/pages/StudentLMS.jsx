@@ -26,6 +26,7 @@ const StudentLMS = () => {
   const [doubts, setDoubts] = useState([]);
   const [notifications, setNotifications] = useState([]);
   const [resources, setResources] = useState([]);
+  const [questionBank, setQuestionBank] = useState([]);
   const [parentReports, setParentReports] = useState(null);
   const toastTimer        = useRef(null);
   const doubtsRef         = useRef([]);
@@ -88,6 +89,13 @@ const StudentLMS = () => {
     })
       .then(r => r.ok ? r.json() : null)
       .then(data => { if (Array.isArray(data)) setResources(data); })
+      .catch(() => {});
+
+    fetch(`${import.meta.env.VITE_API_URL}/api/student/${userId}/question-bank`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (Array.isArray(data)) setQuestionBank(data); })
       .catch(() => {});
 
     fetch(`${import.meta.env.VITE_API_URL}/api/student/${userId}/reports`, {
@@ -230,6 +238,7 @@ const StudentLMS = () => {
           onMarkNotificationsRead={markAllNotificationsRead}
           onNotificationClick={handleNotificationClick}
           resources={resources}
+          questionBank={questionBank}
           parentReports={parentReports}
         />
       </div>

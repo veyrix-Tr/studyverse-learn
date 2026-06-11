@@ -323,6 +323,9 @@ router.post('/habits', requireAuth, async (req, res) => {
   }
 });
 
+const RESOURCE_TYPES      = ['Study Material', 'Previous Years', 'Formula Sheet', 'Session Notes'];
+const QUESTION_BANK_TYPES = ['MCQ Bank', 'Previous Papers', 'Practice Set'];
+
 // GET /api/student/resources — approved resources matching student's exam subjects
 router.get('/resources', requireAuth, async (req, res) => {
   try {
@@ -332,10 +335,8 @@ router.get('/resources', requireAuth, async (req, res) => {
     const subjects = EXAM_SUBJECTS[profile.examTarget] || [];
     if (!subjects.length) return res.json([]);
 
-    const where = { status: 'approved', subject: { in: subjects } };
-
     const resources = await prisma.resource.findMany({
-      where,
+      where: { status: 'approved', subject: { in: subjects }, type: { in: RESOURCE_TYPES } },
       include: { faculty: { include: { user: { select: { name: true } } } } },
       orderBy: { approvedAt: 'desc' },
     });
@@ -349,6 +350,33 @@ router.get('/resources', requireAuth, async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to fetch resources' });
+  }
+});
+
+// GET /api/student/question-bank — approved question bank items matching student's exam subjects
+router.get('/question-bank', requireAuth, async (req, res) => {
+  try {
+    const profile = await prisma.studentProfile.findUnique({ where: { userId: req.params.userId } });
+    if (!profile) return res.json([]);
+
+    const subjects = EXAM_SUBJECTS[profile.examTarget] || [];
+    if (!subjects.length) return res.json([]);
+
+    const items = await prisma.resource.findMany({
+      where: { status: 'approved', subject: { in: subjects }, type: { in: QUESTION_BANK_TYPES } },
+      include: { faculty: { include: { user: { select: { name: true } } } } },
+      orderBy: { approvedAt: 'desc' },
+    });
+
+    res.json(items.map(r => ({
+      id: r.id, title: r.title, description: r.description || null,
+      subject: r.subject, grade: r.grade, type: r.type,
+      cloudinaryUrl: r.cloudinaryUrl, approvedAt: r.approvedAt,
+      facultyName: r.faculty.user.name,
+    })));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch question bank' });
   }
 });
 

@@ -20,6 +20,7 @@ const RegisterForm = ({ onSwitchToLogin, googleName = '', googleEmail = '', isGo
   const navigate = useNavigate();
   const [step, setStep]                               = useState(1);
   const [otpSent, setOtpSent]                         = useState(false);
+  const [otpVerified, setOtpVerified]                 = useState(false);
   const [showPassword, setShowPassword]               = useState(false);
   const [showConfirm, setShowConfirm]                 = useState(false);
 
@@ -91,6 +92,9 @@ const RegisterForm = ({ onSwitchToLogin, googleName = '', googleEmail = '', isGo
     }
     const alreadyExists = await emailAlreadyExists(formData.email);
     if (alreadyExists) { showToast('This email is already registered. Please sign in.'); return; }
+
+    if (otpVerified) { setStep(2); return; }
+
     if (!otpSent) { showToast('Please send OTP first'); return; }
     if (formData.otp.length !== 6) { showToast('Enter a 6-digit OTP'); return; }
 
@@ -102,6 +106,7 @@ const RegisterForm = ({ onSwitchToLogin, googleName = '', googleEmail = '', isGo
       });
       const data = await res.json();
       if (!res.ok) { showToast(data.error || 'Incorrect OTP'); return; }
+      setOtpVerified(true);
       setStep(2);
     } catch {
       showToast('Cannot connect to server');
