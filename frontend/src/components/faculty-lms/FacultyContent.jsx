@@ -55,7 +55,7 @@ const StudentCard = ({ av, name, exam, week, statusBadge, base, curr, gain, gain
   </div>
 );
 
-const DoubtItem = ({ priority, av, name, time, pills, question, answer, helpful, placeholder, extraActions, isOpen, isReplied, onToggle, onReply, replyText, onReplyTextChange }) => (
+const DoubtItem = ({ priority, av, name, time, pills, question, answer, helpful, placeholder, extraActions, isOpen, isReplied, onToggle, onReply, replyText, onReplyTextChange, replying }) => (
   <div className={`doubt-item ${priority}`}>
     <div className="di-top">
       <div className="di-student">
@@ -85,7 +85,7 @@ const DoubtItem = ({ priority, av, name, time, pills, question, answer, helpful,
       <textarea className="reply-textarea" rows={Math.min(Math.max(4, Math.ceil((replyText || '').length / 60)), 8)} placeholder={placeholder} value={replyText || ''} onChange={e => onReplyTextChange(e.target.value)}></textarea>
       <div className="reply-actions">
         <button className="btn btn-ghost btn-sm" onClick={onToggle}>Cancel</button>
-        <button className="btn btn-gold btn-sm" onClick={onReply}>{isReplied ? 'Update Answer ✓' : 'Send Reply ✓'}</button>
+        <button className="btn btn-gold btn-sm" onClick={onReply} disabled={replying} style={replying ? { opacity: 0.7, cursor: 'not-allowed' } : undefined}>{replying ? 'Sending…' : isReplied ? 'Update Answer ✓' : 'Send Reply ✓'}</button>
       </div>
     </div>
   </div>
@@ -149,6 +149,7 @@ const FacultyContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
   const [savingReport, setSavingReport] = useState(false);
   const [submittingReport, setSubmittingReport] = useState(false);
   const [creatingReportFor, setCreatingReportFor] = useState(null);
+  const [replyingDoubtId, setReplyingDoubtId] = useState(null);
 
   const weekInfo = getCurrentWeekInfo();
   const isSunday = new Date().getDay() === 0;
@@ -387,6 +388,7 @@ const FacultyContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
     const text = replyTexts[id] || '';
     if (!text.trim()) { onShowToast('Please type a reply before sending'); return; }
     const token = localStorage.getItem('token');
+    setReplyingDoubtId(id);
     try {
       const res = await fetch(`${import.meta.env.VITE_API_URL}/api/faculty/${userId}/doubts/${id}/answer`, {
         method: 'PUT',
@@ -401,6 +403,8 @@ const FacultyContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
       onShowToast('Reply sent ✓ Doubt marked as answered');
     } catch {
       onShowToast('Failed to send reply. Try again.');
+    } finally {
+      setReplyingDoubtId(null);
     }
   };
 
@@ -707,7 +711,8 @@ const FacultyContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
                 isOpen={openReplies.has(d.id)} isReplied={!!d.answeredAt}
                 replyText={replyTexts[d.id] || ''}
                 onReplyTextChange={val => setReplyTexts(prev => ({ ...prev, [d.id]: val }))}
-                onToggle={() => toggleReply(d.id, d.answer)} onReply={() => markReplied(d.id)} />
+                onToggle={() => toggleReply(d.id, d.answer)} onReply={() => markReplied(d.id)}
+                replying={replyingDoubtId === d.id} />
             );
           });
         })()}

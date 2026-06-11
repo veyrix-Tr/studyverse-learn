@@ -6,6 +6,7 @@ const LoginForm = ({ onSwitchToRegister }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -17,7 +18,9 @@ const LoginForm = ({ onSwitchToRegister }) => {
       return;
     }
 
-    triggerToast('Signing in...');
+    setLoading(true);
+    setToastMessage('Signing in...');
+    setShowToast(true);
 
     try {
       const res = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/login`, {
@@ -29,6 +32,7 @@ const LoginForm = ({ onSwitchToRegister }) => {
       const data = await res.json();
 
       if (!res.ok) {
+        setLoading(false);
         triggerToast(data.error || 'Login failed');
         return;
       }
@@ -43,6 +47,7 @@ const LoginForm = ({ onSwitchToRegister }) => {
       else                          navigate(`/student/${id}/home`, { replace: true });
 
     } catch {
+      setLoading(false);
       triggerToast('Cannot connect to server');
     }
   };
@@ -125,13 +130,15 @@ const LoginForm = ({ onSwitchToRegister }) => {
           </a>
         </div>
 
-        <button type="submit" className="btn-primary">
-          Sign In
-          <div className="btn-arrow">
-            <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-              <path d="M2 5h6M5.5 2.5L8 5l-2.5 2.5" stroke="#0F1F3D" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </div>
+        <button type="submit" className="btn-primary" disabled={loading} style={loading ? { opacity: 0.7, cursor: 'not-allowed' } : undefined}>
+          {loading ? 'Signing in…' : 'Sign In'}
+          {!loading && (
+            <div className="btn-arrow">
+              <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                <path d="M2 5h6M5.5 2.5L8 5l-2.5 2.5" stroke="#0F1F3D" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </div>
+          )}
         </button>
       </form>
 

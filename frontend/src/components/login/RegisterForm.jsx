@@ -23,6 +23,7 @@ const RegisterForm = ({ onSwitchToLogin, googleName = '', googleEmail = '', isGo
   const [otpVerified, setOtpVerified]                 = useState(false);
   const [showPassword, setShowPassword]               = useState(false);
   const [showConfirm, setShowConfirm]                 = useState(false);
+  const [loading, setLoading]                         = useState(false);
 
   const [toast, setToast]                             = useState('');
 
@@ -38,6 +39,8 @@ const RegisterForm = ({ onSwitchToLogin, googleName = '', googleEmail = '', isGo
     setToast(msg);
     setTimeout(() => setToast(''), 3000);
   };
+
+  const showPersistentToast = (msg) => setToast(msg);
 
   const emailAlreadyExists = async (email) => {
     try {
@@ -59,12 +62,15 @@ const RegisterForm = ({ onSwitchToLogin, googleName = '', googleEmail = '', isGo
       showToast('Please enter your name and email');
       return;
     }
+    setLoading(true);
+    showPersistentToast('Checking email...');
     const exists = await emailAlreadyExists(formData.email);
     if (exists) {
+      setLoading(false);
       showToast('This email is already registered. Please sign in.');
       return;
     }
-    showToast('Sending OTP...');
+    showPersistentToast('Sending OTP...');
     try {
       const res = await fetch(`${import.meta.env.VITE_API_URL}/api/otp/send`, {
         method: 'POST',
@@ -72,32 +78,42 @@ const RegisterForm = ({ onSwitchToLogin, googleName = '', googleEmail = '', isGo
         body: JSON.stringify({ email: formData.email }),
       });
       const data = await res.json();
-      if (!res.ok) { showToast(data.error || 'Failed to send OTP'); return; }
+      if (!res.ok) { setLoading(false); showToast(data.error || 'Failed to send OTP'); return; }
       setOtpSent(true);
+      setLoading(false);
       showToast('OTP sent! Check your email.');
     } catch {
+      setLoading(false);
       showToast('Cannot connect to server');
     }
   };
 
   const handleStep1 = async () => {
     if (isGoogle) {
+      setLoading(true);
+      showPersistentToast('Verifying...');
       const exists = await emailAlreadyExists(formData.email);
       if (exists) {
+        setLoading(false);
         showToast('This email is already registered. Please sign in.');
         return;
       }
+      setLoading(false);
+      setToast('');
       setStep(2);
       return;
     }
+    setLoading(true);
+    showPersistentToast('Checking...');
     const alreadyExists = await emailAlreadyExists(formData.email);
-    if (alreadyExists) { showToast('This email is already registered. Please sign in.'); return; }
+    if (alreadyExists) { setLoading(false); showToast('This email is already registered. Please sign in.'); return; }
 
-    if (otpVerified) { setStep(2); return; }
+    if (otpVerified) { setLoading(false); setStep(2); return; }
 
-    if (!otpSent) { showToast('Please send OTP first'); return; }
-    if (formData.otp.length !== 6) { showToast('Enter a 6-digit OTP'); return; }
+    if (!otpSent) { setLoading(false); showToast('Please send OTP first'); return; }
+    if (formData.otp.length !== 6) { setLoading(false); showToast('Enter a 6-digit OTP'); return; }
 
+    showPersistentToast('Verifying OTP...');
     try {
       const res = await fetch(`${import.meta.env.VITE_API_URL}/api/otp/verify`, {
         method: 'POST',
@@ -105,10 +121,13 @@ const RegisterForm = ({ onSwitchToLogin, googleName = '', googleEmail = '', isGo
         body: JSON.stringify({ email: formData.email, otp: formData.otp }),
       });
       const data = await res.json();
-      if (!res.ok) { showToast(data.error || 'Incorrect OTP'); return; }
+      if (!res.ok) { setLoading(false); showToast(data.error || 'Incorrect OTP'); return; }
       setOtpVerified(true);
+      setLoading(false);
+      setToast('');
       setStep(2);
     } catch {
+      setLoading(false);
       showToast('Cannot connect to server');
     }
   };
@@ -128,7 +147,8 @@ const RegisterForm = ({ onSwitchToLogin, googleName = '', googleEmail = '', isGo
       return;
     }
 
-    showToast('Creating account...');
+    setLoading(true);
+    showPersistentToast('Creating account...');
 
     try {
       const res = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/register`, {
@@ -146,9 +166,9 @@ const RegisterForm = ({ onSwitchToLogin, googleName = '', googleEmail = '', isGo
       });
 
       const data = await res.json();
-      if (!res.ok) { showToast(data.error || 'Registration failed'); return; }
+      if (!res.ok) { setLoading(false); showToast(data.error || 'Registration failed'); return; }
 
-      // Auto-login after registration
+      showPersistentToast('Signing in...');
       const loginRes = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -161,9 +181,11 @@ const RegisterForm = ({ onSwitchToLogin, googleName = '', googleEmail = '', isGo
         const { id, plan } = loginData.user;
         navigate(plan === 'premium' ? `/student-v2/${id}/dashboard` : `/student/${id}/home`, { replace: true });
       } else {
+        setLoading(false);
         navigate('/login', { replace: true });
       }
     } catch {
+      setLoading(false);
       showToast('Cannot connect to server');
     }
   };
@@ -255,8 +277,8 @@ const RegisterForm = ({ onSwitchToLogin, googleName = '', googleEmail = '', isGo
                       </svg>
                     </span>
                   )}
-                  <button type="button" className="input-action-btn" onClick={handleSendOtp} disabled={!isValidEmail(formData.email)}>
-                    {otpSent ? 'Resend' : 'Send OTP'}
+                  <button type="button" className="input-action-btn" onClick={handleSendOtp} disabled={!isValidEmail(formData.email) || loading}>
+                    {loading ? '...' : otpSent ? 'Resend' : 'Send OTP'}
                   </button>
                 </>
               )}
@@ -297,8 +319,8 @@ const RegisterForm = ({ onSwitchToLogin, googleName = '', googleEmail = '', isGo
             </div>
           )}
 
-          <button className="btn-primary" style={{ marginTop: isGoogle ? '0' : '8px' }} onClick={handleStep1}>
-            Next →
+          <button className="btn-primary" style={{ marginTop: isGoogle ? '0' : '8px', ...(loading ? { opacity: 0.7, cursor: 'not-allowed' } : {}) }} onClick={handleStep1} disabled={loading}>
+            {loading ? 'Please wait…' : 'Next →'}
           </button>
 
           {!isGoogle && (
@@ -423,7 +445,9 @@ const RegisterForm = ({ onSwitchToLogin, googleName = '', googleEmail = '', isGo
 
           <div className="step-nav" style={{ marginTop: '13px' }}>
             <button className="btn-back" onClick={() => setStep(2)}>← Back</button>
-            <button className="btn-primary btn-primary--grow" onClick={handleStep3}>Create Account →</button>
+            <button className="btn-primary btn-primary--grow" onClick={handleStep3} disabled={loading} style={loading ? { opacity: 0.7, cursor: 'not-allowed' } : undefined}>
+              {loading ? 'Please wait…' : 'Create Account →'}
+            </button>
           </div>
         </div>
       )}
