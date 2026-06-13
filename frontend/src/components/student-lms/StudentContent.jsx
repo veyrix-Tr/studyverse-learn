@@ -788,16 +788,16 @@ const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
       {/* ══════════ STUDY MATERIALS ══════════ */}
       <div className={p('resources')}>
         <div className="tabs">
-          {['Study Material', 'Formula Sheet', 'Session Notes', 'All'].map((t, i) => (
+          {['All', 'Study Material', 'Formula Sheet', 'Session Notes'].map((t, i) => (
             <div key={t} className={`tab${resourcesTab === i ? ' on' : ''}`} onClick={() => setResourcesTab(i)}>{t}</div>
           ))}
         </div>
         {(() => {
-          const typeMap = ['Study Material', 'Formula Sheet', 'Session Notes'];
-          const filtered = resourcesTab < 3 ? resources.filter(r => r.type === typeMap[resourcesTab]) : resources;
+          const typeMap = [null, 'Study Material', 'Formula Sheet', 'Session Notes'];
+          const filtered = resourcesTab === 0 ? resources : resources.filter(r => r.type === typeMap[resourcesTab]);
           if (filtered.length === 0) return (
             <div style={{ fontSize: '13px', color: 'var(--text3)', padding: '32px 0', textAlign: 'center' }}>
-              No study materials available{resourcesTab < 3 ? ` for ${typeMap[resourcesTab]}` : ''}.
+              No study materials available{resourcesTab > 0 ? ` for ${typeMap[resourcesTab]}` : ''}.
             </div>
           );
           return filtered.map(r => (
@@ -820,16 +820,16 @@ const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
       {/* ══════════ QUESTION BANK ══════════ */}
       <div className={p('question-bank')}>
         <div className="tabs">
-          {['MCQ Bank', 'Previous Year Papers', 'Practice Set', 'All'].map((t, i) => (
+          {['All', 'MCQ Bank', 'Previous Year Papers', 'Practice Set'].map((t, i) => (
             <div key={t} className={`tab${questionBankTab === i ? ' on' : ''}`} onClick={() => setQuestionBankTab(i)}>{t}</div>
           ))}
         </div>
         {(() => {
-          const typeMap = ['MCQ Bank', 'Previous Year Papers', 'Practice Set'];
-          const filtered = questionBankTab < 3 ? questionBank.filter(r => r.type === typeMap[questionBankTab]) : questionBank;
+          const typeMap = [null, 'MCQ Bank', 'Previous Year Papers', 'Practice Set'];
+          const filtered = questionBankTab === 0 ? questionBank : questionBank.filter(r => r.type === typeMap[questionBankTab]);
           if (filtered.length === 0) return (
             <div style={{ fontSize: '13px', color: 'var(--text3)', padding: '32px 0', textAlign: 'center' }}>
-              No question bank items available{questionBankTab < 3 ? ` for ${typeMap[questionBankTab]}` : ''}.
+              No question bank items available{questionBankTab > 0 ? ` for ${typeMap[questionBankTab]}` : ''}.
             </div>
           );
           return filtered.map(r => (
