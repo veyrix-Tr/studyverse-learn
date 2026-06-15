@@ -257,6 +257,7 @@ body.student-mode .content { padding: 32px; flex: 1; }
 body.student-mode .page { display: none; animation: pgIn 0.2s ease; }
 body.student-mode .page.active { display: block; }
 @keyframes pgIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.75; } }
 
 /* ── TYPOGRAPHY ── */
 body.student-mode .serif { font-family: var(--font-serif); }

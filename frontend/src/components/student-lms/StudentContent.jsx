@@ -180,6 +180,15 @@ const getDaysRemaining = (examTarget, targetYear) => {
 const fmtTime = (iso) => new Date(iso).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
 const fmtDate = (iso) => new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
 const isUpcoming = (iso) => new Date(iso) > new Date();
+const isLive = (iso, duration) => { const s = new Date(iso), e = new Date(s.getTime() + (duration || 60) * 60000), n = new Date(); return n >= s && n <= e; };
+const countdown = (iso, now) => {
+  const diff = Math.max(0, new Date(iso) - now);
+  const h = Math.floor(diff / 3600000);
+  const m = Math.floor((diff % 3600000) / 60000);
+  if (h > 0) return `in ${h}h ${m}m`;
+  if (m > 0) return `in ${m}m`;
+  return 'starting now';
+};
 const isToday = (iso) => {
   const d = new Date(iso), n = new Date();
   return d.getFullYear() === n.getFullYear() && d.getMonth() === n.getMonth() && d.getDate() === n.getDate();
@@ -238,6 +247,14 @@ const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
 
   const topImprover    = subjectStats.length > 0 ? subjectStats.reduce((a, b) => a.delta  > b.delta  ? a : b) : null;
   const weakestSubject = subjectStats.length > 0 ? subjectStats.reduce((a, b) => a.lastPct < b.lastPct ? a : b) : null;
+
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => { const t = setInterval(() => setNow(new Date()), 30000); return () => clearInterval(t); }, []);
+  useEffect(() => {
+    if (!sessions.length) return;
+    const hasToday = sessions.some(s => isToday(s.scheduledAt));
+    setSessionsTab(hasToday ? 0 : 1);
+  }, [sessions]);
 
   const [coursesTab, setCoursesTab] = useState(0);
   const [videoTab, setVideoTab] = useState(0);
@@ -366,18 +383,29 @@ const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
               if (todaySessions.length === 0) return (
                 <div style={{ fontSize: '13px', color: 'var(--text3)', padding: '12px 0' }}>No sessions scheduled for today.</div>
               );
-              return todaySessions.map(s => (
-                <div key={s.id} className="sess-item">
-                  <div className="sess-subj" style={{ background: 'rgba(15,31,61,0.06)', fontSize: '18px' }}>📚</div>
-                  <div className="sess-info">
-                    <div className="sess-name">{s.title}</div>
-                    <div className="sess-meta">with {s.facultyName} • {s.subject}</div>
+              return todaySessions.map(s => {
+                const live = isLive(s.scheduledAt, s.duration);
+                const upcoming = isUpcoming(s.scheduledAt);
+                return (
+                  <div key={s.id} className="sess-item" onClick={() => onNav('sessions')} style={{ cursor: 'pointer' }}>
+                    <div className="sess-subj" style={{ background: live ? 'rgba(239,68,68,0.08)' : 'rgba(15,31,61,0.06)', fontSize: '18px' }}>{live ? '🔴' : '📚'}</div>
+                    <div className="sess-info">
+                      <div className="sess-name">{s.title}</div>
+                      <div className="sess-meta">with {s.facultyName} • {s.subject}</div>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '5px' }}>
+                      <div className={`sess-status ${live ? 's-live' : upcoming ? 's-up' : ''}`}>
+                        {live ? '● Live' : upcoming ? countdown(s.scheduledAt, now) : 'Completed'}
+                      </div>
+                      {(live || upcoming) && (
+                        s.joinUrl
+                          ? <a href={s.joinUrl} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} className="btn btn-sm" style={{ background: live ? 'var(--gold)' : '#16a34a', color: live ? '#0F1F3D' : '#fff', textDecoration: 'none', fontSize: '11px', padding: '3px 10px', fontWeight: 600 }}>▶ {live ? 'Join Now' : 'Join Class'}</a>
+                          : <button className="btn btn-sm" onClick={e => { e.stopPropagation(); onShowToast('Meeting link not set yet — contact your mentor'); }} style={{ background: live ? 'var(--gold)' : '#16a34a', color: live ? '#0F1F3D' : '#fff', fontSize: '11px', padding: '3px 10px', fontWeight: 600 }}>▶ {live ? 'Join Now' : 'Join Class'}</button>
+                      )}
+                    </div>
                   </div>
-                  <div className={`sess-status ${isUpcoming(s.scheduledAt) ? 's-up' : 's-live'}`}>
-                    {isUpcoming(s.scheduledAt) ? fmtTime(s.scheduledAt) : '● Live'}
-                  </div>
-                </div>
-              ));
+                );
+              });
             })()}
           </div>
 
@@ -632,17 +660,26 @@ const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
       <div className={p('sessions')}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '22px' }}>
           <div className="tabs" style={{ marginBottom: 0 }}>
-            {['Upcoming', 'Past'].map((t, i) => (
-              <div key={t} className={`tab${sessionsTab === i ? ' on' : ''}`} onClick={() => setSessionsTab(i)}>{t}</div>
-            ))}
+            {['Today', 'Upcoming', 'Past'].map((t, i) => {
+              const hasLive = i === 0 && sessions.some(s => isLive(s.scheduledAt, s.duration));
+              return (
+                <div key={t} className={`tab${sessionsTab === i ? ' on' : ''}`} onClick={() => setSessionsTab(i)}>
+                  {t}{hasLive && <span style={{ display: 'inline-block', width: 7, height: 7, borderRadius: '50%', background: '#ef4444', marginLeft: 5, verticalAlign: 'middle', animation: 'pulse 1.5s infinite' }} />}
+                </div>
+              );
+            })}
           </div>
         </div>
         <div className="card mb">
           {(() => {
-            const filtered = sessions.filter(s => sessionsTab === 0 ? isUpcoming(s.scheduledAt) : !isUpcoming(s.scheduledAt));
+            const filtered = sessions.filter(s =>
+              sessionsTab === 0 ? isToday(s.scheduledAt) :
+              sessionsTab === 1 ? (isUpcoming(s.scheduledAt) && !isToday(s.scheduledAt)) :
+              (!isUpcoming(s.scheduledAt) && !isToday(s.scheduledAt))
+            );
             if (filtered.length === 0) return (
               <div style={{ fontSize: '13px', color: 'var(--text3)', padding: '16px 0', textAlign: 'center' }}>
-                {sessionsTab === 0 ? 'No upcoming sessions.' : 'No past sessions yet.'}
+                {sessionsTab === 0 ? 'No sessions today.' : sessionsTab === 1 ? 'No upcoming sessions.' : 'No past sessions yet.'}
               </div>
             );
             return (
@@ -658,19 +695,40 @@ const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
                         <tr>
                           <td>{s.title}</td>
                           <td><span className="pill pill-navy">{s.subject}</span></td>
-                          <td>{s.dayOfWeek}, {fmtTime(s.scheduledAt)}</td>
+                          <td>{isToday(s.scheduledAt) ? 'Today' : s.dayOfWeek}, {fmtTime(s.scheduledAt)}</td>
                           <td>{s.duration} min</td>
-                          <td><span className={`sess-status ${isUpcoming(s.scheduledAt) ? 's-up' : ''}`}>{isUpcoming(s.scheduledAt) ? 'Upcoming' : 'Completed'}</span></td>
                           <td>
-                            {!isUpcoming(s.scheduledAt) && (
-                              <button
-                                className={`btn btn-sm ${s.note ? (noteOpen ? 'btn-gold' : 'btn-ghost') : 'btn-ghost'}`}
-                                style={!s.note ? { opacity: 0.4, cursor: 'default' } : {}}
-                                onClick={() => s.note && setOpenSessionNote(noteOpen ? null : s.id)}
-                              >
-                                {noteOpen ? 'Hide Note' : 'See Note'}
-                              </button>
-                            )}
+                            {isLive(s.scheduledAt, s.duration)
+                              ? <span className="sess-status" style={{ background: 'rgba(239,68,68,0.12)', color: '#dc2626', fontWeight: 600 }}>🔴 Live Now</span>
+                              : isToday(s.scheduledAt) && isUpcoming(s.scheduledAt)
+                                ? <span className="sess-status s-up">{countdown(s.scheduledAt, now)}</span>
+                                : <span className={`sess-status ${isUpcoming(s.scheduledAt) && !isToday(s.scheduledAt) ? 's-up' : ''}`}>{isUpcoming(s.scheduledAt) && !isToday(s.scheduledAt) ? 'Upcoming' : 'Completed'}</span>}
+                          </td>
+                          <td>
+                            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                              {isToday(s.scheduledAt) && isUpcoming(s.scheduledAt) && !isLive(s.scheduledAt, s.duration) && (
+                                s.joinUrl
+                                  ? <a href={s.joinUrl} target="_blank" rel="noreferrer" className="btn btn-sm" style={{ background: '#16a34a', color: '#fff', textDecoration: 'none' }}>▶ Join Class</a>
+                                  : <button className="btn btn-sm" onClick={() => onShowToast('Meeting link not set yet — contact your mentor')} style={{ background: '#16a34a', color: '#fff' }}>▶ Join Class</button>
+                              )}
+                              {isLive(s.scheduledAt, s.duration) && (
+                                s.joinUrl
+                                  ? <a href={s.joinUrl} target="_blank" rel="noreferrer" className="btn btn-sm" style={{ background: 'var(--gold)', color: '#0F1F3D', textDecoration: 'none', fontWeight: 600, animation: 'pulse 1.5s infinite' }}>▶ Join Now</a>
+                                  : <button className="btn btn-sm" style={{ background: 'var(--gold)', color: '#0F1F3D', fontWeight: 600, animation: 'pulse 1.5s infinite' }} onClick={() => onShowToast('Meeting link not set yet — contact your mentor')}>▶ Join Now</button>
+                              )}
+                              {!isUpcoming(s.scheduledAt) && s.recordingUrl && (
+                                <a href={s.recordingUrl} target="_blank" rel="noreferrer" className="btn btn-ghost btn-sm" style={{ textDecoration: 'none' }}>⏺ Recording</a>
+                              )}
+                              {!isUpcoming(s.scheduledAt) && (
+                                <button
+                                  className={`btn btn-sm ${s.note ? (noteOpen ? 'btn-gold' : 'btn-ghost') : 'btn-ghost'}`}
+                                  style={!s.note ? { opacity: 0.4, cursor: 'default' } : {}}
+                                  onClick={() => s.note && setOpenSessionNote(noteOpen ? null : s.id)}
+                                >
+                                  {noteOpen ? 'Hide Note' : 'See Note'}
+                                </button>
+                              )}
+                            </div>
                           </td>
                         </tr>
                         {noteOpen && s.note && (

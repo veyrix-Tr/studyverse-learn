@@ -1,9 +1,11 @@
-import { useState, Fragment } from 'react';
+import { useState, useEffect, Fragment } from 'react';
 import { useParams } from 'react-router-dom';
 
 const fmtTime = (iso) => new Date(iso).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
 const fmtDate = (iso) => new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
 const isUpcoming = (iso) => new Date(iso) > new Date();
+const isLive = (iso, duration) => { const s = new Date(iso), e = new Date(s.getTime() + (duration || 60) * 60000), n = new Date(); return n >= s && n <= e; };
+const canStart = (iso) => { const s = new Date(iso), n = new Date(); return s - n <= 15 * 60000 && n < s; };
 const isToday = (iso) => {
   const d = new Date(iso), n = new Date();
   return d.getFullYear() === n.getFullYear() && d.getMonth() === n.getMonth() && d.getDate() === n.getDate();
@@ -146,6 +148,8 @@ const FacultyContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
   const [deletingResourceId, setDeletingResourceId] = useState(null);
   const [activeReport, setActiveReport] = useState(null);
   const [reportFields, setReportFields] = useState({});
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => { const t = setInterval(() => setNow(new Date()), 30000); return () => clearInterval(t); }, []);
   const [savingReport, setSavingReport] = useState(false);
   const [submittingReport, setSubmittingReport] = useState(false);
   const [creatingReportFor, setCreatingReportFor] = useState(null);
@@ -458,17 +462,28 @@ const FacultyContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
             </div>
             {todaySessions.length === 0 ? (
               <div style={{ padding: '12px 0', fontSize: '13px', color: 'var(--text3)' }}>No sessions scheduled for today.</div>
-            ) : todaySessions.map(s => (
-              <div key={s.id} className="sched-item">
-                <div className="sched-time">{fmtTime(s.scheduledAt)}</div>
-                <div className="sched-dot" style={{ background: isUpcoming(s.scheduledAt) ? 'var(--gold)' : 'var(--green)', boxShadow: isUpcoming(s.scheduledAt) ? 'none' : '0 0 0 3px rgba(34,197,94,0.2)' }}></div>
-                <div className="sched-info">
-                  <div className="sched-name">{s.title}</div>
-                  <div className="sched-meta">{s.subject} • {s.duration} min • {s.enrolledCount} student{s.enrolledCount !== 1 ? 's' : ''}</div>
+            ) : todaySessions.map(s => {
+              const live = isLive(s.scheduledAt, s.duration);
+              const upcoming = isUpcoming(s.scheduledAt);
+              return (
+                <div key={s.id} className="sched-item" onClick={() => onNav('schedule')} style={{ cursor: 'pointer' }}>
+                  <div className="sched-time">{fmtTime(s.scheduledAt)}</div>
+                  <div className="sched-dot" style={{ background: live ? '#ef4444' : upcoming ? 'var(--gold)' : 'var(--green)', boxShadow: live ? '0 0 0 3px rgba(239,68,68,0.2)' : upcoming ? 'none' : '0 0 0 3px rgba(34,197,94,0.2)' }}></div>
+                  <div className="sched-info">
+                    <div className="sched-name">{s.title}</div>
+                    <div className="sched-meta">{s.subject} • {s.duration} min • {s.enrolledCount} student{s.enrolledCount !== 1 ? 's' : ''}</div>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '5px' }}>
+                    <div className={`sched-status ${live ? 's-live' : upcoming ? 's-up' : ''}`}>{live ? '🔴 Live' : upcoming ? 'Upcoming' : 'Completed'}</div>
+                    {(live || canStart(s.scheduledAt)) && (
+                      s.startUrl
+                        ? <a href={s.startUrl} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} className="btn btn-sm" style={{ background: live ? 'var(--gold)' : '#16a34a', color: live ? '#0F1F3D' : '#fff', textDecoration: 'none', fontSize: '11px', padding: '3px 10px', fontWeight: 600 }}>▶ {live ? 'Start Now' : 'Start'}</a>
+                        : <button className="btn btn-sm" onClick={e => { e.stopPropagation(); onShowToast('Set up Zoom in the schedule modal to get a start link'); }} style={{ background: live ? 'var(--gold)' : '#16a34a', color: live ? '#0F1F3D' : '#fff', fontSize: '11px', padding: '3px 10px', fontWeight: 600 }}>▶ {live ? 'Start Now' : 'Start'}</button>
+                    )}
+                  </div>
                 </div>
-                <div className={`sched-status ${isUpcoming(s.scheduledAt) ? 's-up' : 's-live'}`}>{isUpcoming(s.scheduledAt) ? 'Upcoming' : '● Live'}</div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           <div className="card">
@@ -525,9 +540,14 @@ const FacultyContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
       <div className={`page${activePage === 'schedule' ? ' on' : ''}`}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
           <div className="tabs" style={{ marginBottom: 0 }}>
-            {['Today', 'Upcoming', 'All'].map((t, i) => (
-              <div key={t} className={`tab${scheduleTab === i ? ' on' : ''}`} onClick={() => setScheduleTab(i)}>{t}</div>
-            ))}
+            {['Today', 'Upcoming', 'All'].map((t, i) => {
+              const hasLive = i === 0 && sessions.some(s => isLive(s.scheduledAt, s.duration));
+              return (
+                <div key={t} className={`tab${scheduleTab === i ? ' on' : ''}`} onClick={() => setScheduleTab(i)}>
+                  {t}{hasLive && <span style={{ display: 'inline-block', width: 7, height: 7, borderRadius: '50%', background: '#ef4444', marginLeft: 5, verticalAlign: 'middle', animation: 'pulse 1.5s infinite' }} />}
+                </div>
+              );
+            })}
           </div>
           <button className="btn btn-gold btn-sm" onClick={() => onOpenModal('schedule-modal')}>+ Schedule Session</button>
         </div>
@@ -555,13 +575,30 @@ const FacultyContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
                         <td><span className="pill pg">{s.subject}</span></td>
                         <td>{fmtDate(s.scheduledAt)}, {fmtTime(s.scheduledAt)}</td>
                         <td>{s.duration} min</td>
-                        <td><span className={`sched-status ${past ? 's-done' : 's-up'}`}>{past ? 'Completed' : 'Upcoming'}</span></td>
                         <td>
-                          <div style={{ display: 'flex', gap: '6px' }}>
+                          {isLive(s.scheduledAt, s.duration)
+                            ? <span className="sched-status" style={{ background: 'rgba(239,68,68,0.12)', color: '#dc2626' }}>🔴 Live</span>
+                            : <span className={`sched-status ${past ? 's-done' : 's-up'}`}>{past ? 'Completed' : 'Upcoming'}</span>}
+                        </td>
+                        <td>
+                          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                             <button className={`btn btn-sm ${s.note ? 'btn-gold' : 'btn-ghost'}`} onClick={() => toggleNote(s.id, s.note)}>
                               {s.note ? 'Edit Note' : 'Add Note'}
                             </button>
                             {!past && <button className="btn btn-ghost btn-sm" disabled={sendingReminder === s.id} onClick={() => sendReminder(s.id)}>{sendingReminder === s.id ? 'Sending…' : 'Remind'}</button>}
+                            {isLive(s.scheduledAt, s.duration) && (
+                              s.startUrl
+                                ? <a href={s.startUrl} target="_blank" rel="noreferrer" className="btn btn-sm" style={{ background: 'var(--gold)', color: '#0F1F3D', textDecoration: 'none', fontWeight: 600, animation: 'pulse 1.5s infinite' }}>▶ Start Now</a>
+                                : <button className="btn btn-sm" style={{ background: 'var(--gold)', color: '#0F1F3D', fontWeight: 600, animation: 'pulse 1.5s infinite' }} onClick={() => onShowToast('Set up Zoom in the schedule modal to get a start link')}>▶ Start Now</button>
+                            )}
+                            {!past && canStart(s.scheduledAt) && (
+                              s.startUrl
+                                ? <a href={s.startUrl} target="_blank" rel="noreferrer" className="btn btn-sm" style={{ background: '#16a34a', color: '#fff', textDecoration: 'none' }}>▶ Start</a>
+                                : <button className="btn btn-sm" style={{ background: '#16a34a', color: '#fff' }} onClick={() => onShowToast('Set up Zoom in the schedule modal to get a start link')}>▶ Start</button>
+                            )}
+                            {past && s.recordingUrl && (
+                              <a href={s.recordingUrl} target="_blank" rel="noreferrer" className="btn btn-ghost btn-sm" style={{ textDecoration: 'none' }}>⏺ Recording</a>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -603,8 +640,9 @@ const FacultyContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
           {pastSessions.length === 0 ? (
             <div style={{ padding: '12px 0', fontSize: '13px', color: 'var(--text3)' }}>No past sessions yet.</div>
           ) : (() => {
-            const withNotes = pastSessions.filter(s => s.note);
-            const shown = withNotes.length > 0 ? withNotes.slice(0, 3) : pastSessions.slice(0, 2);
+            const sorted = [...pastSessions].sort((a, b) => new Date(b.scheduledAt) - new Date(a.scheduledAt));
+            const withNotes = sorted.filter(s => s.note);
+            const shown = withNotes.length > 0 ? withNotes.slice(0, 3) : sorted.slice(0, 2);
             return shown.map((s, idx) => (
               <div key={s.id} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '12px 0', borderBottom: idx < shown.length - 1 ? '1px solid var(--b)' : 'none' }}>
                 <div className="di-av">{(s.enrolledStudents?.[0] || '?').charAt(0)}</div>
