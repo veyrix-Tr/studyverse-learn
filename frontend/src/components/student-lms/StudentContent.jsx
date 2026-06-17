@@ -313,7 +313,7 @@ const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
         {(() => {
           const planEndDate = profile?.studentProfile?.planEndDate;
           const plan = profile?.studentProfile?.plan;
-          if (!planEndDate || plan !== 'premium') return null;
+          if (!planEndDate || !['forge', 'apex', 'anchor'].includes(plan)) return null;
           const daysLeft = Math.ceil((new Date(planEndDate) - new Date()) / (1000 * 60 * 60 * 24));
           const isDev = import.meta.env.VITE_ENV === 'dev';
           if (daysLeft <= 0 || (!isDev && daysLeft > 5)) return null;
@@ -388,19 +388,23 @@ const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
                 const upcoming = isUpcoming(s.scheduledAt);
                 return (
                   <div key={s.id} className="sess-item" onClick={() => onNav('sessions')} style={{ cursor: 'pointer' }}>
-                    <div className="sess-subj" style={{ background: live ? 'rgba(239,68,68,0.08)' : 'rgba(15,31,61,0.06)', fontSize: '18px' }}>{live ? '🔴' : '📚'}</div>
+                    <div className="sess-subj" style={{ background: live ? 'rgba(239,68,68,0.08)' : 'rgba(15,31,61,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      {live
+                        ? <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#ef4444', display: 'inline-block', animation: 'pulse 1.5s infinite' }} />
+                        : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ color: 'var(--text3)' }}><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>}
+                    </div>
                     <div className="sess-info">
                       <div className="sess-name">{s.title}</div>
                       <div className="sess-meta">with {s.facultyName} • {s.subject}</div>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '5px' }}>
                       <div className={`sess-status ${live ? 's-live' : upcoming ? 's-up' : ''}`}>
-                        {live ? '● Live' : upcoming ? countdown(s.scheduledAt, now) : 'Completed'}
+                        {live ? <><span style={{ width: 7, height: 7, borderRadius: '50%', background: '#ef4444', display: 'inline-block', marginRight: 5, animation: 'pulse 1.5s infinite' }} />Live</> : upcoming ? countdown(s.scheduledAt, now) : 'Completed'}
                       </div>
                       {(live || upcoming) && (
                         s.joinUrl
-                          ? <a href={s.joinUrl} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} className="btn btn-sm" style={{ background: live ? 'var(--gold)' : '#16a34a', color: live ? '#0F1F3D' : '#fff', textDecoration: 'none', fontSize: '11px', padding: '3px 10px', fontWeight: 600 }}>▶ {live ? 'Join Now' : 'Join Class'}</a>
-                          : <button className="btn btn-sm" onClick={e => { e.stopPropagation(); onShowToast('Meeting link not set yet — contact your mentor'); }} style={{ background: live ? 'var(--gold)' : '#16a34a', color: live ? '#0F1F3D' : '#fff', fontSize: '11px', padding: '3px 10px', fontWeight: 600 }}>▶ {live ? 'Join Now' : 'Join Class'}</button>
+                          ? <a href={s.joinUrl} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} className="btn btn-sm" style={{ background: live ? 'var(--gold)' : '#16a34a', color: live ? '#0F1F3D' : '#fff', textDecoration: 'none', fontSize: '11px', padding: '3px 10px', fontWeight: 600 }}>{live ? 'Join Now' : 'Join Class'}</a>
+                          : <button className="btn btn-sm" onClick={e => { e.stopPropagation(); onShowToast('Meeting link not set yet — contact your mentor'); }} style={{ background: live ? 'var(--gold)' : '#16a34a', color: live ? '#0F1F3D' : '#fff', fontSize: '11px', padding: '3px 10px', fontWeight: 600 }}>{live ? 'Join Now' : 'Join Class'}</button>
                       )}
                     </div>
                   </div>
@@ -610,7 +614,7 @@ const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
               <div style={{ fontSize: '12px', color: 'var(--text3)', marginBottom: '14px' }}>{c.meta}</div>
               <div className="pbar"><div className={`pbar-inner${c.pbarClass ? ' ' + c.pbarClass : ''}`} style={{ width: `${c.pct}%`, ...(c.pbarStyle || {}) }}></div></div>
               <div style={{ fontSize: '11px', color: 'var(--text3)', marginTop: '5px', marginBottom: '14px' }}>{c.pctText || c.pct}% complete</div>
-              <button className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }} onClick={c.goVideo ? (e) => { e.stopPropagation(); onNav('video'); } : undefined}>▶ Continue</button>
+              <button className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }} onClick={c.goVideo ? (e) => { e.stopPropagation(); onNav('video'); } : undefined}>Continue</button>
             </div>
           ))}
         </div>
@@ -699,7 +703,7 @@ const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
                           <td>{s.duration} min</td>
                           <td>
                             {isLive(s.scheduledAt, s.duration)
-                              ? <span className="sess-status" style={{ background: 'rgba(239,68,68,0.12)', color: '#dc2626', fontWeight: 600 }}>🔴 Live Now</span>
+                              ? <span className="sess-status" style={{ background: 'rgba(239,68,68,0.12)', color: '#dc2626', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 5 }}><span style={{ width: 7, height: 7, borderRadius: '50%', background: '#ef4444', display: 'inline-block', animation: 'pulse 1.5s infinite', flexShrink: 0 }} />Live Now</span>
                               : isToday(s.scheduledAt) && isUpcoming(s.scheduledAt)
                                 ? <span className="sess-status s-up">{countdown(s.scheduledAt, now)}</span>
                                 : <span className={`sess-status ${isUpcoming(s.scheduledAt) && !isToday(s.scheduledAt) ? 's-up' : ''}`}>{isUpcoming(s.scheduledAt) && !isToday(s.scheduledAt) ? 'Upcoming' : 'Completed'}</span>}
@@ -708,16 +712,16 @@ const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
                             <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                               {isToday(s.scheduledAt) && isUpcoming(s.scheduledAt) && !isLive(s.scheduledAt, s.duration) && (
                                 s.joinUrl
-                                  ? <a href={s.joinUrl} target="_blank" rel="noreferrer" className="btn btn-sm" style={{ background: '#16a34a', color: '#fff', textDecoration: 'none' }}>▶ Join Class</a>
-                                  : <button className="btn btn-sm" onClick={() => onShowToast('Meeting link not set yet — contact your mentor')} style={{ background: '#16a34a', color: '#fff' }}>▶ Join Class</button>
+                                  ? <a href={s.joinUrl} target="_blank" rel="noreferrer" className="btn btn-sm" style={{ background: '#16a34a', color: '#fff', textDecoration: 'none' }}>Join Class</a>
+                                  : <button className="btn btn-sm" onClick={() => onShowToast('Meeting link not set yet — contact your mentor')} style={{ background: '#16a34a', color: '#fff' }}>Join Class</button>
                               )}
                               {isLive(s.scheduledAt, s.duration) && (
                                 s.joinUrl
-                                  ? <a href={s.joinUrl} target="_blank" rel="noreferrer" className="btn btn-sm" style={{ background: 'var(--gold)', color: '#0F1F3D', textDecoration: 'none', fontWeight: 600, animation: 'pulse 1.5s infinite' }}>▶ Join Now</a>
-                                  : <button className="btn btn-sm" style={{ background: 'var(--gold)', color: '#0F1F3D', fontWeight: 600, animation: 'pulse 1.5s infinite' }} onClick={() => onShowToast('Meeting link not set yet — contact your mentor')}>▶ Join Now</button>
+                                  ? <a href={s.joinUrl} target="_blank" rel="noreferrer" className="btn btn-sm" style={{ background: 'var(--gold)', color: '#0F1F3D', textDecoration: 'none', fontWeight: 600, animation: 'pulse 1.5s infinite' }}>Join Now</a>
+                                  : <button className="btn btn-sm" style={{ background: 'var(--gold)', color: '#0F1F3D', fontWeight: 600, animation: 'pulse 1.5s infinite' }} onClick={() => onShowToast('Meeting link not set yet — contact your mentor')}>Join Now</button>
                               )}
                               {!isUpcoming(s.scheduledAt) && s.recordingUrl && (
-                                <a href={s.recordingUrl} target="_blank" rel="noreferrer" className="btn btn-ghost btn-sm" style={{ textDecoration: 'none' }}>⏺ Recording</a>
+                                <a href={s.recordingUrl} target="_blank" rel="noreferrer" className="btn btn-ghost btn-sm" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }}><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="8"/></svg>Recording</a>
                               )}
                               {!isUpcoming(s.scheduledAt) && (
                                 <button

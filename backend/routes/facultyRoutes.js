@@ -46,19 +46,19 @@ router.get('/sessions', requireAuth, async (req, res) => {
     const fp = await prisma.facultyProfile.findUnique({ where: { userId: req.params.userId } });
     if (!fp) return res.json([]);
 
-    const [sessions, premiumStudents] = await Promise.all([
+    const [sessions, apexStudents] = await Promise.all([
       prisma.session.findMany({
         where: { facultyId: fp.id },
         orderBy: { scheduledAt: 'asc' },
       }),
       prisma.studentProfile.findMany({
-        where: { plan: 'premium' },
+        where: { plan: 'apex' },
         include: { user: { select: { name: true } } },
       }),
     ]);
 
     res.json(sessions.map(s => {
-      const eligible = premiumStudents.filter(sp =>
+      const eligible = apexStudents.filter(sp =>
         sp.grade === s.grade &&
         (EXAM_SUBJECTS[sp.examTarget] || []).includes(s.subject)
       );
@@ -127,7 +127,7 @@ router.get('/students', requireAuth, async (req, res) => {
 
     // Premium students in those grades whose exam curriculum includes this faculty's subject
     const students = await prisma.studentProfile.findMany({
-      where: { grade: { in: grades }, plan: 'premium' },
+      where: { grade: { in: grades }, plan: 'apex' },
       include: { user: { select: { name: true } } },
     });
     const relevant = students.filter(sp =>
@@ -192,7 +192,7 @@ router.post('/sessions/:id/note', requireAuth, async (req, res) => {
     // Notify eligible students if a note was actually set
     if (trimmedNote) {
       const students = await prisma.studentProfile.findMany({
-        where: { grade: session.grade, plan: 'premium' },
+        where: { grade: session.grade, plan: 'apex' },
       });
       const eligible = students.filter(sp =>
         (EXAM_SUBJECTS[sp.examTarget] || []).includes(session.subject)
@@ -237,7 +237,7 @@ router.post('/sessions/:id/remind', requireAuth, async (req, res) => {
     if (!session || session.facultyId !== fp.id) return res.status(404).json({ error: 'Session not found' });
 
     const students = await prisma.studentProfile.findMany({
-      where: { grade: session.grade, plan: 'premium' },
+      where: { grade: session.grade, plan: 'apex' },
     });
     const eligible = students.filter(sp =>
       (EXAM_SUBJECTS[sp.examTarget] || []).includes(session.subject)
@@ -291,7 +291,7 @@ router.post('/broadcast', requireAuth, async (req, res) => {
     if (grades.length === 0) return res.json({ success: true, notified: 0 });
 
     const students = await prisma.studentProfile.findMany({
-      where: { grade: { in: grades }, plan: 'premium' },
+      where: { grade: { in: grades }, plan: 'apex' },
     });
     const eligible = students.filter(sp =>
       (EXAM_SUBJECTS[sp.examTarget] || []).includes(fp.subject)

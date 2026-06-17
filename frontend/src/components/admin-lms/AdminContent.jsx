@@ -109,7 +109,7 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
         <div className="g4 mb">
           <div className="stat sa-navy"><div className="stat-l">Active Students</div><div className="stat-v">12</div><div className="stat-n up">↑ 2 this month</div></div>
           <div className="stat sa-gold"><div className="stat-l">Revenue (April)</div><div className="stat-v" style={{ fontSize: '22px' }}>₹1.84L</div><div className="stat-n up">↑ 18% vs March</div></div>
-          <div className="stat sa-blue"><div className="stat-l">Premium Students</div><div className="stat-v">{students.filter(s => s.plan === 'premium').length}</div><div className="stat-n up">active subscriptions</div></div>
+          <div className="stat sa-blue"><div className="stat-l">Premium Students</div><div className="stat-v">{students.filter(s => ['forge','apex','anchor'].includes(s.plan)).length}</div><div className="stat-n up">active subscriptions</div></div>
           <div className="stat sa-green"><div className="stat-l">Avg Improvement</div><div className="stat-v">+76</div><div className="stat-n up">marks across cohort</div></div>
         </div>
 
@@ -284,7 +284,7 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
         <div className="g4 mb">
           <div className="stat sa-gold"><div className="stat-l">Total Revenue (YTD)</div><div className="stat-v" style={{ fontSize: '22px' }}>₹14.2L</div><div className="stat-n up">↑ 34% vs last year</div></div>
           <div className="stat sa-green"><div className="stat-l">April Collected</div><div className="stat-v" style={{ fontSize: '22px' }}>₹1.56L</div><div className="stat-n up">85% of target</div></div>
-          <div className="stat sa-blue"><div className="stat-l">Premium Subscribers</div><div className="stat-v" style={{ fontSize: '22px' }}>{students.filter(s => s.plan === 'premium').length}</div><div className="stat-n up">active this month</div></div>
+          <div className="stat sa-blue"><div className="stat-l">Premium Subscribers</div><div className="stat-v" style={{ fontSize: '22px' }}>{students.filter(s => ['forge','apex','anchor'].includes(s.plan)).length}</div><div className="stat-n up">active this month</div></div>
           <div className="stat sa-navy"><div className="stat-l">Avg Revenue/Student</div><div className="stat-v" style={{ fontSize: '22px' }}>₹15.3K</div><div className="stat-n neu">per month</div></div>
         </div>
 
@@ -298,7 +298,7 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
             <div style={{ display: 'flex', gap: '16px', marginTop: '14px', borderTop: '1px solid var(--b)', paddingTop: '12px' }}>
               <div style={{ textAlign: 'center', flex: 1 }}><div style={{ fontFamily: 'var(--fs)', fontSize: '16px', fontWeight: '700', color: 'var(--text)' }}>₹1.84L</div><div style={{ fontSize: '10.5px', color: 'var(--text3)' }}>Apr target</div></div>
               <div style={{ textAlign: 'center', flex: 1 }}><div style={{ fontFamily: 'var(--fs)', fontSize: '16px', fontWeight: '700', color: 'var(--green)' }}>₹1.56L</div><div style={{ fontSize: '10.5px', color: 'var(--text3)' }}>Collected</div></div>
-              <div style={{ textAlign: 'center', flex: 1 }}><div style={{ fontFamily: 'var(--fs)', fontSize: '16px', fontWeight: '700', color: 'var(--blue)' }}>{students.filter(s => s.plan === 'premium').length}</div><div style={{ fontSize: '10.5px', color: 'var(--text3)' }}>Premium Active</div></div>
+              <div style={{ textAlign: 'center', flex: 1 }}><div style={{ fontFamily: 'var(--fs)', fontSize: '16px', fontWeight: '700', color: 'var(--blue)' }}>{students.filter(s => ['forge','apex','anchor'].includes(s.plan)).length}</div><div style={{ fontSize: '10.5px', color: 'var(--text3)' }}>Premium Active</div></div>
             </div>
           </div>
           <div className="card">
@@ -333,7 +333,7 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
                   <td><div className="av-row"><div className="av">{s.name.charAt(0)}</div>{s.name}</div></td>
                   <td>{s.examTarget || '—'}</td>
                   <td>{s.grade ? `Grade ${s.grade}` : '—'}</td>
-                  <td><span className={`fc-status ${s.plan === 'premium' ? 'paid' : ''}`}>{s.plan === 'premium' ? 'Premium ✓' : 'Free Tier'}</span></td>
+                  <td><span className={`fc-status ${['forge','apex','anchor'].includes(s.plan) ? 'paid' : ''}`}>{['forge','apex','anchor'].includes(s.plan) ? (s.plan.charAt(0).toUpperCase() + s.plan.slice(1)) + ' ✓' : 'Spark (Free)'}</span></td>
                 </tr>
               ))}
             </tbody>
@@ -344,8 +344,8 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
       {/* ══ STUDENTS ══ */}
       <div className={pg('students')} id="p-students">
         {(() => {
-          const premium  = students.filter(s => s.plan === 'premium');
-          const free     = students.filter(s => s.plan !== 'premium');
+          const premium  = students.filter(s => ['forge','apex','anchor'].includes(s.plan));
+          const free     = students.filter(s => !['forge','apex','anchor'].includes(s.plan));
           const premJee  = premium.filter(s => s.examTarget?.toLowerCase().includes('jee'));
           const premNeet = premium.filter(s => s.examTarget?.toLowerCase().includes('neet'));
 

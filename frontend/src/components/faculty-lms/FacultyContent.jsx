@@ -474,11 +474,11 @@ const FacultyContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
                     <div className="sched-meta">{s.subject} • {s.duration} min • {s.enrolledCount} student{s.enrolledCount !== 1 ? 's' : ''}</div>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '5px' }}>
-                    <div className={`sched-status ${live ? 's-live' : upcoming ? 's-up' : ''}`}>{live ? '🔴 Live' : upcoming ? 'Upcoming' : 'Completed'}</div>
+                    <div className={`sched-status ${live ? 's-live' : upcoming ? 's-up' : ''}`} style={live ? { display: 'flex', alignItems: 'center', gap: 5 } : {}}>{live ? <><span style={{ width: 7, height: 7, borderRadius: '50%', background: '#ef4444', display: 'inline-block', animation: 'pulse 1.5s infinite', flexShrink: 0 }} />Live</> : upcoming ? 'Upcoming' : 'Completed'}</div>
                     {(live || canStart(s.scheduledAt)) && (
                       s.startUrl
-                        ? <a href={s.startUrl} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} className="btn btn-sm" style={{ background: live ? 'var(--gold)' : '#16a34a', color: live ? '#0F1F3D' : '#fff', textDecoration: 'none', fontSize: '11px', padding: '3px 10px', fontWeight: 600 }}>▶ {live ? 'Start Now' : 'Start'}</a>
-                        : <button className="btn btn-sm" onClick={e => { e.stopPropagation(); onShowToast('Set up Zoom in the schedule modal to get a start link'); }} style={{ background: live ? 'var(--gold)' : '#16a34a', color: live ? '#0F1F3D' : '#fff', fontSize: '11px', padding: '3px 10px', fontWeight: 600 }}>▶ {live ? 'Start Now' : 'Start'}</button>
+                        ? <a href={s.startUrl} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} className="btn btn-sm" style={{ background: live ? 'var(--gold)' : '#16a34a', color: live ? '#0F1F3D' : '#fff', textDecoration: 'none', fontSize: '11px', padding: '3px 10px', fontWeight: 600 }}>{live ? 'Start Now' : 'Start'}</a>
+                        : <button className="btn btn-sm" onClick={e => { e.stopPropagation(); onShowToast('Set up Zoom in the schedule modal to get a start link'); }} style={{ background: live ? 'var(--gold)' : '#16a34a', color: live ? '#0F1F3D' : '#fff', fontSize: '11px', padding: '3px 10px', fontWeight: 600 }}>{live ? 'Start Now' : 'Start'}</button>
                     )}
                   </div>
                 </div>
@@ -577,7 +577,7 @@ const FacultyContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
                         <td>{s.duration} min</td>
                         <td>
                           {isLive(s.scheduledAt, s.duration)
-                            ? <span className="sched-status" style={{ background: 'rgba(239,68,68,0.12)', color: '#dc2626' }}>🔴 Live</span>
+                            ? <span className="sched-status" style={{ background: 'rgba(239,68,68,0.12)', color: '#dc2626', display: 'inline-flex', alignItems: 'center', gap: 5 }}><span style={{ width: 7, height: 7, borderRadius: '50%', background: '#ef4444', display: 'inline-block', animation: 'pulse 1.5s infinite', flexShrink: 0 }} />Live</span>
                             : <span className={`sched-status ${past ? 's-done' : 's-up'}`}>{past ? 'Completed' : 'Upcoming'}</span>}
                         </td>
                         <td>
@@ -588,16 +588,16 @@ const FacultyContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
                             {!past && <button className="btn btn-ghost btn-sm" disabled={sendingReminder === s.id} onClick={() => sendReminder(s.id)}>{sendingReminder === s.id ? 'Sending…' : 'Remind'}</button>}
                             {isLive(s.scheduledAt, s.duration) && (
                               s.startUrl
-                                ? <a href={s.startUrl} target="_blank" rel="noreferrer" className="btn btn-sm" style={{ background: 'var(--gold)', color: '#0F1F3D', textDecoration: 'none', fontWeight: 600, animation: 'pulse 1.5s infinite' }}>▶ Start Now</a>
-                                : <button className="btn btn-sm" style={{ background: 'var(--gold)', color: '#0F1F3D', fontWeight: 600, animation: 'pulse 1.5s infinite' }} onClick={() => onShowToast('Set up Zoom in the schedule modal to get a start link')}>▶ Start Now</button>
+                                ? <a href={s.startUrl} target="_blank" rel="noreferrer" className="btn btn-sm" style={{ background: 'var(--gold)', color: '#0F1F3D', textDecoration: 'none', fontWeight: 600, animation: 'pulse 1.5s infinite' }}>Start Now</a>
+                                : <button className="btn btn-sm" style={{ background: 'var(--gold)', color: '#0F1F3D', fontWeight: 600, animation: 'pulse 1.5s infinite' }} onClick={() => onShowToast('Set up Zoom in the schedule modal to get a start link')}>Start Now</button>
                             )}
                             {!past && canStart(s.scheduledAt) && (
                               s.startUrl
-                                ? <a href={s.startUrl} target="_blank" rel="noreferrer" className="btn btn-sm" style={{ background: '#16a34a', color: '#fff', textDecoration: 'none' }}>▶ Start</a>
-                                : <button className="btn btn-sm" style={{ background: '#16a34a', color: '#fff' }} onClick={() => onShowToast('Set up Zoom in the schedule modal to get a start link')}>▶ Start</button>
+                                ? <a href={s.startUrl} target="_blank" rel="noreferrer" className="btn btn-sm" style={{ background: '#16a34a', color: '#fff', textDecoration: 'none' }}>Start</a>
+                                : <button className="btn btn-sm" style={{ background: '#16a34a', color: '#fff' }} onClick={() => onShowToast('Set up Zoom in the schedule modal to get a start link')}>Start</button>
                             )}
                             {past && s.recordingUrl && (
-                              <a href={s.recordingUrl} target="_blank" rel="noreferrer" className="btn btn-ghost btn-sm" style={{ textDecoration: 'none' }}>⏺ Recording</a>
+                              <a href={s.recordingUrl} target="_blank" rel="noreferrer" className="btn btn-ghost btn-sm" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }}><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="8"/></svg>Recording</a>
                             )}
                           </div>
                         </td>

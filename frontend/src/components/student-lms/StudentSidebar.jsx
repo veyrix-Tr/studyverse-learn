@@ -5,8 +5,11 @@ const StudentSidebar = ({ activePage, onNav, profile, upcomingSessionsCount = 0,
   const initial = name.charAt(0).toUpperCase();
   const examTarget = profile?.studentProfile?.examTarget || '';
   const targetYear = profile?.studentProfile?.targetYear || '';
-  const plan = profile?.studentProfile?.plan;
+  const plan = profile?.studentProfile?.plan || 'spark';
   const planEndDate = profile?.studentProfile?.planEndDate;
+  const planLabel = plan.charAt(0).toUpperCase() + plan.slice(1);
+  const hasSessions = plan === 'apex';
+  const hasQuestionBank = ['forge', 'apex'].includes(plan);
   const planEndFmt = planEndDate ? new Date(planEndDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : null;
 
   return (
@@ -55,7 +58,9 @@ const StudentSidebar = ({ activePage, onNav, profile, upcomingSessionsCount = 0,
             <rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>
           </svg>
           Sessions
-          {upcomingSessionsCount > 0 && <span className="nav-badge">{upcomingSessionsCount}</span>}
+          {hasSessions && upcomingSessionsCount > 0
+            ? <span className="nav-badge">{upcomingSessionsCount}</span>
+            : !hasSessions && <span className="nav-badge" style={{ background: 'rgba(232,168,48,0.15)', color: 'var(--gold)', fontSize: '9px' }}>Apex</span>}
         </div>
 
         <div className={ni('tests')} onClick={() => onNav('tests')}>
@@ -93,6 +98,7 @@ const StudentSidebar = ({ activePage, onNav, profile, upcomingSessionsCount = 0,
             <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M12 17h.01"/>
           </svg>
           Question Bank
+          {!hasQuestionBank && <span className="nav-badge" style={{ background: 'rgba(232,168,48,0.15)', color: 'var(--gold)', fontSize: '9px' }}>Forge</span>}
         </div>
 
         <div className={ni('doubt')} onClick={() => onNav('doubt')}>
@@ -125,8 +131,8 @@ const StudentSidebar = ({ activePage, onNav, profile, upcomingSessionsCount = 0,
           <div className="user-info">
             <div className="uname">{name}</div>
             <div className="utarget">{examTarget}{targetYear ? ` ${targetYear}` : ''}</div>
-            {plan === 'premium' && planEndFmt && (
-              <div style={{ fontSize: '10px', color: 'rgb(247, 184, 13)', marginTop: '2px' }}>Premium till {planEndFmt}</div>
+            {planEndFmt && (
+              <div style={{ fontSize: '10px', color: 'rgb(247, 184, 13)', marginTop: '2px' }}>{planLabel} till {planEndFmt}</div>
             )}
           </div>
         </div>

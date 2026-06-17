@@ -942,61 +942,90 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, onD
       {/* ══════════ PLANS ══════════ */}
       <div className={p('plans')}>
         <div style={{ textAlign: 'center', marginBottom: '28px' }}>
-          <div style={{ fontFamily: 'var(--fs)', fontSize: '26px', fontWeight: 700, color: 'var(--text)', marginBottom: '6px' }}>Simple, honest pricing</div>
-          <div style={{ fontSize: '13.5px', color: 'var(--text2)' }}>Start free. Upgrade when it makes sense for you.</div>
+          <div style={{ fontFamily: 'var(--fs)', fontSize: '26px', fontWeight: 700, color: 'var(--text)', marginBottom: '6px' }}>Four plans. One mission.</div>
+          <div style={{ fontSize: '13.5px', color: 'var(--text2)' }}>Start free with Spark. Upgrade when it makes sense.</div>
         </div>
-        <div className="pricing-grid">
+        <div className="pricing-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', gap: '14px' }}>
+          {/* ── Spark ── */}
           <div className="price-card">
-            <div className="pc-name">Free Explorer</div>
+            <div className="pc-name">Spark</div>
+            <div className="pc-tagline">The ignition</div>
             <div className="pc-price">₹0</div>
-            <div className="pc-sub">No card. No login needed.</div>
+            <div className="pc-sub">Free forever. No card.</div>
             <div className="pc-feats">
-              <div className="pc-feat">Personalised diagnostic (self-rate + MCQs)</div>
-              <div className="pc-feat">Full topic weakness map</div>
-              <div className="pc-feat">Study guidance (prioritised plan)</div>
+              <div className="pc-feat">Deep diagnostic form (JEE &amp; NEET)</div>
+              <div className="pc-feat">Chapter-level topic weakness map</div>
+              <div className="pc-feat">Personalised study guidance</div>
               <div className="pc-feat">Daily habit tracker (5 habits)</div>
               <div className="pc-feat">Basic NCERT resources</div>
               <div className="pc-feat no">Custom question bank</div>
               <div className="pc-feat no">Faculty sessions</div>
-              <div className="pc-feat no">Advanced PYQ resources</div>
+              <div className="pc-feat no">Mentorship &amp; accountability</div>
             </div>
-            <button className="btn btn-ghost btn-full">Current Plan</button>
+            <button className="btn btn-ghost btn-full" style={{ opacity: 0.6, cursor: 'default' }}>Current Plan</button>
           </div>
+
+          {/* ── Forge ── */}
           <div className="price-card featured">
-            <div className="pc-badge">MOST USEFUL</div>
-            <div className="pc-name">Unlock</div>
+            <div className="pc-badge">GET STARTED</div>
+            <div className="pc-name">Forge</div>
+            <div className="pc-tagline">Build your score, problem by problem</div>
             <div className="pc-price" style={{ color: 'var(--gold)' }}>₹ XX</div>
-            <div className="pc-sub">One-time or monthly</div>
+            <div className="pc-sub">Monthly</div>
             <div className="pc-feats">
-              <div className="pc-feat">Everything in Free</div>
-              <div className="pc-feat">Question bank matched to your weak topics</div>
-              <div className="pc-feat">Full diagnostic with detailed score report</div>
+              <div className="pc-feat">Everything in Spark</div>
+              <div className="pc-feat">Custom question bank (matched to your gaps)</div>
+              <div className="pc-feat">Weekly tests based on current weak topics</div>
+              <div className="pc-feat">Progress tracking — map updates with each test</div>
               <div className="pc-feat">Premium resources (HC Verma, PYQs, formula sheets)</div>
-              <div className="pc-feat">Progress tracking over time</div>
-              <div className="pc-feat no">1-to-1 faculty sessions</div>
+              <div className="pc-feat no">Live faculty sessions</div>
               <div className="pc-feat no">Dedicated mentor</div>
             </div>
-            <button className="btn btn-gold btn-full" onClick={() => onOpenModal('upgrade-modal')}>Get Access</button>
+            <button className="btn btn-gold btn-full" onClick={() => onOpenModal('upgrade-modal')}>Get Forge →</button>
           </div>
-          <div className="price-card">
-            <div className="pc-name">Full Program</div>
-            <div className="pc-price">₹ XX</div>
-            <div className="pc-sub">Per month · Personalised</div>
+
+          {/* ── Apex ── */}
+          <div className="price-card" style={{ background: 'var(--navy)', color: '#fff', border: '2px solid var(--gold)' }}>
+            <div className="pc-badge" style={{ background: 'var(--gold)', color: '#0F1F3D' }}>COMPLETE PROGRAM</div>
+            <div className="pc-name" style={{ color: '#fff' }}>Apex</div>
+            <div className="pc-tagline" style={{ color: 'rgba(253,248,240,0.6)' }}>The highest point</div>
+            <div className="pc-price" style={{ color: 'var(--gold)' }}>₹ XX</div>
+            <div className="pc-sub" style={{ color: 'rgba(253,248,240,0.6)' }}>Per month · Personalised</div>
             <div className="pc-feats">
-              <div className="pc-feat">Everything in Unlock</div>
-              <div className="pc-feat">Dedicated 1-to-1 mentor (Ajay Sharma)</div>
-              <div className="pc-feat">Weekly live sessions (personalised)</div>
-              <div className="pc-feat">Weekly parent reports every Sunday</div>
-              <div className="pc-feat">Your personal Score Journey arc</div>
-              <div className="pc-feat">Doubt desk (mentor replies within 4h)</div>
-              <div className="pc-feat">Mentor-assigned tests based on your gaps</div>
+              <div className="pc-feat" style={{ color: 'rgba(253,248,240,0.9)' }}>Everything in Forge</div>
+              <div className="pc-feat" style={{ color: 'rgba(253,248,240,0.9)' }}>Dedicated 1-to-1 faculty</div>
+              <div className="pc-feat" style={{ color: 'rgba(253,248,240,0.9)' }}>Weekly live sessions — personalised to your gaps</div>
+              <div className="pc-feat" style={{ color: 'rgba(253,248,240,0.9)' }}>Mentorship + daily accountability</div>
+              <div className="pc-feat" style={{ color: 'rgba(253,248,240,0.9)' }}>Score Journey arc (baseline → target)</div>
+              <div className="pc-feat" style={{ color: 'rgba(253,248,240,0.9)' }}>Weekly parent reports every Sunday</div>
+              <div className="pc-feat" style={{ color: 'rgba(253,248,240,0.9)' }}>Doubt desk — reply within 4 hours</div>
+              <div className="pc-feat" style={{ color: 'rgba(253,248,240,0.9)' }}>Mentor-assigned tests based on your progress</div>
+            </div>
+            <button className="btn btn-gold btn-full" onClick={() => onOpenModal('enroll-modal')}>Talk to Us →</button>
+          </div>
+
+          {/* ── Anchor ── */}
+          <div className="price-card">
+            <div className="pc-name">Anchor</div>
+            <div className="pc-tagline">Someone in your corner, every day</div>
+            <div className="pc-price">₹ XX</div>
+            <div className="pc-sub">Monthly · Mentorship only</div>
+            <div className="pc-feats">
+              <div className="pc-feat">Everything in Spark (free features)</div>
+              <div className="pc-feat">Daily check-in — you report, mentor reviews</div>
+              <div className="pc-feat">Weekly 1-to-1 strategy call with mentor</div>
+              <div className="pc-feat">Study plan updated weekly based on your data</div>
+              <div className="pc-feat">Direct mentor access during the day</div>
+              <div className="pc-feat">Habit consistency tracking by mentor</div>
+              <div className="pc-feat no">Live teaching sessions</div>
+              <div className="pc-feat no">Question bank</div>
             </div>
             <button className="btn btn-navy btn-full" onClick={() => onOpenModal('enroll-modal')}>Talk to Us →</button>
           </div>
         </div>
-        <div style={{ background: 'var(--cream)', border: '1px solid var(--gold-b)', borderRadius: 'var(--rl)', padding: '18px 22px', textAlign: 'center', boxShadow: 'var(--sh)' }}>
+        <div style={{ background: 'var(--cream)', border: '1px solid var(--gold-b)', borderRadius: 'var(--rl)', padding: '18px 22px', textAlign: 'center', boxShadow: 'var(--sh)', marginTop: '16px' }}>
           <div style={{ fontFamily: 'var(--fs)', fontSize: '15px', fontWeight: 600, marginBottom: '4px' }}>Not ready to commit? That's fine.</div>
-          <div style={{ fontSize: '13px', color: 'var(--text2)', marginBottom: '14px' }}>Book a single session with Ajay for <strong>₹ XX</strong>. No subscription. Pay only for the session you need. If it helps, you'll know.</div>
+          <div style={{ fontSize: '13px', color: 'var(--text2)', marginBottom: '14px' }}>Book a single session with Ajay for <strong>₹ XX</strong>. No plan needed. Pay only for what you need.</div>
           <button className="btn btn-gold" onClick={() => onNav('sessions')}>Book a Single Session →</button>
         </div>
       </div>

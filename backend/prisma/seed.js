@@ -29,7 +29,7 @@ async function main() {
       password: studentPass,
       role: 'student',
       studentProfile: {
-        create: { plan: 'free', examTarget: 'JEE Mains', targetYear: '2027', grade: '12' },
+        create: { plan: 'spark', examTarget: 'JEE Mains', targetYear: '2027', grade: '12' },
       },
     },
   });
@@ -42,7 +42,7 @@ async function main() {
       role: 'student',
       studentProfile: {
         create: {
-          plan: 'premium',
+          plan: 'apex',
           examTarget: 'NEET',
           targetYear: '2027',
           grade: 'Dropper',
@@ -60,7 +60,7 @@ async function main() {
       password: studentPass,
       role: 'student',
       studentProfile: {
-        create: { plan: 'free', examTarget: 'JEE Advanced', targetYear: '2028', grade: '11' },
+        create: { plan: 'spark', examTarget: 'JEE Advanced', targetYear: '2028', grade: '11' },
       },
     },
   });
@@ -73,7 +73,7 @@ async function main() {
       role: 'student',
       studentProfile: {
         create: {
-          plan: 'premium',
+          plan: 'apex',
           examTarget: 'JEE Mains',
           targetYear: '2027',
           grade: '12',

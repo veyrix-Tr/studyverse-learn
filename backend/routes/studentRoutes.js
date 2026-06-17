@@ -106,7 +106,7 @@ const EXAM_SUBJECTS = {
 router.get('/sessions', requireAuth, async (req, res) => {
   try {
     const profile = await prisma.studentProfile.findUnique({ where: { userId: req.params.userId } });
-    if (!profile || profile.plan !== 'premium') return res.json([]);
+    if (!profile || profile.plan !== 'apex') return res.json([]);
 
     const subjects = EXAM_SUBJECTS[profile.examTarget] || [];
     if (!profile.grade || subjects.length === 0) return res.json([]);
@@ -357,7 +357,7 @@ router.get('/resources', requireAuth, async (req, res) => {
 router.get('/question-bank', requireAuth, async (req, res) => {
   try {
     const profile = await prisma.studentProfile.findUnique({ where: { userId: req.params.userId } });
-    if (!profile) return res.json([]);
+    if (!profile || !['forge', 'apex'].includes(profile.plan)) return res.json([]);
 
     const subjects = EXAM_SUBJECTS[profile.examTarget] || [];
     if (!subjects.length) return res.json([]);

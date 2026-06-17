@@ -27,7 +27,7 @@ const FreeSidebar = ({ activePage, onNav, profile }) => {
 
       <div className="tier-strip">
         <div className="tier-label">Current Plan</div>
-        <div className="tier-name">Free Explorer</div>
+        <div className="tier-name">Spark</div>
         <div className="tier-cta" onClick={() => onNav('plans')}>Upgrade for more →</div>
       </div>
 
@@ -69,7 +69,7 @@ const FreeSidebar = ({ activePage, onNav, profile }) => {
         <div className={ni('sessions')} onClick={() => onNav('sessions')}>
           <svg className="nic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
           Book a Session
-          <span className="nbadge lock">🔒 Premium</span>
+          <span className="nbadge lock">🔒 Apex</span>
         </div>
         <div className={ni('resources')} onClick={() => onNav('resources')}>
           <svg className="nic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
@@ -88,7 +88,7 @@ const FreeSidebar = ({ activePage, onNav, profile }) => {
           <div className="sb-av">{initial}</div>
           <div>
             <div className="sb-uname">{name}</div>
-            <div className="sb-uexam">{examTarget}{targetYear ? ` ${targetYear}` : ''} • Free Plan</div>
+            <div className="sb-uexam">{examTarget}{targetYear ? ` ${targetYear}` : ''} • Spark Plan</div>
           </div>
         </div>
         <div className="logout-btn" onClick={handleLogout}>

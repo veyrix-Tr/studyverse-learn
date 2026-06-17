@@ -33,7 +33,7 @@ router.get('/google/callback',
           { expiresIn: '7d' }
         );
 
-        const plan = existingUser.studentProfile?.plan || 'free';
+        const plan = existingUser.studentProfile?.plan || 'spark';
         const user = encodeURIComponent(JSON.stringify({
           id:    existingUser.id,
           name:  existingUser.name,
