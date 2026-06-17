@@ -1,6 +1,91 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 
+// ── Journey helpers (shared logic with apex My Journey) ──────────────────────
+const getExamMax = (t) => (!t ? 360 : t.toLowerCase().includes('neet') ? 720 : 360);
+const getExamDate = (examTarget, targetYear) => {
+  if (!targetYear) return null;
+  const t = (examTarget || '').toLowerCase();
+  if (t.includes('mains') || t.includes('main')) return new Date(`${targetYear}-01-25`);
+  if (t.includes('advanced')) return new Date(`${targetYear}-05-17`);
+  if (t.includes('neet')) return new Date(`${targetYear}-05-03`);
+  return new Date(`${targetYear}-05-15`);
+};
+const getDaysRemaining = (examTarget, targetYear) => {
+  const d = getExamDate(examTarget, targetYear);
+  if (!d) return null;
+  const diff = Math.ceil((d - new Date()) / 86400000);
+  return diff > 0 ? diff : null;
+};
+const arcPoints = (n, W, H) => {
+  if (n <= 1) return [{ x: 20, y: H * 0.84 }];
+  const xS = 20, xE = W - 20, yMax = H * 0.84, yMin = H * 0.36;
+  return Array.from({ length: n }, (_, i) => ({
+    x: xS + (xE - xS) * i / (n - 1),
+    y: yMax - (yMax - yMin) * Math.sin(i / (n - 1) * Math.PI / 2),
+  }));
+};
+const ptsToPath = (pts) => {
+  if (!pts || !pts.length) return '';
+  if (pts.length === 1) return `M ${pts[0].x.toFixed(1)} ${pts[0].y.toFixed(1)}`;
+  let d = `M ${pts[0].x.toFixed(1)} ${pts[0].y.toFixed(1)}`;
+  for (let i = 1; i < pts.length; i++) {
+    const p = pts[i - 1], c = pts[i], cx = ((p.x + c.x) / 2).toFixed(1);
+    d += ` C ${cx} ${p.y.toFixed(1)} ${cx} ${c.y.toFixed(1)} ${c.x.toFixed(1)} ${c.y.toFixed(1)}`;
+  }
+  return d;
+};
+const buildArc = (weeks, examTarget, W, H, cH) => {
+  const max = getExamMax(examTarget), toM = (p) => Math.round(p * max / 100), target = toM(90);
+  const nData = weeks ? weeks.length : 0, toPb = (pt) => `${Math.round(cH * (1 - pt.y / H))}px`;
+  if (nData === 0) {
+    const pts = arcPoints(4, W, H);
+    return { nodes: pts.map((pt, i) => ({ type: 'future', pb: toPb(pt), label: i === 0 ? 'Baseline<br><span style="font-size:10px;">—</span>' : i === 3 ? `Target<br><span style="font-size:10px;">${target}</span>` : '—' })), solidPath: `M ${pts[0].x.toFixed(1)} ${pts[0].y.toFixed(1)}`, dashedPath: ptsToPath(pts), fillPath: null };
+  }
+  const nTotal = nData + 2, allPts = arcPoints(nTotal, W, H), last = weeks[nData - 1], currentM = toM(last.avgPct), near = Math.min(currentM + Math.round((target - currentM) * 0.5), target);
+  const nodes = allPts.map((pt, i) => {
+    const pb = toPb(pt);
+    if (i < nData) { const w = weeks[i], m = toM(w.avgPct); if (nData === 1) return { type: 'current', pb, label: `This Week<br><strong style="font-size:10px;">${m} marks</strong>` }; if (i === 0) return { type: 'done', pb, label: `Baseline<br><strong style="color:var(--gold);font-size:10px;">${m} marks</strong>` }; if (i === nData - 1) return { type: 'current', pb, label: `This Week<br><strong style="font-size:10px;">${m} marks</strong>` }; return { type: 'done', pb, label: `Wk ${w.weekNumber}<br><strong style="color:var(--gold);font-size:10px;">${m} marks</strong>` }; }
+    if (i === nTotal - 2) return { type: 'future', pb, label: `Near Goal<br><span style="font-size:10px;">~${near}</span>` };
+    if (i === nTotal - 1) return { type: 'future', pb, label: `Target<br><span style="font-size:10px;">${target}</span>` };
+    return { type: 'future', pb, label: '—' };
+  });
+  const solidPts = allPts.slice(0, nData), dashedPts = allPts.slice(nData - 1), solidPath = ptsToPath(solidPts), dashedPath = ptsToPath(dashedPts), last0 = solidPts[solidPts.length - 1];
+  const fillPath = nData > 1 ? solidPath + ` L ${last0.x.toFixed(1)} ${H} L ${solidPts[0].x.toFixed(1)} ${H} Z` : null;
+  return { nodes, solidPath, dashedPath, fillPath };
+};
+const ArcTrack = ({ height = 120, viewBox = '0 0 800 110', solidPath, dashedPath, fillPath, nodes }) => (
+  <div className="arc-track" style={{ height, position: 'relative', margin: '0 0 24px' }}>
+    <svg className="arc-svg" viewBox={viewBox} preserveAspectRatio="none" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}>
+      <path d={solidPath} stroke="#E8A830" strokeWidth="2.5" fill="none" strokeLinecap="round" opacity="0.8"/>
+      <path d={dashedPath} stroke="rgba(253,248,240,0.2)" strokeWidth="2" fill="none" strokeLinecap="round" strokeDasharray="6 4"/>
+      {fillPath && <path d={fillPath} fill="rgba(232,168,48,0.06)"/>}
+    </svg>
+    <div className="arc-milestones" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', padding: '0 8px' }}>
+      {nodes.map((n, i) => (<div key={i} className={`arc-node ${n.type}`} style={{ paddingBottom: n.pb }}><div className={`arc-dot ${n.type}`}/><div className="arc-node-label" dangerouslySetInnerHTML={{ __html: n.label }}/></div>))}
+    </div>
+  </div>
+);
+const ScoreDeltas = ({ items }) => (
+  <div className="score-deltas">
+    {items.map((d, i) => (<div key={i} className="delta-box"><div className="delta-label">{d.label}</div><div className={`delta-val ${d.valClass}`}>{d.val}</div><div className={`delta-change${d.neutral ? ' neutral' : ''}`} style={d.changeStyle}>{d.change}</div></div>))}
+  </div>
+);
+const WeeklyReport = ({ week, meta, score, change, changeClass, isOpen, onToggle, children }) => (
+  <div className="weekly-report">
+    <div className="wr-header" onClick={onToggle}>
+      <div><div className="wr-week">{week}</div><div className="wr-meta">{meta}</div></div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div><div style={{ fontSize: '10px', color: 'var(--text3)', textAlign: 'right', marginBottom: '2px' }}>{changeClass === 'start' ? 'Baseline' : 'Score'}</div><div className="wr-score">{score}</div></div>
+        <span className={`wr-change${changeClass === 'up' ? ' wr-up' : changeClass === 'down' ? ' wr-down' : ''}`} style={changeClass === 'start' ? { background: 'rgba(15,31,61,0.06)', color: 'var(--text3)' } : {}}>{change}</span>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" strokeWidth="2" style={{ transform: isOpen ? 'rotate(180deg)' : '', transition: 'transform 0.2s' }}><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+    </div>
+    <div className={`wr-body${isOpen ? ' open' : ''}`}>{children}</div>
+  </div>
+);
+// ─────────────────────────────────────────────────────────────────────────────
+
 const mcqData = [
   { id: 1, qHtml: 'Q1. If f(x) = x² – 3x + 2, find lim<sub>x→2</sub> [f(x)/(x–2)]', opts: ['A. 0', 'B. 1', 'C. 2', "D. Doesn't exist"], correct: 'B' },
   { id: 2, qHtml: 'Q2. ∫(2x + 3)dx equals:', opts: ['A. x² + 3x + C', 'B. 2x² + 3 + C', 'C. x + 3 + C', 'D. 2 + C'], correct: 'A' },
@@ -101,6 +186,27 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, onD
   const p = (name) => `page${activePage === name ? ' on' : ''}`;
   const firstName = profile?.name?.split(' ')[0] || 'there';
   const examTarget = profile?.studentProfile?.examTarget || 'your exam';
+  const plan = profile?.studentProfile?.plan || 'spark';
+  const isForge = plan === 'forge';
+
+  // Question bank + resources + scores (forge only)
+  const [questionBank, setQuestionBank] = useState([]);
+  const [qbTab, setQbTab] = useState(0);
+  const [resources, setResources] = useState([]);
+  const [resTab, setResTab] = useState(0);
+  const [scores, setScores] = useState([]);
+  const [openWR, setOpenWR] = useState(new Set([0]));
+  const toggleWR = (i) => setOpenWR(prev => { const n = new Set(prev); n.has(i) ? n.delete(i) : n.add(i); return n; });
+  useEffect(() => {
+    if (!isForge || !userId) return;
+    const token = localStorage.getItem('token');
+    fetch(`${import.meta.env.VITE_API_URL}/api/student/${userId}/question-bank`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : []).then(d => { if (Array.isArray(d)) setQuestionBank(d); }).catch(() => {});
+    fetch(`${import.meta.env.VITE_API_URL}/api/student/${userId}/resources`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : []).then(d => { if (Array.isArray(d)) setResources(d); }).catch(() => {});
+    fetch(`${import.meta.env.VITE_API_URL}/api/student/${userId}/scores`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : { weeks: [] }).then(d => { if (Array.isArray(d?.weeks)) setScores(d.weeks); }).catch(() => {});
+  }, [isForge, userId]);
 
   // Diagnostic state
   const [diagStep, setDiagStep] = useState(1);
@@ -806,26 +912,59 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, onD
         </div>
       </div>
 
-      {/* ══════════ QUESTION BANK (locked) ══════════ */}
+      {/* ══════════ QUESTION BANK ══════════ */}
       <div className={p('questions')}>
-        <div className="lock-wrap">
-          <div className="lock-blur">
-            <div className="card mb">
-              <div className="sh-t" style={{ marginBottom: '14px' }}>Electrostatics — Weak Area Questions</div>
-              <div className="mcq-card"><div className="mcq-q">Q1. A charge of 4μC is placed at the origin. What is the electric field at a point 2m away?</div><div className="mcq-opts"><div className="mcq-opt">A. 4500 N/C</div><div className="mcq-opt">B. 9000 N/C</div><div className="mcq-opt">C. 18000 N/C</div><div className="mcq-opt">D. 2250 N/C</div></div></div>
-              <div className="mcq-card"><div className="mcq-q">Q2. The work done in moving a charge of 3C from A to B across a potential difference of 12V is:</div><div className="mcq-opts"><div className="mcq-opt">A. 4 J</div><div className="mcq-opt">B. 36 J</div><div className="mcq-opt">C. 0.25 J</div><div className="mcq-opt">D. 15 J</div></div></div>
+        {isForge ? (
+          <>
+            <div className="tabs" style={{ marginBottom: '16px' }}>
+              {['All', 'MCQ Bank', 'Previous Year Papers', 'Practice Set'].map((t, i) => (
+                <div key={t} className={`tab${qbTab === i ? ' on' : ''}`} onClick={() => setQbTab(i)}>{t}</div>
+              ))}
+            </div>
+            {(() => {
+              const typeMap = [null, 'MCQ Bank', 'Previous Year Papers', 'Practice Set'];
+              const filtered = qbTab === 0 ? questionBank : questionBank.filter(r => r.type === typeMap[qbTab]);
+              if (filtered.length === 0) return (
+                <div style={{ fontSize: '13px', color: 'var(--text3)', padding: '32px 0', textAlign: 'center' }}>
+                  No question bank items available{qbTab > 0 ? ` for ${typeMap[qbTab]}` : ''}.
+                </div>
+              );
+              return filtered.map(r => (
+                <div key={r.id} className="res-item">
+                  <div className="res-icon">📝</div>
+                  <div>
+                    <div className="res-name">{r.title}</div>
+                    <div className="res-meta">{r.subject} · Grade {r.grade} · {r.type} · By {r.facultyName}</div>
+                    {r.description && <div style={{ fontSize: '12px', color: 'var(--text3)', marginTop: '3px' }}>{r.description}</div>}
+                  </div>
+                  <div style={{ marginLeft: 'auto', display: 'flex', gap: '6px' }}>
+                    <a href={`${import.meta.env.VITE_API_URL}/api/files/proxy?url=${encodeURIComponent(r.cloudinaryUrl)}`} target="_blank" rel="noreferrer" className="btn btn-ghost btn-sm" style={{ textDecoration: 'none' }}>↗ View</a>
+                    <a href={`${import.meta.env.VITE_API_URL}/api/files/proxy?url=${encodeURIComponent(r.cloudinaryUrl)}&download=1`} target="_blank" rel="noreferrer" className="btn btn-ghost btn-sm" style={{ textDecoration: 'none' }}>↓ Download</a>
+                  </div>
+                </div>
+              ));
+            })()}
+          </>
+        ) : (
+          <div className="lock-wrap">
+            <div className="lock-blur">
+              <div className="card mb">
+                <div className="sh-t" style={{ marginBottom: '14px' }}>Electrostatics — Weak Area Questions</div>
+                <div className="mcq-card"><div className="mcq-q">Q1. A charge of 4μC is placed at the origin. What is the electric field at a point 2m away?</div><div className="mcq-opts"><div className="mcq-opt">A. 4500 N/C</div><div className="mcq-opt">B. 9000 N/C</div><div className="mcq-opt">C. 18000 N/C</div><div className="mcq-opt">D. 2250 N/C</div></div></div>
+                <div className="mcq-card"><div className="mcq-q">Q2. The work done in moving a charge of 3C from A to B across a potential difference of 12V is:</div><div className="mcq-opts"><div className="mcq-opt">A. 4 J</div><div className="mcq-opt">B. 36 J</div><div className="mcq-opt">C. 0.25 J</div><div className="mcq-opt">D. 15 J</div></div></div>
+              </div>
+            </div>
+            <div className="lock-overlay">
+              <div className="lock-box">
+                <div className="lock-icon">🔒</div>
+                <div className="lock-title">Unlock Question Bank</div>
+                <div className="lock-sub">Get questions matched exactly to your weak topics — Electrostatics, Mechanics, Integration — from JEE Mains papers. Sorted by difficulty.</div>
+                <button className="btn btn-gold btn-full" onClick={() => onOpenModal('upgrade-modal')}>Unlock Access</button>
+                <div style={{ fontSize: '11px', color: 'var(--text3)', marginTop: '10px' }}>Or upgrade to Forge to get instant access</div>
+              </div>
             </div>
           </div>
-          <div className="lock-overlay">
-            <div className="lock-box">
-              <div className="lock-icon">🔒</div>
-              <div className="lock-title">Unlock Question Bank</div>
-              <div className="lock-sub">Get questions matched exactly to your weak topics — Electrostatics, Mechanics, Integration — from JEE Mains papers. Sorted by difficulty.</div>
-              <button className="btn btn-gold btn-full" onClick={() => onOpenModal('upgrade-modal')}>Unlock Access</button>
-              <div style={{ fontSize: '11px', color: 'var(--text3)', marginTop: '10px' }}>Or book a single session to get them explained by Ajay</div>
-            </div>
-          </div>
-        </div>
+        )}
       </div>
 
       {/* ══════════ BOOK SESSION ══════════ */}
@@ -904,39 +1043,74 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, onD
 
       {/* ══════════ RESOURCES ══════════ */}
       <div className={p('resources')}>
-        {[
-          { icon: '📕', name: 'NCERT Chemistry Class XI',   meta: 'PDF • 18.4 MB • Free', url: 'https://ncert.nic.in/textbook.php?kech1=0-14' },
-          { icon: '📗', name: 'NCERT Mathematics Class XII', meta: 'PDF • 22.1 MB • Free', url: 'https://ncert.nic.in/textbook.php?lemh1=0-13' },
-        ].map((r, i) => (
-          <div key={i} className="res-row" style={{ cursor: 'pointer' }} onClick={() => window.open(r.url, '_blank', 'noreferrer')}>
-            <div className="rr-icon">{r.icon}</div>
-            <div><div className="rr-name">{r.name}</div><div className="rr-meta">{r.meta}</div></div>
-            <button className="btn btn-sm btn-ghost" style={{ marginLeft: 'auto', flexShrink: 0 }} onClick={e => { e.stopPropagation(); window.open(r.url, '_blank', 'noreferrer'); }}>↓ Download</button>
-          </div>
-        ))}
-        <div className="lock-wrap" style={{ marginTop: '4px' }}>
-          <div className="lock-blur">
+        {isForge ? (
+          <>
+            <div className="tabs" style={{ marginBottom: '16px' }}>
+              {['All', 'Study Material', 'Formula Sheet', 'Session Notes'].map((t, i) => (
+                <div key={t} className={`tab${resTab === i ? ' on' : ''}`} onClick={() => setResTab(i)}>{t}</div>
+              ))}
+            </div>
+            {(() => {
+              const typeMap = [null, 'Study Material', 'Formula Sheet', 'Session Notes'];
+              const filtered = resTab === 0 ? resources : resources.filter(r => r.type === typeMap[resTab]);
+              if (filtered.length === 0) return (
+                <div style={{ fontSize: '13px', color: 'var(--text3)', padding: '32px 0', textAlign: 'center' }}>
+                  No study materials available{resTab > 0 ? ` for ${typeMap[resTab]}` : ''}.
+                </div>
+              );
+              return filtered.map(r => (
+                <div key={r.id} className="res-item">
+                  <div className="res-icon">📄</div>
+                  <div>
+                    <div className="res-name">{r.title}</div>
+                    <div className="res-meta">{r.subject} · Grade {r.grade} · {r.type} · By {r.facultyName}</div>
+                    {r.description && <div style={{ fontSize: '12px', color: 'var(--text3)', marginTop: '3px' }}>{r.description}</div>}
+                  </div>
+                  <div style={{ marginLeft: 'auto', display: 'flex', gap: '6px' }}>
+                    <a href={`${import.meta.env.VITE_API_URL}/api/files/proxy?url=${encodeURIComponent(r.cloudinaryUrl)}`} target="_blank" rel="noreferrer" className="btn btn-ghost btn-sm" style={{ textDecoration: 'none' }}>↗ View</a>
+                    <a href={`${import.meta.env.VITE_API_URL}/api/files/proxy?url=${encodeURIComponent(r.cloudinaryUrl)}&download=1`} target="_blank" rel="noreferrer" className="btn btn-ghost btn-sm" style={{ textDecoration: 'none' }}>↓ Download</a>
+                  </div>
+                </div>
+              ));
+            })()}
+          </>
+        ) : (
+          <>
             {[
-              { icon: '📘', name: 'H.C. Verma — Concepts of Physics Vol 1 & 2', meta: 'PDF • Curated by Ajay' },
-              { icon: '📑', name: 'JEE Mains 2023 & 2024 — Papers + Solutions', meta: 'PDF • 4 papers with detailed solutions' },
-              { icon: '📄', name: "Formula Sheet — All 3 Subjects (Ajay's Edition)", meta: 'PDF • Mentor-curated, JEE pattern' },
-              { icon: '🗒️', name: 'Electrostatics & Mechanics — Concept Notes', meta: 'PDF • Matched to your weak areas' },
+              { icon: '📕', name: 'NCERT Chemistry Class XI',   meta: 'PDF • 18.4 MB • Free', url: 'https://ncert.nic.in/textbook.php?kech1=0-14' },
+              { icon: '📗', name: 'NCERT Mathematics Class XII', meta: 'PDF • 22.1 MB • Free', url: 'https://ncert.nic.in/textbook.php?lemh1=0-13' },
             ].map((r, i) => (
-              <div key={i} className="res-row">
+              <div key={i} className="res-row" style={{ cursor: 'pointer' }} onClick={() => window.open(r.url, '_blank', 'noreferrer')}>
                 <div className="rr-icon">{r.icon}</div>
                 <div><div className="rr-name">{r.name}</div><div className="rr-meta">{r.meta}</div></div>
+                <button className="btn btn-sm btn-ghost" style={{ marginLeft: 'auto', flexShrink: 0 }} onClick={e => { e.stopPropagation(); window.open(r.url, '_blank', 'noreferrer'); }}>↓ Download</button>
               </div>
             ))}
-          </div>
-          <div className="lock-overlay">
-            <div className="lock-box">
-              <div className="lock-icon">🔒</div>
-              <div className="lock-title">Unlock Premium Resources</div>
-              <div className="lock-sub">HC Verma PDFs, PYQ papers with solutions, and Ajay's personal formula sheets — matched to your weak topics.</div>
-              <button className="btn btn-gold btn-full" onClick={() => onOpenModal('upgrade-modal')}>Unlock Resources</button>
+            <div className="lock-wrap" style={{ marginTop: '4px' }}>
+              <div className="lock-blur">
+                {[
+                  { icon: '📘', name: 'H.C. Verma — Concepts of Physics Vol 1 & 2', meta: 'PDF • Curated by Ajay' },
+                  { icon: '📑', name: 'JEE Mains 2023 & 2024 — Papers + Solutions', meta: 'PDF • 4 papers with detailed solutions' },
+                  { icon: '📄', name: "Formula Sheet — All 3 Subjects (Ajay's Edition)", meta: 'PDF • Mentor-curated, JEE pattern' },
+                  { icon: '🗒️', name: 'Electrostatics & Mechanics — Concept Notes', meta: 'PDF • Matched to your weak areas' },
+                ].map((r, i) => (
+                  <div key={i} className="res-row">
+                    <div className="rr-icon">{r.icon}</div>
+                    <div><div className="rr-name">{r.name}</div><div className="rr-meta">{r.meta}</div></div>
+                  </div>
+                ))}
+              </div>
+              <div className="lock-overlay">
+                <div className="lock-box">
+                  <div className="lock-icon">🔒</div>
+                  <div className="lock-title">Unlock Premium Resources</div>
+                  <div className="lock-sub">HC Verma PDFs, PYQ papers with solutions, and Ajay's personal formula sheets — matched to your weak topics.</div>
+                  <button className="btn btn-gold btn-full" onClick={() => onOpenModal('upgrade-modal')}>Unlock Resources</button>
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
+          </>
+        )}
       </div>
 
       {/* ══════════ PLANS ══════════ */}
@@ -1048,6 +1222,127 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, onD
             </div>
           ))}
         </div>
+      </div>
+
+      {/* ══════════ MY PROGRESS (forge) ══════════ */}
+      <div className={p('progress')}>
+        {(() => {
+          const weeks = [...scores].sort((a, b) => a.weekNumber - b.weekNumber);
+          const max = getExamMax(examTarget);
+          const toM = (pct) => Math.round(pct * max / 100);
+          const targetMarks = toM(90);
+          const first = weeks[0] || null;
+          const last = weeks[weeks.length - 1] || null;
+          const baselineMarks = first ? toM(first.avgPct) : null;
+          const currentMarks = last ? toM(last.avgPct) : null;
+          const improvement = baselineMarks !== null && currentMarks !== null ? currentMarks - baselineMarks : null;
+          const toGo = currentMarks !== null ? targetMarks - currentMarks : null;
+          const daysRemaining = getDaysRemaining(examTarget, profile?.studentProfile?.targetYear);
+          const arc = buildArc(weeks, examTarget, 800, 130, 140);
+          return (
+            <>
+              <div className="journey-container mb-lg">
+                <div className="journey-header">
+                  <div>
+                    <div className="journey-title">Your Score Journey</div>
+                    <div className="journey-sub">No comparisons. Just you vs. who you were on Day 1.</div>
+                  </div>
+                  <div className="journey-exam">
+                    <div className="journey-exam-name">{examTarget}</div>
+                    <div className="journey-exam-days">{daysRemaining ?? '—'}</div>
+                    <div className="journey-exam-label">days remaining</div>
+                  </div>
+                </div>
+                <ArcTrack height={140} viewBox="0 0 800 130" solidPath={arc.solidPath} dashedPath={arc.dashedPath} fillPath={arc.fillPath} nodes={arc.nodes} />
+                <ScoreDeltas items={[
+                  { label: 'Started At (Week 1)', val: baselineMarks ?? '—', valClass: 'white', change: first ? new Date(first.testDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'No data', neutral: true },
+                  { label: 'Current Score', val: currentMarks ?? '—', valClass: 'gold', change: improvement !== null ? `+${improvement} marks in ${weeks.length} week${weeks.length !== 1 ? 's' : ''}` : 'No tests yet' },
+                  { label: 'Target', val: targetMarks, valClass: 'white', change: toGo !== null ? `${toGo} marks to go` : '—', changeStyle: { color: 'var(--gold)' } },
+                ]} />
+              </div>
+              <div className="sh mb" style={{ marginBottom: '16px' }}>
+                <div className="sh-title">Weekly Performance</div>
+                <span className="pill pill-navy">{weeks.length} week{weeks.length !== 1 ? 's' : ''} documented</span>
+              </div>
+              {weeks.length === 0 ? (
+                <div style={{ textAlign: 'center', color: 'var(--text3)', fontSize: '13px', padding: '32px 0' }}>No test results yet. Complete your first weekly test to see your progress here.</div>
+              ) : (
+                [...weeks].reverse().map((w, i, arr) => {
+                  const prevW = arr[i + 1];
+                  const wMarks = toM(w.avgPct);
+                  const prevMarks = prevW ? toM(prevW.avgPct) : null;
+                  const delta = prevMarks !== null ? wMarks - prevMarks : null;
+                  const isFirst = i === arr.length - 1;
+                  const dateStr = new Date(w.testDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+                  return (
+                    <WeeklyReport key={w.weekNumber} week={`Week ${w.weekNumber} — ${dateStr}`} meta={w.subjects.map(s => s.subject).join(' + ')} score={wMarks} change={isFirst ? 'Start' : delta >= 0 ? `+${delta}` : `${delta}`} changeClass={isFirst ? 'start' : delta >= 0 ? 'up' : 'down'} isOpen={openWR.has(i)} onToggle={() => toggleWR(i)}>
+                      {w.subjects.map(s => {
+                        const pct = s.totalMarks > 0 ? Math.round(s.score / s.totalMarks * 100) : 0;
+                        return (
+                          <div key={s.subject} className="subj-row">
+                            <div className="subj-name">{s.subject}</div>
+                            <div className="subj-bar"><div className="pbar"><div className="pbar-inner pbar-gold" style={{ width: `${pct}%` }}></div></div></div>
+                            <div className="subj-score">{pct}%</div>
+                          </div>
+                        );
+                      })}
+                    </WeeklyReport>
+                  );
+                })
+              )}
+            </>
+          );
+        })()}
+      </div>
+
+      {/* ══════════ WEEKLY TESTS (forge) ══════════ */}
+      <div className={p('tests')}>
+        {/* Coming Soon banner */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', background: 'var(--gold-dim)', border: '1px solid var(--gold-b)', borderRadius: 'var(--r)', padding: '16px 20px', marginBottom: '28px' }}>
+          <div style={{ width: '42px', height: '42px', borderRadius: '12px', background: 'rgba(232,168,48,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: '13.5px', fontWeight: 600, color: 'var(--text)', marginBottom: '2px' }}>Weekly Tests — Coming Soon</div>
+            <div style={{ fontSize: '12px', color: 'var(--text3)', lineHeight: 1.6 }}>Chapter-wise and full-length tests matched to your weak areas. Results will feed directly into your progress tracker.</div>
+          </div>
+          <span style={{ flexShrink: 0, padding: '4px 12px', borderRadius: '20px', background: 'rgba(232,168,48,0.2)', color: 'var(--gold)', fontSize: '11px', fontWeight: 700, border: '1px solid var(--gold-b)' }}>Coming Soon</span>
+        </div>
+
+        {/* Past test history */}
+        <div className="sh" style={{ marginBottom: '14px' }}>
+          <div className="sh-title">Test History</div>
+          <span className="pill pill-navy">{scores.length} week{scores.length !== 1 ? 's' : ''} recorded</span>
+        </div>
+        {scores.length === 0 ? (
+          <div style={{ textAlign: 'center', color: 'var(--text3)', fontSize: '13px', padding: '32px 0' }}>No test results yet.</div>
+        ) : (() => {
+          const sorted = [...scores].sort((a, b) => b.weekNumber - a.weekNumber);
+          const avgPct = (w) => Math.round(w.subjects.reduce((s, x) => s + (x.totalMarks > 0 ? x.score / x.totalMarks * 100 : 0), 0) / (w.subjects.length || 1));
+          return sorted.map((w, i) => {
+            const dateStr = new Date(w.testDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+            const avg = avgPct(w);
+            const isLast = i === sorted.length - 1;
+            const prevAvg = isLast ? null : avgPct(sorted[i + 1]);
+            const delta = prevAvg !== null ? avg - prevAvg : null;
+            const change = isLast ? 'Start' : delta >= 0 ? `+${delta}%` : `${delta}%`;
+            const changeClass = isLast ? 'start' : delta >= 0 ? 'up' : 'down';
+            return (
+              <WeeklyReport key={w.weekNumber} week={`Week ${w.weekNumber} — ${dateStr}`} meta={w.subjects.map(s => s.subject).join(' + ')} score={`${avg}%`} change={change} changeClass={changeClass} isOpen={openWR.has(i + 100)} onToggle={() => toggleWR(i + 100)}>
+                {w.subjects.map(s => {
+                  const pct = s.totalMarks > 0 ? Math.round(s.score / s.totalMarks * 100) : 0;
+                  return (
+                    <div key={s.subject} className="subj-row">
+                      <div className="subj-name">{s.subject}</div>
+                      <div className="subj-bar"><div className="pbar"><div className="pbar-inner pbar-gold" style={{ width: `${pct}%` }} /></div></div>
+                      <div className="subj-score">{pct}%</div>
+                    </div>
+                  );
+                })}
+              </WeeklyReport>
+            );
+          });
+        })()}
       </div>
 
     </div>

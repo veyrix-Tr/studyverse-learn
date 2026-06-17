@@ -26,13 +26,14 @@ export const getStoredPlan = () => {
   return getTokenPayload()?.plan || 'spark';
 };
 
-const PAID_PLANS = ['forge', 'apex', 'anchor'];
+export const PAID_PLANS    = ['forge', 'apex', 'anchor']; // for admin counts, banners
+const SESSION_PLANS = ['apex', 'anchor'];          // routes to StudentLMS
 
 export const homeForRole = (role, id) => {
   if (role === 'superadmin') return `/superadmin/${id}/dashboard`;
   if (role === 'admin')      return `/admin/${id}/dashboard`;
   if (role === 'faculty')    return `/faculty/${id}/dashboard`;
-  return PAID_PLANS.includes(getStoredPlan()) ? `/student-v2/${id}/dashboard` : `/student/${id}/home`;
+  return SESSION_PLANS.includes(getStoredPlan()) ? `/student-v2/${id}/dashboard` : `/student/${id}/home`;
 };
 
 // Redirects to the correct home based on stored token (used when no id in URL)
@@ -60,8 +61,8 @@ function AuthGuard({ expectedRole, requirePlan, children }) {
 
   if (expectedRole === 'student' && requirePlan) {
     const plan = getStoredPlan();
-    if (requirePlan === 'premium' && !PAID_PLANS.includes(plan)) return <Navigate to={`/student/${payload.id}/home`} replace />;
-    if (requirePlan === 'free'    && PAID_PLANS.includes(plan))   return <Navigate to={`/student-v2/${payload.id}/dashboard`} replace />;
+    if (requirePlan === 'premium' && !SESSION_PLANS.includes(plan)) return <Navigate to={`/student/${payload.id}/home`} replace />;
+    if (requirePlan === 'free'    &&  SESSION_PLANS.includes(plan)) return <Navigate to={`/student-v2/${payload.id}/dashboard`} replace />;
   }
 
   return children;

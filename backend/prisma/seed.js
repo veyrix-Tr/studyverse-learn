@@ -84,6 +84,18 @@ async function main() {
     },
   });
 
+  await prisma.user.create({
+    data: {
+      name: 'Arjun Nair',
+      email: 'arjun@test.com',
+      password: studentPass,
+      role: 'student',
+      studentProfile: {
+        create: { plan: 'forge', examTarget: 'JEE Mains', targetYear: '2027', grade: '12', planEndDate: new Date('2026-12-31') },
+      },
+    },
+  });
+
   // ── Faculty ───────────────────────────────────────
   // Physics — teaches Dropper + Grade 12 Physics
   await prisma.user.create({
@@ -176,6 +188,7 @@ async function main() {
   const amitProfile   = await prisma.facultyProfile.findFirst({ where: { user: { email: 'amit@test.com'   } } });
   const priyaProfile  = await prisma.studentProfile.findFirst({ where: { user: { email: 'priya@test.com'  } } });
   const ishaanProfile = await prisma.studentProfile.findFirst({ where: { user: { email: 'ishaan@test.com' } } });
+  const arjunProfile  = await prisma.studentProfile.findFirst({ where: { user: { email: 'arjun@test.com'  } } });
   const superAdmin    = await prisma.adminProfile.findFirst({   where: { user: { email: 'superadmin@studyverse.com' } } });
 
   // ── Sessions — upcoming (June 2026) ──────────────
@@ -285,6 +298,20 @@ async function main() {
     { studentId: ishaanProfile.id, weekNumber: 4, subject: 'Physics',   score: 69, totalMarks: 100, testDate: new Date('2026-05-26') },
     { studentId: ishaanProfile.id, weekNumber: 4, subject: 'Maths',     score: 74, totalMarks: 100, testDate: new Date('2026-05-26') },
     { studentId: ishaanProfile.id, weekNumber: 4, subject: 'Chemistry', score: 70, totalMarks: 100, testDate: new Date('2026-05-26') },
+
+    // Arjun (Forge, JEE Mains): Physics, Maths, Chemistry × 4 weeks
+    { studentId: arjunProfile.id, weekNumber: 1, subject: 'Physics',   score: 48, totalMarks: 100, testDate: new Date('2026-05-05') },
+    { studentId: arjunProfile.id, weekNumber: 1, subject: 'Maths',     score: 55, totalMarks: 100, testDate: new Date('2026-05-05') },
+    { studentId: arjunProfile.id, weekNumber: 1, subject: 'Chemistry', score: 42, totalMarks: 100, testDate: new Date('2026-05-05') },
+    { studentId: arjunProfile.id, weekNumber: 2, subject: 'Physics',   score: 56, totalMarks: 100, testDate: new Date('2026-05-12') },
+    { studentId: arjunProfile.id, weekNumber: 2, subject: 'Maths',     score: 61, totalMarks: 100, testDate: new Date('2026-05-12') },
+    { studentId: arjunProfile.id, weekNumber: 2, subject: 'Chemistry', score: 50, totalMarks: 100, testDate: new Date('2026-05-12') },
+    { studentId: arjunProfile.id, weekNumber: 3, subject: 'Physics',   score: 63, totalMarks: 100, testDate: new Date('2026-05-19') },
+    { studentId: arjunProfile.id, weekNumber: 3, subject: 'Maths',     score: 68, totalMarks: 100, testDate: new Date('2026-05-19') },
+    { studentId: arjunProfile.id, weekNumber: 3, subject: 'Chemistry', score: 57, totalMarks: 100, testDate: new Date('2026-05-19') },
+    { studentId: arjunProfile.id, weekNumber: 4, subject: 'Physics',   score: 70, totalMarks: 100, testDate: new Date('2026-05-26') },
+    { studentId: arjunProfile.id, weekNumber: 4, subject: 'Maths',     score: 74, totalMarks: 100, testDate: new Date('2026-05-26') },
+    { studentId: arjunProfile.id, weekNumber: 4, subject: 'Chemistry', score: 63, totalMarks: 100, testDate: new Date('2026-05-26') },
   ]});
 
   // ── Weekly Reports — Priya (6 reports across 2 weeks, all 3 subjects each) ──

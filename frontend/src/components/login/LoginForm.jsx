@@ -43,7 +43,7 @@ const LoginForm = ({ onSwitchToRegister }) => {
       if (role === 'superadmin')    navigate(`/superadmin/${id}/dashboard`, { replace: true });
       else if (role === 'admin')    navigate(`/admin/${id}/dashboard`, { replace: true });
       else if (role === 'faculty')  navigate(`/faculty/${id}/dashboard`, { replace: true });
-      else if (['forge','apex','anchor'].includes(plan)) navigate(`/student-v2/${id}/dashboard`, { replace: true });
+      else if (['apex','anchor'].includes(plan)) navigate(`/student-v2/${id}/dashboard`, { replace: true });
       else                          navigate(`/student/${id}/home`, { replace: true });
 
     } catch {

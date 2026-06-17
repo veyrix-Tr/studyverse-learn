@@ -179,7 +179,7 @@ const RegisterForm = ({ onSwitchToLogin, googleName = '', googleEmail = '', isGo
       if (loginRes.ok) {
         localStorage.setItem('token', loginData.token);
         const { id, plan } = loginData.user;
-        navigate(['forge','apex','anchor'].includes(plan) ? `/student-v2/${id}/dashboard` : `/student/${id}/home`, { replace: true });
+        navigate(['apex','anchor'].includes(plan) ? `/student-v2/${id}/dashboard` : `/student/${id}/home`, { replace: true });
       } else {
         setLoading(false);
         navigate('/login', { replace: true });
