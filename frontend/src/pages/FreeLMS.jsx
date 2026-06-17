@@ -61,12 +61,6 @@ const FreeLMS = () => {
           onOpenModal={setOpenModal}
           onShowToast={showToast}
           profile={profile}
-          onDiagnosticSaved={(score, takenAt) =>
-            setProfile(prev => prev ? {
-              ...prev,
-              studentProfile: { ...prev.studentProfile, diagnosticScore: score, diagnosticTakenAt: takenAt },
-            } : prev)
-          }
           habitLogs={habitLogs}
           onHabitSaved={(log) => setHabitLogs(prev => {
             const exists = prev.findIndex(l => l.date === log.date);

@@ -1,4 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useEffect } from 'react';
+import DiagnosticForm from '../common/DiagnosticForm';
 import { useParams } from 'react-router-dom';
 
 // ── Journey helpers (shared logic with apex My Journey) ──────────────────────
@@ -86,14 +87,6 @@ const WeeklyReport = ({ week, meta, score, change, changeClass, isOpen, onToggle
 );
 // ─────────────────────────────────────────────────────────────────────────────
 
-const mcqData = [
-  { id: 1, qHtml: 'Q1. If f(x) = x² – 3x + 2, find lim<sub>x→2</sub> [f(x)/(x–2)]', opts: ['A. 0', 'B. 1', 'C. 2', "D. Doesn't exist"], correct: 'B' },
-  { id: 2, qHtml: 'Q2. ∫(2x + 3)dx equals:', opts: ['A. x² + 3x + C', 'B. 2x² + 3 + C', 'C. x + 3 + C', 'D. 2 + C'], correct: 'A' },
-  { id: 3, qHtml: 'Q3. A body of mass 5 kg is moving at 10 m/s. What is its kinetic energy?', opts: ['A. 50 J', 'B. 100 J', 'C. 250 J', 'D. 500 J'], correct: 'C' },
-  { id: 4, qHtml: 'Q4. Two charges of +2μC and –2μC are placed 0.1m apart. The force between them is: (k = 9×10⁹)', opts: ['A. 3.6 N (attractive)', 'B. 3.6 N (repulsive)', 'C. 36 N (attractive)', 'D. 0.36 N'], correct: 'A' },
-  { id: 5, qHtml: 'Q5. The number of moles in 44g of CO₂ (M = 44 g/mol) is:', opts: ['A. 1 mol', 'B. 2 mol', 'C. 0.5 mol', 'D. 44 mol'], correct: 'A' },
-  { id: 6, qHtml: 'Q6. In a nucleophilic substitution (SN2) reaction, the attacking nucleophile approaches from:', opts: ['A. The same side as the leaving group', 'B. The back side (180° to leaving group)', 'C. The top face only', 'D. Any side — no preference'], correct: 'B' },
-];
 
 const ratingTopics = [
   { group: '📐 Mathematics', topics: [
@@ -111,13 +104,6 @@ const ratingTopics = [
   ]},
 ];
 
-const ratingLabels = [
-  { emoji: '😟', label: 'Very Weak' },
-  { emoji: '😕', label: 'Weak' },
-  { emoji: '😐', label: 'Average' },
-  { emoji: '🙂', label: 'Good' },
-  { emoji: '😎', label: 'Strong' },
-];
 
 const habitItems = [
   { key: 'sleep', icon: '🌙', name: 'Slept before midnight', desc: 'Your brain consolidates memory during sleep. 11 PM is the target.' },
@@ -165,10 +151,6 @@ const getGreeting = () => {
   return 'Good evening';
 };
 
-const topicIcons = {
-  electro: '⚡', mechanics: '⚙️', integration: '∫',
-  limits: '📈', coordinate: '📐', 'physical-chem': '🧪', organic: '🔬',
-};
 
 const guidanceConfig = [
   { key: 'electro', icon: '⚡', title: 'Start with Electrostatics — 3 days',
@@ -181,7 +163,7 @@ const guidanceConfig = [
     body: (p) => `You're at ${p}% in Organic Chemistry. Spend 1 day revising key named reactions (Aldol, Cannizzaro, Markovnikov) and mechanism logic. Do not go deep here until Physics improves.` },
 ];
 
-const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, onDiagnosticSaved, habitLogs = [], onHabitSaved }) => {
+const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, habitLogs = [], onHabitSaved }) => {
   const { id: userId } = useParams();
   const p = (name) => `page${activePage === name ? ' on' : ''}`;
   const firstName = profile?.name?.split(' ')[0] || 'there';
@@ -208,51 +190,16 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, onD
       .then(r => r.ok ? r.json() : { weeks: [] }).then(d => { if (Array.isArray(d?.weeks)) setScores(d.weeks); }).catch(() => {});
   }, [isForge, userId]);
 
-  // Diagnostic state
-  const [diagStep, setDiagStep] = useState(1);
+  // Diagnostic done state (from DB)
   const [diagDone, setDiagDone] = useState(false);
-  const [ratings, setRatings] = useState({});
-  const [mcqCurrent, setMcqCurrent] = useState(1);
-  const [mcqFeedback, setMcqFeedback] = useState(null);
-  const [mcqDone, setMcqDone] = useState(false);
-  const [mcqCorrect, setMcqCorrect] = useState(0);
-  const [savedScore, setSavedScore] = useState(null);
-  const mcqTimer = useRef(null);
+  const [ratings] = useState({});
 
-  const THREE_MONTHS_MS = 3 * 30 * 24 * 60 * 60 * 1000;
-
-  const getNextAllowedDate = (takenAt) => takenAt ? new Date(new Date(takenAt).getTime() + THREE_MONTHS_MS) : null;
-  const isRetakeUnlocked = (takenAt) => { const next = getNextAllowedDate(takenAt); return next ? new Date() >= next : true; };
-
-  // If diagnostic already done (from DB), show completed state
   useEffect(() => {
     const sp = profile?.studentProfile;
     if (sp?.diagnosticScore !== null && sp?.diagnosticScore !== undefined) {
       setDiagDone(true);
-      setSavedScore(sp.diagnosticScore);
     }
   }, [profile]);
-
-  // Save to DB when MCQ round finishes
-  useEffect(() => {
-    if (!mcqDone) return;
-    const pcts = [mathPct, physPct, chemPct].filter(p => p !== null);
-    const selfAvg = pcts.length ? Math.round(pcts.reduce((a, b) => a + b, 0) / pcts.length) : 50;
-    const mcqScore = Math.round((mcqCorrect / 6) * 100);
-    saveDiagnostic(selfAvg, mcqScore);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mcqDone]);
-
-  const startRetake = () => {
-    setDiagStep(1);
-    setDiagDone(false);
-    setSavedScore(null);
-    setRatings({});
-    setMcqCurrent(1);
-    setMcqFeedback(null);
-    setMcqDone(false);
-    setMcqCorrect(0);
-  };
 
   // Habit state
   const [habitState, setHabitState] = useState({});
@@ -267,53 +214,6 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, onD
       next.has(key) ? next.delete(key) : next.add(key);
       return next;
     });
-  };
-
-  const rate = (topicKey, val) => {
-    setRatings(prev => ({ ...prev, [topicKey]: val }));
-  };
-
-  const answerMCQ = (chosen, correct) => {
-    if (mcqFeedback) return;
-    const isCorrect = chosen === correct;
-    setMcqFeedback({ chosen, correct, isCorrect });
-    if (isCorrect) setMcqCorrect(c => c + 1);
-    clearTimeout(mcqTimer.current);
-    mcqTimer.current = setTimeout(() => {
-      setMcqFeedback(null);
-      if (mcqCurrent >= 6) {
-        setMcqDone(true);
-        setDiagDone(true);
-        setDiagStep(3);
-      } else {
-        setMcqCurrent(c => c + 1);
-      }
-    }, 1200);
-  };
-
-  const saveDiagnostic = async (selfAvg, mcqScore) => {
-    const finalScore = Math.round(selfAvg * 0.7 + mcqScore * 0.3);
-    const token = localStorage.getItem('token');
-    try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/student/${userId}/diagnostic`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ score: finalScore }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setSavedScore(finalScore);
-        onDiagnosticSaved?.(finalScore, new Date().toISOString());
-      }
-    } catch { /* silent — result is still shown */ }
-  };
-
-  const mcqProgress = mcqDone ? 100 : ((mcqCurrent - 1) / 6 * 100);
-
-  const stepStyle = (step) => {
-    if (diagStep > step) return { background: 'rgba(34,197,94,0.15)', color: 'var(--green)' };
-    if (diagStep === step) return { background: 'var(--navy)', color: 'var(--gold)' };
-    return { background: 'var(--cream2)', color: 'var(--text3)' };
   };
 
   const today = getTodayIST();
@@ -401,7 +301,6 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, onD
       pct: ratings[t.key] ? ratingToPct(ratings[t.key]) : null,
     }))
   ).filter(t => t.pct !== null).sort((a, b) => a.pct - b.pct);
-  const weakTopicsList = allRatedTopics.filter(t => t.pct <= 60).slice(0, 4);
   const strongTopicsList = allRatedTopics.filter(t => t.pct >= 72);
   const guidanceCards = guidanceConfig
     .map(g => ({ ...g, pct: ratings[g.key] ? ratingToPct(ratings[g.key]) : null }))
@@ -511,204 +410,7 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, onD
 
       {/* ══════════ DIAGNOSTIC ══════════ */}
       <div className={p('diagnostic')}>
-        {savedScore !== null && !mcqDone && (() => {
-          const takenAt = profile?.studentProfile?.diagnosticTakenAt;
-          const nextDate = getNextAllowedDate(takenAt);
-          const unlocked = isRetakeUnlocked(takenAt);
-          const nextStr = nextDate ? nextDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }) : null;
-          return (
-            <div style={{ background: unlocked ? 'var(--gold-dim)' : 'var(--green-dim)', border: `1px solid ${unlocked ? 'var(--gold-b)' : 'rgba(34,197,94,0.3)'}`, borderRadius: 'var(--r)', padding: '14px 18px', marginBottom: '22px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
-                <div>
-                  <div style={{ fontSize: '13px', fontWeight: 600, color: unlocked ? 'var(--gold)' : 'var(--green)', marginBottom: '2px' }}>
-                    {unlocked ? '🔓 Retake now available!' : '✓ Diagnostic completed — 3-month plan active'}
-                  </div>
-                  <div style={{ fontSize: '12px', color: 'var(--text2)' }}>
-                    Your score: <strong style={{ color: 'var(--text)' }}>{savedScore}%</strong>
-                    {!unlocked && nextStr && <span> — next test unlocks on <strong style={{ color: 'var(--text)' }}>{nextStr}</strong></span>}
-                    {unlocked && <span> — retake to get a fresh 3-month plan</span>}
-                  </div>
-                </div>
-                <div style={{ display: 'flex', gap: '8px', flexShrink: 0, flexWrap: 'wrap' }}>
-                  <button className="btn btn-sm btn-ghost" onClick={() => onNav('topics')}>Topic Map →</button>
-                  <button className="btn btn-sm btn-ghost" onClick={() => onNav('guidance')}>Study Plan →</button>
-                  {unlocked && <button className="btn btn-sm btn-gold" onClick={startRetake}>Retake Test →</button>}
-                </div>
-              </div>
-            </div>
-          );
-        })()}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '24px', flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 14px', borderRadius: '20px', fontSize: '12px', fontWeight: 600, ...stepStyle(1) }}>
-            <span>①</span> Self-Rating
-          </div>
-          <div style={{ width: '24px', height: '1px', background: 'var(--b)', flexShrink: 0 }}></div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 14px', borderRadius: '20px', fontSize: '12px', fontWeight: 600, ...stepStyle(2) }}>
-            <span>②</span> Confirm with MCQs
-          </div>
-          <div style={{ width: '24px', height: '1px', background: 'var(--b)', flexShrink: 0 }}></div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 14px', borderRadius: '20px', fontSize: '12px', fontWeight: 600, ...stepStyle(3) }}>
-            <span>③</span> Your Results
-          </div>
-        </div>
-
-        {/* Step 1: Self Rating */}
-        <div className={`diag-step${diagStep === 1 ? ' on' : ''}`}>
-          <div className="card mb">
-            <div style={{ fontFamily: 'var(--fs)', fontSize: '18px', fontWeight: 700, color: 'var(--text)', marginBottom: '4px' }}>How confident are you in each topic?</div>
-            <div style={{ fontSize: '13px', color: 'var(--text3)', marginBottom: '20px' }}>Be honest — this helps us find your real gaps. Nobody sees this except you.</div>
-
-            {ratingTopics.map((group, gi) => (
-              <div key={gi}>
-                <div style={{ fontSize: '11px', color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '.1em', fontWeight: 600, marginBottom: '10px', paddingBottom: '8px', borderBottom: '1px solid var(--b)', marginTop: gi > 0 ? '4px' : 0 }}>{group.group}</div>
-                {group.topics.map((topic, ti) => (
-                  <div key={ti} style={{ marginBottom: ti === group.topics.length - 1 && gi < ratingTopics.length - 1 ? '18px' : '14px' }}>
-                    <div style={{ fontSize: '13px', fontWeight: 500, color: 'var(--text)', marginBottom: '6px' }}>{topic.label}</div>
-                    <div className="rating-row">
-                      {ratingLabels.map((r, ri) => (
-                        <div key={ri} className={`rating-btn${ratings[topic.key] === ri + 1 ? ' sel' : ''}`} onClick={() => rate(topic.key, ri + 1)}>
-                          <span className="rb-emoji">{r.emoji}</span>{r.label}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ))}
-
-            <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end' }}>
-              <button className="btn btn-gold" onClick={() => setDiagStep(2)}>Confirm with MCQs →</button>
-            </div>
-          </div>
-        </div>
-
-        {/* Step 2: MCQ */}
-        <div className={`diag-step${diagStep === 2 ? ' on' : ''}`}>
-          <div className="card mb">
-            <div style={{ fontFamily: 'var(--fs)', fontSize: '18px', fontWeight: 700, color: 'var(--text)', marginBottom: '4px' }}>Confirm your level — 6 quick questions</div>
-            <div style={{ fontSize: '13px', color: 'var(--text3)', marginBottom: '16px' }}>Based on your self-rating, we picked topics to verify. Attempt honestly.</div>
-            <div className="progress-track">
-              <div className="progress-fill" style={{ width: `${mcqProgress}%` }}></div>
-            </div>
-
-            {!mcqDone ? mcqData.map((q, qi) => {
-              if (q.id !== mcqCurrent) return null;
-              return (
-                <div key={qi} className="mcq-card">
-                  <div className="mcq-q" dangerouslySetInnerHTML={{ __html: q.qHtml }}></div>
-                  <div className="mcq-opts">
-                    {q.opts.map((opt, oi) => {
-                      const letter = String.fromCharCode(65 + oi);
-                      const fb = mcqFeedback;
-                      const isAnswered = !!fb;
-                      const isChosen = isAnswered && fb.chosen === letter;
-                      const isCorrectOpt = letter === q.correct;
-                      let cls = 'mcq-opt';
-                      if (isAnswered) {
-                        cls += ' done';
-                        if (isChosen && isCorrectOpt) cls += ' correct sel-opt';
-                        else if (isChosen && !isCorrectOpt) cls += ' wrong sel-opt';
-                        else if (isCorrectOpt) cls += ' correct';
-                      }
-                      return (
-                        <div key={oi} className={cls} onClick={() => answerMCQ(letter, q.correct)}>{opt}</div>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            }) : (
-              <div style={{ textAlign: 'center', padding: '20px 0' }}>
-                <div style={{ fontSize: '32px', marginBottom: '10px' }}>✅</div>
-                <div style={{ fontFamily: 'var(--fs)', fontSize: '17px', fontWeight: 600, color: 'var(--text)', marginBottom: '6px' }}>All 6 questions done!</div>
-                <div style={{ fontSize: '13px', color: 'var(--text3)', marginBottom: '18px' }}>Generating your personalised weakness map...</div>
-                <button className="btn btn-gold" onClick={() => setDiagStep(3)}>See My Results →</button>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Step 3: Results */}
-        <div className={`diag-step${diagStep === 3 ? ' on' : ''}`}>
-          <div className="card-dark" style={{ borderRadius: 'var(--rxl)', padding: '28px', marginBottom: '20px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '22px', flexWrap: 'wrap', gap: '12px' }}>
-              <div>
-                <div style={{ fontFamily: 'var(--fs)', fontSize: '21px', fontWeight: 700, color: 'var(--inv)', marginBottom: '4px' }}>Your Diagnostic Results</div>
-                <div style={{ fontSize: '13px', color: 'var(--inv2)' }}>Based on your self-rating + MCQ performance • JEE Mains pattern</div>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px' }}>
-                <span className="pill pp" style={{ fontSize: '11px' }}>Completed ✓</span>
-                {savedScore !== null && <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--gold)' }}>Overall: {savedScore}%</span>}
-                {(() => {
-                  const takenAt = profile?.studentProfile?.diagnosticTakenAt;
-                  const nextDate = getNextAllowedDate(takenAt);
-                  if (!nextDate) return null;
-                  const nextStr = nextDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
-                  return <span style={{ fontSize: '11px', color: 'var(--inv3)' }}>Next test: {nextStr}</span>;
-                })()}
-              </div>
-            </div>
-            <div className="g3" style={{ marginBottom: 0 }}>
-              {[
-                { subj: 'Mathematics', raw: mathPct },
-                { subj: 'Physics', raw: physPct },
-                { subj: 'Chemistry', raw: chemPct },
-              ].map((s, i) => {
-                const m = pctMeta(s.raw);
-                return (
-                  <div key={i} style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid var(--bi)', borderRadius: 'var(--rl)', padding: '16px', textAlign: 'center' }}>
-                    <div style={{ fontSize: '11px', color: 'var(--inv3)', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: '6px' }}>{s.subj}</div>
-                    <div style={{ fontFamily: 'var(--fs)', fontSize: '28px', fontWeight: 700, color: m.color }}>{s.raw !== null ? `${s.raw}%` : '—'}</div>
-                    <div style={{ fontSize: '11px', color: m.color, marginTop: '3px' }}>{m.note}</div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="g2 mb">
-            <div className="card">
-              <div className="sh-t" style={{ marginBottom: '14px' }}>Your Weak Topics (Priority Order)</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {weakTopicsList.length > 0 ? weakTopicsList.map((item, i) => {
-                  const isRed = item.pct <= 40;
-                  return (
-                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', background: isRed ? 'var(--red-dim)' : 'var(--orange-dim)', borderRadius: 'var(--r)', border: `1px solid ${isRed ? 'rgba(239,68,68,0.2)' : 'rgba(249,115,22,0.2)'}` }}>
-                      <span style={{ fontSize: '16px' }}>{topicIcons[item.key] || '📌'}</span>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text)' }}>{item.label}</div>
-                        <div style={{ fontSize: '11px', color: 'var(--text3)' }}>{item.subject} • {pctMeta(item.pct).note} — {item.pct}%</div>
-                      </div>
-                      <span className={`cr-tag ${isRed ? 'weak-tag' : 'ok-tag'}`}>#{i + 1} Fix</span>
-                    </div>
-                  );
-                }) : (
-                  <div style={{ fontSize: '13px', color: 'var(--text3)', padding: '10px 0' }}>No weak topics identified — all topics rated above average.</div>
-                )}
-              </div>
-            </div>
-            <div className="card">
-              <div className="sh-t" style={{ marginBottom: '14px' }}>What to do next</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                <div style={{ padding: '12px 14px', background: 'var(--green-dim)', borderRadius: 'var(--r)', border: '1px solid rgba(34,197,94,0.2)' }}>
-                  <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--green)', marginBottom: '3px' }}>✓ Free — View your Topic Map</div>
-                  <div style={{ fontSize: '12px', color: 'var(--text2)' }}>See exactly where each chapter stands across all subjects.</div>
-                  <button className="btn btn-sm btn-ghost" style={{ marginTop: '8px' }} onClick={() => onNav('topics')}>View Topic Map →</button>
-                </div>
-                <div style={{ padding: '12px 14px', background: 'var(--green-dim)', borderRadius: 'var(--r)', border: '1px solid rgba(34,197,94,0.2)' }}>
-                  <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--green)', marginBottom: '3px' }}>✓ Free — Get Study Guidance</div>
-                  <div style={{ fontSize: '12px', color: 'var(--text2)' }}>A day-by-day plan based on your results.</div>
-                  <button className="btn btn-sm btn-ghost" style={{ marginTop: '8px' }} onClick={() => onNav('guidance')}>See My Plan →</button>
-                </div>
-                <div style={{ padding: '12px 14px', background: 'var(--gold-dim)', borderRadius: 'var(--r)', border: '1px solid var(--gold-b)' }}>
-                  <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--gold)', marginBottom: '3px' }}>🔒 Unlock — Practice questions on your weak topics</div>
-                  <div style={{ fontSize: '12px', color: 'var(--text2)' }}>Questions matched to electrostatics, mechanics &amp; integration.</div>
-                  <button className="btn btn-sm btn-gold" style={{ marginTop: '8px' }} onClick={() => onOpenModal('upgrade-modal')}>Unlock Questions →</button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+        <DiagnosticForm profile={profile} />
       </div>
 
       {/* ══════════ TOPIC MAP ══════════ */}

@@ -1,0 +1,917 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Studyverse — Student Diagnostic Form</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,600;1,9..144,400&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0f0f0f;
+  --bg-card: #181818;
+  --bg-input: #202020;
+  --border: #2e2e2e;
+  --border-active: #505050;
+  --text: #f0ede8;
+  --text-2: #a09d98;
+  --text-3: #606060;
+  --jee: #4f8ef7;
+  --jee-dim: rgba(79,142,247,0.12);
+  --jee-border: rgba(79,142,247,0.3);
+  --neet: #e05c3a;
+  --neet-dim: rgba(224,92,58,0.12);
+  --neet-border: rgba(224,92,58,0.3);
+  --accent: #f0ede8;
+  --success: #3a9e6e;
+  --radius: 10px;
+  --current-color: var(--jee);
+  --current-dim: var(--jee-dim);
+  --current-border: var(--jee-border);
+}
+body.neet-mode {
+  --current-color: var(--neet);
+  --current-dim: var(--neet-dim);
+  --current-border: var(--neet-border);
+}
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{font-size:16px;scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;line-height:1.6;min-height:100vh;overflow-x:hidden}
+
+/* ── Progress ── */
+.progress-wrap{height:2px;background:#222;position:sticky;top:0;z-index:100}
+.progress-fill{height:100%;background:var(--current-color);width:0%;transition:width .5s ease}
+
+/* ── Header ── */
+.header{padding:3rem 1.25rem 2.5rem;text-align:center;border-bottom:1px solid var(--border)}
+.logo{font-family:'Fraunces',serif;font-size:13px;letter-spacing:.15em;text-transform:uppercase;color:var(--text-3);margin-bottom:1.5rem;font-weight:300}
+.header h1{font-family:'Fraunces',serif;font-size:clamp(2rem,8vw,3.2rem);font-weight:300;line-height:1.1;color:var(--text);margin-bottom:.75rem;font-style:italic}
+.header h1 strong{font-style:normal;font-weight:600}
+.header p{font-size:14px;color:var(--text-2);max-width:480px;margin:0 auto;line-height:1.7}
+
+/* ── Exam selector ── */
+.exam-selector{display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:480px;margin:2rem auto 0}
+.exam-btn{padding:1.1rem 1rem;border-radius:var(--radius);border:1px solid var(--border);background:var(--bg-card);cursor:pointer;text-align:center;transition:all .2s;position:relative;overflow:hidden}
+.exam-btn:hover{border-color:var(--border-active)}
+.exam-btn.jee-btn.active{border-color:var(--jee);background:var(--jee-dim);box-shadow:0 0 0 1px var(--jee)}
+.exam-btn.neet-btn.active{border-color:var(--neet);background:var(--neet-dim);box-shadow:0 0 0 1px var(--neet)}
+.exam-btn-label{font-family:'Fraunces',serif;font-size:1.4rem;font-weight:600;display:block;margin-bottom:3px}
+.exam-btn.jee-btn .exam-btn-label{color:var(--jee)}
+.exam-btn.neet-btn .exam-btn-label{color:var(--neet)}
+.exam-btn-sub{font-size:11px;color:var(--text-3);letter-spacing:.04em}
+.exam-btn.active .exam-btn-sub{color:var(--text-2)}
+
+/* ── Container ── */
+.form-container{max-width:680px;margin:0 auto;padding:2rem 1.25rem 5rem}
+
+/* ── Section ── */
+.section{margin-bottom:2.5rem;display:none}
+.section.active{display:block}
+.section-head{display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;padding-bottom:.75rem;margin-bottom:1.5rem;border-bottom:1px solid var(--border)}
+.section-num{font-family:'Fraunces',serif;font-size:1.5rem;font-weight:600;color:var(--current-color);line-height:1;flex-shrink:0}
+.section-name{font-size:13px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-2)}
+.section-badge{margin-left:auto;font-size:10px;font-weight:600;padding:3px 9px;border-radius:20px;background:rgba(255,255,255,.05);color:var(--text-3);border:1px solid var(--border);white-space:nowrap;flex-shrink:0}
+
+/* ── Question block ── */
+.q{margin-bottom:1.5rem}
+.q-row{display:flex;align-items:flex-start;gap:.5rem;margin-bottom:.6rem}
+.q-n{font-size:10px;font-weight:600;color:var(--current-color);min-width:24px;padding-top:3px;flex-shrink:0;letter-spacing:.03em}
+.q-label{font-size:14px;font-weight:500;color:var(--text);line-height:1.5;flex:1}
+.q-hint{font-size:12px;color:var(--text-3);font-style:italic;padding-left:24px;margin-top:3px;line-height:1.5}
+.req{color:var(--current-color)}
+
+/* ── Inputs ── */
+input[type=text],textarea{
+  width:100%;padding:12px 14px;
+  font-family:'DM Sans',sans-serif;font-size:16px;
+  color:var(--text);background:var(--bg-input);
+  border:1px solid var(--border);border-radius:var(--radius);
+  outline:none;transition:border-color .2s,box-shadow .2s;
+  appearance:none;-webkit-appearance:none;
+}
+input[type=text]:focus,textarea:focus{border-color:var(--current-color);box-shadow:0 0 0 3px rgba(255,255,255,.04)}
+textarea{resize:vertical;min-height:90px;line-height:1.6}
+::placeholder{color:var(--text-3)}
+
+/* ── Chips ── */
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chips input[type=radio],.chips input[type=checkbox]{position:absolute;opacity:0;pointer-events:none;width:0;height:0}
+.chips label{
+  cursor:pointer;font-size:13px;padding:9px 16px;
+  border-radius:20px;border:1px solid var(--border);
+  background:var(--bg-card);color:var(--text-2);
+  user-select:none;min-height:40px;display:inline-flex;align-items:center;
+  transition:all .15s;
+}
+.chips input:checked+label{background:var(--current-dim);border-color:var(--current-color);color:var(--text);font-weight:600}
+@media(hover:hover){.chips label:hover{border-color:var(--border-active);color:var(--text)}}
+
+/* ── Inline fields ── */
+.row-fields{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.row-fields.two{grid-template-columns:repeat(2,1fr)}
+.field-pair{display:flex;flex-direction:column;gap:5px}
+.field-pair>span{font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3)}
+.field-pair input{text-align:center}
+
+/* ── Coaching sub ── */
+.coaching-sub{margin-top:12px;padding:14px;border:1px solid var(--border);border-radius:var(--radius);background:rgba(255,255,255,.02);display:none}
+.coaching-sub.show{display:block}
+.coaching-sub-label{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);margin-bottom:12px;display:flex;align-items:center;gap:6px}
+.coaching-sub-label::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--current-color);flex-shrink:0}
+
+/* ── Syllabus block ── */
+.syllabus-intro{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;margin-bottom:16px}
+.syllabus-intro p{font-size:13px;color:var(--text-2);line-height:1.6;margin-bottom:12px}
+.expand-btn{font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;padding:8px 16px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--text-2);cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:all .15s}
+.expand-btn:hover{border-color:var(--current-color);color:var(--current-color)}
+.expand-btn .arrow{transition:transform .2s;font-size:10px}
+.expand-btn.open .arrow{transform:rotate(180deg)}
+.topic-panel{display:none;margin-top:16px}
+.topic-panel.open{display:block}
+.topic-grid{display:grid;grid-template-columns:1fr;gap:20px}
+.topic-col h4{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--current-color);margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border)}
+.topic-check{display:flex;align-items:center;gap:10px;padding:7px 0;cursor:pointer;font-size:13px;color:var(--text-2);min-height:40px;border-bottom:1px solid rgba(255,255,255,.04)}
+.topic-check:last-child{border-bottom:none}
+.topic-check input[type=checkbox]{width:18px;height:18px;flex-shrink:0;accent-color:var(--current-color);cursor:pointer}
+@media(min-width:600px){.topic-grid{grid-template-columns:repeat(3,1fr)}.topic-check{min-height:unset;padding:4px 0;border-bottom:none}}
+
+/* ── Section note ── */
+.note{font-size:13px;color:var(--text-2);line-height:1.6;background:var(--bg-card);border-radius:var(--radius);padding:12px 14px;margin-bottom:1.25rem;border-left:2px solid var(--current-color)}
+
+/* ── Submit ── */
+.submit-wrap{text-align:center;padding-top:1.5rem}
+.btn-submit{
+  font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;letter-spacing:.04em;
+  padding:16px 36px;background:var(--current-color);color:#fff;
+  border:none;border-radius:var(--radius);cursor:pointer;
+  display:inline-flex;align-items:center;justify-content:center;
+  gap:10px;width:100%;max-width:360px;min-height:52px;
+  transition:opacity .2s;
+}
+.btn-submit:active{opacity:.85}
+.btn-submit:disabled{opacity:.5;cursor:not-allowed}
+.submit-note{font-size:12px;color:var(--text-3);margin-top:10px;line-height:1.5}
+
+/* ── Error ── */
+.error-msg{display:none;font-size:13px;color:#e05c3a;background:rgba(224,92,58,.08);border:1px solid rgba(224,92,58,.25);border-radius:var(--radius);padding:12px 14px;margin-top:12px;text-align:left;line-height:1.5}
+.error-msg.show{display:block}
+
+/* ── Success + Plan ── */
+.success-screen{display:none;padding:2.5rem 1.25rem 4rem;max-width:680px;margin:0 auto}
+.success-screen.show{display:block}
+.success-top{text-align:center;margin-bottom:2rem}
+.success-icon{width:56px;height:56px;border-radius:50%;background:var(--success);display:flex;align-items:center;justify-content:center;margin:0 auto 1rem}
+.success-icon svg{width:24px;height:24px;stroke:#fff;fill:none;stroke-width:2.5}
+.success-top h2{font-family:'Fraunces',serif;font-size:1.8rem;font-weight:300;font-style:italic;margin-bottom:.5rem}
+.success-top p{font-size:14px;color:var(--text-2)}
+
+/* Plan card */
+.plan-card{background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:1.5rem;margin-bottom:1.5rem}
+.plan-card-header{display:flex;align-items:center;gap:.75rem;margin-bottom:1.25rem;padding-bottom:.75rem;border-bottom:1px solid var(--border)}
+.plan-card-icon{width:36px;height:36px;border-radius:8px;background:var(--current-dim);border:1px solid var(--current-border);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.plan-card-title{font-family:'Fraunces',serif;font-size:1rem;font-weight:600;color:var(--text)}
+.plan-card-sub{font-size:11px;color:var(--text-3);margin-top:1px}
+.plan-content{font-size:14px;color:var(--text-2);line-height:1.8;white-space:pre-wrap}
+.plan-loading{display:flex;align-items:center;gap:10px;color:var(--text-3);font-size:13px;padding:.5rem 0}
+.plan-loading .dots span{animation:dot 1.4s infinite both}
+.plan-loading .dots span:nth-child(2){animation-delay:.2s}
+.plan-loading .dots span:nth-child(3){animation-delay:.4s}
+@keyframes dot{0%,80%,100%{opacity:.2}40%{opacity:1}}
+
+/* CTA */
+.cta-card{background:var(--current-dim);border:1px solid var(--current-border);border-radius:14px;padding:1.5rem;text-align:center}
+.cta-card h3{font-family:'Fraunces',serif;font-size:1.3rem;font-weight:600;color:var(--text);margin-bottom:.5rem}
+.cta-card p{font-size:13px;color:var(--text-2);margin-bottom:1.25rem;line-height:1.6}
+.cta-btn{display:inline-flex;align-items:center;gap:8px;padding:12px 28px;background:var(--current-color);color:#fff;border-radius:var(--radius);font-size:14px;font-weight:600;text-decoration:none;border:none;cursor:pointer}
+.cta-sub{font-size:11px;color:var(--text-3);margin-top:10px}
+
+@media(min-width:600px){
+  .header{padding:3.5rem 2rem 3rem}
+  .form-container{padding:2.5rem 2rem 5rem}
+  .row-fields .field-pair input{font-size:14px}
+}
+</style>
+</head>
+<body>
+
+<div class="progress-wrap"><div class="progress-fill" id="progressFill"></div></div>
+
+<div class="header">
+  <div class="logo">Studyverse</div>
+  <h1><em>Tell us where</em><br><strong>you stand today</strong></h1>
+  <p>No right or wrong answers. The more honest you are, the sharper your first session will be. 8 minutes.</p>
+
+  <div class="exam-selector">
+    <div class="exam-btn jee-btn" id="jeeBtn" onclick="selectExam('jee')">
+      <span class="exam-btn-label">JEE</span>
+      <span class="exam-btn-sub">Main + Advanced</span>
+    </div>
+    <div class="exam-btn neet-btn" id="neetBtn" onclick="selectExam('neet')">
+      <span class="exam-btn-label">NEET</span>
+      <span class="exam-btn-sub">UG 2025</span>
+    </div>
+  </div>
+</div>
+
+<div class="form-container">
+  <form id="mainForm" novalidate>
+    <input type="hidden" name="exam_type" id="examTypeInput" value="">
+
+    <!-- ══ SECTION A — Profile ══ -->
+    <div class="section active" id="secA">
+      <div class="section-head">
+        <span class="section-num">A</span>
+        <span class="section-name">Basic Profile</span>
+      </div>
+
+      <div class="q">
+        <div class="q-row"><span class="q-n">Q1</span><span class="q-label">Full name <span class="req">*</span></span></div>
+        <input type="text" name="name" placeholder="Your full name">
+      </div>
+
+      <div class="q">
+        <div class="q-row"><span class="q-n">Q2</span><span class="q-label">Current class <span class="req">*</span></span></div>
+        <div class="chips">
+          <input type="radio" name="current_class" id="c11" value="Class 11"><label for="c11">Class 11</label>
+          <input type="radio" name="current_class" id="c12" value="Class 12"><label for="c12">Class 12</label>
+          <input type="radio" name="current_class" id="cd1" value="1st year drop"><label for="cd1">1st year drop</label>
+          <input type="radio" name="current_class" id="cd2" value="2nd year drop"><label for="cd2">2nd year drop</label>
+        </div>
+      </div>
+
+      <!-- JEE only -->
+      <div class="q jee-only" style="display:none">
+        <div class="q-row"><span class="q-n">Q3</span><span class="q-label">Targeting <span class="req">*</span></span></div>
+        <div class="chips">
+          <input type="radio" name="exam_target" id="et1" value="JEE Main only"><label for="et1">JEE Main only</label>
+          <input type="radio" name="exam_target" id="et2" value="JEE Main + Advanced"><label for="et2">JEE Main + Advanced</label>
+        </div>
+      </div>
+
+      <div class="q">
+        <div class="q-row"><span class="q-n" id="q4num">Q4</span><span class="q-label">Target exam date</span></div>
+        <p class="q-hint" id="q4hint">e.g. May 2026 (NEET) or Jan 2026 (JEE)</p>
+        <input type="text" name="target_date" placeholder="e.g. May 2026" style="margin-top:6px">
+      </div>
+
+      <div class="q">
+        <div class="q-row"><span class="q-n">Q5</span><span class="q-label">Are you attending any coaching institute? <span class="req">*</span></span></div>
+        <div class="chips">
+          <input type="radio" name="has_coaching" id="cyes" value="Yes"><label for="cyes">Yes</label>
+          <input type="radio" name="has_coaching" id="cno" value="No — self-study only"><label for="cno">No — self-study only</label>
+        </div>
+        <div class="coaching-sub" id="coachingSub">
+          <div class="coaching-sub-label">Fill only if you answered Yes</div>
+          <div class="q" style="margin-bottom:10px">
+            <div style="font-size:13px;font-weight:500;margin-bottom:6px;color:var(--text-2)">Name of institute</div>
+            <input type="text" name="coaching_name" placeholder="e.g. Allen, Aakash, FIITJEE, local institute">
+          </div>
+          <div class="q" style="margin-bottom:0">
+            <div style="font-size:13px;font-weight:500;margin-bottom:8px;color:var(--text-2)">How much syllabus covered by coaching so far?</div>
+            <div class="chips">
+              <input type="radio" name="coaching_coverage" id="cv1" value="Less than 25%"><label for="cv1">Less than 25%</label>
+              <input type="radio" name="coaching_coverage" id="cv2" value="25–50%"><label for="cv2">25–50%</label>
+              <input type="radio" name="coaching_coverage" id="cv3" value="50–75%"><label for="cv3">50–75%</label>
+              <input type="radio" name="coaching_coverage" id="cv4" value="More than 75%"><label for="cv4">More than 75%</label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="q">
+        <div class="q-row"><span class="q-n">Q6</span><span class="q-label">Average honest self-study hours per day</span></div>
+        <div class="chips">
+          <input type="radio" name="study_hours" id="sh1" value="Less than 2 hrs"><label for="sh1">Less than 2 hrs</label>
+          <input type="radio" name="study_hours" id="sh2" value="2–4 hrs"><label for="sh2">2–4 hrs</label>
+          <input type="radio" name="study_hours" id="sh3" value="4–6 hrs"><label for="sh3">4–6 hrs</label>
+          <input type="radio" name="study_hours" id="sh4" value="6+ hrs"><label for="sh4">6+ hrs</label>
+        </div>
+      </div>
+
+      <div class="q">
+        <div class="q-row"><span class="q-n">Q7</span><span class="q-label">Subjects you want help with <span class="req">*</span></span></div>
+        <div class="chips">
+          <input type="checkbox" name="subjects" id="sphy" value="Physics"><label for="sphy">Physics</label>
+          <input type="checkbox" name="subjects" id="sche" value="Chemistry"><label for="sche">Chemistry</label>
+          <input type="checkbox" name="subjects" id="sbio" value="Biology" class="neet-only-input"><label for="sbio" class="neet-only-label">Biology</label>
+          <input type="checkbox" name="subjects" id="smat" value="Maths" class="jee-only-input"><label for="smat" class="jee-only-label">Maths</label>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ SECTION B — Syllabus ══ -->
+    <div class="section active" id="secB">
+      <div class="section-head">
+        <span class="section-num">B</span>
+        <span class="section-name">Syllabus Coverage</span>
+        <span class="section-badge">Optional</span>
+      </div>
+
+      <div class="syllabus-intro">
+        <p>How much of the total syllabus have you personally covered so far?</p>
+        <div class="chips" style="margin-bottom:12px">
+          <input type="radio" name="syllabus_coverage" id="sc1" value="Just started (0–25%)"><label for="sc1">Just started</label>
+          <input type="radio" name="syllabus_coverage" id="sc2" value="25–50% done"><label for="sc2">25–50%</label>
+          <input type="radio" name="syllabus_coverage" id="sc3" value="50–75% done"><label for="sc3">50–75%</label>
+          <input type="radio" name="syllabus_coverage" id="sc4" value="75–100% done"><label for="sc4">75–100%</label>
+        </div>
+        <p style="font-size:12px;color:var(--text-3);margin-bottom:10px">Want to tell us which specific topics you have covered? This helps us plan your sessions better. Completely optional — skip if you're in early preparation.</p>
+        <button type="button" class="expand-btn" id="expandTopics" onclick="toggleTopics()">
+          <span>Add topic details</span><span class="arrow">▼</span>
+        </button>
+      </div>
+
+      <div class="topic-panel" id="topicPanel">
+        <!-- JEE topics -->
+        <div id="jeeTopics" style="display:none">
+          <div class="topic-grid">
+            <div class="topic-col">
+              <h4>Physics</h4>
+              <label class="topic-check"><input type="checkbox" name="phy_topics" value="Kinematics"> Kinematics</label>
+              <label class="topic-check"><input type="checkbox" name="phy_topics" value="Laws of Motion"> Laws of Motion</label>
+              <label class="topic-check"><input type="checkbox" name="phy_topics" value="Work, Energy & Power"> Work, Energy & Power</label>
+              <label class="topic-check"><input type="checkbox" name="phy_topics" value="Rotational Motion"> Rotational Motion</label>
+              <label class="topic-check"><input type="checkbox" name="phy_topics" value="Gravitation"> Gravitation</label>
+              <label class="topic-check"><input type="checkbox" name="phy_topics" value="Thermodynamics"> Thermodynamics</label>
+              <label class="topic-check"><input type="checkbox" name="phy_topics" value="Waves & SHM"> Waves & SHM</label>
+              <label class="topic-check"><input type="checkbox" name="phy_topics" value="Electrostatics"> Electrostatics</label>
+              <label class="topic-check"><input type="checkbox" name="phy_topics" value="Current Electricity"> Current Electricity</label>
+              <label class="topic-check"><input type="checkbox" name="phy_topics" value="Magnetism & EMI"> Magnetism & EMI</label>
+              <label class="topic-check"><input type="checkbox" name="phy_topics" value="Optics"> Optics</label>
+              <label class="topic-check"><input type="checkbox" name="phy_topics" value="Modern Physics"> Modern Physics</label>
+            </div>
+            <div class="topic-col">
+              <h4>Chemistry</h4>
+              <label class="topic-check"><input type="checkbox" name="chem_topics" value="Mole Concept"> Mole Concept</label>
+              <label class="topic-check"><input type="checkbox" name="chem_topics" value="Atomic Structure"> Atomic Structure</label>
+              <label class="topic-check"><input type="checkbox" name="chem_topics" value="Chemical Bonding"> Chemical Bonding</label>
+              <label class="topic-check"><input type="checkbox" name="chem_topics" value="Thermodynamics (Chem)"> Thermodynamics (Chem)</label>
+              <label class="topic-check"><input type="checkbox" name="chem_topics" value="Equilibrium"> Equilibrium</label>
+              <label class="topic-check"><input type="checkbox" name="chem_topics" value="Electrochemistry"> Electrochemistry</label>
+              <label class="topic-check"><input type="checkbox" name="chem_topics" value="Chemical Kinetics"> Chemical Kinetics</label>
+              <label class="topic-check"><input type="checkbox" name="chem_topics" value="p, d & f Block"> p, d & f Block</label>
+              <label class="topic-check"><input type="checkbox" name="chem_topics" value="Coordination Compounds"> Coordination Compounds</label>
+              <label class="topic-check"><input type="checkbox" name="chem_topics" value="Organic Basics & IUPAC"> Organic Basics & IUPAC</label>
+              <label class="topic-check"><input type="checkbox" name="chem_topics" value="Reaction Mechanisms"> Reaction Mechanisms</label>
+              <label class="topic-check"><input type="checkbox" name="chem_topics" value="Named Reactions"> Named Reactions</label>
+            </div>
+            <div class="topic-col">
+              <h4>Maths</h4>
+              <label class="topic-check"><input type="checkbox" name="math_topics" value="Sets, Relations & Functions"> Sets, Relations & Functions</label>
+              <label class="topic-check"><input type="checkbox" name="math_topics" value="Quadratic Equations"> Quadratic Equations</label>
+              <label class="topic-check"><input type="checkbox" name="math_topics" value="Sequences & Series"> Sequences & Series</label>
+              <label class="topic-check"><input type="checkbox" name="math_topics" value="Permutation & Combination"> Permutation & Combination</label>
+              <label class="topic-check"><input type="checkbox" name="math_topics" value="Binomial Theorem"> Binomial Theorem</label>
+              <label class="topic-check"><input type="checkbox" name="math_topics" value="Trigonometry"> Trigonometry</label>
+              <label class="topic-check"><input type="checkbox" name="math_topics" value="Coordinate Geometry"> Coordinate Geometry</label>
+              <label class="topic-check"><input type="checkbox" name="math_topics" value="Limits & Continuity"> Limits & Continuity</label>
+              <label class="topic-check"><input type="checkbox" name="math_topics" value="Differentiation"> Differentiation</label>
+              <label class="topic-check"><input type="checkbox" name="math_topics" value="Integration"> Integration</label>
+              <label class="topic-check"><input type="checkbox" name="math_topics" value="Vectors & 3D"> Vectors & 3D</label>
+              <label class="topic-check"><input type="checkbox" name="math_topics" value="Probability"> Probability</label>
+            </div>
+          </div>
+        </div>
+
+        <!-- NEET topics -->
+        <div id="neetTopics" style="display:none">
+          <div class="topic-grid">
+            <div class="topic-col">
+              <h4>Physics</h4>
+              <label class="topic-check"><input type="checkbox" name="phy_topics" value="Physics & Measurement"> Physics & Measurement</label>
+              <label class="topic-check"><input type="checkbox" name="phy_topics" value="Kinematics"> Kinematics</label>
+              <label class="topic-check"><input type="checkbox" name="phy_topics" value="Laws of Motion"> Laws of Motion</label>
+              <label class="topic-check"><input type="checkbox" name="phy_topics" value="Work, Energy & Power"> Work, Energy & Power</label>
+              <label class="topic-check"><input type="checkbox" name="phy_topics" value="Rotational Motion"> Rotational Motion</label>
+              <label class="topic-check"><input type="checkbox" name="phy_topics" value="Gravitation"> Gravitation</label>
+              <label class="topic-check"><input type="checkbox" name="phy_topics" value="Properties of Solids & Liquids"> Properties of Solids & Liquids</label>
+              <label class="topic-check"><input type="checkbox" name="phy_topics" value="Thermodynamics"> Thermodynamics</label>
+              <label class="topic-check"><input type="checkbox" name="phy_topics" value="Kinetic Theory of Gases"> Kinetic Theory of Gases</label>
+              <label class="topic-check"><input type="checkbox" name="phy_topics" value="Oscillations & Waves"> Oscillations & Waves</label>
+              <label class="topic-check"><input type="checkbox" name="phy_topics" value="Electrostatics"> Electrostatics</label>
+              <label class="topic-check"><input type="checkbox" name="phy_topics" value="Current Electricity"> Current Electricity</label>
+              <label class="topic-check"><input type="checkbox" name="phy_topics" value="Magnetic Effects & Magnetism"> Magnetic Effects & Magnetism</label>
+              <label class="topic-check"><input type="checkbox" name="phy_topics" value="EM Induction & AC"> EM Induction & AC</label>
+              <label class="topic-check"><input type="checkbox" name="phy_topics" value="Electromagnetic Waves"> Electromagnetic Waves</label>
+              <label class="topic-check"><input type="checkbox" name="phy_topics" value="Optics"> Optics</label>
+              <label class="topic-check"><input type="checkbox" name="phy_topics" value="Dual Nature of Matter & Radiation"> Dual Nature of Matter & Radiation</label>
+              <label class="topic-check"><input type="checkbox" name="phy_topics" value="Atoms & Nuclei"> Atoms & Nuclei</label>
+              <label class="topic-check"><input type="checkbox" name="phy_topics" value="Electronic Devices"> Electronic Devices</label>
+            </div>
+            <div class="topic-col">
+              <h4>Chemistry</h4>
+              <label class="topic-check"><input type="checkbox" name="chem_topics" value="Basic Concepts in Chemistry"> Basic Concepts in Chemistry</label>
+              <label class="topic-check"><input type="checkbox" name="chem_topics" value="Atomic Structure"> Atomic Structure</label>
+              <label class="topic-check"><input type="checkbox" name="chem_topics" value="Chemical Bonding & Molecular Structure"> Chemical Bonding</label>
+              <label class="topic-check"><input type="checkbox" name="chem_topics" value="Chemical Thermodynamics"> Chemical Thermodynamics</label>
+              <label class="topic-check"><input type="checkbox" name="chem_topics" value="Solutions"> Solutions</label>
+              <label class="topic-check"><input type="checkbox" name="chem_topics" value="Equilibrium"> Equilibrium</label>
+              <label class="topic-check"><input type="checkbox" name="chem_topics" value="Redox Reactions & Electrochemistry"> Redox & Electrochemistry</label>
+              <label class="topic-check"><input type="checkbox" name="chem_topics" value="Chemical Kinetics"> Chemical Kinetics</label>
+              <label class="topic-check"><input type="checkbox" name="chem_topics" value="Classification & Periodicity"> Classification & Periodicity</label>
+              <label class="topic-check"><input type="checkbox" name="chem_topics" value="p-Block Elements"> p-Block Elements</label>
+              <label class="topic-check"><input type="checkbox" name="chem_topics" value="d & f Block Elements"> d & f Block Elements</label>
+              <label class="topic-check"><input type="checkbox" name="chem_topics" value="Coordination Compounds"> Coordination Compounds</label>
+              <label class="topic-check"><input type="checkbox" name="chem_topics" value="Basic Principles of Organic Chemistry"> Basic Principles of Organic Chemistry</label>
+              <label class="topic-check"><input type="checkbox" name="chem_topics" value="Hydrocarbons"> Hydrocarbons</label>
+              <label class="topic-check"><input type="checkbox" name="chem_topics" value="Organic Compounds with Halogens"> Organic — Halogens</label>
+              <label class="topic-check"><input type="checkbox" name="chem_topics" value="Organic Compounds with Oxygen"> Organic — Oxygen</label>
+              <label class="topic-check"><input type="checkbox" name="chem_topics" value="Organic Compounds with Nitrogen"> Organic — Nitrogen</label>
+              <label class="topic-check"><input type="checkbox" name="chem_topics" value="Biomolecules"> Biomolecules</label>
+            </div>
+            <div class="topic-col">
+              <h4>Biology</h4>
+              <label class="topic-check"><input type="checkbox" name="bio_topics" value="Diversity in Living World"> Diversity in Living World</label>
+              <label class="topic-check"><input type="checkbox" name="bio_topics" value="Structural Organisation"> Structural Organisation</label>
+              <label class="topic-check"><input type="checkbox" name="bio_topics" value="Cell Structure & Function"> Cell Structure & Function</label>
+              <label class="topic-check"><input type="checkbox" name="bio_topics" value="Plant Physiology — Photosynthesis"> Photosynthesis</label>
+              <label class="topic-check"><input type="checkbox" name="bio_topics" value="Plant Physiology — Respiration"> Plant Respiration</label>
+              <label class="topic-check"><input type="checkbox" name="bio_topics" value="Plant Growth & Development"> Plant Growth & Development</label>
+              <label class="topic-check"><input type="checkbox" name="bio_topics" value="Breathing & Respiration (Human)"> Breathing & Respiration</label>
+              <label class="topic-check"><input type="checkbox" name="bio_topics" value="Body Fluids & Circulation"> Body Fluids & Circulation</label>
+              <label class="topic-check"><input type="checkbox" name="bio_topics" value="Excretory Products & Elimination"> Excretory Products</label>
+              <label class="topic-check"><input type="checkbox" name="bio_topics" value="Locomotion & Movement"> Locomotion & Movement</label>
+              <label class="topic-check"><input type="checkbox" name="bio_topics" value="Neural Control & Coordination"> Neural Control</label>
+              <label class="topic-check"><input type="checkbox" name="bio_topics" value="Chemical Coordination & Regulation"> Chemical Coordination</label>
+              <label class="topic-check"><input type="checkbox" name="bio_topics" value="Reproduction in Flowering Plants"> Reproduction — Plants</label>
+              <label class="topic-check"><input type="checkbox" name="bio_topics" value="Human Reproduction"> Human Reproduction</label>
+              <label class="topic-check"><input type="checkbox" name="bio_topics" value="Reproductive Health"> Reproductive Health</label>
+              <label class="topic-check"><input type="checkbox" name="bio_topics" value="Heredity & Variation — Mendelian"> Genetics — Mendelian</label>
+              <label class="topic-check"><input type="checkbox" name="bio_topics" value="Molecular Basis of Inheritance"> Molecular Inheritance</label>
+              <label class="topic-check"><input type="checkbox" name="bio_topics" value="Evolution"> Evolution</label>
+              <label class="topic-check"><input type="checkbox" name="bio_topics" value="Human Health & Disease"> Human Health & Disease</label>
+              <label class="topic-check"><input type="checkbox" name="bio_topics" value="Microbes in Human Welfare"> Microbes in Human Welfare</label>
+              <label class="topic-check"><input type="checkbox" name="bio_topics" value="Biotechnology & Its Applications"> Biotechnology</label>
+              <label class="topic-check"><input type="checkbox" name="bio_topics" value="Ecology & Environment"> Ecology & Environment</label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ SECTION C — Test Performance ══ -->
+    <div class="section active" id="secC">
+      <div class="section-head">
+        <span class="section-num">C</span>
+        <span class="section-name">Test Performance</span>
+      </div>
+
+      <div class="q">
+        <div class="q-row"><span class="q-n">Q8</span><span class="q-label">Have you attempted any mock tests?</span></div>
+        <div class="chips">
+          <input type="radio" name="has_mocks" id="myes" value="Yes, multiple full mocks"><label for="myes">Yes, multiple</label>
+          <input type="radio" name="has_mocks" id="mfew" value="A few"><label for="mfew">A few</label>
+          <input type="radio" name="has_mocks" id="mno" value="Not yet"><label for="mno">Not yet</label>
+        </div>
+      </div>
+
+      <div class="q">
+        <div class="q-row"><span class="q-n">Q9</span><span class="q-label">Your last 3 mock total scores</span></div>
+        <p class="q-hint" id="mockScaleHint">Leave blank if not applicable</p>
+        <div class="row-fields" style="margin-top:8px">
+          <div class="field-pair"><span>Score 1</span><input type="text" name="mock_score_1" placeholder="—"></div>
+          <div class="field-pair"><span>Score 2</span><input type="text" name="mock_score_2" placeholder="—"></div>
+          <div class="field-pair"><span>Score 3</span><input type="text" name="mock_score_3" placeholder="—"></div>
+        </div>
+      </div>
+
+      <div class="q">
+        <div class="q-row"><span class="q-n">Q10</span><span class="q-label">Latest mock — subject-wise score</span></div>
+        <p class="q-hint">Leave blank if not applicable</p>
+        <div class="row-fields" id="subjectScoreRow" style="margin-top:8px">
+          <div class="field-pair"><span id="sub1Label">Physics</span><input type="text" name="mock_s1" placeholder="—"></div>
+          <div class="field-pair"><span id="sub2Label">Chemistry</span><input type="text" name="mock_s2" placeholder="—"></div>
+          <div class="field-pair" id="sub3Wrap"><span id="sub3Label">Biology / Maths</span><input type="text" name="mock_s3" placeholder="—"></div>
+        </div>
+      </div>
+
+      <div class="q">
+        <div class="q-row"><span class="q-n">Q11</span><span class="q-label">Which subject consistently pulls your score down?</span></div>
+        <div class="chips" id="hardestChips">
+          <input type="radio" name="hardest_subject" id="hs1" value="Physics"><label for="hs1">Physics</label>
+          <input type="radio" name="hardest_subject" id="hs2" value="Chemistry"><label for="hs2">Chemistry</label>
+          <input type="radio" name="hardest_subject" id="hs3bio" value="Biology" class="neet-only-input"><label for="hs3bio" class="neet-only-label">Biology</label>
+          <input type="radio" name="hardest_subject" id="hs3mat" value="Maths" class="jee-only-input"><label for="hs3mat" class="jee-only-label">Maths</label>
+          <input type="radio" name="hardest_subject" id="hs4" value="All feel hard"><label for="hs4">All feel hard</label>
+        </div>
+      </div>
+
+      <div class="q">
+        <div class="q-row"><span class="q-n">Q12</span><span class="q-label">Time management in tests</span></div>
+        <div class="chips">
+          <input type="radio" name="time_mgmt" id="tm1" value="Run out of time"><label for="tm1">Run out of time</label>
+          <input type="radio" name="time_mgmt" id="tm2" value="Just right"><label for="tm2">Just right</label>
+          <input type="radio" name="time_mgmt" id="tm3" value="Finish early"><label for="tm3">Finish early</label>
+          <input type="radio" name="time_mgmt" id="tm4" value="Haven't timed myself yet"><label for="tm4">Not yet</label>
+        </div>
+      </div>
+
+      <div class="q">
+        <div class="q-row"><span class="q-n">Q13</span><span class="q-label">After a test, do you go through every mistake?</span></div>
+        <div class="chips">
+          <input type="radio" name="review_mistakes" id="rm1" value="Always, with written notes"><label for="rm1">Always, with notes</label>
+          <input type="radio" name="review_mistakes" id="rm2" value="Sometimes"><label for="rm2">Sometimes</label>
+          <input type="radio" name="review_mistakes" id="rm3" value="Rarely / Never"><label for="rm3">Rarely / Never</label>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ SECTION D — Subject Gaps ══ -->
+    <div class="section active" id="secD">
+      <div class="section-head">
+        <span class="section-num">D</span>
+        <span class="section-name">Subject Gaps</span>
+      </div>
+
+      <!-- NEET specific -->
+      <div class="q neet-only" style="display:none">
+        <div class="q-row"><span class="q-n">Q14</span><span class="q-label">Biology — Botany vs Zoology?</span></div>
+        <div class="chips">
+          <input type="radio" name="bio_weak" id="bw1" value="Botany is weaker"><label for="bw1">Botany is weaker</label>
+          <input type="radio" name="bio_weak" id="bw2" value="Zoology is weaker"><label for="bw2">Zoology is weaker</label>
+          <input type="radio" name="bio_weak" id="bw3" value="Both equally weak"><label for="bw3">Both equally weak</label>
+          <input type="radio" name="bio_weak" id="bw4" value="Both okay"><label for="bw4">Both okay</label>
+        </div>
+      </div>
+
+      <div class="q neet-only" style="display:none">
+        <div class="q-row"><span class="q-n">Q15</span><span class="q-label">How many times have you read Biology NCERT cover-to-cover?</span></div>
+        <div class="chips">
+          <input type="radio" name="ncert_reads" id="nr0" value="0 — not yet"><label for="nr0">0 — not yet</label>
+          <input type="radio" name="ncert_reads" id="nr1" value="1 time"><label for="nr1">1 time</label>
+          <input type="radio" name="ncert_reads" id="nr2" value="2 times"><label for="nr2">2 times</label>
+          <input type="radio" name="ncert_reads" id="nr3" value="3 or more"><label for="nr3">3 or more</label>
+        </div>
+      </div>
+
+      <!-- JEE specific -->
+      <div class="q jee-only" style="display:none">
+        <div class="q-row"><span class="q-n">Q14</span><span class="q-label">Maths — which area is your biggest weakness?</span></div>
+        <div class="chips">
+          <input type="radio" name="math_weak" id="mw1" value="Calculus"><label for="mw1">Calculus</label>
+          <input type="radio" name="math_weak" id="mw2" value="Algebra"><label for="mw2">Algebra</label>
+          <input type="radio" name="math_weak" id="mw3" value="Coordinate Geometry"><label for="mw3">Coordinate Geometry</label>
+          <input type="radio" name="math_weak" id="mw4" value="Trigonometry"><label for="mw4">Trigonometry</label>
+          <input type="radio" name="math_weak" id="mw5" value="Vectors & 3D"><label for="mw5">Vectors & 3D</label>
+          <input type="radio" name="math_weak" id="mw6" value="All weak"><label for="mw6">All weak</label>
+        </div>
+      </div>
+
+      <div class="q jee-only" style="display:none">
+        <div class="q-row"><span class="q-n">Q15</span><span class="q-label">In Maths — concepts or lengthy calculations?</span></div>
+        <div class="chips">
+          <input type="radio" name="math_loss" id="ml1" value="Concepts not clear"><label for="ml1">Concepts not clear</label>
+          <input type="radio" name="math_loss" id="ml2" value="Lengthy calculations"><label for="ml2">Lengthy calculations</label>
+          <input type="radio" name="math_loss" id="ml3" value="Both"><label for="ml3">Both</label>
+          <input type="radio" name="math_loss" id="ml4" value="Haven't studied enough yet"><label for="ml4">Haven't studied enough</label>
+        </div>
+      </div>
+
+      <div class="q">
+        <div class="q-row"><span class="q-n">Q16</span><span class="q-label">Physics — where do you lose marks most?</span></div>
+        <div class="chips">
+          <input type="radio" name="phy_loss" id="pl1" value="Silly calculation mistakes"><label for="pl1">Silly mistakes</label>
+          <input type="radio" name="phy_loss" id="pl2" value="Concept not clear"><label for="pl2">Concept not clear</label>
+          <input type="radio" name="phy_loss" id="pl3" value="Both"><label for="pl3">Both</label>
+          <input type="radio" name="phy_loss" id="pl4" value="Haven't studied enough yet"><label for="pl4">Haven't studied enough</label>
+        </div>
+      </div>
+
+      <div class="q">
+        <div class="q-row"><span class="q-n">Q17</span><span class="q-label">Chemistry — rank weakest to strongest</span></div>
+        <p class="q-hint">Organic / Inorganic / Physical</p>
+        <div class="row-fields" style="margin-top:8px">
+          <div class="field-pair"><span>Weakest</span><input type="text" name="chem_weak" placeholder="e.g. Organic"></div>
+          <div class="field-pair"><span>Middle</span><input type="text" name="chem_mid" placeholder="e.g. Inorganic"></div>
+          <div class="field-pair"><span>Strongest</span><input type="text" name="chem_strong" placeholder="e.g. Physical"></div>
+        </div>
+      </div>
+
+      <div class="q">
+        <div class="q-row"><span class="q-n">Q18</span><span class="q-label">Chapters you avoid or dread the most</span></div>
+        <p class="q-hint">Any subject. One of the most important questions — be honest.</p>
+        <textarea name="dreaded_chapters" rows="3" placeholder="e.g. Rotational Motion, Organic mechanisms, Genetics..." style="margin-top:8px"></textarea>
+      </div>
+
+      <div class="q">
+        <div class="q-row"><span class="q-n">Q19</span><span class="q-label">Do you revise on the same day you study something new?</span></div>
+        <div class="chips">
+          <input type="radio" name="same_day_revision" id="sr1" value="Always"><label for="sr1">Always</label>
+          <input type="radio" name="same_day_revision" id="sr2" value="Sometimes"><label for="sr2">Sometimes</label>
+          <input type="radio" name="same_day_revision" id="sr3" value="Rarely"><label for="sr3">Rarely</label>
+          <input type="radio" name="same_day_revision" id="sr4" value="No system yet"><label for="sr4">No system yet</label>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ SECTION E — Your Words ══ -->
+    <div class="section active" id="secE">
+      <div class="section-head">
+        <span class="section-num">E</span>
+        <span class="section-name">In Your Own Words</span>
+      </div>
+      <div class="note">These three questions matter more than everything above. No correct answers.</div>
+
+      <div class="q">
+        <div class="q-row"><span class="q-n">Q20</span><span class="q-label">If you could fix ONE thing about your prep today — what is it?</span></div>
+        <textarea name="fix_one_thing" rows="3" placeholder="Write freely..." style="margin-top:8px"></textarea>
+      </div>
+
+      <div class="q">
+        <div class="q-row"><span class="q-n">Q21</span><span class="q-label">What has every coaching or tutor missed about you so far?</span></div>
+        <p class="q-hint">If self-studying: what do you feel you're missing that no one has told you?</p>
+        <textarea name="what_missed" rows="3" placeholder="Write freely..." style="margin-top:8px"></textarea>
+      </div>
+
+      <div class="q">
+        <div class="q-row"><span class="q-n">Q22</span><span class="q-label" id="meaningQ">What does clearing this exam mean to you personally?</span></div>
+        <textarea name="exam_meaning" rows="3" placeholder="Write freely..." style="margin-top:8px"></textarea>
+      </div>
+    </div>
+
+    <!-- ══ SECTION F — Parent ══ -->
+    <div class="section active" id="secF">
+      <div class="section-head">
+        <span class="section-num">F</span>
+        <span class="section-name">Parent Section</span>
+      </div>
+      <div class="note">To be filled by the parent or together with the student.</div>
+
+      <div class="q">
+        <div class="q-row"><span class="q-n">Q23</span><span class="q-label">Primary goal for this mentorship</span></div>
+        <div class="chips" id="parentGoalChips">
+          <input type="radio" name="parent_goal" id="pg1" value="Government MBBS seat" class="neet-only-input"><label for="pg1" class="neet-only-label">Government MBBS</label>
+          <input type="radio" name="parent_goal" id="pg2" value="Any MBBS college" class="neet-only-input"><label for="pg2" class="neet-only-label">Any MBBS</label>
+          <input type="radio" name="parent_goal" id="pg3" value="IIT — top branch" class="jee-only-input"><label for="pg3" class="jee-only-label">IIT — top branch</label>
+          <input type="radio" name="parent_goal" id="pg4" value="Any IIT seat" class="jee-only-input"><label for="pg4" class="jee-only-label">Any IIT</label>
+          <input type="radio" name="parent_goal" id="pg5" value="NIT / good college" class="jee-only-input"><label for="pg5" class="jee-only-label">NIT / good college</label>
+          <input type="radio" name="parent_goal" id="pg6" value="Just clear the exam"><label for="pg6">Just clear the exam</label>
+        </div>
+      </div>
+
+      <div class="q">
+        <div class="q-row"><span class="q-n">Q24</span><span class="q-label">Target score and rank</span></div>
+        <div class="row-fields two" style="margin-top:8px">
+          <div class="field-pair"><span>Target Score</span><input type="text" name="target_score" placeholder="e.g. 620"></div>
+          <div class="field-pair"><span>Target Rank</span><input type="text" name="target_rank" placeholder="e.g. under 10,000"></div>
+        </div>
+      </div>
+
+      <div class="q">
+        <div class="q-row"><span class="q-n">Q25</span><span class="q-label">How involved do you want to be in progress updates?</span></div>
+        <div class="chips">
+          <input type="radio" name="parent_involvement" id="pi1" value="Weekly"><label for="pi1">Weekly</label>
+          <input type="radio" name="parent_involvement" id="pi2" value="Monthly"><label for="pi2">Monthly</label>
+          <input type="radio" name="parent_involvement" id="pi3" value="Only if there's a problem"><label for="pi3">Only if there's a problem</label>
+        </div>
+      </div>
+
+      <div class="q">
+        <div class="q-row"><span class="q-n">Q26</span><span class="q-label">Anything about your child's situation we should know?</span></div>
+        <textarea name="parent_notes" rows="3" placeholder="Any context that would help us mentor better..." style="margin-top:8px"></textarea>
+      </div>
+    </div>
+
+    <!-- Submit -->
+    <div class="submit-wrap">
+      <button type="submit" class="btn-submit" id="submitBtn" disabled>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        Select JEE or NEET to continue
+      </button>
+      <p class="submit-note">Your response goes directly to our mentor. We will reach out within 24 hours.</p>
+      <div class="error-msg" id="errorMsg"></div>
+    </div>
+  </form>
+
+  <!-- ══ SUCCESS + PLAN ══ -->
+  <div class="success-screen" id="successScreen">
+    <div class="success-top">
+      <div class="success-icon"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>
+      <h2>Form submitted</h2>
+      <p>Your mentor has received this. Here's a quick plan based on what you told us.</p>
+    </div>
+
+    <div class="plan-card" id="planCard">
+      <div class="plan-card-header">
+        <div class="plan-card-icon">📋</div>
+        <div>
+          <div class="plan-card-title">Your 3-Month Roadmap</div>
+          <div class="plan-card-sub" id="planSubtitle">Personalised based on your answers</div>
+        </div>
+      </div>
+      <div id="planContent">
+        <div class="plan-loading">
+          <span>Generating your plan</span>
+          <span class="dots"><span>.</span><span>.</span><span>.</span></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="cta-card">
+      <h3>Want this plan executed with a real mentor?</h3>
+      <p>Studyverse connects you with topic-expert teachers for 1-on-1 live sessions. No batch. No AI. Real human guidance.</p>
+      <a href="https://studyverse.in" class="cta-btn">
+        Talk to a Mentor
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+      </a>
+      <p class="cta-sub">talktostudyverse@gmail.com &nbsp;·&nbsp; +91 93583 69907</p>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── CONFIG — Developer fills these ──
+var GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwqLIur40mcrCKPGwDYmAlhZ2UATMFNZGowN4_pAQ30e8I89YStxu294zE5DhzOv5YpxA/exec';
+var PLAN_API_ENDPOINT = 'YOUR_CLOUDFLARE_WORKER_URL_HERE'; // e.g. https://studyverse-plan-api.YOUR-SUBDOMAIN.workers.dev/plan
+
+// ── State ──
+var currentExam = null;
+
+// ── Exam selector ──
+function selectExam(exam) {
+  currentExam = exam;
+  document.getElementById('examTypeInput').value = exam;
+
+  // Toggle body class for CSS color switching
+  document.body.classList.toggle('neet-mode', exam === 'neet');
+
+  // Toggle active state on buttons
+  document.getElementById('jeeBtn').classList.toggle('active', exam === 'jee');
+  document.getElementById('neetBtn').classList.toggle('active', exam === 'neet');
+
+  // Show/hide exam-specific elements
+  document.querySelectorAll('.jee-only').forEach(function(el) {
+    el.style.display = exam === 'jee' ? 'block' : 'none';
+  });
+  document.querySelectorAll('.neet-only').forEach(function(el) {
+    el.style.display = exam === 'neet' ? 'block' : 'none';
+  });
+  document.querySelectorAll('.jee-only-input').forEach(function(el) {
+    el.disabled = exam !== 'jee';
+  });
+  document.querySelectorAll('.neet-only-input').forEach(function(el) {
+    el.disabled = exam !== 'neet';
+  });
+  document.querySelectorAll('.jee-only-label').forEach(function(el) {
+    el.style.display = exam === 'jee' ? 'inline-flex' : 'none';
+  });
+  document.querySelectorAll('.neet-only-label').forEach(function(el) {
+    el.style.display = exam === 'neet' ? 'inline-flex' : 'none';
+  });
+
+  // Update subject score labels
+  if (exam === 'jee') {
+    document.getElementById('sub3Label').textContent = 'Maths';
+    document.getElementById('mockScaleHint').textContent = 'JEE Main is out of 300. Leave blank if not applicable.';
+    document.getElementById('meaningQ').textContent = 'What does getting into an IIT mean to you personally?';
+    document.getElementById('planSubtitle').textContent = 'JEE — Personalised based on your answers';
+  } else {
+    document.getElementById('sub3Label').textContent = 'Biology';
+    document.getElementById('mockScaleHint').textContent = 'NEET is out of 720. Leave blank if not applicable.';
+    document.getElementById('meaningQ').textContent = 'What does clearing NEET mean to you personally?';
+    document.getElementById('planSubtitle').textContent = 'NEET — Personalised based on your answers';
+  }
+
+  // Update topic panels
+  document.getElementById('jeeTopics').style.display = exam === 'jee' ? 'block' : 'none';
+  document.getElementById('neetTopics').style.display = exam === 'neet' ? 'block' : 'none';
+
+  // Enable submit button
+  var btn = document.getElementById('submitBtn');
+  btn.disabled = false;
+  btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> Submit Diagnostic Form';
+}
+
+// ── Topic panel toggle ──
+function toggleTopics() {
+  var panel = document.getElementById('topicPanel');
+  var btn = document.getElementById('expandTopics');
+  var isOpen = panel.classList.toggle('open');
+  btn.classList.toggle('open', isOpen);
+  btn.querySelector('span:first-child').textContent = isOpen ? 'Hide topic details' : 'Add topic details';
+}
+
+// ── Coaching sub toggle ──
+document.querySelectorAll('input[name="has_coaching"]').forEach(function(r) {
+  r.addEventListener('change', function() {
+    document.getElementById('coachingSub').classList.toggle('show', r.value === 'Yes');
+  });
+});
+
+// ── Progress bar ──
+document.getElementById('mainForm').addEventListener('input', function() {
+  var filled = Array.from(document.querySelectorAll('input[name]:checked, input[type="text"][name]'))
+    .filter(function(i) { return i.value.trim() !== '' && !i.disabled; }).length;
+  var total = Array.from(document.querySelectorAll('[name]'))
+    .filter(function(i) { return !i.disabled; }).length;
+  document.getElementById('progressFill').style.width = Math.min(Math.round((filled / total) * 100), 100) + '%';
+});
+
+// ── Collect data ──
+function collectData() {
+  var fd = new FormData(document.getElementById('mainForm'));
+  var d = {};
+  ['exam_type','name','current_class','exam_target','target_date','has_coaching',
+   'coaching_name','coaching_coverage','study_hours','syllabus_coverage',
+   'has_mocks','mock_score_1','mock_score_2','mock_score_3',
+   'mock_s1','mock_s2','mock_s3','hardest_subject','time_mgmt','review_mistakes',
+   'bio_weak','ncert_reads','math_weak','math_loss',
+   'phy_loss','chem_weak','chem_mid','chem_strong',
+   'dreaded_chapters','same_day_revision',
+   'fix_one_thing','what_missed','exam_meaning',
+   'parent_goal','target_score','target_rank','parent_involvement','parent_notes'
+  ].forEach(function(k) { d[k] = fd.get(k) || ''; });
+
+  d.subjects = fd.getAll('subjects').join(', ');
+  d.phy_topics = fd.getAll('phy_topics').join(', ');
+  d.chem_topics = fd.getAll('chem_topics').join(', ');
+  d.math_topics = fd.getAll('math_topics').join(', ');
+  d.bio_topics = fd.getAll('bio_topics').join(', ');
+  d.submitted_at = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+  return d;
+}
+
+// ── Show success ──
+function showSuccess() {
+  document.getElementById('mainForm').style.display = 'none';
+  document.getElementById('successScreen').classList.add('show');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ── Fetch AI plan from backend ──
+function fetchPlan(data) {
+  if (!PLAN_API_ENDPOINT || PLAN_API_ENDPOINT === 'YOUR_BACKEND_ENDPOINT_HERE') {
+    document.getElementById('planContent').innerHTML =
+      '<div class="plan-content">Your mentor will prepare a personalised plan and share it with you within 24 hours.</div>';
+    return;
+  }
+
+  fetch(PLAN_API_ENDPOINT, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  })
+  .then(function(res) { return res.json(); })
+  .then(function(json) {
+    document.getElementById('planContent').innerHTML =
+      '<div class="plan-content">' + (json.plan || 'Your mentor will share your plan shortly.') + '</div>';
+  })
+  .catch(function() {
+    document.getElementById('planContent').innerHTML =
+      '<div class="plan-content">Your mentor will prepare a personalised plan and share it with you within 24 hours.</div>';
+  });
+}
+
+// ── JSONP callback ──
+window.handleResponse = function() { /* data already saved */ };
+
+// ── Submit ──
+document.getElementById('mainForm').addEventListener('submit', function(e) {
+  e.preventDefault();
+  var btn = document.getElementById('submitBtn');
+  var errDiv = document.getElementById('errorMsg');
+
+  if (!currentExam) { showError('Please select JEE or NEET at the top.'); return; }
+  var name = document.querySelector('input[name="name"]').value.trim();
+  var classVal = document.querySelector('input[name="current_class"]:checked');
+  var coachingVal = document.querySelector('input[name="has_coaching"]:checked');
+  var subjectsVal = document.querySelectorAll('input[name="subjects"]:checked');
+
+  if (!name) { showError('Please enter your full name (Q1).'); return; }
+  if (!classVal) { showError('Please select your current class (Q2).'); return; }
+  if (!coachingVal) { showError('Please answer Q5 — coaching or self-study?'); return; }
+  if (subjectsVal.length === 0) { showError('Please select at least one subject (Q7).'); return; }
+
+  btn.disabled = true;
+  btn.textContent = 'Submitting...';
+  errDiv.classList.remove('show');
+
+  var data = collectData();
+
+  // 1. Save to Google Sheet (JSONP)
+  var params = Object.keys(data).map(function(k) {
+    return encodeURIComponent(k) + '=' + encodeURIComponent(data[k]);
+  }).join('&');
+
+  var s = document.createElement('script');
+  s.src = GOOGLE_SCRIPT_URL + '?' + params + '&callback=handleResponse';
+  s.onerror = function() {};
+  document.head.appendChild(s);
+
+  // 2. Show success after short delay
+  setTimeout(function() {
+    showSuccess();
+    // 3. Fetch AI plan
+    fetchPlan(data);
+  }, 1500);
+});
+
+function showError(msg) {
+  var e = document.getElementById('errorMsg');
+  e.textContent = msg;
+  e.classList.add('show');
+  e.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+</script>
+</body>
+</html>
