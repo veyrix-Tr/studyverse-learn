@@ -18,6 +18,7 @@
   --df-text2:  #4A5568;
   --df-text3:  #8896B3;
   --df-b:      rgba(15,31,61,0.08);
+  --df-b2:     rgba(15,31,61,0.14);
   --df-green:  #22C55E;
   --df-neet:   #F97316;
   --df-ndim:   rgba(249,115,22,0.13);
@@ -91,43 +92,184 @@
 /* ════════════════════════════════════════════
    PROGRESS BAR
 ════════════════════════════════════════════ */
-.dform .df-progress {
-  height: 4px;
-  background: var(--df-cream3);
+/* ════════════════════════════════════════════
+   WATER TANK PROGRESS
+════════════════════════════════════════════ */
+
+/* Sticky column that holds the whole scene */
+.dform .df-tube-col {
   position: sticky;
-  top: var(--th, 66px);
-  z-index: 15;
-  border-radius: 2px;
-  margin-bottom: 20px;
+  top: calc(var(--th, 66px) + 4px);
   display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 68px;
+  align-self: start;
+  margin-top: -50px;
+}
+
+/* Percentage counter above the tank */
+.dform .df-tube-pct {
+  font-family: var(--df-fb);
+  font-size: 14px;
+  font-weight: 700;
+  color: #3B82F6;
+  line-height: 1;
+  letter-spacing: -.01em;
+}
+.dform .df-tube-pct small {
+  font-size: 9px;
+  font-weight: 600;
+  opacity: .75;
+}
+
+/* Scene container — faucet + tank stacked, drops absolute inside */
+.dform .df-water-scene {
+  position: relative;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
   align-items: center;
 }
-.dform .df-pfill {
-  height: 100%;
-  background: linear-gradient(90deg, var(--dfc), var(--dfc2));
-  transition: width .55s cubic-bezier(.4,0,.2,1);
-  border-radius: 2px;
-  position: relative;
-  overflow: hidden;
+
+/* ── Faucet image ── */
+.dform .df-faucet-svg {
+  display: block;
   flex-shrink: 0;
+  /* flip + push right edge flush; negative margin compensates for PNG's internal transparent border */
+  transform: scaleX(-1);
+  align-self: flex-end;
+  margin-right: -31px;
+  filter: drop-shadow(0 4px 10px rgba(15,31,61,0.22));
+  margin-bottom: 4px;
+  z-index: 2;
+  position: relative;
 }
-.dform .df-pfill::after {
+
+/* ── Water drops falling from tap ── */
+/* Rendered only when progress > 0 — absolute in .df-water-scene */
+/* With margin-right: -10px the image shifts right 10px → spout moves to ~28px from scene left */
+.dform .df-drop {
+  position: absolute;
+  top: 50px;
+  left: 41px;
+  width: 9px;
+  height: 12px;
+  background: linear-gradient(180deg, #93C5FD 0%, #3B82F6 100%);
+  border-radius: 50% 50% 55% 55% / 40% 40% 60% 60%;
+  opacity: 0;
+  z-index: 10;
+  animation: dfDropFall 2.2s ease-in infinite;
+}
+
+@keyframes dfDropFall {
+  0%   { opacity: 0;   transform: translateY(0)    scaleY(0.35); }
+  7%   { opacity: 1;   transform: translateY(0)    scaleY(1);    }
+  80%  { opacity: 0.9; transform: translateY(54px) scaleY(0.9);  }
+  95%  { opacity: 0.2; transform: translateY(62px) scaleY(0.55); }
+  100% { opacity: 0;   transform: translateY(66px) scaleY(0);    }
+}
+
+/* ── Water tank ── */
+.dform .df-tank {
+  width: 40px;
+  height: 330px;
+  position: relative;
+}
+
+.dform .df-tank-glass {
+  position: absolute;
+  margin-right: -15px;
+  inset: 0;
+  background: rgba(235,248,255,0.5);
+  border: 2px solid rgba(59,130,246,0.18);
+  border-radius: 6px 6px 20px 20px;
+  overflow: hidden;
+  box-shadow:
+    inset 3px 0 8px rgba(59,130,246,0.04),
+    inset -2px 0 6px rgba(255,255,255,0.3),
+    0 8px 28px rgba(59,130,246,0.12),
+    0 2px 8px rgba(15,31,61,0.08);
+}
+
+/* Blue water fill */
+.dform .df-tank-fill {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  background: linear-gradient(
+    180deg,
+    #60A5FA 0%,
+    #3B82F6 40%,
+    #2563EB 100%
+  );
+  transition: height 0.9s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Water surface wave #1 */
+.dform .df-tank-fill::before {
   content: '';
   position: absolute;
-  inset: 0;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,.5), transparent);
-  background-size: 200% 100%;
-  animation: dfShimmer 2s linear infinite;
+  top: -10px; left: -30%;
+  width: 160%; height: 20px;
+  background: #60A5FA;
+  border-radius: 50%;
+  opacity: .95;
+  animation: dfWaterBob1 2.6s ease-in-out infinite;
 }
-.dform .df-pct {
+/* Water surface wave #2 — white froth highlight */
+.dform .df-tank-fill::after {
+  content: '';
   position: absolute;
-  right: 0;
-  top: 8px;
-  font-size: 10px;
-  font-weight: 700;
-  color: var(--df-text3);
-  letter-spacing: .04em;
+  top: -6px; left: 5%;
+  width: 90%; height: 12px;
+  background: rgba(255,255,255,.4);
+  border-radius: 50%;
+  animation: dfWaterBob2 2s ease-in-out infinite;
+  animation-delay: -.8s;
+}
+
+@keyframes dfWaterBob1 {
+  0%, 100% { transform: translateY(0)    scaleX(1);    }
+  50%       { transform: translateY(-5px) scaleX(0.86); }
+}
+@keyframes dfWaterBob2 {
+  0%, 100% { transform: translateY(0)    scaleX(1);    opacity: .4; }
+  50%       { transform: translateY(-3px) scaleX(1.08); opacity: .6; }
+}
+
+/* Graduation marks on the tank */
+.dform .df-tank-mark {
+  position: absolute;
+  left: 0;
+  width: 30%;
+  height: 1px;
+  background: rgba(59,130,246,0.2);
+}
+
+/* Glass reflection — vertical shine on left */
+.dform .df-tank-shine {
+  position: absolute;
+  top: 8px; left: 5px;
+  width: 4px; bottom: 16px;
+  background: linear-gradient(
+    180deg,
+    rgba(255,255,255,.7) 0%,
+    rgba(255,255,255,.2) 55%,
+    transparent 100%
+  );
+  border-radius: 2px;
   pointer-events: none;
+}
+
+/* "filled" label below */
+.dform .df-tube-lbl {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: #3B82F6;
+  opacity: .65;
 }
 
 /* ════════════════════════════════════════════
@@ -277,12 +419,168 @@
 }
 
 /* ════════════════════════════════════════════
+   STEP BAR
+════════════════════════════════════════════ */
+.dform .df-step-bar {
+  display: flex;
+  align-items: flex-start;
+  position: relative;
+  padding: 4px 0 22px;
+  margin-bottom: 4px;
+}
+
+.dform .df-step-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+  z-index: 1;
+}
+
+.dform .df-step-circle {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700;
+  font-family: var(--df-fb);
+  background: var(--df-cream2);
+  border: 2px solid var(--df-b2);
+  color: var(--df-text3);
+  transition: background .25s ease, border-color .25s ease, box-shadow .25s ease, color .25s ease;
+  letter-spacing: 0;
+}
+
+.dform .df-step-item.active .df-step-circle {
+  background: var(--dfc);
+  border-color: var(--dfc);
+  color: var(--df-navy);
+  box-shadow: 0 0 0 5px var(--dfdim);
+}
+
+.dform .df-step-item.done .df-step-circle {
+  background: var(--df-navy);
+  border-color: var(--dfc);
+  color: var(--dfc);
+}
+
+.dform .df-step-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.dform .df-step-label {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--df-text3);
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  transition: color .2s;
+  white-space: nowrap;
+}
+
+.dform .df-step-hint {
+  font-size: 10px;
+  color: var(--df-text3);
+  opacity: .6;
+  white-space: nowrap;
+}
+
+.dform .df-step-item.active .df-step-label,
+.dform .df-step-item.done .df-step-label {
+  color: var(--df-text);
+}
+
+.dform .df-step-item.active .df-step-hint,
+.dform .df-step-item.done .df-step-hint {
+  opacity: .75;
+  color: var(--df-text2);
+}
+
+/* connecting track behind circles */
+.dform .df-step-track {
+  position: absolute;
+  top: 22px; /* center of 36px circle + 4px padding */
+  left: calc(100% / 6);
+  right: calc(100% / 6);
+  height: 2px;
+  background: var(--df-b2);
+  z-index: 0;
+  border-radius: 1px;
+}
+
+.dform .df-step-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--dfc), var(--dfc2));
+  border-radius: 1px;
+  transition: width .45s cubic-bezier(.4, 0, .2, 1);
+}
+
+/* ── Step navigation buttons ── */
+.dform .df-step-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 28px 0 8px;
+}
+
+.dform .df-back-btn {
+  padding: 10px 22px;
+  border-radius: 9px;
+  border: 1.5px solid var(--df-b2);
+  background: transparent;
+  color: var(--df-text2);
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: var(--df-fb);
+  transition: border-color .18s, color .18s, background .18s;
+}
+
+.dform .df-back-btn:hover {
+  border-color: var(--df-text2);
+  color: var(--df-text);
+  background: var(--df-cream2);
+}
+
+.dform .df-next-btn {
+  margin-left: auto;
+  padding: 12px 36px;
+  border-radius: 10px;
+  border: none;
+  background: linear-gradient(135deg, var(--dfc) 0%, var(--dfc2) 100%);
+  color: var(--df-navy);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: var(--df-fb);
+  letter-spacing: .03em;
+  box-shadow: 0 4px 14px var(--dfdim);
+  transition: transform .18s, box-shadow .18s;
+}
+
+.dform .df-next-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 7px 20px var(--dfb);
+}
+
+.dform .df-next-btn:active {
+  transform: translateY(0);
+}
+
+/* ════════════════════════════════════════════
    FORM BODY
 ════════════════════════════════════════════ */
 .dform .df-body {
+  display: grid;
+  grid-template-columns: 1fr 68px;
+  align-items: start;
+  gap: 0 16px;
   padding: 0 0 5rem;
-  max-width: 1200px;
-  margin: 0 auto;
 }
 
 /* ════════════════════════════════════════════
@@ -691,7 +989,13 @@
 /* ════════════════════════════════════════════
    SUBMIT
 ════════════════════════════════════════════ */
-.dform .df-submit-wrap { text-align: center; padding-top: 6px; }
+.dform .df-submit-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-left: 12px;
+}
 
 .dform .df-btn {
   font-family: var(--df-fb);
@@ -882,6 +1186,9 @@
   .dform .df-header       { flex-direction: column; align-items: stretch; gap: 1.25rem; padding: 1.25rem 1.25rem 1.25rem; }
   .dform .df-header-right { align-items: center; }
   .dform .df-hstats       { justify-content: center; }
+  /* Collapse tube column — only show on desktop */
+  .dform .df-body         { grid-template-columns: 1fr; }
+  .dform .df-tube-col     { display: none; }
 }
 
 @media (min-width: 600px) {
