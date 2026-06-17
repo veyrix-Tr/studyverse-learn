@@ -64,6 +64,7 @@ body.faculty-mode #root {
 .nbadge.red{background:var(--red);color:#fff}
 .nbadge.gold{background:var(--gold);color:var(--navy)}
 .nbadge.dim{background:rgba(255,255,255,0.08);color:var(--inv3)}
+.nbadge.green{background:rgba(34,197,94,0.15);color:#22c55e}
 
 .sb-bottom{margin-top:auto;padding:13px;border-top:1px solid var(--bi)}
 .logout-btn{display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:8px;cursor:pointer;color:var(--inv3);font-size:12.5px;transition:all .15s}

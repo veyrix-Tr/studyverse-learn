@@ -206,6 +206,7 @@ const FacultyLMS = () => {
         sessions={sessions}
         doubts={doubts}
         students={students}
+        weeklyReports={weeklyReports}
       />
       <div className="faculty-main">
         <FacultyTopbar

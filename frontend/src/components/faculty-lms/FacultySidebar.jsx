@@ -5,13 +5,29 @@ const isToday = (iso) => {
   return d.getFullYear() === n.getFullYear() && d.getMonth() === n.getMonth() && d.getDate() === n.getDate();
 };
 
-const FacultySidebar = ({ activePage, onNav, onShowToast, profile, sessions = [], doubts = [], students = [] }) => {
+const FacultySidebar = ({ activePage, onNav, onShowToast, profile, sessions = [], doubts = [], students = [], weeklyReports = [] }) => {
   const name = profile?.name || 'Faculty';
   const initial = name.charAt(0).toUpperCase();
   const subject = profile?.facultyProfile?.subject || '';
 
   const todayCount = sessions.filter(s => isToday(s.scheduledAt)).length;
   const pendingDoubts = doubts.filter(d => !d.answeredAt).length;
+
+  const now = new Date();
+  const day = now.getDay();
+  const isSatOrSun = day === 0 || day === 6;
+  const diffToMonday = day === 0 ? -6 : 1 - day;
+  const monday = new Date(now);
+  monday.setDate(now.getDate() + diffToMonday);
+  monday.setHours(0, 0, 0, 0);
+  const jan4 = new Date(monday.getFullYear(), 0, 4);
+  const jan4Day = jan4.getDay() || 7;
+  const jan4Monday = new Date(jan4);
+  jan4Monday.setDate(jan4.getDate() - jan4Day + 1);
+  const isoWeek = Math.round((monday - jan4Monday) / (7 * 86400000)) + 1;
+  const weekNum = monday.getFullYear() * 100 + isoWeek;
+  const submittedThisWeek = weeklyReports.filter(r => r.weekNumber === weekNum && ['submitted', 'approved', 'sent'].includes(r.status)).length;
+  const showReportBadge = isSatOrSun && submittedThisWeek < students.length;
 
   return (
     <aside className="sidebar">
@@ -62,7 +78,7 @@ const FacultySidebar = ({ activePage, onNav, onShowToast, profile, sessions = []
       </div>
 
       <div className="nb">
-        <div className="nl">Action Items</div>
+        <div className="nl">As Subject Faculty</div>
         <div className={`ni${activePage === 'doubts' ? ' on' : ''}`} onClick={() => onNav('doubts')}>
           <svg className="nic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
@@ -75,28 +91,44 @@ const FacultySidebar = ({ activePage, onNav, onShowToast, profile, sessions = []
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
             <polyline points="14 2 14 8 20 8"/>
           </svg>
-          Resources
-          <span className="nbadge dim">Assign</span>
+          Suggest Resources
         </div>
         <div className={`ni${activePage === 'tests' ? ' on' : ''}`} onClick={() => onNav('tests')}>
           <svg className="nic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
           </svg>
-          Assign Tests
-          <span className="nbadge dim">Suggest</span>
+          Suggest Tests
         </div>
         <div className={`ni${activePage === 'reports' ? ' on' : ''}`} onClick={() => onNav('reports')}>
           <svg className="nic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M18 20V10M12 20V4M6 20v-6"/>
           </svg>
           Weekly Reports
-          <span className="nbadge gold">Due Sun</span>
+          {showReportBadge && <span className="nbadge gold">Due Sun</span>}
         </div>
         <div className={`ni${activePage === 'feedback' ? ' on' : ''}`} onClick={() => onNav('feedback')}>
           <svg className="nic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
           </svg>
           Weekly Feedback
+        </div>
+      </div>
+
+      <div className="nb">
+        <div className="nl">As Mentor</div>
+        <div className="ni" onClick={() => onShowToast('Coming soon! This feature is under development.')}>
+          <svg className="nic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+          </svg>
+          Daily Logs
+          <span className="nbadge green">Soon</span>
+        </div>
+        <div className="ni" onClick={() => onShowToast('Coming soon! This feature is under development.')}>
+          <svg className="nic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.18 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.64a16 16 0 0 0 6 6l1.8-.9a2 2 0 0 1 2.11.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
+          </svg>
+          Mentor Calls
+          <span className="nbadge green">Soon</span>
         </div>
       </div>
 
