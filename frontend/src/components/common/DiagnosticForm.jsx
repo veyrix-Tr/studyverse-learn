@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useRef, Fragment } from 'react';
 import './DiagnosticForm.css';
 
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwqLIur40mcrCKPGwDYmAlhZ2UATMFNZGowN4_pAQ30e8I89YStxu294zE5DhzOv5YpxA/exec';
+const SCRIPT_URL = import.meta.env.VITE_DIAGNOSTIC_SCRIPT_URL;
 
 const JEE_PHY  = ['Kinematics','Laws of Motion','Work, Energy & Power','Rotational Motion','Gravitation','Thermodynamics','Waves & SHM','Electrostatics','Current Electricity','Magnetism & EMI','Optics','Modern Physics'];
 const JEE_CHEM = ['Mole Concept','Atomic Structure','Chemical Bonding','Thermodynamics (Chem)','Equilibrium','Electrochemistry','Chemical Kinetics','p, d & f Block','Coordination Compounds','Organic Basics & IUPAC','Reaction Mechanisms','Named Reactions'];
@@ -110,10 +110,17 @@ const DiagnosticForm = ({ profile }) => {
 
   const [step, setStep]           = useState(1);
   const formRef                   = useRef(null);
+  const toastTimer                = useRef(null);
   const [topicsOpen, setTopicsOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitted,  setSubmitted]  = useState(false);
-  const [error,      setError]      = useState('');
+  const [toast,      setToast]      = useState('');
+
+  const showToast = (msg) => {
+    setToast(msg);
+    clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToast(''), 3500);
+  };
 
   useEffect(() => {
     if (profile?.name) {
@@ -137,6 +144,14 @@ const DiagnosticForm = ({ profile }) => {
     return Math.min(Math.round((filled / total) * 100), 100);
   }, [form]);
 
+  const stepValid = useMemo(() => {
+    if (step === 1)
+      return !!(form.name.trim() && form.current_class && form.has_coaching && form.subjects.length);
+    if (step === 2)
+      return !!(form.has_mocks && form.hardest_subject);
+    return true;
+  }, [step, form]);
+
   const validateStep1 = () => {
     if (!form.name.trim())        return 'Please enter your full name (Q1).';
     if (!form.current_class)      return 'Please select your current class (Q2).';
@@ -148,16 +163,34 @@ const DiagnosticForm = ({ profile }) => {
   const handleNext = () => {
     if (step === 1) {
       const err = validateStep1();
-      if (err) { setError(err); return; }
+      if (err) { showToast(err); return; }
     }
-    setError('');
     setStep(s => s + 1);
     setTimeout(() => formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 30);
   };
 
   const handleBack = () => {
-    setError('');
     setStep(s => s - 1);
+    setTimeout(() => formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 30);
+  };
+
+  const handleClear = () => {
+    setForm({
+      name: '', current_class: '', exam_target: '', target_date: '',
+      has_coaching: '', coaching_name: '', coaching_coverage: '',
+      study_hours: '', subjects: [], syllabus_coverage: '',
+      phy_topics: [], chem_topics: [], math_topics: [], bio_topics: [],
+      has_mocks: '', mock_score_1: '', mock_score_2: '', mock_score_3: '',
+      mock_s1: '', mock_s2: '', mock_s3: '',
+      hardest_subject: '', time_mgmt: '', review_mistakes: '',
+      bio_weak: '', ncert_reads: '', math_weak: '', math_loss: '',
+      phy_loss: '', chem_weak: '', chem_mid: '', chem_strong: '',
+      dreaded_chapters: '', same_day_revision: '',
+      fix_one_thing: '', what_missed: '', exam_meaning: '',
+      parent_goal: '', target_score: '', target_rank: '',
+      parent_involvement: '', parent_notes: '',
+    });
+    setStep(1);
     setTimeout(() => formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 30);
   };
 
@@ -172,8 +205,7 @@ const DiagnosticForm = ({ profile }) => {
   const handleSubmit = e => {
     e.preventDefault();
     const err = validate();
-    if (err) { setError(err); return; }
-    setError('');
+    if (err) { showToast(err); return; }
     setSubmitting(true);
 
     const data = {
@@ -289,10 +321,8 @@ const DiagnosticForm = ({ profile }) => {
             </div>
           </div>
         </div>
+        <StepBar />
       </div>
-
-      {/* Step bar */}
-      <StepBar />
 
       {/* Form body */}
       <div className="df-body">
@@ -577,7 +607,7 @@ const DiagnosticForm = ({ profile }) => {
               </button>
             )}
             {step < 3 ? (
-              <button type="button" className="df-next-btn" onClick={handleNext}>
+              <button type="button" className="df-next-btn" onClick={handleNext} disabled={!stepValid}>
                 Continue →
               </button>
             ) : (
@@ -597,14 +627,20 @@ const DiagnosticForm = ({ profile }) => {
             )}
           </div>
 
-          {error && <div className="df-error" style={{ marginTop: '10px' }}>{error}</div>}
+          {/* Toast notification */}
+          {toast && (
+            <div className="df-toast" role="alert">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
+              {toast}
+            </div>
+          )}
 
         </form>
 
         {/* Water tank progress indicator */}
         <aside className="df-tube-col" aria-label={`Form ${progress}% complete`}>
-          <span className="df-tube-pct">{progress}<small>%</small></span>
-
           <div className="df-water-scene">
             {/* Tap image */}
             <img
@@ -625,6 +661,10 @@ const DiagnosticForm = ({ profile }) => {
                 <div className="df-tank-mark" style={{ bottom: '25%' }} />
                 <div className="df-tank-shine" />
               </div>
+              {/* Percentage pill floats at the waterline */}
+              <div className="df-tank-pct" style={{ bottom: `${Math.max(progress, 2)}%` }}>
+                {progress}<small>%</small>
+              </div>
             </div>
 
             {/* Drops only fall when something has been filled */}
@@ -637,7 +677,14 @@ const DiagnosticForm = ({ profile }) => {
             )}
           </div>
 
-          <span className="df-tube-lbl">filled</span>
+          <button
+            type="button"
+            className="df-tube-clear"
+            onClick={handleClear}
+            disabled={progress === 0}
+          >
+            Clear
+          </button>
         </aside>
 
       </div>

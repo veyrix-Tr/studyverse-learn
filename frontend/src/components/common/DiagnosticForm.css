@@ -109,19 +109,28 @@
   margin-top: -50px;
 }
 
-/* Percentage counter above the tank */
-.dform .df-tube-pct {
-  font-family: var(--df-fb);
-  font-size: 14px;
-  font-weight: 700;
-  color: #3B82F6;
-  line-height: 1;
-  letter-spacing: -.01em;
-}
-.dform .df-tube-pct small {
+/* Percentage pill — floats at the waterline inside the tank */
+.dform .df-tank-pct {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%) translateY(50%);
+  background: rgba(255,255,255,0.92);
+  color: #1D4ED8;
+  border-radius: 10px;
+  padding: 2px 6px;
   font-size: 9px;
-  font-weight: 600;
-  opacity: .75;
+  font-weight: 700;
+  font-family: var(--df-fb);
+  line-height: 1.4;
+  white-space: nowrap;
+  z-index: 5;
+  pointer-events: none;
+  box-shadow: 0 1px 4px rgba(15,31,61,0.14);
+  transition: bottom 0.9s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.dform .df-tank-pct small {
+  font-size: 7px;
+  opacity: .8;
 }
 
 /* Scene container — faucet + tank stacked, drops absolute inside */
@@ -263,13 +272,32 @@
 }
 
 /* "filled" label below */
-.dform .df-tube-lbl {
-  font-size: 9px;
-  font-weight: 600;
-  letter-spacing: .09em;
+.dform .df-tube-clear {
+  width: 59px;
+  margin-left: 13px;
+  margin-top: 8px;
+  padding: 7px 0;
+  border-radius: 0 0 7px 7px;
+  border: none;
+  background: #EF4444;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: .07em;
   text-transform: uppercase;
-  color: #3B82F6;
-  opacity: .65;
+  cursor: pointer;
+  font-family: var(--df-fb);
+  transition: background .18s;
+}
+
+.dform .df-tube-clear:hover:not(:disabled) {
+  background: #DC2626;
+}
+
+.dform .df-tube-clear:disabled {
+  background: #EF4444;
+  opacity: .25;
+  cursor: default;
 }
 
 /* ════════════════════════════════════════════
@@ -278,9 +306,10 @@
 .dform .df-header {
   background: var(--df-navy);
   border-radius: var(--df-rl);
-  padding: 1.4rem 2rem;
+  padding: 0.85rem 1.75rem 0.9rem;
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 2rem;
   position: relative;
   overflow: hidden;
@@ -429,6 +458,78 @@
   margin-bottom: 4px;
 }
 
+/* Step bar inside the dark header — compact */
+.dform .df-header .df-step-bar {
+  flex-basis: 100%;
+  margin-top: 0.4rem;
+  padding: 2px 0 4px;
+  margin-bottom: 0;
+}
+
+.dform .df-header .df-step-item {
+  gap: 5px;
+  z-index: 2;
+}
+
+.dform .df-header .df-step-circle {
+  width: 26px !important;
+  height: 26px !important;
+  font-size: 10px !important;
+  background: #0F1F3D;
+  border-color: rgba(255,255,255,0.15);
+  color: rgba(255,255,255,0.4);
+}
+
+.dform .df-header .df-step-circle {
+  background: rgba(255,255,255,0.07);
+  border-color: rgba(255,255,255,0.15);
+  color: rgba(255,255,255,0.4);
+}
+
+.dform .df-header .df-step-item.active .df-step-circle {
+  background: var(--dfc);
+  border-color: var(--dfc);
+  color: var(--df-navy);
+  box-shadow: 0 0 0 5px var(--dfdim);
+}
+
+.dform .df-header .df-step-item.done .df-step-circle {
+  background: #0F1F3D;
+  border-color: var(--dfc);
+  color: var(--dfc);
+}
+
+.dform .df-header .df-step-label {
+  color: rgba(255,255,255,0.45);
+  font-size: 10px !important;
+}
+
+.dform .df-header .df-step-hint {
+  font-size: 9px !important;
+}
+
+.dform .df-header .df-step-item.active .df-step-label,
+.dform .df-header .df-step-item.done .df-step-label {
+  color: rgba(255,255,255,0.9);
+}
+
+.dform .df-header .df-step-hint {
+  color: rgba(255,255,255,0.28);
+}
+
+.dform .df-header .df-step-item.active .df-step-hint {
+  color: rgba(255,255,255,0.5);
+}
+
+.dform .df-header .df-step-track {
+  background: rgba(255,255,255,0.1);
+  top: 15px; /* centre of 26px circle + 2px padding */
+}
+
+.dform .df-header .df-step-fill {
+  background: linear-gradient(90deg, var(--dfc), var(--dfc2));
+}
+
 .dform .df-step-item {
   flex: 1;
   display: flex;
@@ -523,10 +624,10 @@
 .dform .df-step-nav {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  gap: 8px;
   padding: 28px 0 8px;
 }
+
 
 .dform .df-back-btn {
   padding: 10px 22px;
@@ -570,6 +671,13 @@
 
 .dform .df-next-btn:active {
   transform: translateY(0);
+}
+
+.dform .df-next-btn:disabled {
+  opacity: 0.45;
+  box-shadow: none;
+  cursor: not-allowed;
+  transform: none;
 }
 
 /* ════════════════════════════════════════════
@@ -1054,6 +1162,34 @@
   margin-top: 12px;
   line-height: 1.5;
 }
+.dform .df-toast {
+  position: fixed;
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 18px;
+  background: #1e293b;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: var(--df-fb);
+  border-radius: 10px;
+  box-shadow: 0 8px 28px rgba(0,0,0,0.22);
+  white-space: nowrap;
+  z-index: 9999;
+  animation: dfToastIn .22s ease;
+}
+
+.dform .df-toast svg { flex-shrink: 0; color: #F87171; }
+
+@keyframes dfToastIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(10px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
 .dform .df-error {
   font-size: 13px;
   color: #dc2626;
