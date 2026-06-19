@@ -2,6 +2,7 @@ const express  = require('express');
 const router   = express.Router({ mergeParams: true });
 const prisma   = require('../lib/prisma');
 const { requireAuth } = require('../middleware/auth');
+const { generateStudyPlan } = require('../lib/studyPlanAlgorithm');
 
 // GET /api/student/me
 router.get('/me', requireAuth, async (req, res) => {
@@ -33,7 +34,7 @@ const THREE_MONTHS_MS = 3 * 30 * 24 * 60 * 60 * 1000;
 
 router.post('/diagnostic', requireAuth, async (req, res) => {
   try {
-    const { score } = req.body;
+    const { score, answers } = req.body;
     if (typeof score !== 'number' || score < 0 || score > 100)
       return res.status(400).json({ error: 'Invalid score' });
 
@@ -49,7 +50,11 @@ router.post('/diagnostic', requireAuth, async (req, res) => {
     const now = new Date();
     await prisma.studentProfile.update({
       where: { id: profile.id },
-      data: { diagnosticScore: Math.round(score), diagnosticTakenAt: now },
+      data: {
+        diagnosticScore:   Math.round(score),
+        diagnosticTakenAt: now,
+        diagnosticAnswers: answers || null,
+      },
     });
 
     const nextAllowedAt = new Date(now.getTime() + THREE_MONTHS_MS);
@@ -57,6 +62,24 @@ router.post('/diagnostic', requireAuth, async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to save diagnostic' });
+  }
+});
+
+// GET /api/student/study-plan
+router.get('/study-plan', requireAuth, async (req, res) => {
+  try {
+    const profile = await prisma.studentProfile.findUnique({
+      where: { userId: req.params.userId },
+      select: { diagnosticAnswers: true, diagnosticTakenAt: true },
+    });
+    if (!profile?.diagnosticAnswers)
+      return res.status(404).json({ error: 'No diagnostic data' });
+
+    const plan = generateStudyPlan(profile.diagnosticAnswers);
+    res.json(plan);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to generate study plan' });
   }
 });
 

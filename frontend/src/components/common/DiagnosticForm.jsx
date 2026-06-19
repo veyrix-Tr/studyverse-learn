@@ -253,7 +253,7 @@ const DiagnosticForm = ({ profile, onComplete }) => {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ score: progress }),
+        body: JSON.stringify({ score: progress, answers: form }),
       })
         .then(r => r.json())
         .then(res => { if (res.success) onComplete?.(); })

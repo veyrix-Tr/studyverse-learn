@@ -288,6 +288,64 @@ body.free-mode .rr-icon { width: 38px; height: 38px; border-radius: 9px; backgro
 body.free-mode .rr-name { flex: 1; font-size: 13px; font-weight: 500; color: var(--text); }
 body.free-mode .rr-meta { font-size: 11.5px; color: var(--text3); margin-top: 2px; }
 
+/* ── STUDY PLAN ── */
+body.free-mode .sp-overview { display: flex; gap: 10px; margin-bottom: 22px; flex-wrap: wrap; }
+body.free-mode .sp-ov-box { flex: 1; min-width: 80px; background: var(--cream); border: 1px solid var(--b); border-radius: 12px; padding: 12px 14px; text-align: center; box-shadow: var(--sh); }
+body.free-mode .sp-ov-val { font-family: var(--fs); font-size: 20px; font-weight: 700; color: var(--text); line-height: 1; }
+body.free-mode .sp-ov-lbl { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: .06em; margin-top: 4px; }
+body.free-mode .sp-ov-sub { font-size: 10px; margin-top: 2px; font-weight: 600; }
+
+body.free-mode .sp-subj-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--b); }
+body.free-mode .sp-subj-row:last-child { border-bottom: none; padding-bottom: 0; }
+body.free-mode .sp-subj-name { font-size: 13px; font-weight: 600; color: var(--text); width: 110px; flex-shrink: 0; }
+body.free-mode .sp-subj-bar { flex: 1; height: 8px; background: var(--b); border-radius: 99px; overflow: hidden; }
+body.free-mode .sp-subj-fill { height: 100%; border-radius: 99px; transition: width .6s ease; }
+body.free-mode .sp-subj-hours { font-size: 11.5px; color: var(--text2); width: 52px; text-align: right; flex-shrink: 0; font-weight: 500; }
+body.free-mode .sp-subj-badge { font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 99px; flex-shrink: 0; }
+
+body.free-mode .sp-focus { border: 1px solid var(--b); border-radius: 14px; background: var(--cream); margin-bottom: 10px; overflow: hidden; display: flex; box-shadow: var(--sh); }
+body.free-mode .sp-focus-bar { width: 4px; flex-shrink: 0; }
+body.free-mode .sp-focus-body { flex: 1; padding: 14px 16px; }
+body.free-mode .sp-focus-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
+body.free-mode .sp-focus-subject { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--text3); margin-bottom: 3px; }
+body.free-mode .sp-focus-topic { font-size: 14px; font-weight: 700; color: var(--text); line-height: 1.3; }
+body.free-mode .sp-focus-right { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; flex-shrink: 0; }
+body.free-mode .sp-focus-hours { font-size: 11px; font-weight: 600; color: var(--text2); white-space: nowrap; }
+body.free-mode .sp-focus-label { font-size: 10px; font-weight: 700; padding: 3px 9px; border-radius: 99px; white-space: nowrap; }
+body.free-mode .sp-focus-reason { font-size: 12px; color: var(--text2); line-height: 1.55; margin-bottom: 6px; }
+body.free-mode .sp-focus-approach { font-size: 11.5px; color: var(--text3); border-top: 1px solid var(--b); padding-top: 8px; line-height: 1.5; }
+body.free-mode .sp-focus-approach strong { color: var(--text2); }
+
+body.free-mode .sp-trend { display: flex; align-items: center; gap: 14px; background: var(--cream); border: 1px solid var(--b); border-radius: 12px; padding: 14px 16px; margin-bottom: 20px; box-shadow: var(--sh); }
+body.free-mode .sp-trend-scores { display: flex; gap: 8px; align-items: center; }
+body.free-mode .sp-trend-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--navy3); }
+body.free-mode .sp-trend-score { font-size: 13px; font-weight: 600; color: var(--text); }
+body.free-mode .sp-trend-arrow { font-size: 11px; color: var(--text3); }
+body.free-mode .sp-trend-msg { font-size: 12.5px; color: var(--text2); flex: 1; line-height: 1.55; }
+
+body.free-mode .sp-week { border: 1px solid var(--b); border-radius: 12px; margin-bottom: 8px; overflow: hidden; background: var(--cream); }
+body.free-mode .sp-week-head { display: flex; align-items: center; gap: 12px; padding: 12px 16px; cursor: pointer; user-select: none; }
+body.free-mode .sp-week-num { font-size: 11px; font-weight: 700; color: var(--text3); width: 52px; flex-shrink: 0; }
+body.free-mode .sp-week-theme { font-size: 13px; font-weight: 600; color: var(--text); flex: 1; }
+body.free-mode .sp-week-days { font-size: 11px; color: var(--text3); flex-shrink: 0; }
+body.free-mode .sp-week-body { border-top: 1px solid var(--b); padding: 10px 16px; display: none; }
+body.free-mode .sp-week-body.open { display: block; }
+body.free-mode .sp-week-topic { display: flex; align-items: center; gap: 8px; padding: 5px 0; font-size: 12.5px; color: var(--text2); border-bottom: 1px solid rgba(15,31,61,0.05); }
+body.free-mode .sp-week-topic:last-child { border-bottom: none; }
+body.free-mode .sp-week-subj { font-size: 10px; font-weight: 700; color: var(--text3); text-transform: uppercase; width: 80px; flex-shrink: 0; }
+
+body.free-mode .sp-slot { display: flex; align-items: flex-start; gap: 14px; padding: 12px 16px; border-radius: 10px; background: var(--cream); border: 1px solid var(--b); margin-bottom: 8px; }
+body.free-mode .sp-slot-time { font-size: 11px; color: var(--text3); font-weight: 500; width: 88px; flex-shrink: 0; padding-top: 2px; }
+body.free-mode .sp-slot-subject { font-size: 13px; font-weight: 700; color: var(--text); }
+body.free-mode .sp-slot-note { font-size: 11.5px; color: var(--text3); margin-top: 2px; }
+body.free-mode .sp-slot-hours { font-size: 11px; color: var(--text3); margin-left: auto; flex-shrink: 0; padding-top: 2px; }
+
+body.free-mode .sp-habit { display: flex; gap: 14px; padding: 14px 16px; border-radius: 12px; background: var(--cream); border: 1px solid var(--b); margin-bottom: 10px; box-shadow: var(--sh); }
+body.free-mode .sp-habit-icon { font-size: 22px; flex-shrink: 0; }
+body.free-mode .sp-habit-title { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+body.free-mode .sp-habit-body { font-size: 12px; color: var(--text2); line-height: 1.6; }
+body.free-mode .sp-habit-impact { display: inline-block; margin-top: 6px; font-size: 11px; font-weight: 600; color: var(--green); background: rgba(34,197,94,0.1); padding: 2px 8px; border-radius: 99px; }
+
 /* ── MODAL ── */
 body.free-mode .overlay { position: fixed; inset: 0; background: rgba(15,31,61,0.52); display: none; align-items: center; justify-content: center; z-index: 200; backdrop-filter: blur(4px); }
 body.free-mode .overlay.open { display: flex; }

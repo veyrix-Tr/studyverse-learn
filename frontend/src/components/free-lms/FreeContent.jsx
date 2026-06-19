@@ -152,16 +152,6 @@ const getGreeting = () => {
 };
 
 
-const guidanceConfig = [
-  { key: 'electro', icon: '⚡', title: 'Start with Electrostatics — 3 days',
-    body: (p) => `This is your lowest-scoring topic with the highest JEE Mains frequency (6–8 questions). Even moving from ${p}% to ${Math.min(p + 20, 100)}% here adds approximately 8–10 marks. Begin with Coulomb's Law → Electric Field → Gauss's Law. Study NCERT first, then attempt previous year questions.` },
-  { key: 'mechanics', icon: '⚙️', title: "Mechanics — Newton's Laws & Energy — 2 days",
-    body: (p) => `Mechanics is the backbone of JEE Physics. You're at ${p}% — this chapter rewards practice more than theory. Spend 2 focused days on Free Body Diagrams and Energy Conservation. These are directly connected to your integration weakness too.` },
-  { key: 'integration', icon: '∫', title: 'Integration — 2 days in parallel with Maths revision',
-    body: (p) => `You're at ${p}% in Integration. Don't skip this — it bleeds into 4–5 guaranteed questions. Study substitution method, then integration by parts. Use NCERT examples first. This is fixable in 2 focused sessions.` },
-  { key: 'organic', icon: '🧪', title: 'Organic Reactions — Keep it light this week (1 day)',
-    body: (p) => `You're at ${p}% in Organic Chemistry. Spend 1 day revising key named reactions (Aldol, Cannizzaro, Markovnikov) and mechanism logic. Do not go deep here until Physics improves.` },
-];
 
 
 const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, habitLogs = [], onHabitSaved }) => {
@@ -192,7 +182,8 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
   }, [isForge, userId]);
 
   // Diagnostic done state (from DB)
-  const [diagDone, setDiagDone] = useState(false);
+  const [diagDone, setDiagDone]   = useState(false);
+  const [studyPlan, setStudyPlan] = useState(null);
   const [ratings] = useState({});
 
   useEffect(() => {
@@ -201,6 +192,18 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
       setDiagDone(true);
     }
   }, [profile]);
+
+  // Fetch study plan when diagnostic is done
+  useEffect(() => {
+    if (!diagDone || !userId) return;
+    const token = localStorage.getItem('token');
+    fetch(`${import.meta.env.VITE_API_URL}/api/student/${userId}/study-plan`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data && !data.error) setStudyPlan(data); })
+      .catch(() => {});
+  }, [diagDone, userId]);
 
   // Habit state
   const [habitState, setHabitState] = useState({});
@@ -295,143 +298,9 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
   const physPct = subjectAvg(['mechanics', 'electro']);
   const chemPct = subjectAvg(['physical-chem', 'organic']);
 
-  const allRatedTopics = ratingTopics.flatMap((g, gi) =>
-    g.topics.map(t => ({
-      ...t,
-      subject: ['Maths', 'Physics', 'Chemistry'][gi],
-      pct: ratings[t.key] ? ratingToPct(ratings[t.key]) : null,
-    }))
-  ).filter(t => t.pct !== null).sort((a, b) => a.pct - b.pct);
-  const strongTopicsList = allRatedTopics.filter(t => t.pct >= 72);
-  const guidanceCards = guidanceConfig
-    .map(g => ({ ...g, pct: ratings[g.key] ? ratingToPct(ratings[g.key]) : null }))
-    .filter(g => g.pct !== null)
-    .sort((a, b) => a.pct - b.pct)
-    .map((g, i) => ({
-      ...g,
-      pCls: i === 0 ? 'gp-high' : i === 1 ? 'gp-high' : i === 2 ? 'gp-mid' : 'gp-low',
-      pLabel: i === 0 ? '🔴 Highest Priority' : i === 1 ? '🔴 High Priority' : i === 2 ? '🟠 Medium Priority' : '🟢 Lower Priority',
-    }));
 
   return (
     <div className="content">
-
-      {/* ══════════ DIAGNOSTIC GATE OVERLAY ══════════ */}
-      {!diagDone && activePage !== 'diagnostic' && (
-        <div style={{
-          position: 'fixed', top: 0, left: '268px', right: 0, bottom: 0,
-          backdropFilter: 'blur(10px)',
-          background: 'rgba(253,248,240,0.75)',
-          zIndex: 200,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>
-          {/* Skeleton dashboard — mirrors real layout with shimmer */}
-          <div style={{ position: 'absolute', inset: 0, padding: '28px 32px', overflowY: 'hidden', pointerEvents: 'none', display: 'flex', flexDirection: 'column', gap: '18px' }}>
-
-            {/* Greeting */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <div className="sk" style={{ height: 13, width: '38%' }}/>
-              <div className="sk" style={{ height: 22, width: '55%' }}/>
-            </div>
-
-            {/* Stats row — 4 boxes */}
-            <div style={{ display: 'flex', gap: '12px' }}>
-              {[1,2,3,4].map(i => (
-                <div key={i} style={{ flex: 1, background: 'rgba(253,248,240,0.9)', border: '1px solid rgba(15,31,61,0.08)', borderRadius: '12px', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <div className="sk" style={{ height: 10, width: '50%' }}/>
-                  <div className="sk" style={{ height: 26, width: '70%' }}/>
-                  <div className="sk" style={{ height: 9, width: '40%' }}/>
-                </div>
-              ))}
-            </div>
-
-            {/* Banner card */}
-            <div style={{ background: 'rgba(240, 244, 253, 0.9)', border: '1px solid rgba(15,31,61,0.08)', borderRadius: '14px', padding: '20px 22px', display: 'flex', alignItems: 'center', gap: '16px' }}>
-              <div className="sk" style={{ width: 44, height: 44, borderRadius: '50%', flexShrink: 0 }}/>
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '7px' }}>
-                <div className="sk" style={{ height: 11, width: '45%' }}/>
-                <div className="sk" style={{ height: 16, width: '70%' }}/>
-              </div>
-              <div className="sk" style={{ height: 36, width: 110, borderRadius: '8px' }}/>
-            </div>
-
-            {/* Two column section */}
-            <div style={{ display: 'flex', gap: '14px' }}>
-              {/* Left — study plan card */}
-              <div style={{ flex: 1.5, background: 'rgba(253,248,240,0.9)', border: '1px solid rgba(15,31,61,0.08)', borderRadius: '12px', padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                <div className="sk" style={{ height: 11, width: '35%' }}/>
-                <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-                  <div className="sk" style={{ width: 36, height: 36, borderRadius: '8px', flexShrink: 0 }}/>
-                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <div className="sk" style={{ height: 11, width: '80%' }}/>
-                    <div className="sk" style={{ height: 9, width: '95%' }}/>
-                    <div className="sk" style={{ height: 9, width: '60%' }}/>
-                  </div>
-                </div>
-                <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-                  <div className="sk" style={{ width: 36, height: 36, borderRadius: '8px', flexShrink: 0 }}/>
-                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <div className="sk" style={{ height: 11, width: '65%' }}/>
-                    <div className="sk" style={{ height: 9, width: '85%' }}/>
-                    <div className="sk" style={{ height: 9, width: '50%' }}/>
-                  </div>
-                </div>
-              </div>
-              {/* Right — habit tracker card */}
-              <div style={{ flex: 1, background: 'rgba(253,248,240,0.9)', border: '1px solid rgba(15,31,61,0.08)', borderRadius: '12px', padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                <div className="sk" style={{ height: 11, width: '55%' }}/>
-                {[1,2,3,4].map(i => (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <div className="sk" style={{ width: 18, height: 18, borderRadius: '4px', flexShrink: 0 }}/>
-                    <div className="sk" style={{ height: 9, flex: 1 }}/>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Progress section */}
-            <div style={{ background: 'rgba(253,248,240,0.9)', border: '1px solid rgba(15,31,61,0.08)', borderRadius: '12px', padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <div className="sk" style={{ height: 11, width: '28%' }}/>
-              <div className="sk" style={{ height: 8, borderRadius: '99px', width: '100%' }}/>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <div className="sk" style={{ height: 9, width: '20%' }}/>
-                <div className="sk" style={{ height: 9, width: '15%' }}/>
-              </div>
-            </div>
-
-          </div>
-
-          <div style={{
-            background: '#fff',
-            borderRadius: '22px',
-            padding: '40px 36px',
-            textAlign: 'center',
-            boxShadow: '0 20px 60px rgba(15,31,61,0.16), 0 4px 16px rgba(15,31,61,0.08)',
-            maxWidth: '380px',
-            width: '90%',
-            border: '1px solid rgba(15,31,61,0.07)',
-            position: 'relative', zIndex: 1,
-          }}>
-            <div style={{ width: '60px', height: '60px', borderRadius: '16px', background: 'linear-gradient(135deg, #0F1F3D 0%, #1C2E50 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
-              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#E8A830" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-              </svg>
-            </div>
-            <div style={{ fontFamily: 'var(--fs)', fontSize: '20px', fontWeight: 700, color: 'var(--text)', marginBottom: '10px', lineHeight: 1.3 }}>
-              Start with your diagnostic
-            </div>
-            <div style={{ fontSize: '13.5px', color: 'var(--text2)', lineHeight: 1.75, marginBottom: '26px' }}>
-              Your study plan, topic map, resources, and progress tracking are all built from your diagnostic. It takes 8 minutes — do it once, unlock everything.
-            </div>
-            <button className="btn btn-gold" style={{ width: '100%', justifyContent: 'center', padding: '13px 0', fontSize: '14px' }} onClick={() => onNav('diagnostic')}>
-              Take the Diagnostic →
-            </button>
-            <div style={{ fontSize: '11.5px', color: 'var(--text3)', marginTop: '12px' }}>
-              Free · 26 questions · One time only
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* ══════════ HOME ══════════ */}
       <div className={p('home')}>
@@ -589,112 +458,221 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
         </div>
       </div>
 
-      {/* ══════════ STUDY GUIDANCE ══════════ */}
+      {/* ══════════ STUDY PLAN ══════════ */}
       <div className={p('guidance')}>
-        <div style={{ background: 'var(--cream)', border: '1px solid var(--b)', borderRadius: 'var(--rl)', padding: '18px 22px', marginBottom: '22px', display: 'flex', alignItems: 'flex-start', gap: '14px', boxShadow: 'var(--sh)' }}>
-          <div style={{ fontSize: '24px', flexShrink: 0 }}>📋</div>
-          <div>
-            <div style={{ fontFamily: 'var(--fs)', fontSize: '15px', fontWeight: 700, color: 'var(--text)', marginBottom: '3px' }}>Your Personalised Study Plan</div>
-            <div style={{ fontSize: '12.5px', color: 'var(--text2)', lineHeight: 1.7 }}>Built from your diagnostic. Based on {examTarget} pattern — topics are ordered by <strong>impact per hour</strong>: what will gain you the most marks the fastest.</div>
-          </div>
-        </div>
+        {studyPlan ? (() => {
+          const UC = { red: '#EF4444', orange: '#F97316', yellow: '#D97706', green: '#22C55E', gray: '#94A3B8' };
+          const UB = { red: 'rgba(239,68,68,0.1)', orange: 'rgba(249,115,22,0.1)', yellow: 'rgba(245,158,11,0.1)', green: 'rgba(34,197,94,0.1)', gray: 'rgba(148,163,184,0.1)' };
+          const [openWeeks, setOpenWeeks] = useState(new Set([0]));
+          const toggleWeek = (i) => setOpenWeeks(prev => { const n = new Set(prev); n.has(i) ? n.delete(i) : n.add(i); return n; });
 
-        <div className="sh"><div className="sh-t">This Week — Priority Order</div><span className="pill pp">Free</span></div>
-
-        {guidanceCards.length > 0 ? guidanceCards.map((g, i) => (
-          <div key={i} className="guide-card">
-            <div className="gc-top">
-              <div className="gc-icon">{g.icon}</div>
-              <div><div className="gc-title">{g.title}</div><div className="gc-body">{g.body(g.pct)}</div></div>
-            </div>
-            <span className={`gc-priority ${g.pCls}`}>{g.pLabel}</span>
-          </div>
-        )) : (
-          <div style={{ position: 'relative', borderRadius: '14px', overflow: 'hidden', marginBottom: '12px' }}>
-            {/* Ghost cards — heavily blurred, just shapes */}
-            <div style={{ filter: 'blur(7px)', opacity: 0.45, pointerEvents: 'none', userSelect: 'none', transform: 'scale(1.02)' }}>
-              {[
-                { icon: '⚡', title: 'Your #1 Priority Topic — Start Here', body: 'This chapter has the highest score impact based on your level and syllabus coverage. A focused 3-day sprint moves you from where you are to guaranteed marks in the exam.', pLabel: 'High Priority', pCls: 'high' },
-                { icon: '⚙️', title: 'Second Priority — Fix Your Foundation', body: 'Based on your mock scores, this is where you are losing the most marks right now. Fixing this unlocks 8–12 more marks without any extra effort on other topics.', pLabel: 'High Priority', pCls: 'high' },
-                { icon: '∫', title: 'Quick Win — 2 Day Sprint', body: 'Your diagnostic suggests this is fixable fast. A targeted 2-day revision here adds guaranteed marks before your next mock test.', pLabel: 'Medium Priority', pCls: 'med' },
-              ].map((g, i) => (
-                <div key={i} className="guide-card">
-                  <div className="gc-top">
-                    <div className="gc-icon">{g.icon}</div>
-                    <div><div className="gc-title">{g.title}</div><div className="gc-body">{g.body}</div></div>
+          return (
+            <>
+              {/* Overview strip */}
+              <div className="sp-overview">
+                <div className="sp-ov-box">
+                  <div className="sp-ov-val">{studyPlan.overview.daysToExam}</div>
+                  <div className="sp-ov-lbl">Days left</div>
+                </div>
+                <div className="sp-ov-box">
+                  <div className="sp-ov-val">{studyPlan.overview.studyHoursPerDay}h</div>
+                  <div className="sp-ov-lbl">Daily study</div>
+                </div>
+                <div className="sp-ov-box">
+                  <div className="sp-ov-val">{studyPlan.overview.weeklyHours}h</div>
+                  <div className="sp-ov-lbl">This week</div>
+                </div>
+                {studyPlan.overview.targetScore && (
+                  <div className="sp-ov-box">
+                    <div className="sp-ov-val">{studyPlan.overview.targetScore}</div>
+                    <div className="sp-ov-lbl">Target marks</div>
                   </div>
-                  <span className={`gc-priority ${g.pCls}`}>{g.pLabel}</span>
+                )}
+                {studyPlan.mockTrend && (
+                  <div className="sp-ov-box">
+                    <div className="sp-ov-val" style={{ color: studyPlan.mockTrend.trend === 'improving' ? '#22C55E' : studyPlan.mockTrend.trend === 'declining' ? '#EF4444' : 'var(--text)' }}>
+                      {studyPlan.mockTrend.latest}
+                    </div>
+                    <div className="sp-ov-lbl">Last mock</div>
+                    <div className="sp-ov-sub" style={{ color: studyPlan.mockTrend.trend === 'improving' ? '#22C55E' : studyPlan.mockTrend.trend === 'declining' ? '#EF4444' : 'var(--text3)' }}>
+                      {studyPlan.mockTrend.trend === 'improving' ? '↑ improving' : studyPlan.mockTrend.trend === 'declining' ? '↓ declining' : '→ stable'}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Subject time allocation */}
+              <div className="sh"><div className="sh-t">Subject Priority This Week</div></div>
+              <div className="card mb" style={{ padding: '14px 18px' }}>
+                {studyPlan.subjectFocus.map((s, i) => (
+                  <div key={i} className="sp-subj-row">
+                    <div className="sp-subj-name">{s.subject}</div>
+                    <div className="sp-subj-bar">
+                      <div className="sp-subj-fill" style={{ width: `${s.allocationPct}%`, background: UC[s.urgencyColor] || UC.gray }} />
+                    </div>
+                    <div className="sp-subj-hours">{s.hoursPerWeek}h/wk</div>
+                    <span className="sp-subj-badge" style={{ background: UB[s.urgencyColor], color: UC[s.urgencyColor] }}>
+                      {s.urgency}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              {/* This week focus */}
+              <div className="sh"><div className="sh-t">This Week — What to Study</div><span className="pill pp">Personalised</span></div>
+              {studyPlan.thisWeek.map((item, i) => (
+                <div key={i} className="sp-focus">
+                  <div className="sp-focus-bar" style={{ background: UC[item.color] || UC.gray }} />
+                  <div className="sp-focus-body">
+                    <div className="sp-focus-top">
+                      <div>
+                        <div className="sp-focus-subject">{item.subject}</div>
+                        <div className="sp-focus-topic">{item.topic}</div>
+                      </div>
+                      <div className="sp-focus-right">
+                        <div className="sp-focus-hours">{item.hours}h this week</div>
+                        <span className="sp-focus-label" style={{ background: UB[item.color], color: UC[item.color] }}>{item.label}</span>
+                      </div>
+                    </div>
+                    <div className="sp-focus-reason">{item.reason}</div>
+                    <div className="sp-focus-approach"><strong>How:</strong> {item.approach}</div>
+                  </div>
+                </div>
+              ))}
+
+              {/* Mock trend message */}
+              {studyPlan.mockTrend && studyPlan.mockTrend.scores.length >= 2 && (
+                <div className="sp-trend">
+                  <div className="sp-trend-scores">
+                    {studyPlan.mockTrend.scores.map((s, i) => (
+                      <span key={i} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                        {i > 0 && <span className="sp-trend-arrow">→</span>}
+                        <span className="sp-trend-score">{s}</span>
+                      </span>
+                    ))}
+                  </div>
+                  <div className="sp-trend-msg">{studyPlan.mockTrend.message}</div>
+                </div>
+              )}
+
+              {/* Weekly roadmap */}
+              <div className="sh" style={{ marginTop: '8px' }}><div className="sh-t">Week-by-Week Roadmap</div></div>
+              {studyPlan.weeklyRoadmap.map((week, i) => (
+                <div key={i} className="sp-week">
+                  <div className="sp-week-head" onClick={() => toggleWeek(i)}>
+                    <div className="sp-week-num">Week {week.week}</div>
+                    <div className="sp-week-theme">{week.theme}</div>
+                    <div className="sp-week-days">{week.daysLeft}d left</div>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" strokeWidth="2" style={{ flexShrink: 0, transform: openWeeks.has(i) ? 'rotate(180deg)' : '', transition: 'transform .2s' }}><path d="M6 9l6 6 6-6"/></svg>
+                  </div>
+                  <div className={`sp-week-body${openWeeks.has(i) ? ' open' : ''}`}>
+                    {week.topics.map((t, j) => (
+                      <div key={j} className="sp-week-topic">
+                        <div className="sp-week-subj">{t.subject}</div>
+                        <div>{t.topic}</div>
+                        <span style={{ marginLeft: 'auto', fontSize: '10px', fontWeight: 600, color: UC[t.label === 'Urgent' ? 'red' : t.label === 'High' ? 'orange' : t.label === 'Important' ? 'yellow' : 'green'] }}>{t.label}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+
+              {/* Daily structure */}
+              <div className="sh" style={{ marginTop: '8px' }}><div className="sh-t">Your Daily Structure</div></div>
+              {studyPlan.dailyStructure.map((slot, i) => (
+                <div key={i} className="sp-slot">
+                  <div className="sp-slot-time">{slot.time}</div>
+                  <div style={{ flex: 1 }}>
+                    <div className="sp-slot-subject">{slot.label}</div>
+                    {slot.note && <div className="sp-slot-note">{slot.note}</div>}
+                  </div>
+                  <div className="sp-slot-hours">{slot.hours}h</div>
+                </div>
+              ))}
+
+              {/* Habit nudges */}
+              {studyPlan.habits.length > 0 && (
+                <>
+                  <div className="sh" style={{ marginTop: '8px' }}><div className="sh-t">Fix These Habits</div></div>
+                  {studyPlan.habits.map((h, i) => (
+                    <div key={i} className="sp-habit">
+                      <div className="sp-habit-icon">{h.icon}</div>
+                      <div>
+                        <div className="sp-habit-title">{h.title}</div>
+                        <div className="sp-habit-body">{h.body}</div>
+                        <span className="sp-habit-impact">{h.impact}</span>
+                      </div>
+                    </div>
+                  ))}
+                </>
+              )}
+
+              <div className="upgrade-banner" style={{ marginTop: '20px' }}>
+                <div className="ub-text">
+                  <div className="ub-label">Next Level</div>
+                  <div className="ub-title">Get your plan reviewed by a mentor</div>
+                  <div className="ub-sub">1 session. Your specific weak topics. Explained live. Ajay builds on this plan with you.</div>
+                </div>
+                <div className="ub-actions">
+                  <button className="btn btn-gold" onClick={() => onNav('sessions')}>Book a Session</button>
+                </div>
+              </div>
+            </>
+          );
+        })() : (
+          /* Locked state — skeleton + lock card */
+          <div style={{ position: 'relative', borderRadius: '16px', overflow: 'hidden', minHeight: 'calc(100vh - 80px)', background: 'rgba(253,248,240,0.93)', backdropFilter: 'blur(10px)' }}>
+            {/* Skeleton placeholders */}
+            <div style={{ padding: '32px 24px 24px', display: 'flex', flexDirection: 'column', gap: '14px', pointerEvents: 'none', userSelect: 'none' }}>
+              {/* Overview strip */}
+              <div style={{ display: 'flex', gap: '15px' }}>
+                {[1,2,3,4].map(i => (
+                  <div key={i} style={{ flex: 1, background: '#fff', border: '1px solid rgba(15,31,61,0.08)', borderRadius: '12px', padding: '40px 14px', display: 'flex', flexDirection: 'column', gap: '7px' }}>
+                    <div className="sk" style={{ height: 18, width: '60%' }}/>
+                    <div className="sk" style={{ height: 10, width: '45%' }}/>
+                    <div className="sk" style={{ height: 10, width: '45%' }}/>
+                  </div>
+                ))}
+              </div>
+              {/* Subject bars */}
+              <div style={{ background: '#fff', border: '1px solid rgba(15,31,61,0.08)', borderRadius: '12px', padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div className="sk" style={{ height: 15, width: '30%' }}/>
+                {[1,2,3].map(i => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div className="sk" style={{ height: 10, width: 90 }}/>
+                    <div className="sk" style={{ height: 8, flex: 1, borderRadius: '99px' }}/>
+                    <div className="sk" style={{ height: 10, width: 40 }}/>
+                  </div>
+                ))}
+              </div>
+              {/* Focus cards */}
+              {[1,2,3,4].map(i => (
+                <div key={i} style={{ background: '#fff', border: '1px solid rgba(15,31,61,0.08)', borderRadius: '12px', padding: '14px 16px', display: 'flex', gap: '12px' }}>
+                  <div className="sk" style={{ width: 4, borderRadius: '99px', flexShrink: 0, alignSelf: 'stretch' }}/>
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '7px' }}>
+                    <div className="sk" style={{ height: 13, width: '25%' }}/>
+                    <div className="sk" style={{ height: 17, width: '70%' }}/>
+                    <div className="sk" style={{ height: 13, width: '90%' }}/>
+                    <div className="sk" style={{ height: 13, width: '55%' }}/>
+                  </div>
                 </div>
               ))}
             </div>
 
-            {/* Full overlay — gradient so nothing bleeds through */}
-            <div style={{
-              position: 'absolute', inset: 0,
-              background: 'linear-gradient(180deg, rgba(253,248,240,0.72) 0%, rgba(253,248,240,0.96) 40%, rgba(253,248,240,0.98) 100%)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              padding: '32px 16px',
-            }}>
-              <div style={{
-                background: '#fff',
-                borderRadius: '18px',
-                padding: '32px 30px',
-                textAlign: 'center',
-                boxShadow: '0 12px 40px rgba(15,31,61,0.13), 0 2px 8px rgba(15,31,61,0.07)',
-                maxWidth: '320px',
-                width: '100%',
-                border: '1px solid rgba(15,31,61,0.07)',
-              }}>
-                {/* Lock icon */}
-                <div style={{ width: '52px', height: '52px', borderRadius: '14px', background: 'linear-gradient(135deg, #0F1F3D 0%, #1C2E50 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#E8A830" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-                    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                  </svg>
+            {/* Lock card centred on top */}
+            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+              <div style={{ background: '#fff', borderRadius: '20px', padding: '36px 30px', textAlign: 'center', boxShadow: '0 20px 60px rgba(15,31,61,0.16), 0 4px 16px rgba(15,31,61,0.08)', maxWidth: '360px', width: '100%', border: '1px solid rgba(15,31,61,0.07)' }}>
+                <div style={{ width: '58px', height: '58px', borderRadius: '16px', background: 'linear-gradient(135deg, #0F1F3D 0%, #1C2E50 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 18px' }}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#E8A830" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
                 </div>
-                <div style={{ fontFamily: 'var(--fs)', fontSize: '17px', fontWeight: 700, color: 'var(--text)', marginBottom: '8px', lineHeight: 1.3 }}>Your plan is ready — locked</div>
-                <div style={{ fontSize: '12.5px', color: 'var(--text2)', lineHeight: 1.7, marginBottom: '22px' }}>
-                  Take the diagnostic once. We'll build your week-by-week study plan around your exact weak topics, mock scores, and time left.
-                </div>
-                <button className="btn btn-gold" style={{ width: '100%', justifyContent: 'center' }} onClick={() => onNav('diagnostic')}>
-                  Take the Diagnostic →
-                </button>
-                <div style={{ fontSize: '11px', color: 'var(--text3)', marginTop: '10px' }}>Takes 8 min · 26 questions · Free</div>
+                <div style={{ fontFamily: 'var(--fs)', fontSize: '19px', fontWeight: 700, color: 'var(--text)', marginBottom: '10px', lineHeight: 1.3 }}>Your study plan is waiting</div>
+                <div style={{ fontSize: '13px', color: 'var(--text2)', lineHeight: 1.75, marginBottom: '24px' }}>Take the diagnostic once — we'll build your personalised week-by-week plan around your exact weak topics, mock scores, and time left.</div>
+                <button className="btn btn-gold" style={{ width: '100%', justifyContent: 'center', padding: '13px 0', fontSize: '14px' }} onClick={() => onNav('diagnostic')}>Take the Diagnostic →</button>
+                <div style={{ fontSize: '11px', color: 'var(--text3)', marginTop: '11px' }}>Free · 26 questions · One time only</div>
               </div>
             </div>
           </div>
         )}
-
-        {(diagDone || strongTopicsList.length > 0) && (
-          <>
-            <div className="sh" style={{ marginTop: '8px' }}><div className="sh-t">Your Strong Topics — Don't Ignore</div></div>
-            <div className="card mb" style={{ padding: '16px 20px' }}>
-              {strongTopicsList.length > 0 ? (
-                <div style={{ fontSize: '13px', color: 'var(--text2)', lineHeight: 1.8 }}>
-                  You're doing well in {strongTopicsList.map((t, i) => (
-                    <span key={i}><strong>{t.label} ({t.pct}%)</strong>{i < strongTopicsList.length - 1 ? ', ' : ''}</span>
-                  ))}. Spend 30 minutes every 3 days keeping these warm — don't let them slip while you rebuild weak areas. These are your <strong style={{ color: 'var(--green)' }}>guaranteed marks</strong>.
-                </div>
-              ) : (
-                <div style={{ fontSize: '13px', color: 'var(--text2)', lineHeight: 1.8 }}>
-                  Your strong topics will appear here once ratings are available.
-                </div>
-              )}
-            </div>
-          </>
-        )}
-
-        <div className="upgrade-banner">
-          <div className="ub-text">
-            <div className="ub-label">Next Level</div>
-            <div className="ub-title">Get Ajay Sharma to walk you through Electrostatics personally</div>
-            <div className="ub-sub">1 session. Your specific doubts. Cleared in 60 minutes. Pay only for what you need.</div>
-          </div>
-          <div className="ub-actions">
-            <button className="btn btn-gold" onClick={() => onNav('sessions')}>Book a Session</button>
-            <button className="btn" style={{ background: 'rgba(255,255,255,0.1)', color: 'var(--inv)', fontSize: '13px' }} onClick={() => onOpenModal('upgrade-modal')}>See All Plans</button>
-          </div>
-        </div>
       </div>
 
       {/* ══════════ HABIT TRACKER ══════════ */}
