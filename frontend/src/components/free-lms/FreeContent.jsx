@@ -163,6 +163,7 @@ const guidanceConfig = [
     body: (p) => `You're at ${p}% in Organic Chemistry. Spend 1 day revising key named reactions (Aldol, Cannizzaro, Markovnikov) and mechanism logic. Do not go deep here until Physics improves.` },
 ];
 
+
 const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, habitLogs = [], onHabitSaved }) => {
   const { id: userId } = useParams();
   const p = (name) => `page${activePage === name ? ' on' : ''}`;
@@ -315,6 +316,123 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
   return (
     <div className="content">
 
+      {/* ══════════ DIAGNOSTIC GATE OVERLAY ══════════ */}
+      {!diagDone && activePage !== 'diagnostic' && (
+        <div style={{
+          position: 'fixed', top: 0, left: '268px', right: 0, bottom: 0,
+          backdropFilter: 'blur(10px)',
+          background: 'rgba(253,248,240,0.75)',
+          zIndex: 200,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          {/* Skeleton dashboard — mirrors real layout with shimmer */}
+          <div style={{ position: 'absolute', inset: 0, padding: '28px 32px', overflowY: 'hidden', pointerEvents: 'none', display: 'flex', flexDirection: 'column', gap: '18px' }}>
+
+            {/* Greeting */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div className="sk" style={{ height: 13, width: '38%' }}/>
+              <div className="sk" style={{ height: 22, width: '55%' }}/>
+            </div>
+
+            {/* Stats row — 4 boxes */}
+            <div style={{ display: 'flex', gap: '12px' }}>
+              {[1,2,3,4].map(i => (
+                <div key={i} style={{ flex: 1, background: 'rgba(253,248,240,0.9)', border: '1px solid rgba(15,31,61,0.08)', borderRadius: '12px', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <div className="sk" style={{ height: 10, width: '50%' }}/>
+                  <div className="sk" style={{ height: 26, width: '70%' }}/>
+                  <div className="sk" style={{ height: 9, width: '40%' }}/>
+                </div>
+              ))}
+            </div>
+
+            {/* Banner card */}
+            <div style={{ background: 'rgba(240, 244, 253, 0.9)', border: '1px solid rgba(15,31,61,0.08)', borderRadius: '14px', padding: '20px 22px', display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <div className="sk" style={{ width: 44, height: 44, borderRadius: '50%', flexShrink: 0 }}/>
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '7px' }}>
+                <div className="sk" style={{ height: 11, width: '45%' }}/>
+                <div className="sk" style={{ height: 16, width: '70%' }}/>
+              </div>
+              <div className="sk" style={{ height: 36, width: 110, borderRadius: '8px' }}/>
+            </div>
+
+            {/* Two column section */}
+            <div style={{ display: 'flex', gap: '14px' }}>
+              {/* Left — study plan card */}
+              <div style={{ flex: 1.5, background: 'rgba(253,248,240,0.9)', border: '1px solid rgba(15,31,61,0.08)', borderRadius: '12px', padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div className="sk" style={{ height: 11, width: '35%' }}/>
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                  <div className="sk" style={{ width: 36, height: 36, borderRadius: '8px', flexShrink: 0 }}/>
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <div className="sk" style={{ height: 11, width: '80%' }}/>
+                    <div className="sk" style={{ height: 9, width: '95%' }}/>
+                    <div className="sk" style={{ height: 9, width: '60%' }}/>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                  <div className="sk" style={{ width: 36, height: 36, borderRadius: '8px', flexShrink: 0 }}/>
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <div className="sk" style={{ height: 11, width: '65%' }}/>
+                    <div className="sk" style={{ height: 9, width: '85%' }}/>
+                    <div className="sk" style={{ height: 9, width: '50%' }}/>
+                  </div>
+                </div>
+              </div>
+              {/* Right — habit tracker card */}
+              <div style={{ flex: 1, background: 'rgba(253,248,240,0.9)', border: '1px solid rgba(15,31,61,0.08)', borderRadius: '12px', padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div className="sk" style={{ height: 11, width: '55%' }}/>
+                {[1,2,3,4].map(i => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div className="sk" style={{ width: 18, height: 18, borderRadius: '4px', flexShrink: 0 }}/>
+                    <div className="sk" style={{ height: 9, flex: 1 }}/>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Progress section */}
+            <div style={{ background: 'rgba(253,248,240,0.9)', border: '1px solid rgba(15,31,61,0.08)', borderRadius: '12px', padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div className="sk" style={{ height: 11, width: '28%' }}/>
+              <div className="sk" style={{ height: 8, borderRadius: '99px', width: '100%' }}/>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <div className="sk" style={{ height: 9, width: '20%' }}/>
+                <div className="sk" style={{ height: 9, width: '15%' }}/>
+              </div>
+            </div>
+
+          </div>
+
+          <div style={{
+            background: '#fff',
+            borderRadius: '22px',
+            padding: '40px 36px',
+            textAlign: 'center',
+            boxShadow: '0 20px 60px rgba(15,31,61,0.16), 0 4px 16px rgba(15,31,61,0.08)',
+            maxWidth: '380px',
+            width: '90%',
+            border: '1px solid rgba(15,31,61,0.07)',
+            position: 'relative', zIndex: 1,
+          }}>
+            <div style={{ width: '60px', height: '60px', borderRadius: '16px', background: 'linear-gradient(135deg, #0F1F3D 0%, #1C2E50 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#E8A830" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+              </svg>
+            </div>
+            <div style={{ fontFamily: 'var(--fs)', fontSize: '20px', fontWeight: 700, color: 'var(--text)', marginBottom: '10px', lineHeight: 1.3 }}>
+              Start with your diagnostic
+            </div>
+            <div style={{ fontSize: '13.5px', color: 'var(--text2)', lineHeight: 1.75, marginBottom: '26px' }}>
+              Your study plan, topic map, resources, and progress tracking are all built from your diagnostic. It takes 8 minutes — do it once, unlock everything.
+            </div>
+            <button className="btn btn-gold" style={{ width: '100%', justifyContent: 'center', padding: '13px 0', fontSize: '14px' }} onClick={() => onNav('diagnostic')}>
+              Take the Diagnostic →
+            </button>
+            <div style={{ fontSize: '11.5px', color: 'var(--text3)', marginTop: '12px' }}>
+              Free · 26 questions · One time only
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ══════════ HOME ══════════ */}
       <div className={p('home')}>
         <div style={{ marginBottom: '22px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' }}>
@@ -410,7 +528,7 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
 
       {/* ══════════ DIAGNOSTIC ══════════ */}
       <div className={p('diagnostic')}>
-        <DiagnosticForm profile={profile} />
+        <DiagnosticForm profile={profile} onComplete={() => setDiagDone(true)} />
       </div>
 
       {/* ══════════ TOPIC MAP ══════════ */}
@@ -492,23 +610,79 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
             <span className={`gc-priority ${g.pCls}`}>{g.pLabel}</span>
           </div>
         )) : (
-          <div className="card" style={{ marginBottom: '12px', color: 'var(--text3)', fontSize: '13px', padding: '16px 20px' }}>Complete your diagnostic to get a personalised study plan.</div>
+          <div style={{ position: 'relative', borderRadius: '14px', overflow: 'hidden', marginBottom: '12px' }}>
+            {/* Ghost cards — heavily blurred, just shapes */}
+            <div style={{ filter: 'blur(7px)', opacity: 0.45, pointerEvents: 'none', userSelect: 'none', transform: 'scale(1.02)' }}>
+              {[
+                { icon: '⚡', title: 'Your #1 Priority Topic — Start Here', body: 'This chapter has the highest score impact based on your level and syllabus coverage. A focused 3-day sprint moves you from where you are to guaranteed marks in the exam.', pLabel: 'High Priority', pCls: 'high' },
+                { icon: '⚙️', title: 'Second Priority — Fix Your Foundation', body: 'Based on your mock scores, this is where you are losing the most marks right now. Fixing this unlocks 8–12 more marks without any extra effort on other topics.', pLabel: 'High Priority', pCls: 'high' },
+                { icon: '∫', title: 'Quick Win — 2 Day Sprint', body: 'Your diagnostic suggests this is fixable fast. A targeted 2-day revision here adds guaranteed marks before your next mock test.', pLabel: 'Medium Priority', pCls: 'med' },
+              ].map((g, i) => (
+                <div key={i} className="guide-card">
+                  <div className="gc-top">
+                    <div className="gc-icon">{g.icon}</div>
+                    <div><div className="gc-title">{g.title}</div><div className="gc-body">{g.body}</div></div>
+                  </div>
+                  <span className={`gc-priority ${g.pCls}`}>{g.pLabel}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Full overlay — gradient so nothing bleeds through */}
+            <div style={{
+              position: 'absolute', inset: 0,
+              background: 'linear-gradient(180deg, rgba(253,248,240,0.72) 0%, rgba(253,248,240,0.96) 40%, rgba(253,248,240,0.98) 100%)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              padding: '32px 16px',
+            }}>
+              <div style={{
+                background: '#fff',
+                borderRadius: '18px',
+                padding: '32px 30px',
+                textAlign: 'center',
+                boxShadow: '0 12px 40px rgba(15,31,61,0.13), 0 2px 8px rgba(15,31,61,0.07)',
+                maxWidth: '320px',
+                width: '100%',
+                border: '1px solid rgba(15,31,61,0.07)',
+              }}>
+                {/* Lock icon */}
+                <div style={{ width: '52px', height: '52px', borderRadius: '14px', background: 'linear-gradient(135deg, #0F1F3D 0%, #1C2E50 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#E8A830" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                  </svg>
+                </div>
+                <div style={{ fontFamily: 'var(--fs)', fontSize: '17px', fontWeight: 700, color: 'var(--text)', marginBottom: '8px', lineHeight: 1.3 }}>Your plan is ready — locked</div>
+                <div style={{ fontSize: '12.5px', color: 'var(--text2)', lineHeight: 1.7, marginBottom: '22px' }}>
+                  Take the diagnostic once. We'll build your week-by-week study plan around your exact weak topics, mock scores, and time left.
+                </div>
+                <button className="btn btn-gold" style={{ width: '100%', justifyContent: 'center' }} onClick={() => onNav('diagnostic')}>
+                  Take the Diagnostic →
+                </button>
+                <div style={{ fontSize: '11px', color: 'var(--text3)', marginTop: '10px' }}>Takes 8 min · 26 questions · Free</div>
+              </div>
+            </div>
+          </div>
         )}
 
-        <div className="sh" style={{ marginTop: '8px' }}><div className="sh-t">Your Strong Topics — Don't Ignore</div></div>
-        <div className="card mb" style={{ padding: '16px 20px' }}>
-          {strongTopicsList.length > 0 ? (
-            <div style={{ fontSize: '13px', color: 'var(--text2)', lineHeight: 1.8 }}>
-              You're doing well in {strongTopicsList.map((t, i) => (
-                <span key={i}><strong>{t.label} ({t.pct}%)</strong>{i < strongTopicsList.length - 1 ? ', ' : ''}</span>
-              ))}. Spend 30 minutes every 3 days keeping these warm — don't let them slip while you rebuild weak areas. These are your <strong style={{ color: 'var(--green)' }}>guaranteed marks</strong>.
+        {(diagDone || strongTopicsList.length > 0) && (
+          <>
+            <div className="sh" style={{ marginTop: '8px' }}><div className="sh-t">Your Strong Topics — Don't Ignore</div></div>
+            <div className="card mb" style={{ padding: '16px 20px' }}>
+              {strongTopicsList.length > 0 ? (
+                <div style={{ fontSize: '13px', color: 'var(--text2)', lineHeight: 1.8 }}>
+                  You're doing well in {strongTopicsList.map((t, i) => (
+                    <span key={i}><strong>{t.label} ({t.pct}%)</strong>{i < strongTopicsList.length - 1 ? ', ' : ''}</span>
+                  ))}. Spend 30 minutes every 3 days keeping these warm — don't let them slip while you rebuild weak areas. These are your <strong style={{ color: 'var(--green)' }}>guaranteed marks</strong>.
+                </div>
+              ) : (
+                <div style={{ fontSize: '13px', color: 'var(--text2)', lineHeight: 1.8 }}>
+                  Your strong topics will appear here once ratings are available.
+                </div>
+              )}
             </div>
-          ) : (
-            <div style={{ fontSize: '13px', color: 'var(--text2)', lineHeight: 1.8 }}>
-              Complete your diagnostic to identify your strong topics and keep them warm.
-            </div>
-          )}
-        </div>
+          </>
+        )}
 
         <div className="upgrade-banner">
           <div className="ub-text">

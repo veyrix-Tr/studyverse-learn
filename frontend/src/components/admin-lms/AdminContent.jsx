@@ -389,6 +389,9 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
             const av = s.name?.[0]?.toUpperCase() || '?';
             const examClass = s.examTarget?.includes('NEET') ? 'pp' : 'pn';
             const diagDone = s.diagnosticScore !== null && s.diagnosticScore !== undefined;
+            const diagDate = s.diagnosticTakenAt
+              ? new Date(s.diagnosticTakenAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: '2-digit' })
+              : null;
             return (
               <tr>
                 <td><div className="av-row"><div className="av">{av}</div>{s.name}</div></td>
@@ -396,7 +399,10 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
                 <td style={{ color: 'var(--text2)', fontSize: '13px' }}>{s.grade || '—'}</td>
                 <td>
                   {diagDone
-                    ? <span style={{ fontSize: '12px', fontWeight: '600', color: 'var(--green)' }}>Done — {s.diagnosticScore}</span>
+                    ? <div>
+                        <span style={{ fontSize: '12px', fontWeight: '600', color: 'var(--green)' }}>Done — {s.diagnosticScore}%</span>
+                        {diagDate && <div style={{ fontSize: '11px', color: 'var(--text3)', marginTop: '2px' }}>{diagDate}</div>}
+                      </div>
                     : <span style={{ fontSize: '12px', color: 'var(--text3)' }}>Pending</span>}
                 </td>
                 <td><button className="btn btn-ghost btn-sm" onClick={() => onOpenMessage(s.id)}>Message</button></td>
@@ -413,8 +419,8 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
                       className={`tab${studentsTab === i ? ' on' : ''}`}
                       style={gold ? {
                         color: 'var(--black)',
-                        background: studentsTab === i ? 'rgb(250, 187, 0)' : 'rgb(244, 210, 108)',
-                        borderColor: studentsTab === i ? 'rgb(250, 187, 0)' : 'rgb(244, 210, 108)',
+                        background: studentsTab === i ? 'rgb(252, 210, 80)' : 'rgb(252, 238, 180)',
+                        borderColor: studentsTab === i ? 'rgb(252, 210, 80)' : 'rgb(252, 238, 180)',
                         borderWidth: '1px',
                         borderStyle: 'solid',
                         borderRadius: 'var(--r)',

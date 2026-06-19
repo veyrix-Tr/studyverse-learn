@@ -125,6 +125,8 @@ body.free-mode .content { padding: 30px; flex: 1; }
 body.free-mode .page { display: none; animation: freePageIn .2s ease; }
 body.free-mode .page.on { display: block; }
 @keyframes freePageIn { from { opacity: 0; transform: translateY(7px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes skshimmer { from { background-position: -400px 0; } to { background-position: 400px 0; } }
+.sk { background: linear-gradient(90deg, rgba(15,31,61,0.07) 25%, rgba(15,31,61,0.12) 50%, rgba(15,31,61,0.07) 75%); background-size: 400px 100%; animation: skshimmer 1.6s ease-in-out infinite; border-radius: 6px; flex-shrink: 0; }
 
 /* ── COMPONENTS ── */
 body.free-mode .card { background: var(--cream); border: 1px solid var(--b); border-radius: var(--rl); padding: 22px 24px; box-shadow: var(--sh); }

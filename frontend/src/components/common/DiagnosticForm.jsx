@@ -72,7 +72,7 @@ const STEPS = [
 
 // ── Main component ─────────────────────────────────────────────────────────────
 
-const DiagnosticForm = ({ profile }) => {
+const DiagnosticForm = ({ profile, onComplete }) => {
   const examTarget = profile?.studentProfile?.examTarget || '';
   const isNeet = examTarget.toLowerCase().includes('neet');
   const exam   = isNeet ? 'neet' : 'jee';
@@ -111,10 +111,13 @@ const DiagnosticForm = ({ profile }) => {
   const [step, setStep]           = useState(1);
   const formRef                   = useRef(null);
   const toastTimer                = useRef(null);
+  const dripTimer                 = useRef(null);
+  const prevProgress              = useRef(0);
   const [topicsOpen, setTopicsOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitted,  setSubmitted]  = useState(false);
   const [toast,      setToast]      = useState('');
+  const [dripping,   setDripping]   = useState(false);
 
   const showToast = (msg) => {
     setToast(msg);
@@ -143,6 +146,15 @@ const DiagnosticForm = ({ profile }) => {
     });
     return Math.min(Math.round((filled / total) * 100), 100);
   }, [form]);
+
+  useEffect(() => {
+    if (progress > prevProgress.current) {
+      setDripping(true);
+      clearTimeout(dripTimer.current);
+      dripTimer.current = setTimeout(() => setDripping(false), 2400);
+    }
+    prevProgress.current = progress;
+  }, [progress]);
 
   const stepValid = useMemo(() => {
     if (step === 1)
@@ -219,14 +231,34 @@ const DiagnosticForm = ({ profile }) => {
       submitted_at: new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }),
     };
 
-    window.__diagCb = () => {};
-    const params = Object.entries(data)
-      .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v || '')}`)
-      .join('&');
-    const s = document.createElement('script');
-    s.src = `${SCRIPT_URL}?${params}&callback=__diagCb`;
-    s.onerror = () => {};
-    document.head.appendChild(s);
+    // 1. Fire to Google Sheets (detailed form data for mentor)
+    if (SCRIPT_URL) {
+      window.__diagCb = () => {};
+      const params = Object.entries(data)
+        .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v || '')}`)
+        .join('&');
+      const s = document.createElement('script');
+      s.src = `${SCRIPT_URL}?${params}&callback=__diagCb`;
+      s.onerror = () => {};
+      document.head.appendChild(s);
+    }
+
+    // 2. Save score to backend DB so diagDone becomes true
+    const userId = profile?.id;
+    const token  = localStorage.getItem('token');
+    if (userId && token) {
+      fetch(`${import.meta.env.VITE_API_URL}/api/student/${userId}/diagnostic`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ score: progress }),
+      })
+        .then(r => r.json())
+        .then(res => { if (res.success) onComplete?.(); })
+        .catch(() => {});
+    }
 
     setTimeout(() => { setSubmitting(false); setSubmitted(true); }, 1500);
   };
@@ -667,8 +699,8 @@ const DiagnosticForm = ({ profile }) => {
               </div>
             </div>
 
-            {/* Drops only fall when something has been filled */}
-            {progress > 0 && (
+            {/* Drops fall briefly each time a new field is filled */}
+            {dripping && (
               <>
                 <div className="df-drop" />
                 <div className="df-drop" style={{ animationDelay: '-0.7s' }} />

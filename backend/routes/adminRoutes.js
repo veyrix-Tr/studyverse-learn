@@ -73,6 +73,7 @@ router.get('/students', requireAuth, async (req, res) => {
         name: s.user.name,
         plan: s.plan, examTarget: s.examTarget, grade: s.grade,
         diagnosticScore: s.diagnosticScore,
+        diagnosticTakenAt: s.diagnosticTakenAt,
         facultyName,
         lastWeek, lastScore, lastTotalMarks,
       };
