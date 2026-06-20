@@ -70,12 +70,36 @@ router.get('/study-plan', requireAuth, async (req, res) => {
   try {
     const profile = await prisma.studentProfile.findUnique({
       where: { userId: req.params.userId },
-      select: { diagnosticAnswers: true, diagnosticTakenAt: true },
+      select: {
+        id: true,
+        diagnosticAnswers: true,
+        diagnosticTakenAt: true,
+        plan: true,
+      },
     });
     if (!profile?.diagnosticAnswers)
       return res.status(404).json({ error: 'No diagnostic data' });
 
-    const plan = generateStudyPlan(profile.diagnosticAnswers);
+    // Fetch latest weekly test score per subject (Forge plan only — free has none)
+    let liveScores = null;
+    const weeklyScores = await prisma.weeklyScore.findMany({
+      where: { studentId: profile.id },
+      orderBy: { testDate: 'desc' },
+    });
+
+    if (weeklyScores.length > 0) {
+      // Keep only the most recent score per subject
+      const latest = {};
+      for (const s of weeklyScores) {
+        const subj = s.subject.trim();
+        if (!latest[subj]) {
+          latest[subj] = Math.round((s.score / s.totalMarks) * 100);
+        }
+      }
+      liveScores = latest; // e.g. { Physics: 62, Chemistry: 55, Mathematics: 71 }
+    }
+
+    const plan = generateStudyPlan(profile.diagnosticAnswers, liveScores);
     res.json(plan);
   } catch (err) {
     console.error(err);

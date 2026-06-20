@@ -148,7 +148,7 @@ function topicWeaknessScore(topicKeywords, weakFields) {
 
 // ── Main algorithm ────────────────────────────────────────────────────────────
 
-function generateStudyPlan(answers) {
+function generateStudyPlan(answers, liveScores = null) {
   if (!answers) return null;
 
   const isNEET   = (answers.exam_target || '').toLowerCase().includes('neet');
@@ -165,16 +165,18 @@ function generateStudyPlan(answers) {
   const weeksToExam      = Math.max(Math.floor(daysToExam / 7), 3);
   const weeklyHours      = Math.round(studyHoursPerDay * 7);
 
-  // ── Parse mock subject scores → percentage ──────────────────────────────
-  const rawScores = {
-    [subjects[0]]: parseFloat2(answers.mock_s1),
-    [subjects[1]]: parseFloat2(answers.mock_s2),
-    [subjects[2]]: parseFloat2(answers.mock_s3),
-  };
-
+  // ── Subject scores: live weekly scores override diagnostic mock scores ───
+  // liveScores = { Physics: 62, Chemistry: 55 } (already %, from WeeklyScore)
+  // Falls back to diagnostic mock_s1/s2/s3 if no weekly data (free plan)
   const scorePct = {};
-  for (const [subj, raw] of Object.entries(rawScores)) {
-    scorePct[subj] = raw !== null ? normaliseScore(raw, subMax[subj] || 100) : null;
+  for (let i = 0; i < subjects.length; i++) {
+    const subj = subjects[i];
+    if (liveScores && liveScores[subj] !== undefined) {
+      scorePct[subj] = liveScores[subj]; // live test data — most accurate
+    } else {
+      const raw = parseFloat2(answers[`mock_s${i + 1}`]);
+      scorePct[subj] = raw !== null ? normaliseScore(raw, subMax[subj] || 100) : null;
+    }
   }
 
   // ── Weak fields object for topic matching ────────────────────────────────
@@ -206,11 +208,12 @@ function generateStudyPlan(answers) {
     else if (pct < 72)   { urgency = 'moderate'; urgencyColor = 'yellow'; }
     else                  { urgency = 'maintain'; urgencyColor = 'green'; }
 
+    const isLive = liveScores && liveScores[subject] !== undefined;
     const reason = pct !== null
-      ? `Last mock ${Math.round(pct)}%${isHardest ? ' · self-reported hardest' : ''}`
+      ? `${isLive ? 'Latest test' : 'Diagnostic mock'} ${Math.round(pct)}%${isHardest ? ' · self-reported hardest' : ''}`
       : isHardest
         ? 'Self-reported hardest — treating as high priority'
-        : 'No mock data yet';
+        : 'No test data yet';
 
     return { subject, scorePct: pct, priorityScore, urgency, urgencyColor, reason };
   }).sort((a, b) => b.priorityScore - a.priorityScore);

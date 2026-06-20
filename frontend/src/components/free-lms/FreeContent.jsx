@@ -220,6 +220,9 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
     });
   };
 
+  const [openWeeks, setOpenWeeks] = useState(new Set([0]));
+  const toggleWeek = (i) => setOpenWeeks(prev => { const n = new Set(prev); n.has(i) ? n.delete(i) : n.add(i); return n; });
+
   const today = getTodayIST();
   const todayLog = habitLogs.find(l => l.date === today) || null;
   const alreadyCheckedIn = !!todayLog;
@@ -397,7 +400,35 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
 
       {/* ══════════ DIAGNOSTIC ══════════ */}
       <div className={p('diagnostic')}>
-        <DiagnosticForm profile={profile} onComplete={() => setDiagDone(true)} />
+        {diagDone ? (
+          <div style={{ maxWidth: '520px', margin: '40px auto', textAlign: 'center', padding: '0 16px' }}>
+            <div style={{ width: '64px', height: '64px', borderRadius: '18px', background: 'linear-gradient(135deg, #0F1F3D 0%, #1C2E50 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#22C55E" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+            </div>
+            <div style={{ fontFamily: 'var(--fs)', fontSize: '22px', fontWeight: 700, color: 'var(--text)', marginBottom: '10px' }}>Diagnostic completed</div>
+            {(() => {
+              const takenAt = new Date(profile?.studentProfile?.diagnosticTakenAt);
+              const retakeAt = new Date(takenAt.getTime() + 3 * 30 * 24 * 60 * 60 * 1000);
+              return (
+                <>
+                  <div style={{ fontSize: '13.5px', color: 'var(--text2)', lineHeight: 1.75, marginBottom: '8px' }}>
+                    Submitted on <strong>{takenAt.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</strong>.
+                  </div>
+                  <div style={{ fontSize: '13px', color: 'var(--text3)', marginBottom: '28px' }}>
+                    Next retake available from <strong>{retakeAt.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</strong>.
+                  </div>
+                </>
+              );
+            })()}
+            <button className="btn btn-gold" style={{ justifyContent: 'center' }} onClick={() => onNav('guidance')}>
+              View Your Study Plan →
+            </button>
+          </div>
+        ) : (
+          <DiagnosticForm profile={profile} onComplete={() => setDiagDone(true)} />
+        )}
       </div>
 
       {/* ══════════ TOPIC MAP ══════════ */}
@@ -463,8 +494,6 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
         {studyPlan ? (() => {
           const UC = { red: '#EF4444', orange: '#F97316', yellow: '#D97706', green: '#22C55E', gray: '#94A3B8' };
           const UB = { red: 'rgba(239,68,68,0.1)', orange: 'rgba(249,115,22,0.1)', yellow: 'rgba(245,158,11,0.1)', green: 'rgba(34,197,94,0.1)', gray: 'rgba(148,163,184,0.1)' };
-          const [openWeeks, setOpenWeeks] = useState(new Set([0]));
-          const toggleWeek = (i) => setOpenWeeks(prev => { const n = new Set(prev); n.has(i) ? n.delete(i) : n.add(i); return n; });
 
           return (
             <>
@@ -501,27 +530,41 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
                 )}
               </div>
 
-              {/* Subject time allocation */}
-              <div className="sh"><div className="sh-t">Subject Priority This Week</div></div>
-              <div className="card mb" style={{ padding: '14px 18px' }}>
-                {studyPlan.subjectFocus.map((s, i) => (
-                  <div key={i} className="sp-subj-row">
-                    <div className="sp-subj-name">{s.subject}</div>
-                    <div className="sp-subj-bar">
-                      <div className="sp-subj-fill" style={{ width: `${s.allocationPct}%`, background: UC[s.urgencyColor] || UC.gray }} />
+              {/* Subject priority — circular arc cards */}
+              <div className="sh sp-in" style={{ animationDelay: '.08s' }}><div className="sh-t">Subject Priority This Week</div></div>
+              <div className="sp-subj-grid">
+                {studyPlan.subjectFocus.map((s, i) => {
+                  const color = UC[s.urgencyColor] || UC.gray;
+                  const bgColor = UB[s.urgencyColor] || UB.gray;
+                  const r = 28, circ = 2 * Math.PI * r;
+                  const dash = ((s.scorePct ?? 50) / 100) * circ;
+                  return (
+                    <div key={i} className="sp-subj-card sp-in" style={{ animationDelay: `${0.1 + i * 0.07}s`, '--arc-len': circ - dash }}>
+                      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: color, borderRadius: '16px 16px 0 0' }}/>
+                      <div className="sp-subj-arc">
+                        <svg width="72" height="72" viewBox="0 0 72 72">
+                          <circle className="track" cx="36" cy="36" r={r}/>
+                          <circle className="fill" cx="36" cy="36" r={r}
+                            stroke={color}
+                            strokeDasharray={`${dash} ${circ}`}
+                            style={{ '--arc-len': circ - dash }}
+                          />
+                        </svg>
+                        <div className="sp-subj-arc-val">{s.scorePct !== null ? `${Math.round(s.scorePct)}%` : '—'}</div>
+                      </div>
+                      <div className="sp-subj-card-name">{s.subject}</div>
+                      <span className="sp-subj-card-badge" style={{ background: bgColor, color }}>{s.urgency}</span>
+                      <div className="sp-subj-card-hours">{s.hoursPerWeek}h / week</div>
+                      <div className="sp-subj-card-reason">{s.reason}</div>
                     </div>
-                    <div className="sp-subj-hours">{s.hoursPerWeek}h/wk</div>
-                    <span className="sp-subj-badge" style={{ background: UB[s.urgencyColor], color: UC[s.urgencyColor] }}>
-                      {s.urgency}
-                    </span>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
               {/* This week focus */}
-              <div className="sh"><div className="sh-t">This Week — What to Study</div><span className="pill pp">Personalised</span></div>
+              <div className="sh sp-in" style={{ animationDelay: '.22s' }}><div className="sh-t">This Week — What to Study</div><span className="pill pp">Personalised</span></div>
               {studyPlan.thisWeek.map((item, i) => (
-                <div key={i} className="sp-focus">
+                <div key={i} className="sp-focus sp-in" style={{ animationDelay: `${0.26 + i * 0.07}s` }}>
                   <div className="sp-focus-bar" style={{ background: UC[item.color] || UC.gray }} />
                   <div className="sp-focus-body">
                     <div className="sp-focus-top">
@@ -578,24 +621,30 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
               ))}
 
               {/* Daily structure */}
-              <div className="sh" style={{ marginTop: '8px' }}><div className="sh-t">Your Daily Structure</div></div>
-              {studyPlan.dailyStructure.map((slot, i) => (
-                <div key={i} className="sp-slot">
-                  <div className="sp-slot-time">{slot.time}</div>
-                  <div style={{ flex: 1 }}>
-                    <div className="sp-slot-subject">{slot.label}</div>
-                    {slot.note && <div className="sp-slot-note">{slot.note}</div>}
-                  </div>
-                  <div className="sp-slot-hours">{slot.hours}h</div>
-                </div>
-              ))}
+              <div className="sh sp-in" style={{ marginTop: '8px', animationDelay: '.5s' }}><div className="sh-t">Your Daily Structure</div></div>
+              <div className="sp-slots sp-in" style={{ animationDelay: '.55s' }}>
+                {studyPlan.dailyStructure.map((slot, i) => {
+                  const dotColors = ['#F97316','#3B82F6','#A855F7','#22C55E','#94A3B8'];
+                  return (
+                    <div key={i} className="sp-slot">
+                      <div className="sp-slot-dot" style={{ background: dotColors[i] || '#94A3B8' }}/>
+                      <div className="sp-slot-time">{slot.time}</div>
+                      <div style={{ flex: 1 }}>
+                        <div className="sp-slot-subject">{slot.label}</div>
+                        {slot.note && <div className="sp-slot-note">{slot.note}</div>}
+                      </div>
+                      <div className="sp-slot-hours">{slot.hours}h</div>
+                    </div>
+                  );
+                })}
+              </div>
 
               {/* Habit nudges */}
               {studyPlan.habits.length > 0 && (
                 <>
                   <div className="sh" style={{ marginTop: '8px' }}><div className="sh-t">Fix These Habits</div></div>
                   {studyPlan.habits.map((h, i) => (
-                    <div key={i} className="sp-habit">
+                    <div key={i} className="sp-habit sp-in" style={{ animationDelay: `${0.62 + i * 0.07}s` }}>
                       <div className="sp-habit-icon">{h.icon}</div>
                       <div>
                         <div className="sp-habit-title">{h.title}</div>
@@ -604,6 +653,25 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
                       </div>
                     </div>
                   ))}
+                </>
+              )}
+
+              {/* Maintain topics */}
+              {studyPlan.maintainTopics?.length > 0 && (
+                <>
+                  <div className="sh" style={{ marginTop: '8px' }}><div className="sh-t">Keep These Warm — Don't Let Them Slip</div></div>
+                  <div className="card mb" style={{ padding: '14px 18px' }}>
+                    {studyPlan.maintainTopics.map((t, i) => (
+                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '8px 0', borderBottom: i < studyPlan.maintainTopics.length - 1 ? '1px solid var(--b)' : 'none' }}>
+                        <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#22C55E', flexShrink: 0 }}/>
+                        <div style={{ flex: 1 }}>
+                          <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text)' }}>{t.topic}</span>
+                          <span style={{ fontSize: '11.5px', color: 'var(--text3)', marginLeft: 8 }}>{t.subject}</span>
+                        </div>
+                        <span style={{ fontSize: '11px', color: '#16A34A', background: 'rgba(34,197,94,0.1)', padding: '2px 9px', borderRadius: '99px', fontWeight: 600, flexShrink: 0 }}>{t.frequency}</span>
+                      </div>
+                    ))}
+                  </div>
                 </>
               )}
 
