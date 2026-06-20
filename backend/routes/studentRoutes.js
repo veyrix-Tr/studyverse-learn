@@ -88,10 +88,16 @@ router.get('/study-plan', requireAuth, async (req, res) => {
     });
 
     if (weeklyScores.length > 0) {
-      // Keep only the most recent score per subject
+      // Normalise subject names to match algorithm keys (handles Maths/Math → Mathematics, Bio → Biology)
+      const SUBJ_MAP = {
+        'maths': 'Mathematics', 'math': 'Mathematics',
+        'bio': 'Biology', 'biology': 'Biology',
+        'physics': 'Physics', 'chemistry': 'Chemistry',
+        'mathematics': 'Mathematics',
+      };
       const latest = {};
       for (const s of weeklyScores) {
-        const subj = s.subject.trim();
+        const subj = SUBJ_MAP[s.subject.trim().toLowerCase()] || s.subject.trim();
         if (!latest[subj]) {
           latest[subj] = Math.round((s.score / s.totalMarks) * 100);
         }
@@ -99,7 +105,7 @@ router.get('/study-plan', requireAuth, async (req, res) => {
       liveScores = latest; // e.g. { Physics: 62, Chemistry: 55, Mathematics: 71 }
     }
 
-    const plan = generateStudyPlan(profile.diagnosticAnswers, liveScores);
+    const plan = generateStudyPlan(profile.diagnosticAnswers, liveScores, profile.diagnosticTakenAt);
     res.json(plan);
   } catch (err) {
     console.error(err);

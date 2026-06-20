@@ -131,6 +131,18 @@ const DiagnosticForm = ({ profile, onComplete }) => {
     }
   }, [profile]);
 
+  // Live elapsed timer — starts on mount, shows MM:SS in header
+  const [elapsed, setElapsed] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setElapsed(s => s + 1), 1000);
+    return () => clearInterval(id);
+  }, []);
+  const elapsedMin  = Math.floor(elapsed / 60);
+  const elapsedSec  = elapsed % 60;
+  const elapsedStr  = elapsed < 60
+    ? `${elapsed}s`
+    : `${elapsedMin}:${String(elapsedSec).padStart(2, '0')}`;
+
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
   const txt = k => e => set(k, e.target.value);
   const tog = (k, v) => setForm(f => {
@@ -340,8 +352,8 @@ const DiagnosticForm = ({ profile, onComplete }) => {
           <span className="df-exam-pill">{isNeet ? 'NEET UG' : 'JEE Main + Advanced'}</span>
           <div className="df-hstats">
             <div className="df-hstat">
-              <span className="df-hstat-val">8</span>
-              <span className="df-hstat-lbl">min</span>
+              <span className="df-hstat-val" style={{ fontVariantNumeric: 'tabular-nums', minWidth: '2.2ch' }}>{elapsedStr}</span>
+              <span className="df-hstat-lbl">elapsed</span>
             </div>
             <div className="df-hstat">
               <span className="df-hstat-val">26</span>

@@ -223,6 +223,18 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
   const [openWeeks, setOpenWeeks] = useState(new Set([0]));
   const toggleWeek = (i) => setOpenWeeks(prev => { const n = new Set(prev); n.has(i) ? n.delete(i) : n.add(i); return n; });
 
+  // Live countdown to diagnostic retake (3 months from diagnosticTakenAt)
+  const [retakeSecs, setRetakeSecs] = useState(0);
+  useEffect(() => {
+    const takenAt = profile?.studentProfile?.diagnosticTakenAt;
+    if (!takenAt) return;
+    const retakeAt = new Date(new Date(takenAt).getTime() + 3 * 30 * 24 * 60 * 60 * 1000);
+    const tick = () => setRetakeSecs(Math.max(0, Math.floor((retakeAt - Date.now()) / 1000)));
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [profile?.studentProfile?.diagnosticTakenAt]);
+
   const today = getTodayIST();
   const todayLog = habitLogs.find(l => l.date === today) || null;
   const alreadyCheckedIn = !!todayLog;
@@ -313,18 +325,28 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
             <div style={{ fontFamily: 'var(--fs)', fontSize: '24px', fontWeight: 700, color: 'var(--text)' }}>{getGreeting()}, {firstName}.</div>
             <div style={{ fontSize: '13.5px', color: 'var(--text2)', marginTop: '4px' }}>You're on the <strong style={{ color: 'var(--text)' }}>Free Plan</strong>. Your personalised <strong style={{ color: 'var(--text)' }}>{examTarget}</strong> guidance is ready.</div>
           </div>
-          <button className="btn btn-gold" style={{ flexShrink: 0 }} onClick={() => onNav('diagnostic')}>Start Diagnostic →</button>
+          <button className="btn btn-gold" style={{ flexShrink: 0 }} onClick={() => onNav(diagDone ? 'guidance' : 'diagnostic')}>
+            {diagDone ? 'View Study Plan →' : 'Start Diagnostic →'}
+          </button>
         </div>
 
         <div style={{ background: 'linear-gradient(135deg,var(--navy) 0%,var(--navy3) 100%)', borderRadius: 'var(--rxl)', padding: '26px 28px', marginBottom: '22px', display: 'flex', alignItems: 'center', gap: '24px', border: '1px solid var(--gold-b)' }}>
-          <div style={{ fontSize: '44px', flexShrink: 0 }}>🎯</div>
+          <div style={{ fontSize: '44px', flexShrink: 0 }}>{diagDone ? '📋' : '🎯'}</div>
           <div style={{ flex: 1 }}>
-            <div style={{ fontFamily: 'var(--fs)', fontSize: '19px', fontWeight: 700, color: 'var(--inv)', marginBottom: '5px' }}>Take your free diagnostic first</div>
-            <div style={{ fontSize: '13px', color: 'var(--inv2)', lineHeight: 1.7 }}>Rate yourself on each topic, confirm with a quick MCQ round — and we'll map exactly where you stand and what to fix first.</div>
+            <div style={{ fontFamily: 'var(--fs)', fontSize: '19px', fontWeight: 700, color: 'var(--inv)', marginBottom: '5px' }}>
+              {diagDone ? 'Your study plan is ready' : 'Take your free diagnostic first'}
+            </div>
+            <div style={{ fontSize: '13px', color: 'var(--inv2)', lineHeight: 1.7 }}>
+              {diagDone
+                ? 'Priorities, weekly roadmap, daily structure — all built from your diagnostic answers and latest test scores.'
+                : 'Rate yourself on each topic, confirm with a quick MCQ round — and we\'ll map exactly where you stand and what to fix first.'}
+            </div>
           </div>
           <div style={{ flexShrink: 0 }}>
-            <button className="btn btn-gold" onClick={() => onNav('diagnostic')}>Begin Now →</button>
-            <div style={{ fontSize: '10.5px', color: 'var(--inv3)', textAlign: 'center', marginTop: '6px' }}>~10 minutes</div>
+            <button className="btn btn-gold" onClick={() => onNav(diagDone ? 'guidance' : 'diagnostic')}>
+              {diagDone ? 'Open Plan →' : 'Begin Now →'}
+            </button>
+            {!diagDone && <div style={{ fontSize: '10.5px', color: 'var(--inv3)', textAlign: 'center', marginTop: '6px' }}>~10 minutes</div>}
           </div>
         </div>
 
@@ -419,6 +441,17 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
                   <div style={{ fontSize: '13px', color: 'var(--text3)', marginBottom: '28px' }}>
                     Next retake available from <strong>{retakeAt.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</strong>.
                   </div>
+                  {/* Live countdown to retake */}
+                  {retakeSecs > 0 && (
+                    <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', margin: '18px 0', flexWrap: 'wrap' }}>
+                      {[{v: Math.floor(retakeSecs/86400), l:'days'},{v: Math.floor((retakeSecs%86400)/3600), l:'hrs'},{v: Math.floor((retakeSecs%3600)/60), l:'min'},{v: retakeSecs%60, l:'sec'}].map(({v,l}) => (
+                        <div key={l} style={{ background: 'var(--cream)', border: '1px solid var(--b)', borderRadius: '10px', padding: '10px 14px', textAlign: 'center', minWidth: '58px' }}>
+                          <div style={{ fontFamily: 'var(--fs)', fontSize: '20px', fontWeight: 700, color: 'var(--text)', lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{String(v).padStart(2,'0')}</div>
+                          <div style={{ fontSize: '10px', color: 'var(--text3)', marginTop: '4px', textTransform: 'uppercase', letterSpacing: '.05em' }}>{l}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </>
               );
             })()}
@@ -497,6 +530,16 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
 
           return (
             <>
+              {/* Live score update banner */}
+              {studyPlan.hasLiveScores && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.22)', borderRadius: '10px', padding: '10px 14px', marginBottom: '18px' }}>
+                  <span style={{ fontSize: '15px' }}>🔄</span>
+                  <div style={{ fontSize: '12.5px', color: '#15803D', fontWeight: 500 }}>
+                    Plan updated — priorities reflect your latest weekly test scores, not just the diagnostic.
+                  </div>
+                </div>
+              )}
+
               {/* Overview strip */}
               <div className="sp-overview">
                 <div className="sp-ov-box">
@@ -598,12 +641,14 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
                 </div>
               )}
 
-              {/* Weekly roadmap */}
-              <div className="sh" style={{ marginTop: '8px' }}><div className="sh-t">Week-by-Week Roadmap</div></div>
+              {/* Weekly roadmap — rolling window, auto-opens current week */}
+              <div className="sh sp-in" style={{ marginTop: '8px', animationDelay: '.44s' }}><div className="sh-t">Week-by-Week Roadmap</div></div>
               {studyPlan.weeklyRoadmap.map((week, i) => (
-                <div key={i} className="sp-week">
+                <div key={i} className="sp-week sp-in" style={{ animationDelay: `${0.46 + i * 0.05}s`, border: week.isCurrent ? '1.5px solid var(--gold)' : undefined }}>
                   <div className="sp-week-head" onClick={() => toggleWeek(i)}>
-                    <div className="sp-week-num">Week {week.week}</div>
+                    <div className="sp-week-num" style={week.isCurrent ? { background: 'var(--gold)', color: 'var(--navy)', fontWeight: 800 } : {}}>
+                      {week.isCurrent ? '▶ Now' : `Wk ${week.week}`}
+                    </div>
                     <div className="sp-week-theme">{week.theme}</div>
                     <div className="sp-week-days">{week.daysLeft}d left</div>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" strokeWidth="2" style={{ flexShrink: 0, transform: openWeeks.has(i) ? 'rotate(180deg)' : '', transition: 'transform .2s' }}><path d="M6 9l6 6 6-6"/></svg>

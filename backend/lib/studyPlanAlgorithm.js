@@ -148,7 +148,7 @@ function topicWeaknessScore(topicKeywords, weakFields) {
 
 // ── Main algorithm ────────────────────────────────────────────────────────────
 
-function generateStudyPlan(answers, liveScores = null) {
+function generateStudyPlan(answers, liveScores = null, diagnosticTakenAt = null) {
   if (!answers) return null;
 
   const isNEET   = (answers.exam_target || '').toLowerCase().includes('neet');
@@ -164,6 +164,12 @@ function generateStudyPlan(answers, liveScores = null) {
   const daysToExam       = calcDaysToExam(answers.target_date, isNEET);
   const weeksToExam      = Math.max(Math.floor(daysToExam / 7), 3);
   const weeklyHours      = Math.round(studyHoursPerDay * 7);
+
+  // Which week are we in? Derived from diagnosticTakenAt — auto-advances each week
+  const weeksSinceDiagnostic = diagnosticTakenAt
+    ? Math.max(0, Math.floor((Date.now() - new Date(diagnosticTakenAt).getTime()) / (7 * 86400000)))
+    : 0;
+  const currentWeekNum = weeksSinceDiagnostic + 1;
 
   // ── Subject scores: live weekly scores override diagnostic mock scores ───
   // liveScores = { Physics: 62, Chemistry: 55 } (already %, from WeeklyScore)
@@ -201,12 +207,15 @@ function generateStudyPlan(answers, liveScores = null) {
       : 0.33;
     const priorityScore = weakness * examWeight * (isHardest ? 1.3 : 1);
 
+    // Urgency uses JEE/NEET-calibrated thresholds (60% in these exams is very low)
     let urgency, urgencyColor;
     if (pct === null)     { urgency = 'no data';  urgencyColor = 'gray'; }
-    else if (pct < 35)   { urgency = 'urgent';   urgencyColor = 'red'; }
-    else if (pct < 55)   { urgency = 'high';     urgencyColor = 'orange'; }
-    else if (pct < 72)   { urgency = 'moderate'; urgencyColor = 'yellow'; }
-    else                  { urgency = 'maintain'; urgencyColor = 'green'; }
+    else if (pct < 50)   { urgency = 'urgent';   urgencyColor = 'red'; }   // <50% = needs improvement (JEE/NEET benchmark)
+    else if (pct < 68)   { urgency = 'high';     urgencyColor = 'orange'; } // 50-68% = work needed
+    else if (pct < 80)   { urgency = 'moderate'; urgencyColor = 'yellow'; } // 68-80% = decent, keep improving
+    else                  { urgency = 'maintain'; urgencyColor = 'green'; }  // 80%+ = strong, just maintain
+    // #1 priority subject always shows at least "high" regardless of score label
+    // (applied after sort via post-processing below)
 
     const isLive = liveScores && liveScores[subject] !== undefined;
     const reason = pct !== null
@@ -217,6 +226,12 @@ function generateStudyPlan(answers, liveScores = null) {
 
     return { subject, scorePct: pct, priorityScore, urgency, urgencyColor, reason };
   }).sort((a, b) => b.priorityScore - a.priorityScore);
+
+  // Ensure top priority subject is never labeled below "high"
+  if (subjectPriority[0] && subjectPriority[0].urgency === 'moderate') {
+    subjectPriority[0].urgency = 'high';
+    subjectPriority[0].urgencyColor = 'orange';
+  }
 
   // ── Time allocation ──────────────────────────────────────────────────────
   const allocationWeights = [0.40, 0.35, 0.25];
@@ -254,13 +269,15 @@ function generateStudyPlan(answers, liveScores = null) {
     const fallback = (topicPlan[subject] || []).slice(0, 1);
     const picks    = priorityTopics.length > 0 ? priorityTopics : fallback;
 
+    // Split subject hours across picks, cap each topic at 10h (realistic per-topic limit)
+    const hoursPerTopic = Math.min(Math.round(timeAlloc[subject] / Math.max(picks.length, 2)), 10);
+
     for (const t of picks) {
       if (thisWeek.length >= 4) break;
-      const hours = Math.round(timeAlloc[subject] / (picks.length || 1));
       thisWeek.push({
         subject,
         topic:    t.name,
-        hours:    Math.max(hours, 2),
+        hours:    Math.max(hoursPerTopic, 2),
         label:    t.label,
         color:    t.color,
         reason:   buildTopicReason(t, subject, answers, scorePct),
@@ -270,7 +287,7 @@ function generateStudyPlan(answers, liveScores = null) {
   }
 
   // ── 4-Week roadmap ────────────────────────────────────────────────────────
-  const weeklyRoadmap = buildWeeklyRoadmap(subjectPriority, topicPlan, weeksToExam, daysToExam);
+  const weeklyRoadmap = buildWeeklyRoadmap(subjectPriority, topicPlan, weeksToExam, daysToExam, currentWeekNum);
 
   // ── Daily structure ───────────────────────────────────────────────────────
   const dailyStructure = buildDailyStructure(studyHoursPerDay, subjectPriority);
@@ -283,11 +300,22 @@ function generateStudyPlan(answers, liveScores = null) {
 
   // ── Maintain topics (strong subject top topics) ───────────────────────────
   const strongSubject = subjectPriority[subjectPriority.length - 1];
+  const thisWeekTopicNames = new Set(thisWeek.map(t => t.topic));
   const maintainTopics = (topicPlan[strongSubject?.subject] || [])
+    .filter(t => t.label === 'Maintain' || t.label === 'Important')
+    .filter(t => !thisWeekTopicNames.has(t.name))
     .slice(0, 2)
     .map(t => ({ subject: strongSubject.subject, topic: t.name, frequency: 'Every 3 days, 30 min' }));
 
+  const hasLiveScores = liveScores !== null && Object.keys(liveScores).length > 0;
+
+  const examDateMs = answers.target_date ? (() => {
+    const d = new Date(answers.target_date);
+    return !isNaN(d) && d > new Date() ? d.getTime() : null;
+  })() : null;
+
   return {
+    hasLiveScores,
     overview: {
       daysToExam,
       weeksToExam,
@@ -297,6 +325,7 @@ function generateStudyPlan(answers, liveScores = null) {
       targetScore: answers.target_score || null,
       targetRank:  answers.target_rank  || null,
       syllabusGap: answers.syllabus_coverage || null,
+      examDateMs,
     },
     subjectFocus: subjectPriority.map((s, i) => ({
       ...s,
@@ -325,9 +354,9 @@ function buildTopicReason(topic, subject, answers, scorePct) {
   return reason;
 }
 
-function buildWeeklyRoadmap(subjectPriority, topicPlan, weeksToExam, daysToExam) {
+function buildWeeklyRoadmap(subjectPriority, topicPlan, weeksToExam, daysToExam, currentWeekNum = 1) {
   const roadmap = [];
-  const topicQueue = {}; // track which topics remain per subject
+  const topicQueue = {};
   for (const { subject } of subjectPriority) {
     topicQueue[subject] = [...(topicPlan[subject] || [])];
   }
@@ -335,9 +364,22 @@ function buildWeeklyRoadmap(subjectPriority, topicPlan, weeksToExam, daysToExam)
   const weekThemes = [
     'Fix Weakest Areas', 'Build Momentum', 'Deepen Concepts',
     'Speed & Accuracy', 'Full Revision Mode', 'Mock & Refine',
+    'Consolidate & Test', 'Rapid Revision', 'PYQ Sprint',
   ];
 
-  for (let w = 0; w < Math.min(weeksToExam, 6); w++) {
+  // Skip past weeks' topics so the queue starts at the current week's content
+  const topicsPerWeekPrimary = 2, topicsPerWeekOther = 1;
+  const pastWeeks = currentWeekNum - 1;
+  for (const { subject } of subjectPriority) {
+    const skip = subjectPriority[0]?.subject === subject
+      ? pastWeeks * topicsPerWeekPrimary
+      : pastWeeks * topicsPerWeekOther;
+    topicQueue[subject].splice(0, Math.min(skip, topicQueue[subject].length));
+  }
+
+  const weeksRemaining = Math.max(weeksToExam - currentWeekNum + 1, 1);
+  for (let w = 0; w < Math.min(weeksRemaining, 6); w++) {
+    const actualWeek = currentWeekNum + w;
     const weekTopics = [];
     for (const { subject } of subjectPriority) {
       const picks = topicQueue[subject].splice(0, subjectPriority[0]?.subject === subject ? 2 : 1);
@@ -346,9 +388,10 @@ function buildWeeklyRoadmap(subjectPriority, topicPlan, weeksToExam, daysToExam)
 
     const daysLeft = daysToExam - w * 7;
     roadmap.push({
-      week: w + 1,
+      week: actualWeek,
+      isCurrent: w === 0,
       daysLeft: Math.max(daysLeft, 0),
-      theme: weekThemes[w] || `Week ${w + 1}`,
+      theme: w === 0 ? `This Week — ${weekThemes[(actualWeek - 1) % weekThemes.length]}` : weekThemes[(actualWeek - 1) % weekThemes.length],
       topics: weekTopics,
     });
   }
