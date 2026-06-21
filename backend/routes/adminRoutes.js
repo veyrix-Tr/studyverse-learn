@@ -86,6 +86,93 @@ router.get('/students', requireAuth, async (req, res) => {
   }
 });
 
+// DELETE /api/admin/student/:studentUserId/diagnostic — reset diagnostic lock (admin only)
+router.delete('/student/:studentUserId/diagnostic', requireAuth, async (req, res) => {
+  try {
+    const profile = await prisma.studentProfile.findUnique({ where: { userId: req.params.studentUserId } });
+    if (!profile) return res.status(404).json({ error: 'Student not found' });
+    await prisma.studentProfile.update({
+      where: { id: profile.id },
+      data: { diagnosticScore: null, diagnosticTakenAt: null, diagnosticAnswers: null },
+    });
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to reset diagnostic' });
+  }
+});
+
+// GET /api/admin/student/:studentUserId/diagnostic — diagnostic digest for a student
+router.get('/student/:studentUserId/diagnostic', requireAuth, async (req, res) => {
+  try {
+    const { generateStudyPlan } = require('../lib/studyPlanAlgorithm');
+    const profile = await prisma.studentProfile.findUnique({
+      where: { userId: req.params.studentUserId },
+      select: {
+        id: true, diagnosticAnswers: true,
+        diagnosticScore: true, diagnosticTakenAt: true,
+        plan: true,
+      },
+    });
+    if (!profile?.diagnosticAnswers)
+      return res.status(404).json({ error: 'No diagnostic' });
+
+    const a = profile.diagnosticAnswers;
+
+    // Latest weekly scores for live plan
+    const weeklyScores = await prisma.weeklyScore.findMany({
+      where: { studentId: profile.id }, orderBy: { testDate: 'desc' },
+    });
+    const SUBJ_MAP = { 'maths':'Mathematics','math':'Mathematics','bio':'Biology','biology':'Biology','physics':'Physics','chemistry':'Chemistry','mathematics':'Mathematics' };
+    let liveScores = null;
+    if (weeklyScores.length > 0) {
+      const latest = {};
+      for (const s of weeklyScores) {
+        const subj = SUBJ_MAP[s.subject.trim().toLowerCase()] || s.subject.trim();
+        if (!latest[subj]) latest[subj] = Math.round((s.score / s.totalMarks) * 100);
+      }
+      liveScores = latest;
+    }
+
+    const plan = generateStudyPlan(a, liveScores, profile.diagnosticTakenAt);
+
+    res.json({
+      score: profile.diagnosticScore,
+      takenAt: profile.diagnosticTakenAt,
+      _userId: req.params.studentUserId,
+      digest: {
+        exam_target:       a.exam_target,
+        current_class:     a.current_class,
+        study_hours:       a.study_hours,
+        syllabus_coverage: a.syllabus_coverage,
+        has_coaching:      a.has_coaching,
+        target_score:      a.target_score,
+        target_rank:       a.target_rank,
+        mock_scores:       [a.mock_score_1, a.mock_score_2, a.mock_score_3].filter(Boolean),
+        hardest_subject:   a.hardest_subject,
+        weak_topics: [a.phy_loss, a.chem_weak, a.math_weak, a.bio_weak, a.dreaded_chapters]
+          .filter(Boolean).join(', '),
+        review_mistakes:   a.review_mistakes,
+        same_day_revision: a.same_day_revision,
+        time_mgmt:         a.time_mgmt,
+      },
+      plan: {
+        subjectFocus: plan.subjectFocus.map(s => ({
+          subject: s.subject, scorePct: s.scorePct,
+          urgency: s.urgency, urgencyColor: s.urgencyColor,
+          hoursPerWeek: s.hoursPerWeek, reason: s.reason,
+        })),
+        thisWeek: plan.thisWeek.slice(0, 3),
+        habits:   plan.habits,
+        mockTrend: plan.mockTrend,
+      },
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch diagnostic' });
+  }
+});
+
 // GET /api/admin/admins — list all admin accounts (superadmin only)
 router.get('/admins', requireAuth, async (req, res) => {
   try {

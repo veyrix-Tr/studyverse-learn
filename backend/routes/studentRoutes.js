@@ -59,9 +59,54 @@ router.post('/diagnostic', requireAuth, async (req, res) => {
 
     const nextAllowedAt = new Date(now.getTime() + THREE_MONTHS_MS);
     res.json({ success: true, score: Math.round(score), nextAllowedAt });
+
+    // Notify all admins — fire and forget, don't block the response
+    (async () => {
+      try {
+        const user = await prisma.user.findUnique({ where: { id: req.params.userId }, select: { name: true } });
+        const admins = await prisma.adminProfile.findMany({ where: { isActive: true }, select: { id: true } });
+        if (admins.length && user) {
+          await prisma.adminMessage.createMany({
+            data: admins.map(a => ({
+              content: `${user.name} completed their diagnostic (score: ${Math.round(score)}%). View their report in the Students tab.`,
+              type: 'Diagnostic',
+              studentId: profile.id,
+              adminId: a.id,
+            })),
+          });
+        }
+      } catch { /* non-critical */ }
+    })();
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to save diagnostic' });
+  }
+});
+
+// POST /api/student/topics/complete — toggle a topic done/undone for the current week
+router.post('/topics/complete', requireAuth, async (req, res) => {
+  try {
+    const { topicName, subject, weekNumber } = req.body;
+    if (!topicName || !subject || weekNumber === undefined)
+      return res.status(400).json({ error: 'topicName, subject, weekNumber required' });
+
+    const profile = await prisma.studentProfile.findUnique({ where: { userId: req.params.userId } });
+    if (!profile) return res.status(403).json({ error: 'Not found' });
+
+    const existing = await prisma.completedTopic.findUnique({
+      where: { studentId_topicName_weekNumber: { studentId: profile.id, topicName, weekNumber } },
+    });
+
+    if (existing) {
+      await prisma.completedTopic.delete({ where: { id: existing.id } });
+      res.json({ completed: false });
+    } else {
+      await prisma.completedTopic.create({ data: { studentId: profile.id, topicName, subject, weekNumber } });
+      res.json({ completed: true });
+    }
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to toggle topic' });
   }
 });
 
@@ -102,10 +147,16 @@ router.get('/study-plan', requireAuth, async (req, res) => {
           latest[subj] = Math.round((s.score / s.totalMarks) * 100);
         }
       }
-      liveScores = latest; // e.g. { Physics: 62, Chemistry: 55, Mathematics: 71 }
+      liveScores = latest;
     }
 
-    const plan = generateStudyPlan(profile.diagnosticAnswers, liveScores, profile.diagnosticTakenAt);
+    // Fetch topics completed this week by the student
+    const completedTopics = await prisma.completedTopic.findMany({
+      where: { studentId: profile.id },
+      select: { topicName: true, weekNumber: true },
+    });
+
+    const plan = generateStudyPlan(profile.diagnosticAnswers, liveScores, profile.diagnosticTakenAt, completedTopics);
     res.json(plan);
   } catch (err) {
     console.error(err);

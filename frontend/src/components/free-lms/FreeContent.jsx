@@ -182,8 +182,10 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
   }, [isForge, userId]);
 
   // Diagnostic done state (from DB)
-  const [diagDone, setDiagDone]   = useState(false);
-  const [studyPlan, setStudyPlan] = useState(null);
+  const [diagDone, setDiagDone]         = useState(false);
+  const [studyPlan, setStudyPlan]           = useState(null);
+  const [studyPlanError, setStudyPlanError] = useState(false);
+  const [studyPlanRetry, setStudyPlanRetry] = useState(0);
   const [ratings] = useState({});
 
   useEffect(() => {
@@ -197,13 +199,17 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
   useEffect(() => {
     if (!diagDone || !userId) return;
     const token = localStorage.getItem('token');
+    setStudyPlanError(false);
     fetch(`${import.meta.env.VITE_API_URL}/api/student/${userId}/study-plan`, {
       headers: { Authorization: `Bearer ${token}` },
     })
-      .then(r => r.ok ? r.json() : null)
-      .then(data => { if (data && !data.error) setStudyPlan(data); })
-      .catch(() => {});
-  }, [diagDone, userId]);
+      .then(r => r.ok ? r.json() : Promise.reject())
+      .then(data => {
+        if (data && !data.error) setStudyPlan(data);
+        else setStudyPlanError(true);
+      })
+      .catch(() => setStudyPlanError(true));
+  }, [diagDone, userId, studyPlanRetry]);
 
   // Habit state
   const [habitState, setHabitState] = useState({});
@@ -222,6 +228,28 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
 
   const [openWeeks, setOpenWeeks] = useState(new Set([0]));
   const toggleWeek = (i) => setOpenWeeks(prev => { const n = new Set(prev); n.has(i) ? n.delete(i) : n.add(i); return n; });
+
+  // Toggle topic completion for current week
+  const toggleTopic = async (topicName, subject) => {
+    if (!studyPlan) return;
+    const weekNumber = studyPlan.currentWeekNum;
+    const token = localStorage.getItem('token');
+    const isNowDone = !studyPlan.completedThisWeek.includes(topicName);
+    setStudyPlan(prev => ({
+      ...prev,
+      completedThisWeek: isNowDone
+        ? [...prev.completedThisWeek, topicName]
+        : prev.completedThisWeek.filter(t => t !== topicName),
+      thisWeek: isNowDone
+        ? prev.thisWeek.filter(t => t.topic !== topicName)
+        : prev.thisWeek,
+    }));
+    await fetch(`${import.meta.env.VITE_API_URL}/api/student/${userId}/topics/complete`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ topicName, subject, weekNumber }),
+    }).catch(() => {});
+  };
 
   // Live countdown to diagnostic retake (3 months from diagnosticTakenAt)
   const [retakeSecs, setRetakeSecs] = useState(0);
@@ -458,6 +486,45 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
             <button className="btn btn-gold" style={{ justifyContent: 'center' }} onClick={() => onNav('guidance')}>
               View Your Study Plan →
             </button>
+
+            {/* Diagnostic summary from already-fetched studyPlan */}
+            {studyPlan && (
+              <div style={{ marginTop: '28px', textAlign: 'left', maxWidth: '520px', margin: '28px auto 0' }}>
+                <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: '12px', textAlign: 'center' }}>Your Diagnostic Summary</div>
+                {/* Subject scores */}
+                <div style={{ display: 'flex', gap: '10px', marginBottom: '12px' }}>
+                  {studyPlan.subjectFocus.map((s, i) => {
+                    const clr = { red:'#EF4444', orange:'#F97316', yellow:'#D97706', green:'#22C55E', gray:'#94A3B8' };
+                    return (
+                      <div key={i} style={{ flex: 1, background: 'var(--cream)', border: '1px solid var(--b)', borderRadius: '12px', padding: '12px 10px', textAlign: 'center', borderTop: `3px solid ${clr[s.urgencyColor]||clr.gray}` }}>
+                        <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text)', lineHeight: 1 }}>{s.scorePct !== null ? s.scorePct+'%' : '—'}</div>
+                        <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text)', margin: '4px 0' }}>{s.subject}</div>
+                        <span style={{ fontSize: '10px', fontWeight: 700, padding: '1px 7px', borderRadius: '99px', background: `${clr[s.urgencyColor]||clr.gray}18`, color: clr[s.urgencyColor]||clr.gray }}>{s.urgency}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+                {/* This week top 2 */}
+                {studyPlan.thisWeek.slice(0, 2).map((t, i) => {
+                  const clr = { red:'#EF4444', orange:'#F97316', yellow:'#D97706', green:'#22C55E', gray:'#94A3B8' };
+                  return (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '9px 13px', background: 'var(--cream)', border: '1px solid var(--b)', borderRadius: '10px', marginBottom: '7px', borderLeft: `3px solid ${clr[t.color]||clr.gray}` }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: '12.5px', fontWeight: 700, color: 'var(--text)' }}>{t.topic}</div>
+                        <div style={{ fontSize: '11px', color: 'var(--text3)', marginTop: '1px' }}>{t.subject}</div>
+                      </div>
+                      <span style={{ fontSize: '10px', fontWeight: 700, color: clr[t.color]||clr.gray }}>{t.label}</span>
+                    </div>
+                  );
+                })}
+                {studyPlan.overview.targetScore && (
+                  <div style={{ textAlign: 'center', fontSize: '12px', color: 'var(--text3)', marginTop: '8px' }}>
+                    Target: <strong style={{ color: 'var(--text)' }}>{studyPlan.overview.targetScore} marks</strong>
+                    {studyPlan.overview.targetRank && <> · <strong style={{ color: 'var(--text)' }}>{studyPlan.overview.targetRank}</strong></>}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         ) : (
           <DiagnosticForm profile={profile} onComplete={() => setDiagDone(true)} />
@@ -524,6 +591,14 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
 
       {/* ══════════ STUDY PLAN ══════════ */}
       <div className={p('guidance')}>
+        {diagDone && studyPlanError && !studyPlan && (
+          <div style={{ textAlign:'center', padding:'48px 24px', background:'var(--cream)', border:'1px solid var(--b)', borderRadius:'16px', marginBottom:'16px' }}>
+            <div style={{ fontSize:'28px', marginBottom:'12px' }}>⚠️</div>
+            <div style={{ fontFamily:'var(--fs)', fontSize:'16px', fontWeight:700, color:'var(--text)', marginBottom:'8px' }}>Couldn't load your study plan</div>
+            <div style={{ fontSize:'13px', color:'var(--text2)', marginBottom:'20px' }}>Your diagnostic is saved — this is a temporary issue. Try refreshing.</div>
+            <button className="btn btn-gold" onClick={() => { setStudyPlanError(false); setStudyPlan(null); setStudyPlanRetry(r => r + 1); }}>Retry</button>
+          </div>
+        )}
         {studyPlan ? (() => {
           const UC = { red: '#EF4444', orange: '#F97316', yellow: '#D97706', green: '#22C55E', gray: '#94A3B8' };
           const UB = { red: 'rgba(239,68,68,0.1)', orange: 'rgba(249,115,22,0.1)', yellow: 'rgba(245,158,11,0.1)', green: 'rgba(34,197,94,0.1)', gray: 'rgba(148,163,184,0.1)' };
@@ -606,6 +681,17 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
 
               {/* This week focus */}
               <div className="sh sp-in" style={{ animationDelay: '.22s' }}><div className="sh-t">This Week — What to Study</div><span className="pill pp">Personalised</span></div>
+              {studyPlan.completedThisWeek?.length > 0 && (
+                <div style={{ fontSize:'12px', color:'var(--text3)', marginBottom:'8px', display:'flex', alignItems:'center', gap:'6px' }}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#22C55E" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  {studyPlan.completedThisWeek.length} topic{studyPlan.completedThisWeek.length > 1 ? 's' : ''} done this week — great work!
+                </div>
+              )}
+              {studyPlan.thisWeek.length === 0 && (
+                <div className="card" style={{ textAlign:'center', padding:'20px', color:'var(--green)', fontWeight:600 }}>
+                  🎉 All this week's topics are done! Check back Monday for next week's plan.
+                </div>
+              )}
               {studyPlan.thisWeek.map((item, i) => (
                 <div key={i} className="sp-focus sp-in" style={{ animationDelay: `${0.26 + i * 0.07}s` }}>
                   <div className="sp-focus-bar" style={{ background: UC[item.color] || UC.gray }} />
@@ -618,6 +704,13 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
                       <div className="sp-focus-right">
                         <div className="sp-focus-hours">{item.hours}h this week</div>
                         <span className="sp-focus-label" style={{ background: UB[item.color], color: UC[item.color] }}>{item.label}</span>
+                        <button
+                          onClick={() => toggleTopic(item.topic, item.subject)}
+                          title="Mark as done"
+                          style={{ border:'1.5px solid rgba(34,197,94,0.4)', background:'rgba(34,197,94,0.07)', borderRadius:'8px', padding:'3px 10px', fontSize:'11px', fontWeight:700, color:'#16A34A', cursor:'pointer', display:'flex', alignItems:'center', gap:'4px', marginTop:'2px', transition:'all .15s' }}>
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                          Done
+                        </button>
                       </div>
                     </div>
                     <div className="sp-focus-reason">{item.reason}</div>

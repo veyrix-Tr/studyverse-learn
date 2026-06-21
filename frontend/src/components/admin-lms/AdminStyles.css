@@ -267,3 +267,8 @@ body.admin-mode #root {
 
 ::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:var(--cream2)}::-webkit-scrollbar-thumb{background:var(--cream3);border-radius:10px}
 @media(max-width:1200px){.pipeline{grid-template-columns:repeat(3,1fr)}.g4{grid-template-columns:1fr 1fr}}
+
+.dm-body::-webkit-scrollbar { width: 6px; }
+.dm-body::-webkit-scrollbar-track { background: rgba(15,31,61,0.05); border-radius: 99px; }
+.dm-body::-webkit-scrollbar-thumb { background: rgba(15,31,61,0.18); border-radius: 99px; }
+.dm-body::-webkit-scrollbar-thumb:hover { background: rgba(15,31,61,0.3); }

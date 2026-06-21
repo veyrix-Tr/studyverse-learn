@@ -44,6 +44,7 @@ model StudentProfile {
   adminMessages        AdminMessage[]
   facultyNotifications FacultyNotification[]
   habitLogs            HabitLog[]
+  completedTopics      CompletedTopic[]
   weeklyReports        WeeklyReport[]
   parentFeedback       ParentFeedback[]
 }
@@ -216,6 +217,19 @@ model ParentFeedback {
   report    WeeklyReport   @relation(fields: [reportId], references: [id], onDelete: Cascade)
   studentId Int
   student   StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+}
+
+model CompletedTopic {
+  id         Int      @id @default(autoincrement())
+  topicName  String
+  subject    String
+  weekNumber Int
+  createdAt  DateTime @default(now())
+
+  studentId  Int
+  student    StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, topicName, weekNumber])
 }
 
 model HabitLog {

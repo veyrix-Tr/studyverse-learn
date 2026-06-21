@@ -103,10 +103,30 @@ function parseFloat2(v) {
   return isNaN(n) ? null : n;
 }
 
+const MONTHS = { jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11,
+  january:0,february:1,march:2,april:3,june:5,july:6,august:7,september:8,october:9,november:10,december:11 };
+
+function normaliseTargetDate(raw) {
+  if (!raw) return null;
+  // Try direct ISO parse first
+  const iso = new Date(raw);
+  if (!isNaN(iso.getTime())) return iso;
+  // Try "Jan 2027", "January 2027", "jan 27" patterns
+  const m = raw.trim().toLowerCase().match(/^([a-z]+)\s+(\d{2,4})$/);
+  if (m) {
+    const month = MONTHS[m[1]];
+    if (month !== undefined) {
+      const year = m[2].length === 2 ? 2000 + parseInt(m[2]) : parseInt(m[2]);
+      return new Date(year, month, 1);
+    }
+  }
+  return null;
+}
+
 function calcDaysToExam(targetDate, isNEET) {
   if (targetDate) {
-    const d = new Date(targetDate);
-    if (!isNaN(d.getTime())) {
+    const d = normaliseTargetDate(targetDate);
+    if (d && !isNaN(d.getTime())) {
       const diff = Math.ceil((d - new Date()) / 86400000);
       if (diff > 0 && diff < 1000) return diff;
     }
@@ -148,7 +168,7 @@ function topicWeaknessScore(topicKeywords, weakFields) {
 
 // ── Main algorithm ────────────────────────────────────────────────────────────
 
-function generateStudyPlan(answers, liveScores = null, diagnosticTakenAt = null) {
+function generateStudyPlan(answers, liveScores = null, diagnosticTakenAt = null, completedTopics = []) {
   if (!answers) return null;
 
   const isNEET   = (answers.exam_target || '').toLowerCase().includes('neet');
@@ -174,18 +194,24 @@ function generateStudyPlan(answers, liveScores = null, diagnosticTakenAt = null)
   // ── Subject scores: live weekly scores override diagnostic mock scores ───
   // liveScores = { Physics: 62, Chemistry: 55 } (already %, from WeeklyScore)
   // Falls back to diagnostic mock_s1/s2/s3 if no weekly data (free plan)
+  // Form always: mock_s1=Physics, mock_s2=Chemistry, mock_s3=Maths(JEE)/Biology(NEET)
+  // This is independent of the subjects priority order, so use a fixed name→field map
+  const SCORE_FIELD = isNEET
+    ? { Physics: 'mock_s1', Chemistry: 'mock_s2', Biology: 'mock_s3' }
+    : { Physics: 'mock_s1', Chemistry: 'mock_s2', Mathematics: 'mock_s3' };
+
   const scorePct = {};
-  for (let i = 0; i < subjects.length; i++) {
-    const subj = subjects[i];
+  for (const subj of subjects) {
     if (liveScores && liveScores[subj] !== undefined) {
-      scorePct[subj] = liveScores[subj]; // live test data — most accurate
+      scorePct[subj] = liveScores[subj];
     } else {
-      const raw = parseFloat2(answers[`mock_s${i + 1}`]);
+      const field = SCORE_FIELD[subj];
+      const raw = field ? parseFloat2(answers[field]) : null;
       scorePct[subj] = raw !== null ? normaliseScore(raw, subMax[subj] || 100) : null;
     }
   }
 
-  // ── Weak fields object for topic matching ────────────────────────────────
+  // ── Weak fields + strong fields for topic matching ───────────────────────
   const weakFields = {
     phy_loss:         answers.phy_loss || '',
     chem_weak:        answers.chem_weak || '',
@@ -196,6 +222,12 @@ function generateStudyPlan(answers, liveScores = null, diagnosticTakenAt = null)
     dreaded_chapters: answers.dreaded_chapters || '',
     fix_one_thing:    answers.fix_one_thing || '',
   };
+
+  // Strong topics from diagnostic — should be maintained, not prioritised
+  const strongTopicKeywords = [
+    ...(answers.chem_strong || '').split(/[,;\n]+/).map(s => s.trim().toLowerCase()).filter(Boolean),
+    ...(answers.ncert_reads  || '').split(/[,;\n]+/).map(s => s.trim().toLowerCase()).filter(Boolean),
+  ];
 
   // ── Subject priority (40-35-25 rule adjusted by weakness) ───────────────
   const subjectPriority = subjects.map(subject => {
@@ -246,27 +278,35 @@ function generateStudyPlan(answers, liveScores = null, diagnosticTakenAt = null)
     const subTopics = topics[subject] || [];
     topicPlan[subject] = subTopics.map(t => {
       const weakScore = topicWeaknessScore(t.keywords, weakFields);
-      // Priority = (exam frequency × weakness multiplier)
+      const isStrong  = strongTopicKeywords.some(k => t.keywords.some(kw => kw.includes(k) || k.includes(kw)));
       const multiplier = [1, 1.5, 2.5, 3.5][weakScore] || 1;
-      const priority   = t.freq * multiplier;
+      const priority   = isStrong ? Math.min(t.freq * multiplier * 0.3, 5) : t.freq * multiplier;
       let label, color;
-      if (priority >= 20)     { label = 'Urgent';   color = 'red'; }
+      if (isStrong)            { label = 'Maintain'; color = 'green'; } // strong topics always maintain
+      else if (priority >= 20) { label = 'Urgent';   color = 'red'; }
       else if (priority >= 12) { label = 'High';     color = 'orange'; }
       else if (priority >= 7)  { label = 'Important';color = 'yellow'; }
       else                     { label = 'Maintain'; color = 'green'; }
-      return { ...t, weakScore, priority, label, color };
+      return { ...t, weakScore, isStrong, priority, label, color };
     }).sort((a, b) => b.priority - a.priority);
   }
+
+  // ── Topics completed this week — excluded from "This Week" ──────────────
+  const completedThisWeek = new Set(
+    completedTopics
+      .filter(t => t.weekNumber === currentWeekNum)
+      .map(t => t.topicName)
+  );
 
   // ── "This Week" focus (max 4 cards) ─────────────────────────────────────
   const thisWeek = [];
   for (const { subject } of subjectPriority) {
     if (thisWeek.length >= 4) break;
     const priorityTopics = (topicPlan[subject] || [])
-      .filter(t => t.label === 'Urgent' || t.label === 'High')
+      .filter(t => (t.label === 'Urgent' || t.label === 'High') && !completedThisWeek.has(t.name))
       .slice(0, thisWeek.length < 2 ? 2 : 1);
 
-    const fallback = (topicPlan[subject] || []).slice(0, 1);
+    const fallback = (topicPlan[subject] || []).filter(t => !completedThisWeek.has(t.name)).slice(0, 1);
     const picks    = priorityTopics.length > 0 ? priorityTopics : fallback;
 
     // Split subject hours across picks, cap each topic at 10h (realistic per-topic limit)
@@ -309,10 +349,10 @@ function generateStudyPlan(answers, liveScores = null, diagnosticTakenAt = null)
 
   const hasLiveScores = liveScores !== null && Object.keys(liveScores).length > 0;
 
-  const examDateMs = answers.target_date ? (() => {
-    const d = new Date(answers.target_date);
-    return !isNaN(d) && d > new Date() ? d.getTime() : null;
-  })() : null;
+  const examDateMs = (() => {
+    const d = normaliseTargetDate(answers.target_date);
+    return d && !isNaN(d) && d > new Date() ? d.getTime() : null;
+  })();
 
   return {
     hasLiveScores,
@@ -332,6 +372,8 @@ function generateStudyPlan(answers, liveScores = null, diagnosticTakenAt = null)
       hoursPerWeek:   timeAlloc[s.subject] || 0,
       allocationPct:  allocationWeights[i] ? Math.round(allocationWeights[i] * 100) : 25,
     })),
+    currentWeekNum,
+    completedThisWeek: [...completedThisWeek],
     thisWeek,
     weeklyRoadmap,
     dailyStructure,

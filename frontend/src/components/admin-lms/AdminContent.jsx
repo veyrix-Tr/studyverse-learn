@@ -1,5 +1,185 @@
 import { useState, useEffect } from 'react';
 
+const UC = { red:'#EF4444', orange:'#F97316', yellow:'#D97706', green:'#22C55E', gray:'#94A3B8' };
+const UB = { red:'rgba(239,68,68,0.1)', orange:'rgba(249,115,22,0.1)', yellow:'rgba(245,158,11,0.1)', green:'rgba(34,197,94,0.1)', gray:'rgba(148,163,184,0.1)' };
+
+const DiagnosticModal = ({ modal, loading, onClose, onReset }) => {
+  useEffect(() => {
+    if (!modal) return;
+    const handler = e => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [modal, onClose]);
+
+  if (!modal) return null;
+  const d = modal.data;
+  const takenAgo = d ? Math.floor((Date.now() - new Date(d.takenAt).getTime()) / 86400000) : 0;
+  const trendColor = d?.plan?.mockTrend?.trend === 'improving' ? '#16A34A' : d?.plan?.mockTrend?.trend === 'declining' ? '#DC2626' : '#8896B3';
+  const trendIcon  = d?.plan?.mockTrend?.trend === 'improving' ? '↑' : d?.plan?.mockTrend?.trend === 'declining' ? '↓' : '→';
+  const maxMock    = d?.plan?.mockTrend ? Math.max(...d.plan.mockTrend.scores) : 1;
+
+  return (
+    <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
+      style={{ position:'fixed', inset:0, background:'rgba(15,31,61,0.6)', display:'flex', alignItems:'center', justifyContent:'center', padding:'36px 40px', zIndex:300, backdropFilter:'blur(6px)', animation:'dmFadeIn .2s ease' }}>
+      <style dangerouslySetInnerHTML={{ __html:
+        '@keyframes dmFadeIn{from{opacity:0}to{opacity:1}}' +
+        '@keyframes dmSlideUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}' +
+        '@keyframes dmIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}' +
+        '.dm-card{animation:dmIn .35s cubic-bezier(0.4,0,0.2,1) both}'
+      }} />
+
+      <div style={{ background:'#FDF8F0', borderRadius:'22px', width:'1060px', maxWidth:'100%', maxHeight:'100%', display:'flex', flexDirection:'column', boxShadow:'0 28px 70px rgba(15,31,61,0.28)', animation:'dmSlideUp .28s cubic-bezier(0.4,0,0.2,1)' }}>
+
+        {/* Dark header */}
+        <div style={{ background:'linear-gradient(135deg,#0F1F3D 0%,#1C2E50 100%)', borderRadius:'22px 22px 0 0', padding:'18px 24px', position:'relative', overflow:'hidden', flexShrink:0 }}>
+          <div style={{ position:'absolute', top:-40, right:-40, width:160, height:160, borderRadius:'50%', background:'rgba(232,168,48,0.07)', pointerEvents:'none' }}/>
+          <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between' }}>
+            <div>
+              <div style={{ fontSize:'11px', color:'rgba(253,248,240,0.45)', textTransform:'uppercase', letterSpacing:'.1em', marginBottom:'5px' }}>Diagnostic Report</div>
+              <div style={{ fontFamily:'var(--fs,Georgia)', fontSize:'22px', fontWeight:700, color:'#FDF8F0', lineHeight:1.2 }}>{modal.studentName}</div>
+              {d && <div style={{ fontSize:'12px', color:'rgba(253,248,240,0.55)', marginTop:'5px' }}>{d.digest.exam_target} · {d.digest.current_class}</div>}
+            </div>
+            <button onClick={onClose} style={{ border:'none', background:'rgba(239,68,68,0.18)', borderRadius:'10px', width:'34px', height:'34px', cursor:'pointer', fontSize:'20px', color:'#EF4444', flexShrink:0, zIndex:10, position:'relative', transition:'background .15s' }}>×</button>
+          </div>
+
+          {/* Stats row inside header */}
+          {d && (
+            <div style={{ display:'flex', gap:'10px', marginTop:'18px' }}>
+              <div style={{ flex:1, background:'rgba(255,255,255,0.08)', borderRadius:'12px', padding:'12px 14px', textAlign:'center' }}>
+                <div style={{ fontSize:'24px', fontWeight:800, color:'#E8A830', lineHeight:1 }}>{d.score}%</div>
+                <div style={{ fontSize:'10px', color:'rgba(253,248,240,0.45)', marginTop:'4px', textTransform:'uppercase' }}>Completion</div>
+              </div>
+              <div style={{ flex:1, background:'rgba(255,255,255,0.08)', borderRadius:'12px', padding:'12px 14px', textAlign:'center' }}>
+                <div style={{ fontSize:'20px', fontWeight:700, color:'#FDF8F0', lineHeight:1 }}>{takenAgo}d</div>
+                <div style={{ fontSize:'10px', color:'rgba(253,248,240,0.45)', marginTop:'4px', textTransform:'uppercase' }}>Since test</div>
+              </div>
+              {d.plan.mockTrend && (
+                <div style={{ flex:1.4, background:'rgba(255,255,255,0.08)', borderRadius:'12px', padding:'12px 14px' }}>
+                  <div style={{ display:'flex', alignItems:'flex-end', gap:'4px', height:'28px', marginBottom:'4px' }}>
+                    {d.plan.mockTrend.scores.map((s, i) => (
+                      <div key={i} title={String(s)} style={{ flex:1, borderRadius:'3px 3px 0 0', background: i === d.plan.mockTrend.scores.length-1 ? trendColor : 'rgba(255,255,255,0.25)', height:`${Math.round((s/maxMock)*28)}px`, transition:'height .5s ease' }}/>
+                    ))}
+                  </div>
+                  <div style={{ fontSize:'10px', color:'rgba(253,248,240,0.45)', textTransform:'uppercase', display:'flex', alignItems:'center', gap:'4px' }}>
+                    <span style={{ color:trendColor, fontWeight:700 }}>{trendIcon}</span> Mock trend
+                  </div>
+                </div>
+              )}
+              <div style={{ flex:1, background:'rgba(255,255,255,0.08)', borderRadius:'12px', padding:'12px 14px', textAlign:'center' }}>
+                <div style={{ fontSize:'14px', fontWeight:700, color:'#FDF8F0', lineHeight:1 }}>{d.digest.study_hours ? d.digest.study_hours+'h' : '—'}</div>
+                <div style={{ fontSize:'10px', color:'rgba(253,248,240,0.45)', marginTop:'4px', textTransform:'uppercase' }}>Daily hrs</div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Body */}
+        <div className="dm-body" style={{ padding:'16px 22px 20px', flex:1, overflowY:'scroll' }}>
+          {loading && <div style={{ textAlign:'center', padding:'40px', color:'#8896B3' }}>Loading...</div>}
+          {!loading && !d && <div style={{ textAlign:'center', padding:'40px', color:'#8896B3' }}>No diagnostic data.</div>}
+          {!loading && d && (
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1.3fr', gap:'20px' }}>
+
+              {/* LEFT COLUMN */}
+              <div>
+                {/* Key details grid */}
+                <div style={{ fontSize:'11px', fontWeight:700, color:'#8896B3', textTransform:'uppercase', letterSpacing:'.07em', marginBottom:'8px' }}>Student Details</div>
+                <div className="dm-card" style={{ animationDelay:'.05s', display:'grid', gridTemplateColumns:'1fr 1fr', background:'#fff', borderRadius:'14px', border:'1px solid rgba(15,31,61,0.08)', marginBottom:'14px', overflow:'hidden' }}>
+                  {[['Target score', d.digest.target_score],
+                    ['Target rank',  d.digest.target_rank],
+                    ['Has coaching', d.digest.has_coaching],
+                    ['Syllabus done',d.digest.syllabus_coverage],
+                    ['Reviews mistakes', d.digest.review_mistakes],
+                    ['Same-day revision',d.digest.same_day_revision],
+                  ].filter(([_,v]) => v).map(([label, value], i, arr) => (
+                    <div key={i} style={{ padding:'9px 13px', borderBottom: i < arr.length-2 ? '1px solid rgba(15,31,61,0.06)' : 'none', borderRight: i%2===0 ? '1px solid rgba(15,31,61,0.06)' : 'none' }}>
+                      <div style={{ fontSize:'10px', color:'#8896B3', textTransform:'uppercase', letterSpacing:'.05em', marginBottom:'3px' }}>{label}</div>
+                      <div style={{ fontSize:'12px', fontWeight:600, color:'#0F1F3D' }}>{value}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Weak topics */}
+                {d.digest.weak_topics && (
+                  <div className="dm-card" style={{ animationDelay:'.1s', background:'rgba(239,68,68,0.06)', border:'1px solid rgba(239,68,68,0.15)', borderRadius:'12px', padding:'11px 14px', marginBottom:'14px', display:'flex', gap:'9px', alignItems:'flex-start' }}>
+                    <span style={{ fontSize:'15px', flexShrink:0 }}>⚠️</span>
+                    <div>
+                      <div style={{ fontSize:'10px', fontWeight:700, color:'#DC2626', textTransform:'uppercase', letterSpacing:'.05em', marginBottom:'4px' }}>Weak / Dreaded Topics</div>
+                      <div style={{ fontSize:'12px', color:'#7F1D1D', lineHeight:1.6 }}>{d.digest.weak_topics}</div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Habit nudges */}
+                {d.plan.habits?.length > 0 && (
+                  <>
+                    <div style={{ fontSize:'11px', fontWeight:700, color:'#8896B3', textTransform:'uppercase', letterSpacing:'.07em', marginBottom:'8px' }}>Habits to Fix</div>
+                    <div className="dm-card" style={{ animationDelay:'.15s' }}>
+                      {d.plan.habits.map((h, i) => (
+                        <div key={i} style={{ display:'flex', gap:'10px', padding:'10px 13px', background:'#fff', borderRadius:'12px', marginBottom:'7px', border:'1px solid rgba(15,31,61,0.08)' }}>
+                          <span style={{ fontSize:'18px', flexShrink:0 }}>{h.icon}</span>
+                          <div>
+                            <div style={{ fontSize:'12px', fontWeight:700, color:'#0F1F3D', marginBottom:'3px' }}>{h.title}</div>
+                            <div style={{ fontSize:'11.5px', color:'#4A5568', lineHeight:1.55 }}>{h.body}</div>
+                            <span style={{ display:'inline-block', marginTop:'5px', fontSize:'10px', fontWeight:700, color:'#16A34A', background:'rgba(34,197,94,0.1)', padding:'2px 8px', borderRadius:'99px' }}>{h.impact}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* RIGHT COLUMN */}
+              <div>
+                {/* Subject priority cards */}
+                <div style={{ fontSize:'11px', fontWeight:700, color:'#8896B3', textTransform:'uppercase', letterSpacing:'.07em', marginBottom:'8px' }}>Subject Priority</div>
+                <div className="dm-card" style={{ animationDelay:'.08s', display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'8px', marginBottom:'14px' }}>
+                  {d.plan.subjectFocus.map((s, i) => (
+                    <div key={i} style={{ background:'#fff', border:'1px solid rgba(15,31,61,0.08)', borderRadius:'13px', padding:'13px 10px', textAlign:'center', borderTop:`3px solid ${UC[s.urgencyColor]||UC.gray}` }}>
+                      <div style={{ fontSize:'19px', fontWeight:800, color:'#0F1F3D', lineHeight:1, marginBottom:'4px' }}>{s.scorePct !== null ? s.scorePct+'%' : '—'}</div>
+                      <div style={{ fontSize:'11.5px', fontWeight:700, color:'#0F1F3D', marginBottom:'5px' }}>{s.subject}</div>
+                      <span style={{ fontSize:'10px', fontWeight:700, padding:'2px 7px', borderRadius:'99px', background:UB[s.urgencyColor]||UB.gray, color:UC[s.urgencyColor]||UC.gray }}>{s.urgency}</span>
+                      <div style={{ fontSize:'10px', color:'#8896B3', marginTop:'5px' }}>{s.hoursPerWeek}h/wk</div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* This week focus */}
+                <div style={{ fontSize:'11px', fontWeight:700, color:'#8896B3', textTransform:'uppercase', letterSpacing:'.07em', marginBottom:'8px' }}>This Week — Focus Topics</div>
+                <div className="dm-card" style={{ animationDelay:'.13s' }}>
+                  {d.plan.thisWeek.map((t, i) => (
+                    <div key={i} style={{ display:'flex', alignItems:'center', gap:'10px', padding:'10px 13px', background:'#fff', borderRadius:'11px', marginBottom:'7px', border:'1px solid rgba(15,31,61,0.07)', borderLeft:`4px solid ${UC[t.color]||UC.gray}` }}>
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <div style={{ fontSize:'12.5px', fontWeight:700, color:'#0F1F3D', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{t.topic}</div>
+                        <div style={{ fontSize:'10.5px', color:'#8896B3', marginTop:'2px', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{t.subject} · {t.approach}</div>
+                      </div>
+                      <div style={{ textAlign:'right', flexShrink:0 }}>
+                        <span style={{ fontSize:'10px', fontWeight:700, padding:'2px 7px', borderRadius:'99px', background:UB[t.color]||UB.gray, color:UC[t.color]||UC.gray, display:'block', marginBottom:'2px' }}>{t.label}</span>
+                        <span style={{ fontSize:'10px', color:'#8896B3' }}>{t.hours}h</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Footer */}
+                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginTop:'14px', paddingTop:'12px', borderTop:'1px solid rgba(15,31,61,0.07)' }}>
+                  <span style={{ fontSize:'11px', color:'#8896B3' }}>
+                    Submitted {new Date(d.takenAt).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' })} · Retake from {new Date(new Date(d.takenAt).getTime() + 90*86400000).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' })}
+                  </span>
+                  <button onClick={onReset} style={{ border:'1px solid rgba(239,68,68,0.3)', background:'rgba(239,68,68,0.06)', color:'#DC2626', borderRadius:'8px', padding:'5px 14px', fontSize:'12px', fontWeight:600, cursor:'pointer' }}>
+                    Reset Diagnostic Lock
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const chartData = [95, 112, 128, 142, 156, 184];
 const chartMax = Math.max(...chartData);
 const chartLabels = ['Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr'];
@@ -32,6 +212,23 @@ const fmtWeekRange = (weekStartDate) => {
 const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, students = [], onOpenMessage, isSuperAdmin, adminAccounts = [], onDeactivateAdmin, onReactivateAdmin, resources = [], onApproveResource, onDeclineResource, sentMessages = [], onSendMessage, parentReports = [], onApproveReport, onRejectReport, onSendReports, onApproveAllReports }) => {
   const firstName = profile?.name?.split(' ')[0] || 'there';
   const [studentsTab, setStudentsTab] = useState(0);
+  const [diagModal, setDiagModal]   = useState(null); // { studentName, data }
+  const [diagLoading, setDiagLoading] = useState(false);
+
+  const openDiagModal = async (userId, name) => {
+    setDiagLoading(true);
+    setDiagModal({ studentName: name, data: null });
+    const token = localStorage.getItem('token');
+    const adminId = profile?.id;
+    try {
+      const r = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/${adminId}/student/${userId}/diagnostic`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = r.ok ? await r.json() : null;
+      setDiagModal({ studentName: name, data });
+    } catch { setDiagModal({ studentName: name, data: null }); }
+    setDiagLoading(false);
+  };
   const [approvalsTab, setApprovalsTab] = useState(0);
   const [platformToggles, setPlatformToggles] = useState([true, true, true, true, true, true, true]);
   const [decliningId, setDecliningId] = useState(null);
@@ -92,6 +289,7 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
   ];
 
   return (
+    <>
     <div className="content">
 
       {/* ══ DASHBOARD ══ */}
@@ -380,7 +578,13 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
                     ? <span style={{ fontFamily: 'var(--fs)', color: 'var(--gold)', fontWeight: '700' }}>{s.lastScore}<span style={{ color: 'var(--text3)', fontWeight: '400' }}>/{s.lastTotalMarks}</span></span>
                     : <span style={{ color: 'var(--text3)', fontSize: '12px' }}>No scores yet</span>}
                 </td>
-                <td><button className="btn btn-ghost btn-sm" onClick={() => onOpenMessage(s.id)}>Message</button></td>
+                <td style={{ display:'flex', gap:'6px', alignItems:'center', flexWrap:'wrap' }}>
+                  {s.diagnosticScore !== null && s.diagnosticScore !== undefined
+                    ? <button className="btn btn-ghost btn-sm" onClick={() => openDiagModal(s.userId, s.name)}>Diagnostic</button>
+                    : <span style={{ fontSize:'11px', fontWeight:600, color:'#F97316', background:'rgba(249,115,22,0.1)', padding:'2px 9px', borderRadius:'99px', whiteSpace:'nowrap' }}>No Diagnostic</span>
+                  }
+                  <button className="btn btn-ghost btn-sm" onClick={() => onOpenMessage(s.id)}>Message</button>
+                </td>
               </tr>
             );
           };
@@ -405,7 +609,10 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
                       </div>
                     : <span style={{ fontSize: '12px', color: 'var(--text3)' }}>Pending</span>}
                 </td>
-                <td><button className="btn btn-ghost btn-sm" onClick={() => onOpenMessage(s.id)}>Message</button></td>
+                <td style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                  {diagDone && <button className="btn btn-ghost btn-sm" onClick={() => openDiagModal(s.userId, s.name)}>Diagnostic</button>}
+                  <button className="btn btn-ghost btn-sm" onClick={() => onOpenMessage(s.id)}>Message</button>
+                </td>
               </tr>
             );
           };
@@ -903,8 +1110,21 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
         })()}
       </div>
 
+      <DiagnosticModal modal={diagModal} loading={diagLoading} onClose={() => setDiagModal(null)}
+        onReset={async () => {
+          if (!diagModal?.data) return;
+          if (!window.confirm('Reset this student\'s diagnostic? They can retake immediately.')) return;
+          const token = localStorage.getItem('token');
+          const adminId = profile?.id;
+          const r = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/${adminId}/student/${diagModal.data._userId}/diagnostic`, {
+            method: 'DELETE', headers: { Authorization: `Bearer ${token}` },
+          });
+          if (r.ok) { setDiagModal(null); onShowToast?.('Diagnostic reset. Student can retake now.'); }
+        }}
+      />
     </div>
-  );
+    </>
+  )
 };
 
 export default AdminContent;
