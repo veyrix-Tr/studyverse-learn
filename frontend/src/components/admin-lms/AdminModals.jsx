@@ -10,8 +10,35 @@ const PermToggleRow = ({ label, defaultOn, last }) => {
   );
 };
 
-const AdminModals = ({ openModal, onClose, onShowToast, toast, students = [], messageStudentId = null, onSendMessage }) => {
+const AdminModals = ({ openModal, onClose, onShowToast, toast, students = [], messageStudentId = null, onSendMessage, userId, onFacultyAdded }) => {
   const isOpen = (id) => openModal === id ? ' open' : '';
+  const [newFaculty, setNewFaculty] = useState({ name: '', subject: '', qualification: '', department: 'Science' });
+  const [addingFaculty, setAddingFaculty] = useState(false);
+  const [createdCredentials, setCreatedCredentials] = useState(null);
+
+  const handleAddFaculty = async () => {
+    if (!newFaculty.name.trim() || !newFaculty.subject.trim()) {
+      onShowToast('Name and subject are required');
+      return;
+    }
+    setAddingFaculty(true);
+    const token = localStorage.getItem('token');
+    try {
+      const r = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/${userId}/faculty`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(newFaculty),
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error || 'Failed');
+      setCreatedCredentials(data.credentials);
+      onFacultyAdded?.({ ...data.faculty, subjects: [data.faculty.subject], sessionsPerWeek: 0, reportCount: 0, avgRating: null });
+      onShowToast(`${data.faculty.name} added successfully ✓`);
+    } catch (e) {
+      onShowToast('Failed to add faculty: ' + e.message);
+    }
+    setAddingFaculty(false);
+  };
 
   const [msgStudent, setMsgStudent] = useState('all');
   const [msgType, setMsgType] = useState('Announcement');
@@ -188,23 +215,53 @@ const AdminModals = ({ openModal, onClose, onShowToast, toast, students = [], me
       </div>
 
       {/* Add Faculty */}
-      <div className={`overlay${isOpen('add-faculty-modal')}`} id="add-faculty-modal" onClick={e => e.target.classList.contains('overlay') && onClose()}>
+      <div className={`overlay${isOpen('add-faculty-modal')}`} id="add-faculty-modal" onClick={e => { if (e.target.classList.contains('overlay')) { onClose(); setCreatedCredentials(null); setNewFaculty({ name:'', subject:'', qualification:'', department:'Science' }); }}}>
         <div className="modal">
-          <div className="mt">Add Faculty Member</div>
-          <div className="ms">Keep cohort size intentionally small. Only add when there's genuine capacity.</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-            <div className="fg"><label>Full Name</label><input className="fi" type="text" placeholder="Faculty name" /></div>
-            <div className="fg"><label>Phone</label><input className="fi" type="tel" placeholder="+91 XXXXX XXXXX" /></div>
-          </div>
-          <div className="fg"><label>Specialisation</label><input className="fi" type="text" placeholder="e.g. JEE Advanced — Physics & Mathematics" /></div>
-          <div className="fg"><label>Exams they can teach</label>
-            <select className="fi" multiple style={{ height: '80px' }}><option>JEE Mains</option><option>JEE Advanced</option><option>NEET</option></select>
-          </div>
-          <div className="fg"><label>Max students (suggested)</label><input className="fi" type="number" defaultValue="10" max="15" /></div>
-          <div className="ma">
-            <button className="btn btn-ghost btn-sm" onClick={onClose}>Cancel</button>
-            <button className="btn btn-gold btn-sm" onClick={() => { onClose(); onShowToast('Faculty added. Login credentials sent ✓'); }}>Add Faculty →</button>
-          </div>
+          {createdCredentials ? (
+            <>
+              <div className="mt">Faculty Added ✓</div>
+              <div className="ms">Share these login credentials with the faculty member. They can change their password after first login.</div>
+              <div style={{ background: 'var(--cream2)', border: '1px solid var(--b)', borderRadius: 'var(--r)', padding: '16px', marginBottom: '16px' }}>
+                <div style={{ marginBottom: '10px' }}>
+                  <div style={{ fontSize: '11px', color: 'var(--text3)', marginBottom: '3px' }}>EMAIL</div>
+                  <div style={{ fontSize: '13px', fontWeight: '600', fontFamily: 'monospace', userSelect: 'all' }}>{createdCredentials.email}</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '11px', color: 'var(--text3)', marginBottom: '3px' }}>PASSWORD</div>
+                  <div style={{ fontSize: '13px', fontWeight: '600', fontFamily: 'monospace', userSelect: 'all' }}>{createdCredentials.password}</div>
+                </div>
+              </div>
+              <div className="ma">
+                <button className="btn btn-gold btn-sm" onClick={() => {
+                  navigator.clipboard?.writeText(`Email: ${createdCredentials.email}\nPassword: ${createdCredentials.password}`);
+                  onShowToast('Credentials copied to clipboard ✓');
+                }}>Copy Credentials</button>
+                <button className="btn btn-ghost btn-sm" onClick={() => { onClose(); setCreatedCredentials(null); setNewFaculty({ name:'', subject:'', qualification:'', department:'Science' }); }}>Done</button>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="mt">Add Faculty Member</div>
+              <div className="ms">A faculty account will be created. Login credentials will be generated for you to share.</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div className="fg"><label>Full Name *</label><input className="fi" type="text" placeholder="Dr. Ananya Singh" value={newFaculty.name} onChange={e => setNewFaculty(p => ({ ...p, name: e.target.value }))} /></div>
+                <div className="fg"><label>Subject *</label>
+                  <select className="fi" value={newFaculty.subject} onChange={e => setNewFaculty(p => ({ ...p, subject: e.target.value }))}>
+                    <option value="">Select subject</option>
+                    <option>Physics</option><option>Chemistry</option><option>Mathematics</option><option>Biology</option><option>Maths</option>
+                  </select>
+                </div>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div className="fg"><label>Qualification</label><input className="fi" type="text" placeholder="Ph.D, M.Sc..." value={newFaculty.qualification} onChange={e => setNewFaculty(p => ({ ...p, qualification: e.target.value }))} /></div>
+                <div className="fg"><label>Department</label><input className="fi" type="text" placeholder="Science" value={newFaculty.department} onChange={e => setNewFaculty(p => ({ ...p, department: e.target.value }))} /></div>
+              </div>
+              <div className="ma">
+                <button className="btn btn-ghost btn-sm" onClick={onClose} disabled={addingFaculty}>Cancel</button>
+                <button className="btn btn-gold btn-sm" onClick={handleAddFaculty} disabled={addingFaculty}>{addingFaculty ? 'Creating…' : 'Add Faculty →'}</button>
+              </div>
+            </>
+          )}
         </div>
       </div>
 

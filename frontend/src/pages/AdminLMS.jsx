@@ -16,6 +16,7 @@ const AdminLMS = ({ expectedRole }) => {
   const [toast, setToast] = useState({ show: false, msg: '' });
   const [profile, setProfile] = useState(null);
   const [students, setStudents] = useState([]);
+  const [facultyList, setFacultyList] = useState([]);
   const [adminAccounts, setAdminAccounts] = useState([]);
   const [resources, setResources] = useState([]);
   const [sentMessages, setSentMessages] = useState([]);
@@ -60,6 +61,11 @@ const AdminLMS = ({ expectedRole }) => {
     fetch(`${import.meta.env.VITE_API_URL}/api/admin/${userId}/students`, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.ok ? r.json() : [])
       .then(data => { if (Array.isArray(data)) setStudents(data); })
+      .catch(() => {});
+
+    fetch(`${import.meta.env.VITE_API_URL}/api/admin/${userId}/faculty`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : [])
+      .then(data => { if (Array.isArray(data)) setFacultyList(data); })
       .catch(() => {});
 
     fetch(`${import.meta.env.VITE_API_URL}/api/admin/${userId}/resources`, { headers: { Authorization: `Bearer ${token}` } })
@@ -355,6 +361,7 @@ const AdminLMS = ({ expectedRole }) => {
         onShowToast={showToast}
         profile={profile}
         studentsCount={students.length}
+        facultyCount={facultyList.length}
         pendingApprovalsCount={resources.filter(r => r.status === 'pending').length}
         pendingReportsCount={parentReports.filter(r => r.status === 'submitted').length}
       />
@@ -372,6 +379,7 @@ const AdminLMS = ({ expectedRole }) => {
           onShowToast={showToast}
           profile={profile}
           students={students}
+          facultyList={facultyList}
           onOpenMessage={openMessage}
           isSuperAdmin={isSuperAdmin}
           adminAccounts={adminAccounts}
@@ -397,6 +405,8 @@ const AdminLMS = ({ expectedRole }) => {
         students={students}
         messageStudentId={messageStudentId}
         onSendMessage={sendMessage}
+        userId={userId}
+        onFacultyAdded={f => setFacultyList(prev => [...prev, f])}
       />
     </div>
   );

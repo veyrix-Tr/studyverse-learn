@@ -1,6 +1,6 @@
 import React from 'react';
 
-const AdminSidebar = ({ activePage, isSuperAdmin, onNav, onShowToast, profile, studentsCount = 0, pendingApprovalsCount = 0, pendingReportsCount = 0 }) => {
+const AdminSidebar = ({ activePage, isSuperAdmin, onNav, onShowToast, profile, studentsCount = 0, facultyCount = 0, pendingApprovalsCount = 0, pendingReportsCount = 0 }) => {
   const name = profile?.name || (isSuperAdmin ? 'Super Admin' : 'Admin');
   const initial = name.charAt(0).toUpperCase();
   const handleLogout = () => {
@@ -58,12 +58,14 @@ const AdminSidebar = ({ activePage, isSuperAdmin, onNav, onShowToast, profile, s
           Enrollment Pipeline
           <span className="nbadge nb-gold">3 New</span>
         </div>
-        <div className={niClass('revenue')} onClick={() => onNav('revenue')}>
-          <svg className="nic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
-          </svg>
-          Revenue
-        </div>
+        {isSuperAdmin && (
+          <div className={niClass('revenue')} onClick={() => onNav('revenue')}>
+            <svg className="nic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+            </svg>
+            Revenue
+          </div>
+        )}
       </div>
 
       <div className="nb">
@@ -81,7 +83,7 @@ const AdminSidebar = ({ activePage, isSuperAdmin, onNav, onShowToast, profile, s
             <circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 1 0-16 0"/>
           </svg>
           Faculty
-          <span className="nbadge nb-dim">3</span>
+          {facultyCount > 0 && <span className="nbadge nb-dim">{facultyCount}</span>}
         </div>
         <div className={niClass('assign')} onClick={() => onNav('assign')}>
           <svg className="nic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -108,6 +110,13 @@ const AdminSidebar = ({ activePage, isSuperAdmin, onNav, onShowToast, profile, s
           </svg>
           Parent Reports
           {pendingReportsCount > 0 && <span className="nbadge nb-red">{pendingReportsCount}</span>}
+        </div>
+        <div className={niClass('feedback')} onClick={() => onNav('feedback')}>
+          <svg className="nic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+            <line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="13" x2="13" y2="13"/>
+          </svg>
+          Feedback
         </div>
         <div className={niClass('messages')} onClick={() => onNav('messages')}>
           <svg className="nic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

@@ -41,7 +41,7 @@ const buildArc = (weeks, examTarget, W, H, cH) => {
   const nData = weeks ? weeks.length : 0, toPb = (pt) => `${Math.round(cH * (1 - pt.y / H))}px`;
   if (nData === 0) {
     const pts = arcPoints(4, W, H);
-    return { nodes: pts.map((pt, i) => ({ type: 'future', pb: toPb(pt), label: i === 0 ? 'Baseline<br><span style="font-size:10px;">—</span>' : i === 3 ? `Target<br><span style="font-size:10px;">${target}</span>` : '—' })), solidPath: `M ${pts[0].x.toFixed(1)} ${pts[0].y.toFixed(1)}`, dashedPath: ptsToPath(pts), fillPath: null };
+    return { nodes: pts.map((pt, i) => ({ type: 'future', pb: toPb(pt), label: i === 0 ? 'Baseline<br><span style="font-size:10px;">—</span>' : i === 3 ? `Target<br><span style="font-size:10px;">${target}</span>` : '·' })), solidPath: `M ${pts[0].x.toFixed(1)} ${pts[0].y.toFixed(1)}`, dashedPath: ptsToPath(pts), fillPath: null };
   }
   const nTotal = nData + 2, allPts = arcPoints(nTotal, W, H), last = weeks[nData - 1], currentM = toM(last.avgPct), near = Math.min(currentM + Math.round((target - currentM) * 0.5), target);
   const nodes = allPts.map((pt, i) => {
@@ -49,7 +49,7 @@ const buildArc = (weeks, examTarget, W, H, cH) => {
     if (i < nData) { const w = weeks[i], m = toM(w.avgPct); if (nData === 1) return { type: 'current', pb, label: `This Week<br><strong style="font-size:10px;">${m} marks</strong>` }; if (i === 0) return { type: 'done', pb, label: `Baseline<br><strong style="color:var(--gold);font-size:10px;">${m} marks</strong>` }; if (i === nData - 1) return { type: 'current', pb, label: `This Week<br><strong style="font-size:10px;">${m} marks</strong>` }; return { type: 'done', pb, label: `Wk ${w.weekNumber}<br><strong style="color:var(--gold);font-size:10px;">${m} marks</strong>` }; }
     if (i === nTotal - 2) return { type: 'future', pb, label: `Near Goal<br><span style="font-size:10px;">~${near}</span>` };
     if (i === nTotal - 1) return { type: 'future', pb, label: `Target<br><span style="font-size:10px;">${target}</span>` };
-    return { type: 'future', pb, label: '—' };
+    return { type: 'future', pb, label: '·' };
   });
   const solidPts = allPts.slice(0, nData), dashedPts = allPts.slice(nData - 1), solidPath = ptsToPath(solidPts), dashedPath = ptsToPath(dashedPts), last0 = solidPts[solidPts.length - 1];
   const fillPath = nData > 1 ? solidPath + ` L ${last0.x.toFixed(1)} ${H} L ${solidPts[0].x.toFixed(1)} ${H} Z` : null;
@@ -228,6 +228,7 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
 
   const [openWeeks, setOpenWeeks] = useState(new Set([0]));
   const toggleWeek = (i) => setOpenWeeks(prev => { const n = new Set(prev); n.has(i) ? n.delete(i) : n.add(i); return n; });
+  const [showDiagSummary, setShowDiagSummary] = useState(false);
 
   // Toggle topic completion for current week
   const toggleTopic = async (topicName, subject) => {
@@ -331,7 +332,7 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
     return Math.round(rated.reduce((s, k) => s + ratingToPct(ratings[k]), 0) / rated.length);
   };
   const pctMeta = (pct) => {
-    if (pct === null) return { color: 'var(--text3)', barCls: 'pb-navy', note: '—', tag: '—', tagCls: 'ok-tag' };
+    if (pct === null) return { color: 'var(--text3)', barCls: 'pb-navy', note: 'Pending', tag: 'Pending', tagCls: 'ok-tag' };
     if (pct <= 40) return { color: 'var(--red)', barCls: 'pb-red', note: 'Critical Gap', tag: 'Weak', tagCls: 'weak-tag' };
     if (pct <= 55) return { color: 'var(--orange)', barCls: 'pb-orange', note: 'Needs Work', tag: 'Avg', tagCls: 'ok-tag' };
     if (pct <= 70) return { color: 'var(--gold)', barCls: 'pb-gold', note: 'Average', tag: 'Avg', tagCls: 'ok-tag' };
@@ -386,17 +387,17 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
           </div>
           <div className="stat sa-green">
             <div className="stat-l">Habit Streak</div>
-            <div className="stat-v">{streak > 0 ? `🔥 ${streak}` : alreadyCheckedIn ? `${habitCount}/5` : '—'}</div>
+            <div className="stat-v">{streak > 0 ? `🔥 ${streak}` : alreadyCheckedIn ? `${habitCount}/5` : '0/5'}</div>
             <div className="stat-n up" style={{ cursor: 'pointer' }} onClick={() => onNav('habits')}>{streak > 0 ? `${streak}-day streak` : alreadyCheckedIn ? 'Done today ✓' : 'Check in today'}</div>
           </div>
           <div className="stat sa-navy">
             <div className="stat-l">Topics Identified</div>
-            <div className="stat-v">{diagDone ? Object.keys(ratings).length : '—'}</div>
+            <div className="stat-v">{diagDone ? Object.keys(ratings).length : 0}</div>
             <div className="stat-n neu">{diagDone ? 'topics rated' : 'After diagnostic'}</div>
           </div>
           <div className="stat sa-red">
             <div className="stat-l">Weak Areas</div>
-            <div className="stat-v">{diagDone ? Object.values(ratings).filter(v => v <= 2).length : '—'}</div>
+            <div className="stat-v">{diagDone ? Object.values(ratings).filter(v => v <= 2).length : 0}</div>
             <div className="stat-n neu">{diagDone ? 'need focus' : 'After diagnostic'}</div>
           </div>
         </div>
@@ -451,81 +452,205 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
       {/* ══════════ DIAGNOSTIC ══════════ */}
       <div className={p('diagnostic')}>
         {diagDone ? (
-          <div style={{ maxWidth: '520px', margin: '40px auto', textAlign: 'center', padding: '0 16px' }}>
-            <div style={{ width: '64px', height: '64px', borderRadius: '18px', background: 'linear-gradient(135deg, #0F1F3D 0%, #1C2E50 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#22C55E" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="20 6 9 17 4 12"/>
-              </svg>
+          <div style={{ maxWidth: '680px', margin: '0 auto', padding: '32px 16px' }}>
+
+            {/* Header card — dark navy */}
+            <div style={{ background: 'linear-gradient(135deg, #0F1F3D 0%, #1C2E50 100%)', borderRadius: '20px', padding: '28px 28px 24px', marginBottom: '20px', position: 'relative', overflow: 'hidden' }}>
+              <div style={{ position: 'absolute', top: -40, right: -40, width: 140, height: 140, borderRadius: '50%', background: 'rgba(232,168,48,0.07)', pointerEvents: 'none' }}/>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '18px' }}>
+                <div style={{ width: '48px', height: '48px', borderRadius: '14px', background: 'rgba(34,197,94,0.15)', border: '1.5px solid rgba(34,197,94,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#22C55E" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                </div>
+                <div>
+                  <div style={{ fontFamily: 'var(--fs)', fontSize: '20px', fontWeight: 700, color: '#FDF8F0' }}>Diagnostic Completed</div>
+                  <div style={{ fontSize: '12px', color: 'rgba(253,248,240,0.5)', marginTop: '3px' }}>
+                    Submitted {new Date(profile?.studentProfile?.diagnosticTakenAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
+                  </div>
+                </div>
+                <button className="btn btn-gold" style={{ marginLeft: 'auto', flexShrink: 0 }} onClick={() => onNav('guidance')}>View Plan →</button>
+              </div>
+
+              {/* Retake countdown */}
+              {retakeSecs > 0 && (
+                <div>
+                  <div style={{ fontSize: '10px', color: 'rgba(253,248,240,0.4)', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: '8px' }}>Next retake in</div>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    {[{v: Math.floor(retakeSecs/86400), l:'days'},{v: Math.floor((retakeSecs%86400)/3600), l:'hrs'},{v: Math.floor((retakeSecs%3600)/60), l:'min'},{v: retakeSecs%60, l:'sec'}].map(({v,l}) => (
+                      <div key={l} style={{ background: 'rgba(255,255,255,0.07)', borderRadius: '10px', padding: '8px 12px', textAlign: 'center', minWidth: '52px' }}>
+                        <div style={{ fontFamily: 'var(--fs)', fontSize: '18px', fontWeight: 700, color: '#FDF8F0', lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{String(v).padStart(2,'0')}</div>
+                        <div style={{ fontSize: '9px', color: 'rgba(253,248,240,0.4)', marginTop: '3px', textTransform: 'uppercase' }}>{l}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
-            <div style={{ fontFamily: 'var(--fs)', fontSize: '22px', fontWeight: 700, color: 'var(--text)', marginBottom: '10px' }}>Diagnostic completed</div>
-            {(() => {
-              const takenAt = new Date(profile?.studentProfile?.diagnosticTakenAt);
-              const retakeAt = new Date(takenAt.getTime() + 3 * 30 * 24 * 60 * 60 * 1000);
+
+            {/* Toggle summary card */}
+            {studyPlan && (
+              <div
+                onClick={() => setShowDiagSummary(v => !v)}
+                style={{ background: 'var(--cream)', border: '1px solid var(--b)', borderRadius: '14px', padding: '14px 18px', marginBottom: showDiagSummary ? '16px' : '0', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px', boxShadow: 'var(--sh)', transition: 'border-color .15s', userSelect: 'none' }}
+                onMouseOver={e => e.currentTarget.style.borderColor = 'var(--gold)'}
+                onMouseOut={e => e.currentTarget.style.borderColor = 'var(--b)'}
+              >
+                <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'linear-gradient(135deg, #0F1F3D, #1C2E50)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#E8A830" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+                  </svg>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: '13.5px', fontWeight: 700, color: 'var(--text)' }}>View Diagnostic Summary</div>
+                  <div style={{ fontSize: '11.5px', color: 'var(--text3)', marginTop: '2px' }}>Scores, priorities, this week's topics, habits</div>
+                </div>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" strokeWidth="2" style={{ flexShrink: 0, transform: showDiagSummary ? 'rotate(180deg)' : '', transition: 'transform .2s' }}>
+                  <path d="M6 9l6 6 6-6"/>
+                </svg>
+              </div>
+            )}
+
+            {studyPlan && showDiagSummary && (() => {
+              const CLR = { red:'#EF4444', orange:'#F97316', yellow:'#D97706', green:'#22C55E', gray:'#94A3B8' };
+              const CLB = { red:'rgba(239,68,68,0.1)', orange:'rgba(249,115,22,0.1)', yellow:'rgba(245,158,11,0.1)', green:'rgba(34,197,94,0.1)', gray:'rgba(148,163,184,0.1)' };
+              const trendColor = studyPlan.mockTrend?.trend === 'improving' ? '#16A34A' : studyPlan.mockTrend?.trend === 'declining' ? '#DC2626' : '#8896B3';
+              const maxMock = studyPlan.mockTrend ? Math.max(...studyPlan.mockTrend.scores) : 1;
               return (
                 <>
-                  <div style={{ fontSize: '13.5px', color: 'var(--text2)', lineHeight: 1.75, marginBottom: '8px' }}>
-                    Submitted on <strong>{takenAt.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</strong>.
-                  </div>
-                  <div style={{ fontSize: '13px', color: 'var(--text3)', marginBottom: '28px' }}>
-                    Next retake available from <strong>{retakeAt.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</strong>.
-                  </div>
-                  {/* Live countdown to retake */}
-                  {retakeSecs > 0 && (
-                    <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', margin: '18px 0', flexWrap: 'wrap' }}>
-                      {[{v: Math.floor(retakeSecs/86400), l:'days'},{v: Math.floor((retakeSecs%86400)/3600), l:'hrs'},{v: Math.floor((retakeSecs%3600)/60), l:'min'},{v: retakeSecs%60, l:'sec'}].map(({v,l}) => (
-                        <div key={l} style={{ background: 'var(--cream)', border: '1px solid var(--b)', borderRadius: '10px', padding: '10px 14px', textAlign: 'center', minWidth: '58px' }}>
-                          <div style={{ fontFamily: 'var(--fs)', fontSize: '20px', fontWeight: 700, color: 'var(--text)', lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{String(v).padStart(2,'0')}</div>
-                          <div style={{ fontSize: '10px', color: 'var(--text3)', marginTop: '4px', textTransform: 'uppercase', letterSpacing: '.05em' }}>{l}</div>
+                <style dangerouslySetInnerHTML={{ __html:
+                  '@keyframes dsBackdrop{from{opacity:0}to{opacity:1}}' +
+                  '@keyframes dsCard{from{opacity:0;transform:translateY(40px) scale(0.95)}to{opacity:1;transform:translateY(0) scale(1)}}' +
+                  '@keyframes dsStat{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}' +
+                  '@keyframes dsSubj{from{opacity:0;transform:translateY(20px) scale(0.92)}to{opacity:1;transform:translateY(0) scale(1)}}' +
+                  '@keyframes dsRight{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}' +
+                  '@keyframes dsLeft{from{opacity:0;transform:translateX(-20px)}to{opacity:1;transform:translateX(0)}}' +
+                  '@keyframes dsBarGrow{from{transform:scaleY(0)}to{transform:scaleY(1)}}' +
+                  '.ds-bar{transform-origin:bottom;animation:dsBarGrow .6s cubic-bezier(0.34,1.4,0.64,1) both}' +
+                  '.ds-week-item{transition:transform .18s,box-shadow .18s}' +
+                  '.ds-week-item:hover{transform:translateX(4px);box-shadow:0 4px 12px rgba(15,31,61,0.1)}' +
+                  '.ds-habit-card{transition:transform .18s,box-shadow .18s}' +
+                  '.ds-habit-card:hover{transform:translateY(-2px);box-shadow:0 6px 16px rgba(15,31,61,0.1)}'
+                }} />
+                <div onClick={e => { if (e.target === e.currentTarget) setShowDiagSummary(false); }}
+                  style={{ position:'fixed', inset:0, background:'rgba(15,31,61,0.6)', backdropFilter:'blur(8px)', zIndex:200, display:'flex', alignItems:'center', justifyContent:'center', padding:'32px 40px', animation:'dsBackdrop .25s ease' }}>
+                <div style={{ background:'#FDF8F0', borderRadius:'24px', border:'1px solid rgba(15,31,61,0.08)', boxShadow:'0 32px 80px rgba(15,31,61,0.28), 0 4px 16px rgba(15,31,61,0.08)', overflow:'hidden', width:'860px', maxWidth:'100%', maxHeight:'100%', overflowY:'auto', animation:'dsCard .42s cubic-bezier(0.34,1.4,0.64,1)' }}>
+
+                  {/* Dark header — same as admin modal */}
+                  <div style={{ background: 'linear-gradient(135deg,#0F1F3D 0%,#1C2E50 100%)', padding: '18px 24px', position: 'relative', overflow: 'hidden' }}>
+                    <div style={{ position:'absolute', top:-40, right:-40, width:160, height:160, borderRadius:'50%', background:'rgba(232,168,48,0.07)', pointerEvents:'none' }}/>
+                    <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom: studyPlan.mockTrend ? '14px' : '0' }}>
+                      <div>
+                        <div style={{ fontSize:'11px', color:'rgba(253,248,240,0.45)', textTransform:'uppercase', letterSpacing:'.1em', marginBottom:'4px' }}>Diagnostic Report</div>
+                        <div style={{ fontFamily:'var(--fs)', fontSize:'18px', fontWeight:700, color:'#FDF8F0' }}>{firstName}'s Results</div>
+                      </div>
+                      <button onClick={() => setShowDiagSummary(false)} style={{ border:'none', background:'rgba(255,255,255,0.1)', borderRadius:'8px', width:'30px', height:'30px', cursor:'pointer', fontSize:'16px', color:'rgba(253,248,240,0.7)' }}>×</button>
+                    </div>
+
+                    {/* Stats in header — stagger in */}
+                    <div style={{ display:'flex', gap:'10px', marginTop:'12px' }}>
+                      {[
+                        { val: studyPlan.overview.daysToExam, lbl: 'Days left', color: '#E8A830' },
+                        { val: studyPlan.overview.studyHoursPerDay+'h', lbl: 'Daily', color: '#FDF8F0' },
+                      ].map(({ val, lbl, color }, i) => (
+                        <div key={lbl} style={{ flex:1, background:'rgba(255,255,255,0.08)', borderRadius:'12px', padding:'10px 12px', textAlign:'center', animation:`dsStat .4s cubic-bezier(0.34,1.4,0.64,1) ${0.15+i*0.07}s both` }}>
+                          <div style={{ fontSize:'20px', fontWeight:800, color, lineHeight:1 }}>{val}</div>
+                          <div style={{ fontSize:'10px', color:'rgba(253,248,240,0.45)', marginTop:'3px', textTransform:'uppercase' }}>{lbl}</div>
                         </div>
                       ))}
+                      {studyPlan.mockTrend && (
+                        <div style={{ flex:1.4, background:'rgba(255,255,255,0.08)', borderRadius:'12px', padding:'10px 12px', animation:'dsStat .4s cubic-bezier(0.34,1.4,0.64,1) .29s both' }}>
+                          <div style={{ display:'flex', alignItems:'flex-end', gap:'3px', height:'24px', marginBottom:'3px' }}>
+                            {studyPlan.mockTrend.scores.map((s, i) => (
+                              <div key={i} className="ds-bar" style={{ flex:1, borderRadius:'3px 3px 0 0', background: i === studyPlan.mockTrend.scores.length-1 ? trendColor : 'rgba(255,255,255,0.25)', height:`${Math.round((s/maxMock)*24)}px`, animationDelay:`${0.4+i*0.08}s` }}/>
+                            ))}
+                          </div>
+                          <div style={{ fontSize:'10px', color:'rgba(253,248,240,0.45)', textTransform:'uppercase', display:'flex', alignItems:'center', gap:'3px' }}>
+                            <span style={{ color:trendColor, fontWeight:700 }}>{studyPlan.mockTrend.trend === 'improving' ? '↑' : studyPlan.mockTrend.trend === 'declining' ? '↓' : '→'}</span> Mock trend
+                          </div>
+                        </div>
+                      )}
+                      {studyPlan.overview.targetScore && (
+                        <div style={{ flex:1, background:'rgba(255,255,255,0.08)', borderRadius:'12px', padding:'10px 12px', textAlign:'center' }}>
+                          <div style={{ fontSize:'18px', fontWeight:800, color:'#FDF8F0', lineHeight:1 }}>{studyPlan.overview.targetScore}</div>
+                          <div style={{ fontSize:'10px', color:'rgba(253,248,240,0.45)', marginTop:'3px', textTransform:'uppercase' }}>Target</div>
+                        </div>
+                      )}
                     </div>
-                  )}
+                  </div>
+
+                  {/* 2-column body */}
+                  <div style={{ padding:'16px 20px', display:'grid', gridTemplateColumns:'1fr 1.2fr', gap:'18px' }}>
+
+                    {/* LEFT — habits + maintain */}
+                    <div style={{ animation:'dsLeft .45s cubic-bezier(0.4,0,0.2,1) .2s both' }}>
+                      <div style={{ fontSize:'10px', fontWeight:700, color:'#8896B3', textTransform:'uppercase', letterSpacing:'.07em', marginBottom:'8px' }}>Habits to Fix</div>
+                      {studyPlan.habits.length > 0 ? studyPlan.habits.map((h, i) => (
+                        <div key={i} className="ds-habit-card" style={{ display:'flex', gap:'10px', padding:'10px 12px', background:'#fff', borderRadius:'12px', marginBottom:'7px', border:'1px solid rgba(15,31,61,0.08)', animation:`dsLeft .35s ease ${0.3+i*0.08}s both` }}>
+                          <span style={{ fontSize:'18px', flexShrink:0 }}>{h.icon}</span>
+                          <div>
+                            <div style={{ fontSize:'12px', fontWeight:700, color:'#0F1F3D', marginBottom:'3px' }}>{h.title}</div>
+                            <div style={{ fontSize:'11px', color:'#4A5568', lineHeight:1.5 }}>{h.body}</div>
+                            <span style={{ display:'inline-block', marginTop:'5px', fontSize:'10px', fontWeight:700, color:'#16A34A', background:'rgba(34,197,94,0.1)', padding:'2px 8px', borderRadius:'99px' }}>{h.impact}</span>
+                          </div>
+                        </div>
+                      )) : (
+                        <div style={{ fontSize:'12px', color:'#8896B3', padding:'12px', background:'#fff', borderRadius:'12px', border:'1px solid rgba(15,31,61,0.08)' }}>No habit issues detected — great discipline!</div>
+                      )}
+
+                      {studyPlan.maintainTopics?.length > 0 && (
+                        <>
+                          <div style={{ fontSize:'10px', fontWeight:700, color:'#8896B3', textTransform:'uppercase', letterSpacing:'.07em', margin:'12px 0 8px' }}>Keep These Warm</div>
+                          <div style={{ background:'#fff', borderRadius:'12px', padding:'4px 12px', border:'1px solid rgba(15,31,61,0.08)' }}>
+                            {studyPlan.maintainTopics.map((t, i) => (
+                              <div key={i} style={{ display:'flex', alignItems:'center', gap:'8px', padding:'7px 0', borderBottom: i < studyPlan.maintainTopics.length-1 ? '1px solid rgba(15,31,61,0.05)' : 'none' }}>
+                                <div style={{ width:7, height:7, borderRadius:'50%', background:'#22C55E', flexShrink:0 }}/>
+                                <div style={{ flex:1, fontSize:'12px', color:'#0F1F3D', fontWeight:500 }}>{t.topic}</div>
+                                <span style={{ fontSize:'10px', color:'#16A34A', background:'rgba(34,197,94,0.08)', padding:'2px 7px', borderRadius:'99px', fontWeight:600 }}>30m/3d</span>
+                              </div>
+                            ))}
+                          </div>
+                        </>
+                      )}
+                    </div>
+
+                    {/* RIGHT — subject cards + this week */}
+                    <div style={{ animation:'dsRight .45s cubic-bezier(0.4,0,0.2,1) .25s both' }}>
+                      <div style={{ fontSize:'10px', fontWeight:700, color:'#8896B3', textTransform:'uppercase', letterSpacing:'.07em', marginBottom:'8px' }}>Subject Priority</div>
+                      <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'8px', marginBottom:'14px' }}>
+                        {studyPlan.subjectFocus.map((s, i) => (
+                          <div key={i} style={{ background:'#fff', border:'1px solid rgba(15,31,61,0.08)', borderRadius:'13px', padding:'12px 8px', textAlign:'center', borderTop:`3px solid ${CLR[s.urgencyColor]||CLR.gray}`, animation:`dsSubj .45s cubic-bezier(0.34,1.4,0.64,1) ${0.3+i*0.08}s both` }}>
+                            <div style={{ fontSize:'18px', fontWeight:800, color:'#0F1F3D', lineHeight:1, marginBottom:'4px' }}>{s.scorePct !== null ? s.scorePct+'%' : 'N/A'}</div>
+                            <div style={{ fontSize:'11px', fontWeight:700, color:'#0F1F3D', marginBottom:'5px' }}>{s.subject}</div>
+                            <span style={{ fontSize:'10px', fontWeight:700, padding:'2px 7px', borderRadius:'99px', background:CLB[s.urgencyColor]||CLB.gray, color:CLR[s.urgencyColor]||CLR.gray }}>{s.urgency}</span>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div style={{ fontSize:'10px', fontWeight:700, color:'#8896B3', textTransform:'uppercase', letterSpacing:'.07em', marginBottom:'8px' }}>This Week — Focus</div>
+                      {studyPlan.thisWeek.map((t, i) => (
+                        <div key={i} className="ds-week-item" style={{ display:'flex', alignItems:'center', gap:'10px', padding:'9px 12px', background:'#fff', borderRadius:'10px', marginBottom:'6px', border:'1px solid rgba(15,31,61,0.07)', borderLeft:`3px solid ${CLR[t.color]||CLR.gray}`, animation:`dsRight .35s ease ${0.4+i*0.06}s both` }}>
+                          <div style={{ flex:1, minWidth:0 }}>
+                            <div style={{ fontSize:'12px', fontWeight:700, color:'#0F1F3D', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{t.topic}</div>
+                            <div style={{ fontSize:'10px', color:'#8896B3', marginTop:'1px' }}>{t.subject}</div>
+                          </div>
+                          <div style={{ textAlign:'right', flexShrink:0 }}>
+                            <span style={{ fontSize:'10px', fontWeight:700, padding:'2px 7px', borderRadius:'99px', background:CLB[t.color]||CLB.gray, color:CLR[t.color]||CLR.gray, display:'block', marginBottom:'2px' }}>{t.label}</span>
+                            <span style={{ fontSize:'10px', color:'#8896B3' }}>{t.hours}h</span>
+                          </div>
+                        </div>
+                      ))}
+
+                      <button className="btn btn-gold" style={{ width:'100%', justifyContent:'center', marginTop:'12px' }} onClick={() => onNav('guidance')}>
+                        Open Full Study Plan →
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                </div>
                 </>
               );
             })()}
-            <button className="btn btn-gold" style={{ justifyContent: 'center' }} onClick={() => onNav('guidance')}>
-              View Your Study Plan →
-            </button>
-
-            {/* Diagnostic summary from already-fetched studyPlan */}
-            {studyPlan && (
-              <div style={{ marginTop: '28px', textAlign: 'left', maxWidth: '520px', margin: '28px auto 0' }}>
-                <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: '12px', textAlign: 'center' }}>Your Diagnostic Summary</div>
-                {/* Subject scores */}
-                <div style={{ display: 'flex', gap: '10px', marginBottom: '12px' }}>
-                  {studyPlan.subjectFocus.map((s, i) => {
-                    const clr = { red:'#EF4444', orange:'#F97316', yellow:'#D97706', green:'#22C55E', gray:'#94A3B8' };
-                    return (
-                      <div key={i} style={{ flex: 1, background: 'var(--cream)', border: '1px solid var(--b)', borderRadius: '12px', padding: '12px 10px', textAlign: 'center', borderTop: `3px solid ${clr[s.urgencyColor]||clr.gray}` }}>
-                        <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text)', lineHeight: 1 }}>{s.scorePct !== null ? s.scorePct+'%' : '—'}</div>
-                        <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text)', margin: '4px 0' }}>{s.subject}</div>
-                        <span style={{ fontSize: '10px', fontWeight: 700, padding: '1px 7px', borderRadius: '99px', background: `${clr[s.urgencyColor]||clr.gray}18`, color: clr[s.urgencyColor]||clr.gray }}>{s.urgency}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-                {/* This week top 2 */}
-                {studyPlan.thisWeek.slice(0, 2).map((t, i) => {
-                  const clr = { red:'#EF4444', orange:'#F97316', yellow:'#D97706', green:'#22C55E', gray:'#94A3B8' };
-                  return (
-                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '9px 13px', background: 'var(--cream)', border: '1px solid var(--b)', borderRadius: '10px', marginBottom: '7px', borderLeft: `3px solid ${clr[t.color]||clr.gray}` }}>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: '12.5px', fontWeight: 700, color: 'var(--text)' }}>{t.topic}</div>
-                        <div style={{ fontSize: '11px', color: 'var(--text3)', marginTop: '1px' }}>{t.subject}</div>
-                      </div>
-                      <span style={{ fontSize: '10px', fontWeight: 700, color: clr[t.color]||clr.gray }}>{t.label}</span>
-                    </div>
-                  );
-                })}
-                {studyPlan.overview.targetScore && (
-                  <div style={{ textAlign: 'center', fontSize: '12px', color: 'var(--text3)', marginTop: '8px' }}>
-                    Target: <strong style={{ color: 'var(--text)' }}>{studyPlan.overview.targetScore} marks</strong>
-                    {studyPlan.overview.targetRank && <> · <strong style={{ color: 'var(--text)' }}>{studyPlan.overview.targetRank}</strong></>}
-                  </div>
-                )}
-              </div>
-            )}
           </div>
+
         ) : (
           <DiagnosticForm profile={profile} onComplete={() => setDiagDone(true)} />
         )}
@@ -557,7 +682,7 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
                   <div className="tms-icon">{subj.icon}</div>
                   <div className="tms-name">{subj.name}</div>
                   <div className="pbar" style={{ width: '120px', flexShrink: 0 }}><div className={`pbar-inner ${subj.raw !== null ? sm.barCls : 'pb-navy'}`} style={{ width: `${subj.raw ?? 0}%` }}></div></div>
-                  <div className="tms-score" style={{ color: sm.color, width: '40px', textAlign: 'right' }}>{subj.raw !== null ? `${subj.raw}%` : '—'}</div>
+                  <div className="tms-score" style={{ color: sm.color, width: '40px', textAlign: 'right' }}>{subj.raw !== null ? `${subj.raw}%` : 'N/A'}</div>
                   <svg className="tms-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ transform: openSubj.has(subj.key) ? 'rotate(180deg)' : '' }}><path d="M6 9l6 6 6-6"/></svg>
                 </div>
                 <div className={`tms-body${openSubj.has(subj.key) ? ' open' : ''}`}>
@@ -668,7 +793,7 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
                             style={{ '--arc-len': circ - dash }}
                           />
                         </svg>
-                        <div className="sp-subj-arc-val">{s.scorePct !== null ? `${Math.round(s.scorePct)}%` : '—'}</div>
+                        <div className="sp-subj-arc-val">{s.scorePct !== null ? `${Math.round(s.scorePct)}%` : 'N/A'}</div>
                       </div>
                       <div className="sp-subj-card-name">{s.subject}</div>
                       <span className="sp-subj-card-badge" style={{ background: bgColor, color }}>{s.urgency}</span>
@@ -1309,15 +1434,15 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
                   </div>
                   <div className="journey-exam">
                     <div className="journey-exam-name">{examTarget}</div>
-                    <div className="journey-exam-days">{daysRemaining ?? '—'}</div>
+                    <div className="journey-exam-days">{daysRemaining ?? 'TBD'}</div>
                     <div className="journey-exam-label">days remaining</div>
                   </div>
                 </div>
                 <ArcTrack height={140} viewBox="0 0 800 130" solidPath={arc.solidPath} dashedPath={arc.dashedPath} fillPath={arc.fillPath} nodes={arc.nodes} />
                 <ScoreDeltas items={[
-                  { label: 'Started At (Week 1)', val: baselineMarks ?? '—', valClass: 'white', change: first ? new Date(first.testDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'No data', neutral: true },
-                  { label: 'Current Score', val: currentMarks ?? '—', valClass: 'gold', change: improvement !== null ? `+${improvement} marks in ${weeks.length} week${weeks.length !== 1 ? 's' : ''}` : 'No tests yet' },
-                  { label: 'Target', val: targetMarks, valClass: 'white', change: toGo !== null ? `${toGo} marks to go` : '—', changeStyle: { color: 'var(--gold)' } },
+                  { label: 'Started At (Week 1)', val: baselineMarks ?? 'Pending', valClass: 'white', change: first ? new Date(first.testDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'No data', neutral: true },
+                  { label: 'Current Score', val: currentMarks ?? 'Pending', valClass: 'gold', change: improvement !== null ? `+${improvement} marks in ${weeks.length} week${weeks.length !== 1 ? 's' : ''}` : 'No tests yet' },
+                  { label: 'Target', val: targetMarks, valClass: 'white', change: toGo !== null ? `${toGo} marks to go` : 'Set target', changeStyle: { color: 'var(--gold)' } },
                 ]} />
               </div>
               <div className="sh mb" style={{ marginBottom: '16px' }}>

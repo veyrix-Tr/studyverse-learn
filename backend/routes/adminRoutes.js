@@ -38,6 +38,11 @@ router.get('/students', requireAuth, async (req, res) => {
       include: {
         user: { select: { id: true, name: true } },
         weeklyScores: { orderBy: { weekNumber: 'asc' } },
+        parentFeedback: {
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+          select: { rating: true, comment: true, createdAt: true },
+        },
       },
       orderBy: { user: { name: 'asc' } },
     });
@@ -76,6 +81,7 @@ router.get('/students', requireAuth, async (req, res) => {
         diagnosticTakenAt: s.diagnosticTakenAt,
         facultyName,
         lastWeek, lastScore, lastTotalMarks,
+        latestFeedback: s.parentFeedback[0] || null,
       };
     }));
 
@@ -83,6 +89,111 @@ router.get('/students', requireAuth, async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to fetch students' });
+  }
+});
+
+// GET /api/admin/faculty — list all faculty with session stats and ratings
+router.get('/faculty', requireAuth, async (req, res) => {
+  try {
+    const fourWeeksAgo = new Date(Date.now() - 28 * 86400000);
+    const faculty = await prisma.facultyProfile.findMany({
+      include: {
+        user: { select: { id: true, name: true, email: true } },
+        sessions: {
+          select: { id: true, subject: true, grade: true, scheduledAt: true },
+        },
+        weeklyReports: {
+          select: { overallRating: true },
+          orderBy: { createdAt: 'desc' },
+          take: 20,
+        },
+      },
+      orderBy: { user: { name: 'asc' } },
+    });
+
+    const result = faculty.map(f => {
+      const ratings = f.weeklyReports.map(r => r.overallRating).filter(Boolean);
+      const avgRating = ratings.length
+        ? (ratings.reduce((a, b) => a + b, 0) / ratings.length).toFixed(1)
+        : null;
+      const recentSessions = f.sessions.filter(s => new Date(s.scheduledAt) >= fourWeeksAgo);
+      const sessionsPerWeek = Math.round(recentSessions.length / 4) || 0;
+      const uniqueSubjects = [...new Set(f.sessions.map(s => s.subject))];
+      return {
+        id: f.id,
+        userId: f.userId,
+        name: f.user.name,
+        email: f.user.email,
+        subject: f.subject,
+        department: f.department,
+        qualification: f.qualification,
+        subjects: uniqueSubjects.length > 0 ? uniqueSubjects : [f.subject].filter(Boolean),
+        sessionsPerWeek,
+        totalSessions: f.sessions.length,
+        avgRating,
+        reportCount: f.weeklyReports.length,
+      };
+    });
+
+    res.json(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch faculty' });
+  }
+});
+
+// POST /api/admin/faculty — create a new faculty member
+router.post('/faculty', requireAuth, async (req, res) => {
+  try {
+    const { name, subject, qualification, department } = req.body;
+    if (!name || !subject) return res.status(400).json({ error: 'name and subject required' });
+
+    // Auto-generate email and password
+    const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '.').replace(/^\.+|\.+$/g, '');
+    const baseEmail = `${slug}@studyverse.faculty`;
+    const password = Math.random().toString(36).slice(2, 10) + Math.random().toString(36).slice(2, 6).toUpperCase() + '!';
+
+    // Check email uniqueness
+    const existing = await prisma.user.findUnique({ where: { email: baseEmail } });
+    const email = existing
+      ? `${slug}.${Date.now().toString(36)}@studyverse.faculty`
+      : baseEmail;
+
+    const bcrypt = require('bcrypt');
+    const hashed = await bcrypt.hash(password, 10);
+
+    const user = await prisma.user.create({
+      data: {
+        name,
+        email,
+        password: hashed,
+        role: 'faculty',
+        facultyProfile: {
+          create: {
+            subject,
+            qualification: qualification || null,
+            department: department || 'Science',
+          },
+        },
+      },
+      include: { facultyProfile: true },
+    });
+
+    res.json({
+      success: true,
+      faculty: {
+        id: user.facultyProfile.id,
+        userId: user.id,
+        name: user.name,
+        email: user.email,
+        subject,
+        qualification: qualification || null,
+      },
+      credentials: { email, password },
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to create faculty' });
   }
 });
 

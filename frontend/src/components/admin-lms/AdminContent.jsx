@@ -66,7 +66,7 @@ const DiagnosticModal = ({ modal, loading, onClose, onReset }) => {
                 </div>
               )}
               <div style={{ flex:1, background:'rgba(255,255,255,0.08)', borderRadius:'12px', padding:'12px 14px', textAlign:'center' }}>
-                <div style={{ fontSize:'14px', fontWeight:700, color:'#FDF8F0', lineHeight:1 }}>{d.digest.study_hours ? d.digest.study_hours+'h' : '—'}</div>
+                <div style={{ fontSize:'14px', fontWeight:700, color:'#FDF8F0', lineHeight:1 }}>{d.digest.study_hours ? d.digest.study_hours+'h' : 'Not set'}</div>
                 <div style={{ fontSize:'10px', color:'rgba(253,248,240,0.45)', marginTop:'4px', textTransform:'uppercase' }}>Daily hrs</div>
               </div>
             </div>
@@ -137,7 +137,7 @@ const DiagnosticModal = ({ modal, loading, onClose, onReset }) => {
                 <div className="dm-card" style={{ animationDelay:'.08s', display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'8px', marginBottom:'14px' }}>
                   {d.plan.subjectFocus.map((s, i) => (
                     <div key={i} style={{ background:'#fff', border:'1px solid rgba(15,31,61,0.08)', borderRadius:'13px', padding:'13px 10px', textAlign:'center', borderTop:`3px solid ${UC[s.urgencyColor]||UC.gray}` }}>
-                      <div style={{ fontSize:'19px', fontWeight:800, color:'#0F1F3D', lineHeight:1, marginBottom:'4px' }}>{s.scorePct !== null ? s.scorePct+'%' : '—'}</div>
+                      <div style={{ fontSize:'19px', fontWeight:800, color:'#0F1F3D', lineHeight:1, marginBottom:'4px' }}>{s.scorePct !== null ? s.scorePct+'%' : 'N/A'}</div>
                       <div style={{ fontSize:'11.5px', fontWeight:700, color:'#0F1F3D', marginBottom:'5px' }}>{s.subject}</div>
                       <span style={{ fontSize:'10px', fontWeight:700, padding:'2px 7px', borderRadius:'99px', background:UB[s.urgencyColor]||UB.gray, color:UC[s.urgencyColor]||UC.gray }}>{s.urgency}</span>
                       <div style={{ fontSize:'10px', color:'#8896B3', marginTop:'5px' }}>{s.hoursPerWeek}h/wk</div>
@@ -209,7 +209,7 @@ const fmtWeekRange = (weekStartDate) => {
   return `${fmt(mon)} – ${fmt(sun)}`;
 };
 
-const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, students = [], onOpenMessage, isSuperAdmin, adminAccounts = [], onDeactivateAdmin, onReactivateAdmin, resources = [], onApproveResource, onDeclineResource, sentMessages = [], onSendMessage, parentReports = [], onApproveReport, onRejectReport, onSendReports, onApproveAllReports }) => {
+const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, students = [], facultyList = [], onOpenMessage, isSuperAdmin, adminAccounts = [], onDeactivateAdmin, onReactivateAdmin, resources = [], onApproveResource, onDeclineResource, sentMessages = [], onSendMessage, parentReports = [], onApproveReport, onRejectReport, onSendReports, onApproveAllReports }) => {
   const firstName = profile?.name?.split(' ')[0] || 'there';
   const [studentsTab, setStudentsTab] = useState(0);
   const [diagModal, setDiagModal]   = useState(null); // { studentName, data }
@@ -306,19 +306,24 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
 
         <div className="g4 mb">
           <div className="stat sa-navy"><div className="stat-l">Active Students</div><div className="stat-v">12</div><div className="stat-n up">↑ 2 this month</div></div>
-          <div className="stat sa-gold"><div className="stat-l">Revenue (April)</div><div className="stat-v" style={{ fontSize: '22px' }}>₹1.84L</div><div className="stat-n up">↑ 18% vs March</div></div>
+          {isSuperAdmin
+            ? <div className="stat sa-gold"><div className="stat-l">Revenue (April)</div><div className="stat-v" style={{ fontSize: '22px' }}>₹1.84L</div><div className="stat-n up">↑ 18% vs March</div></div>
+            : <div className="stat sa-gold"><div className="stat-l">Diagnostics Done</div><div className="stat-v">{students.filter(s => s.diagnosticScore !== null && s.diagnosticScore !== undefined).length}</div><div className="stat-n up">of {students.length} students</div></div>
+          }
           <div className="stat sa-blue"><div className="stat-l">Premium Students</div><div className="stat-v">{students.filter(s => ['forge','apex','anchor'].includes(s.plan)).length}</div><div className="stat-n up">active subscriptions</div></div>
           <div className="stat sa-green"><div className="stat-l">Avg Improvement</div><div className="stat-v">+76</div><div className="stat-n up">marks across cohort</div></div>
         </div>
 
         <div className="g2 mb">
-          <div className="card">
-            <div className="sh"><div className="sh-t">Monthly Revenue</div><span className="sh-a" onClick={() => onNav('revenue')}>Full report →</span></div>
-            <RevenueChart />
-            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0 2px' }}>
-              {chartLabels.map(l => <span key={l} style={{ fontSize: '10px', color: 'var(--text3)' }}>{l}</span>)}
+          {isSuperAdmin && (
+            <div className="card">
+              <div className="sh"><div className="sh-t">Monthly Revenue</div><span className="sh-a" onClick={() => onNav('revenue')}>Full report →</span></div>
+              <RevenueChart />
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0 2px' }}>
+                {chartLabels.map(l => <span key={l} style={{ fontSize: '10px', color: 'var(--text3)' }}>{l}</span>)}
+              </div>
             </div>
-          </div>
+          )}
           <div className="card">
             <div className="sh"><div className="sh-t">Enrollment Pipeline</div><span className="sh-a" onClick={() => onNav('pipeline')}>Full pipeline →</span></div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -442,7 +447,7 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
                 <div className="pc-name">Vanya Rao</div>
                 <div className="pc-exam">JEE Mains 2026</div>
                 <div className="pc-date">Enrolled Apr 10 · Wk 1</div>
-                <div className="pc-action" style={{ background: 'var(--gd)', color: 'var(--gold)' }} onClick={() => onNav('assign')}>Assign Faculty →</div>
+                <div className="pc-action" style={{ background: 'var(--gd)', color: 'var(--gold)' }} onClick={() => onNav('assign')}>Assign Faculty & Mentor →</div>
               </div>
               <div className="pipe-card">
                 <div className="pc-name">Siddharth Jain</div>
@@ -478,7 +483,7 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
       </div>
 
       {/* ══ REVENUE & FEES ══ */}
-      <div className={pg('revenue')} id="p-revenue">
+      <div className={pg(isSuperAdmin ? 'revenue' : '__never__')} id="p-revenue">
         <div className="g4 mb">
           <div className="stat sa-gold"><div className="stat-l">Total Revenue (YTD)</div><div className="stat-v" style={{ fontSize: '22px' }}>₹14.2L</div><div className="stat-n up">↑ 34% vs last year</div></div>
           <div className="stat sa-green"><div className="stat-l">April Collected</div><div className="stat-v" style={{ fontSize: '22px' }}>₹1.56L</div><div className="stat-n up">85% of target</div></div>
@@ -529,8 +534,8 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
               ) : students.map(s => (
                 <tr key={s.id}>
                   <td><div className="av-row"><div className="av">{s.name.charAt(0)}</div>{s.name}</div></td>
-                  <td>{s.examTarget || '—'}</td>
-                  <td>{s.grade ? `Grade ${s.grade}` : '—'}</td>
+                  <td>{s.examTarget || 'Not set'}</td>
+                  <td>{s.grade ? `Grade ${s.grade}` : 'Not set'}</td>
                   <td><span className={`fc-status ${['forge','apex','anchor'].includes(s.plan) ? 'paid' : ''}`}>{['forge','apex','anchor'].includes(s.plan) ? (s.plan.charAt(0).toUpperCase() + s.plan.slice(1)) + ' ✓' : 'Spark (Free)'}</span></td>
                 </tr>
               ))}
@@ -567,7 +572,7 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
             return (
               <tr>
                 <td><div className="av-row"><div className="av">{av}</div>{s.name}</div></td>
-                <td><span className={`pill ${examClass}`}>{s.examTarget || '—'}</span></td>
+                <td><span className={`pill ${examClass}`}>{s.examTarget || 'Not set'}</span></td>
                 <td>
                   {s.facultyName
                     ? <div className="av-row"><div className="av" style={{ background: 'transparent', borderColor: 'var(--text3)', color: 'var(--text3)' }}>{mentorAv}</div>{s.facultyName}</div>
@@ -577,6 +582,28 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
                   {hasScores
                     ? <span style={{ fontFamily: 'var(--fs)', color: 'var(--gold)', fontWeight: '700' }}>{s.lastScore}<span style={{ color: 'var(--text3)', fontWeight: '400' }}>/{s.lastTotalMarks}</span></span>
                     : <span style={{ color: 'var(--text3)', fontSize: '12px' }}>No scores yet</span>}
+                </td>
+                <td>
+                  {s.latestFeedback ? (
+                    <div>
+                      <div style={{ display: 'flex', gap: '2px', marginBottom: '3px' }}>
+                        {[1,2,3,4,5].map(n => (
+                          <span key={n} style={{ fontSize: '12px', color: n <= (s.latestFeedback.rating || 0) ? '#E8A830' : 'var(--cream3)' }}>★</span>
+                        ))}
+                        <span style={{ fontSize: '11px', color: 'var(--text3)', marginLeft: '4px' }}>{s.latestFeedback.rating}/5</span>
+                      </div>
+                      {s.latestFeedback.comment && (
+                        <div style={{ fontSize: '11px', color: 'var(--text2)', maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={s.latestFeedback.comment}>
+                          "{s.latestFeedback.comment}"
+                        </div>
+                      )}
+                      <div style={{ fontSize: '10px', color: 'var(--text3)', marginTop: '2px' }}>
+                        {new Date(s.latestFeedback.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                      </div>
+                    </div>
+                  ) : (
+                    <span style={{ fontSize: '12px', color: 'var(--text3)' }}>No feedback yet</span>
+                  )}
                 </td>
                 <td style={{ display:'flex', gap:'6px', alignItems:'center', flexWrap:'wrap' }}>
                   {s.diagnosticScore !== null && s.diagnosticScore !== undefined
@@ -599,8 +626,8 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
             return (
               <tr>
                 <td><div className="av-row"><div className="av">{av}</div>{s.name}</div></td>
-                <td><span className={`pill ${examClass}`}>{s.examTarget || '—'}</span></td>
-                <td style={{ color: 'var(--text2)', fontSize: '13px' }}>{s.grade || '—'}</td>
+                <td><span className={`pill ${examClass}`}>{s.examTarget || 'Not set'}</span></td>
+                <td style={{ color: 'var(--text2)', fontSize: '13px' }}>{s.grade || 'Not set'}</td>
                 <td>
                   {diagDone
                     ? <div>
@@ -646,7 +673,7 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
                   <thead>
                     {isFreeTab
                       ? <tr><th>Student</th><th>Exam</th><th>Grade</th><th>Diagnostic</th><th>Actions</th></tr>
-                      : <tr><th>Student</th><th>Exam</th><th>Mentor</th><th>Score Progress</th><th>Actions</th></tr>}
+                      : <tr><th>Student</th><th>Exam</th><th>Mentor</th><th>Score Progress</th><th>Faculty Feedback</th><th>Actions</th></tr>}
                   </thead>
                   <tbody>
                     {rows.length === 0
@@ -663,58 +690,60 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
       {/* ══ FACULTY ══ */}
       <div className={pg('faculty')} id="p-faculty">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px', flexWrap: 'wrap', gap: '10px' }}>
-          <div style={{ fontSize: '13px', color: 'var(--text2)' }}>3 active faculty members</div>
+            <div style={{ fontSize: '13px', color: 'var(--text2)' }}>{facultyList.length} active faculty member{facultyList.length !== 1 ? 's' : ''}</div>
           <button className="btn btn-gold btn-sm" onClick={() => onOpenModal('add-faculty-modal')}>+ Add Faculty</button>
         </div>
         <div className="g3 mb">
-          <div className="card" style={{ transition: 'all .2s' }}
-            onMouseOver={e => e.currentTarget.style.borderColor = 'var(--gold)'}
-            onMouseOut={e => e.currentTarget.style.borderColor = 'var(--b)'}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
-              <div className="av av-lg" style={{ borderColor: 'var(--gold)', color: 'var(--gold)', background: 'var(--gd)' }}>A</div>
-              <div><div style={{ fontSize: '15px', fontWeight: '700', fontFamily: 'var(--fs)' }}>Ajay Sharma</div><div style={{ fontSize: '11.5px', color: 'var(--text3)' }}>JEE & NEET • Head Faculty</div></div>
-            </div>
-            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '12px' }}>
-              <span className="pill pg">JEE Mains</span><span className="pill pg">JEE Advanced</span><span className="pill pp">NEET</span>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', marginBottom: '12px' }}>
-              {[{ val: '8', lbl: 'Students' }, { val: '11', lbl: 'Sessions/wk' }, { val: '+82', lbl: 'Avg gain', gold: true }].map(({ val, lbl, gold }) => (
-                <div key={lbl} style={{ textAlign: 'center', padding: '8px', background: 'var(--cream2)', borderRadius: 'var(--r)' }}>
-                  <div style={{ fontFamily: 'var(--fs)', fontSize: '18px', fontWeight: '700', color: gold ? 'var(--gold)' : undefined }}>{val}</div>
-                  <div style={{ fontSize: '10.5px', color: 'var(--text3)' }}>{lbl}</div>
+          {facultyList.map(f => {
+            const subjectPill = s => {
+              const l = s.toLowerCase();
+              if (l.includes('physics')) return 'pn';
+              if (l.includes('chem'))   return 'po';
+              if (l.includes('math'))   return 'pp';
+              if (l.includes('bio'))    return 'ppu';
+              if (l.includes('neet'))   return 'ppu';
+              if (l.includes('jee'))    return 'pg';
+              return 'pn';
+            };
+            const assignedStudents = students.filter(s => s.facultyName === f.name);
+            return (
+              <div key={f.id} className="card" style={{ transition: 'all .2s' }}
+                onMouseOver={e => e.currentTarget.style.borderColor = 'var(--gold)'}
+                onMouseOut={e => e.currentTarget.style.borderColor = 'var(--b)'}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
+                  <div className="av av-lg" style={{ borderColor: 'var(--gold)', color: 'var(--gold)', background: 'var(--gd)' }}>{f.name.charAt(0)}</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: '15px', fontWeight: '700', fontFamily: 'var(--fs)' }}>{f.name}</div>
+                    <div style={{ fontSize: '11.5px', color: 'var(--text3)' }}>{f.subject}{f.qualification ? ` • ${f.qualification}` : ''}</div>
+                  </div>
+                  {assignedStudents.length > 0 && (
+                    <span style={{ fontSize: '11px', fontWeight: '700', padding: '3px 9px', borderRadius: '99px', background: 'rgba(34,197,94,0.1)', color: '#16A34A', flexShrink: 0 }}>
+                      {assignedStudents.length} student{assignedStudents.length > 1 ? 's' : ''}
+                    </span>
+                  )}
                 </div>
-              ))}
-            </div>
-            <div style={{ display: 'flex', gap: '7px' }}>
-              <button className="btn btn-ghost btn-sm" style={{ flex: 1, justifyContent: 'center' }} onClick={() => onOpenModal('assign-modal')}>Assign Student</button>
-              <button className="btn btn-gold btn-sm" style={{ flex: 1, justifyContent: 'center' }} onClick={() => onOpenModal('message-modal')}>Message</button>
-            </div>
-          </div>
-
-          <div className="card" style={{ transition: 'all .2s', opacity: '.7' }}
-            onMouseOver={e => { e.currentTarget.style.borderColor = 'var(--gold)'; e.currentTarget.style.opacity = '1'; }}
-            onMouseOut={e => { e.currentTarget.style.borderColor = 'var(--b)'; e.currentTarget.style.opacity = '.7'; }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
-              <div className="av av-lg" style={{ color: 'var(--blue)', borderColor: 'var(--blue)', background: 'var(--bdim)' }}>N</div>
-              <div><div style={{ fontSize: '15px', fontWeight: '700', fontFamily: 'var(--fs)' }}>Neha Gupta</div><div style={{ fontSize: '11.5px', color: 'var(--text3)' }}>Biology & Chemistry · NEET</div></div>
-            </div>
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
-              <span className="pill pp">NEET Biology</span><span className="pill pg">Organic Chem</span>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', marginBottom: '12px' }}>
-              {[{ val: '3', lbl: 'Students' }, { val: '5', lbl: 'Sessions/wk' }, { val: '+64', lbl: 'Avg gain', gold: true }].map(({ val, lbl, gold }) => (
-                <div key={lbl} style={{ textAlign: 'center', padding: '8px', background: 'var(--cream2)', borderRadius: 'var(--r)' }}>
-                  <div style={{ fontFamily: 'var(--fs)', fontSize: '18px', fontWeight: '700', color: gold ? 'var(--gold)' : undefined }}>{val}</div>
-                  <div style={{ fontSize: '10.5px', color: 'var(--text3)' }}>{lbl}</div>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
+                  {f.subjects.map(s => <span key={s} className={`pill ${subjectPill(s)}`}>{s}</span>)}
                 </div>
-              ))}
-            </div>
-            <div style={{ display: 'flex', gap: '7px' }}>
-              <button className="btn btn-ghost btn-sm" style={{ flex: 1, justifyContent: 'center' }} onClick={() => onOpenModal('assign-modal')}>Assign Student</button>
-              <button className="btn btn-gold btn-sm" style={{ flex: 1, justifyContent: 'center' }} onClick={() => onOpenModal('message-modal')}>Message</button>
-            </div>
-          </div>
-
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', marginBottom: '12px' }}>
+                  {[
+                    { val: f.sessionsPerWeek || 0, lbl: 'Sessions/wk' },
+                    { val: f.reportCount, lbl: 'Reports' },
+                    { val: f.avgRating ? f.avgRating + '★' : 'No reviews', lbl: 'Avg rating', gold: true },
+                  ].map(({ val, lbl, gold }) => (
+                    <div key={lbl} style={{ textAlign: 'center', padding: '8px', background: 'var(--cream2)', borderRadius: 'var(--r)' }}>
+                      <div style={{ fontFamily: 'var(--fs)', fontSize: '18px', fontWeight: '700', color: gold ? 'var(--gold)' : undefined }}>{val}</div>
+                      <div style={{ fontSize: '10.5px', color: 'var(--text3)' }}>{lbl}</div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ display: 'flex', gap: '7px' }}>
+                  <button className="btn btn-ghost btn-sm" style={{ flex: 1, justifyContent: 'center' }} onClick={() => onOpenModal('assign-modal')}>Assign Student</button>
+                  <button className="btn btn-gold btn-sm" style={{ flex: 1, justifyContent: 'center' }} onClick={() => { onShowToast(`Message to ${f.name}: use Messages tab to reach faculty`); }}>Message</button>
+                </div>
+              </div>
+            );
+          })}
           <div className="card" style={{ border: '1px dashed var(--b)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '12px', minHeight: '220px', cursor: 'pointer', transition: 'all .2s' }}
             onMouseOver={e => e.currentTarget.style.borderColor = 'var(--gold)'}
             onMouseOut={e => e.currentTarget.style.borderColor = 'var(--b)'}
@@ -984,7 +1013,7 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
       <div className={pg('reports')}>
         {(() => {
           const submittedReports = parentReports.filter(r => r.status === 'submitted');
-          const approvedReports  = parentReports.filter(r => r.status === 'approved');
+          const approvedReports  = parentReports.filter(r => r.status === 'approved' || r.status === 'sent');
           const shown = reportsTab === 0 ? submittedReports : reportsTab === 1 ? approvedReports : parentReports;
           const statusPill = {
             submitted: <span className="pill po">Pending Review</span>,
@@ -997,7 +1026,7 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
             <>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px', flexWrap: 'wrap', gap: '10px' }}>
                 <div className="tabs" style={{ marginBottom: 0 }}>
-                  {[`Pending Review (${submittedReports.length})`, `Approved (${approvedReports.length})`, `All (${parentReports.length})`].map((t, i) => (
+                  {[`Pending Review (${submittedReports.length})`, `Approved & Sent (${approvedReports.length})`, `All (${parentReports.length})`].map((t, i) => (
                     <div key={i} className={`tab${reportsTab === i ? ' on' : ''}`} onClick={() => { setReportsTab(i); setExpandedReportId(null); setRejectingReportId(null); }}>{t}</div>
                   ))}
                 </div>
