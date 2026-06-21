@@ -374,6 +374,14 @@ function generateStudyPlan(answers, liveScores = null, diagnosticTakenAt = null,
     })),
     currentWeekNum,
     completedThisWeek: [...completedThisWeek],
+    subjectTopics: Object.fromEntries(
+      subjects.map(subject => [
+        subject,
+        (topicPlan[subject] || []).slice(0, 8).map(t => ({
+          name: t.name, label: t.label, color: t.color, isWeak: t.weakScore > 0, isStrong: t.isStrong || false,
+        })),
+      ])
+    ),
     thisWeek,
     weeklyRoadmap,
     dailyStructure,

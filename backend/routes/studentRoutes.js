@@ -517,7 +517,6 @@ router.get('/reports', requireAuth, async (req, res) => {
       orderBy: [{ weekNumber: 'desc' }, { sentAt: 'desc' }],
       include: {
         faculty: { include: { user: { select: { name: true } } } },
-        feedback: true,
       },
     });
 

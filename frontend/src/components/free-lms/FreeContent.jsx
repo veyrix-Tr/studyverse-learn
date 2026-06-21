@@ -215,8 +215,17 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
   const [habitState, setHabitState] = useState({});
   const [habitSaving, setHabitSaving] = useState(false);
 
-  // Topic map state — physics open by default
+  // Topic map state
   const [openSubj, setOpenSubj] = useState(new Set(['physics']));
+  const [tmFilter, setTmFilter] = useState('all');
+  const [openTopicGroups, setOpenTopicGroups] = useState(new Set(['Important|Physics', 'Important|Biology', 'Maintain|Physics', 'Maintain|Biology']));
+  const toggleTopicGroup = (key) => {
+    setOpenTopicGroups(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) { next.delete(key); } else { next.add(key); }
+      return next;
+    });
+  };
 
   const toggleSubj = (key) => {
     setOpenSubj(prev => {
@@ -391,14 +400,14 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
             <div className="stat-n up" style={{ cursor: 'pointer' }} onClick={() => onNav('habits')}>{streak > 0 ? `${streak}-day streak` : alreadyCheckedIn ? 'Done today ✓' : 'Check in today'}</div>
           </div>
           <div className="stat sa-navy">
-            <div className="stat-l">Topics Identified</div>
-            <div className="stat-v">{diagDone ? Object.keys(ratings).length : 0}</div>
-            <div className="stat-n neu">{diagDone ? 'topics rated' : 'After diagnostic'}</div>
+            <div className="stat-l">Topics Prioritised</div>
+            <div className="stat-v">{studyPlan ? Object.values(studyPlan.subjectTopics || {}).flat().length : diagDone ? '...' : 0}</div>
+            <div className="stat-n neu" style={{ cursor: diagDone ? 'pointer' : 'default' }} onClick={() => diagDone && onNav('topics')}>{diagDone ? 'in your topic map →' : 'After diagnostic'}</div>
           </div>
           <div className="stat sa-red">
-            <div className="stat-l">Weak Areas</div>
-            <div className="stat-v">{diagDone ? Object.values(ratings).filter(v => v <= 2).length : 0}</div>
-            <div className="stat-n neu">{diagDone ? 'need focus' : 'After diagnostic'}</div>
+            <div className="stat-l">Need Focus</div>
+            <div className="stat-v">{studyPlan ? Object.values(studyPlan.subjectTopics || {}).flat().filter(t => t.label === 'Urgent' || t.label === 'High').length : diagDone ? '...' : 0}</div>
+            <div className="stat-n neu" style={{ cursor: diagDone ? 'pointer' : 'default' }} onClick={() => diagDone && onNav('topics')}>{diagDone ? 'urgent + high priority' : 'After diagnostic'}</div>
           </div>
         </div>
 
@@ -658,60 +667,400 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
 
       {/* ══════════ TOPIC MAP ══════════ */}
       <div className={p('topics')}>
-        <div style={{ fontSize: '13px', color: 'var(--text2)', marginBottom: '20px', background: 'var(--cream)', border: '1px solid var(--b)', borderRadius: 'var(--r)', padding: '12px 16px' }}>
-          📊 Based on your diagnostic results. Chapters marked <span className="cr-tag weak-tag" style={{ display: 'inline' }}>Weak</span> need immediate attention — these are your score multipliers.
+
+        {/* Page header */}
+        <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:'16px', marginBottom:'16px', flexWrap:'wrap' }}>
+          <div>
+            <div style={{ fontFamily:'var(--fs)', fontSize:'22px', fontWeight:800, color:'var(--text)' }}>Topic Mastery Map</div>
+            <div style={{ fontSize:'12.5px', color:'var(--text3)', marginTop:'3px' }}>
+              {studyPlan
+                ? Object.values(studyPlan.subjectTopics || {}).flat().length + ' chapters analysed · built from your diagnostic'
+                : diagDone ? 'Loading your map...' : 'Complete diagnostic to unlock your map'}
+            </div>
+          </div>
+          {diagDone && (
+            <button className="btn btn-ghost btn-sm" onClick={() => onNav('guidance')} style={{ flexShrink:0 }}>View Full Plan →</button>
+          )}
         </div>
 
-        <div className="topic-map mb">
-          {[
-            { key: 'physics', icon: '⚡', name: 'Physics', raw: physPct, group: ratingTopics[1] },
-            { key: 'maths',   icon: '📐', name: 'Mathematics', raw: mathPct, group: ratingTopics[0] },
-            { key: 'chem',    icon: '⚛️', name: 'Chemistry', raw: chemPct, group: ratingTopics[2] },
-          ].map((subj) => {
-            const sm = pctMeta(subj.raw);
-            const ratedChapters = subj.group.topics
-              .filter(t => ratings[t.key])
-              .map(t => {
-                const p = ratingToPct(ratings[t.key]);
-                const m = pctMeta(p);
-                return { name: t.label, pct: p, barCls: m.barCls, pctColor: m.color, tag: m.tag, tagCls: m.tagCls };
-              });
-            return (
-              <div key={subj.key} className="tm-subject">
-                <div className="tms-header" onClick={() => toggleSubj(subj.key)}>
-                  <div className="tms-icon">{subj.icon}</div>
-                  <div className="tms-name">{subj.name}</div>
-                  <div className="pbar" style={{ width: '120px', flexShrink: 0 }}><div className={`pbar-inner ${subj.raw !== null ? sm.barCls : 'pb-navy'}`} style={{ width: `${subj.raw ?? 0}%` }}></div></div>
-                  <div className="tms-score" style={{ color: sm.color, width: '40px', textAlign: 'right' }}>{subj.raw !== null ? `${subj.raw}%` : 'N/A'}</div>
-                  <svg className="tms-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ transform: openSubj.has(subj.key) ? 'rotate(180deg)' : '' }}><path d="M6 9l6 6 6-6"/></svg>
-                </div>
-                <div className={`tms-body${openSubj.has(subj.key) ? ' open' : ''}`}>
-                  {ratedChapters.length > 0 ? ratedChapters.map((ch, ci) => (
-                    <div key={ci} className="chapter-row">
-                      <div className="cr-name">{ch.name}</div>
-                      <div className="cr-bar"><div className="pbar"><div className={`pbar-inner ${ch.barCls}`} style={{ width: `${ch.pct}%` }}></div></div></div>
-                      <div className="cr-pct" style={{ color: ch.pctColor }}>{ch.pct}%</div>
-                      <div className={`cr-tag ${ch.tagCls}`}>{ch.tag}</div>
+        {!diagDone && (
+          <div className="tm2-locked">
+            <div className="tm2-lock-blur">
+              <div style={{ padding:'0 0 20px' }}>
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'10px', marginBottom:'14px' }}>
+                  {['Physics','Mathematics','Chemistry'].map(s => (
+                    <div key={s} style={{ background:'var(--cream)', border:'1px solid var(--b)', borderRadius:'16px', padding:'14px 12px', display:'flex', alignItems:'center', gap:'10px' }}>
+                      <div style={{ width:'68px', height:'68px', borderRadius:'50%', background:'var(--cream2)', flexShrink:0 }} />
+                      <div style={{ flex:1 }}>
+                        <div className="sk" style={{ height:13, width:'75%', marginBottom:6 }} />
+                        <div className="sk" style={{ height:10, width:'55%', marginBottom:5 }} />
+                        <div className="sk" style={{ height:16, width:'45%', borderRadius:'20px' }} />
+                      </div>
                     </div>
-                  )) : (
-                    <div style={{ padding: '12px 16px', fontSize: '12px', color: 'var(--text3)' }}>Complete diagnostic to see chapter breakdown.</div>
-                  )}
+                  ))}
+                </div>
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px' }}>
+                  {[1,2,3,4].map(i => (
+                    <div key={i} style={{ background:'var(--cream)', border:'1px solid var(--b)', borderRadius:'14px', padding:'14px 14px 12px 18px', display:'flex', flexDirection:'column', gap:'8px' }}>
+                      <div style={{ display:'flex', gap:'10px', alignItems:'flex-start' }}>
+                        <div className="sk" style={{ flex:1, height:14 }} />
+                        <div className="sk" style={{ width:44, height:44, borderRadius:'50%', flexShrink:0 }} />
+                      </div>
+                      <div className="sk" style={{ height:10, width:'60%' }} />
+                      <div className="sk" style={{ height:4, borderRadius:'10px' }} />
+                      <div className="sk" style={{ height:11, width:'40%' }} />
+                    </div>
+                  ))}
                 </div>
               </div>
-            );
-          })}
-        </div>
+            </div>
+            <div className="tm2-lock-overlay">
+              <div style={{ background:'#fff', borderRadius:'20px', padding:'36px 28px', textAlign:'center', boxShadow:'0 20px 60px rgba(15,31,61,.16), 0 4px 16px rgba(15,31,61,.08)', maxWidth:'340px', width:'100%', border:'1px solid rgba(15,31,61,.07)' }}>
+                <div style={{ width:'56px', height:'56px', borderRadius:'16px', background:'linear-gradient(135deg,#0F1F3D,#1C2E50)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 16px' }}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#E8A830" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                </div>
+                <div style={{ fontFamily:'var(--fs)', fontSize:'18px', fontWeight:700, color:'var(--text)', marginBottom:'8px', lineHeight:1.3 }}>Take the diagnostic first</div>
+                <div style={{ fontSize:'12.5px', color:'var(--text2)', lineHeight:1.75, marginBottom:'20px' }}>Your chapter-level weakness map unlocks after the diagnostic. See exactly which topics need the most work.</div>
+                <button className="btn btn-gold" style={{ width:'100%', justifyContent:'center' }} onClick={() => onNav('diagnostic')}>Take Diagnostic →</button>
+                <div style={{ fontSize:'11px', color:'var(--text3)', marginTop:'10px' }}>Free · 26 questions · ~10 minutes</div>
+              </div>
+            </div>
+          </div>
+        )}
 
-        <div className="upgrade-banner">
-          <div className="ub-text">
-            <div className="ub-label">Unlock Feature</div>
-            <div className="ub-title">Practice questions matched to your weak chapters</div>
-            <div className="ub-sub">Electrostatics, Mechanics, Integration — questions at exactly your level, from previous JEE papers.</div>
+        {diagDone && !studyPlan && !studyPlanError && (
+          <div style={{ textAlign:'center', padding:'48px 0', color:'var(--text3)', fontSize:'13px' }}>Loading your topic map...</div>
+        )}
+
+        {studyPlan && (() => {
+          const isNEET = examTarget.toLowerCase().includes('neet');
+          const R_SUBJ = 32, CIRC_SUBJ = 201;
+          const R_TOPIC = 18, CIRC_TOPIC = 113;
+
+          const PRIORITY_STYLE = {
+            Urgent:    { color:'#DC2626', bg:'rgba(220,38,38,.1)',  cls:'tm2-c-urgent',    label:'Urgent',    dot:'#DC2626' },
+            High:      { color:'#EA580C', bg:'rgba(234,88,12,.1)',  cls:'tm2-c-high',      label:'High',      dot:'#EA580C' },
+            Important: { color:'#B45309', bg:'rgba(217,119,6,.1)',  cls:'tm2-c-important', label:'Important', dot:'#D97706' },
+            Maintain:  { color:'#15803D', bg:'rgba(34,197,94,.1)',  cls:'tm2-c-maintain',  label:'Strong',    dot:'#22C55E' },
+          };
+          const LABEL_PCT  = { Urgent:22, High:48, Important:70, Maintain:88 };
+          const LABEL_HOURS = { Urgent:'3–4h', High:'2–3h', Important:'1–2h', Maintain:'30m' };
+          const PRIORITY_ORDER = { Urgent:0, High:1, Important:2, Maintain:3 };
+
+          const TOPIC_MARKS_MAP = {
+            'electrostatics':{ jee:9,neet:8 }, 'current electricity':{ jee:7,neet:7 },
+            'mechanics':{ jee:8,neet:7 }, 'kinematics':{ jee:6,neet:6 },
+            'work':{ jee:6,neet:6 }, 'waves':{ jee:5,neet:6 },
+            'optics':{ jee:6,neet:8 }, 'thermodynamics':{ jee:7,neet:8 },
+            'magnetism':{ jee:6,neet:7 }, 'rotation':{ jee:6,neet:5 },
+            'gravitation':{ jee:5,neet:6 }, 'fluid':{ jee:5,neet:5 },
+            'modern physics':{ jee:6,neet:8 }, 'semiconductor':{ jee:5,neet:6 },
+            'integration':{ jee:10,neet:0 }, 'limits':{ jee:7,neet:0 },
+            'coordinate':{ jee:8,neet:0 }, 'probability':{ jee:6,neet:0 },
+            'vectors':{ jee:5,neet:0 }, 'calculus':{ jee:8,neet:0 },
+            'matrices':{ jee:5,neet:0 }, 'complex':{ jee:5,neet:0 },
+            'differential':{ jee:7,neet:0 }, 'binomial':{ jee:5,neet:0 },
+            'trigonometry':{ jee:5,neet:0 }, 'permutation':{ jee:5,neet:0 },
+            'mole':{ jee:7,neet:7 }, 'equilibrium':{ jee:7,neet:8 },
+            'organic':{ jee:9,neet:12 }, 'inorganic':{ jee:5,neet:8 },
+            'electrochemistry':{ jee:6,neet:6 }, 'solution':{ jee:5,neet:6 },
+            'kinetics':{ jee:5,neet:5 }, 'chemical bonding':{ jee:6,neet:7 },
+            'reaction':{ jee:6,neet:8 }, 'surface':{ jee:4,neet:5 },
+            'genetics':{ jee:0,neet:10 }, 'ecology':{ jee:0,neet:7 },
+            'cell':{ jee:0,neet:8 }, 'plant':{ jee:0,neet:7 },
+            'human physiology':{ jee:0,neet:9 }, 'evolution':{ jee:0,neet:6 },
+            'biomolecule':{ jee:0,neet:6 }, 'reproduction':{ jee:0,neet:8 },
+          };
+
+          const SUBJ_COLOR = {
+            Physics:     { bg:'rgba(51,82,138,0.09)',  color:'#33528A', border:'rgba(51,82,138,0.2)' },
+            Mathematics: { bg:'rgba(80,66,128,0.09)',  color:'#504280', border:'rgba(80,66,128,0.2)' },
+            Chemistry:   { bg:'rgba(160,100,50,0.1)',  color:'#8A5033', border:'rgba(160,100,50,0.22)' },
+            Biology:     { bg:'rgba(51,120,80,0.09)',  color:'#337850', border:'rgba(51,120,80,0.2)' },
+          };
+
+          const getEstMarks = (name) => {
+            const n = name.toLowerCase();
+            let best = 4;
+            for (const k in TOPIC_MARKS_MAP) {
+              if (n.includes(k)) {
+                const v = isNEET ? TOPIC_MARKS_MAP[k].neet : TOPIC_MARKS_MAP[k].jee;
+                if (v > best) best = v;
+              }
+            }
+            return best;
+          };
+
+          const subjDefs = isNEET
+            ? [{ key:'Biology', icon:'🧬' }, { key:'Physics', icon:'⚡' }, { key:'Chemistry', icon:'⚛️' }]
+            : [{ key:'Physics', icon:'⚡' }, { key:'Mathematics', icon:'📐' }, { key:'Chemistry', icon:'⚛️' }];
+
+          const thisWeekNames = new Set((studyPlan.thisWeek || []).map(t => t.topic));
+
+          const allTopicsFlat = subjDefs.flatMap(s =>
+            (studyPlan.subjectTopics?.[s.key] || []).map(t => ({
+              ...t, subject: s.key, icon: s.icon,
+              estMarks: getEstMarks(t.name),
+              hours: LABEL_HOURS[t.label] || '1–2h',
+              isThisWeek: thisWeekNames.has(t.name),
+            }))
+          ).sort((a, b) => (PRIORITY_ORDER[a.label] ?? 4) - (PRIORITY_ORDER[b.label] ?? 4));
+
+          const urgentList   = allTopicsFlat.filter(t => t.label === 'Urgent');
+          const highList     = allTopicsFlat.filter(t => t.label === 'High');
+          const importantList= allTopicsFlat.filter(t => t.label === 'Important');
+          const maintainList = allTopicsFlat.filter(t => t.label === 'Maintain');
+          const potentialMarks = urgentList.concat(highList).reduce((s, t) => s + t.estMarks, 0);
+          const topInsight = urgentList[0] || highList[0] || null;
+
+          const filteredFlat = tmFilter === 'urgent' ? urgentList
+            : tmFilter === 'high' ? highList
+            : tmFilter === 'week' ? allTopicsFlat.filter(t => t.isThisWeek)
+            : allTopicsFlat;
+
+          const groups = tmFilter !== 'all' ? [
+            { key: tmFilter, label: tmFilter === 'urgent' ? 'Urgent' : tmFilter === 'high' ? 'High Priority' : 'This Week', topics: filteredFlat },
+          ] : [
+            { key: 'Urgent',    label: 'Urgent',               topics: urgentList },
+            { key: 'High',      label: 'High Priority',         topics: highList },
+            { key: 'Important', label: 'Important',             topics: importantList },
+            { key: 'Maintain',  label: 'Strong — Maintain',     topics: maintainList },
+          ].filter(g => g.topics.length > 0);
+
+          return (
+            <>
+              {/* #1 priority insight — only when Urgent topics exist */}
+              {topInsight && topInsight.label === 'Urgent' && (
+                <div className="tm2-top-insight">
+                  <div className="tm2-insight-dot" />
+                  <div className="tm2-insight-body">
+                    <div className="tm2-insight-title">Focus on {topInsight.name} right now</div>
+                    <div className="tm2-insight-sub">
+                      {topInsight.subject} · Urgent ·
+                      {topInsight.estMarks > 0 ? ' ~' + topInsight.estMarks + (isNEET ? ' NEET marks' : ' JEE marks') + ' ·' : ''}
+                      {topInsight.isThisWeek ? ' In this week\'s plan' : ' Not yet scheduled'}
+                    </div>
+                  </div>
+                  <button className="btn btn-sm btn-gold" style={{ flexShrink:0 }} onClick={() => onNav('guidance')}>
+                    Study Plan →
+                  </button>
+                </div>
+              )}
+
+              {/* Filter tabs */}
+              <div className="tm2-filters">
+                {[
+                  { key:'all',    label:'All Topics (' + allTopicsFlat.length + ')' },
+                  { key:'urgent', label:urgentList.length + ' Urgent' },
+                  { key:'high',   label:highList.length + ' High' },
+                  { key:'week',   label:'📅 This Week' },
+                ].map(f => (
+                  <button key={f.key} className={'tm2-filter' + (tmFilter === f.key ? ' on' : '')} onClick={() => setTmFilter(f.key)}>
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Subject summary rings — only when showing all */}
+              {tmFilter === 'all' && (
+                <div className="tm2-subj-row">
+                  {subjDefs.map((s, si) => {
+                    const spSubj = studyPlan.subjectFocus?.find(sf => sf.subject === s.key);
+                    const scorePct = spSubj?.scorePct ?? 0;
+                    const urg = spSubj?.urgency || 'no data';
+                    const urgColor = { urgent:'#DC2626', high:'#EA580C', moderate:'#D97706', maintain:'#22C55E', 'no data':'#94A3B8' }[urg] || '#94A3B8';
+                    const urgLabel = { urgent:'Urgent', high:'High', moderate:'Important', maintain:'Strong', 'no data':'No data' }[urg] || urg;
+                    const sTopics = studyPlan.subjectTopics?.[s.key] || [];
+                    const uCnt = sTopics.filter(t => t.label === 'Urgent').length;
+                    const hCnt = sTopics.filter(t => t.label === 'High').length;
+                    const dash = Math.round((scorePct / 100) * CIRC_SUBJ);
+                    const dashOff = CIRC_SUBJ - dash;
+                    const spHours = spSubj?.hoursPerWeek || 0;
+                    return (
+                      <div key={s.key} className="tm2-subj-card" style={{ animationDelay: (si * 0.08) + 's' }}>
+                        <div className="tm2-subj-top" style={{ background: urgColor }} />
+                        <div className="tm2-subj-inner">
+                          <div className="tm2-subj-ring-wrap">
+                            <svg width="68" height="68" viewBox="0 0 68 68">
+                              <circle className="tm2-ring-track" cx="34" cy="34" r={R_SUBJ} />
+                              <circle className="tm2-ring-fill" cx="34" cy="34" r={R_SUBJ} stroke={urgColor} style={{ '--ring-dash': dashOff }} />
+                            </svg>
+                            <div className="tm2-subj-pct">
+                              <div className="tm2-subj-pct-val">{scorePct !== null ? scorePct + '%' : '—'}</div>
+                              <div className="tm2-subj-icon">{s.icon}</div>
+                            </div>
+                          </div>
+                          <div className="tm2-subj-info">
+                            <div className="tm2-subj-name">{s.key}</div>
+                            <div className="tm2-subj-stat">
+                              {uCnt > 0 ? uCnt + ' urgent' : ''}
+                              {uCnt > 0 && hCnt > 0 ? ' · ' : ''}
+                              {hCnt > 0 ? hCnt + ' high' : ''}
+                              {uCnt === 0 && hCnt === 0 ? 'Looking good' : ''}
+                              {spHours > 0 ? ' · ' + spHours + 'h/wk' : ''}
+                            </div>
+                            <div className="tm2-subj-urgbadge" style={{ background: urgColor + '1a', color: urgColor }}>{urgLabel}</div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Score potential banner */}
+              {potentialMarks > 0 && (urgentList.length + highList.length) > 0 && tmFilter === 'all' && (
+                <div className="tm2-potential">
+                  <div className="tm2-potential-left">
+                    <div className="tm2-pot-num">+{potentialMarks}</div>
+                    <div className="tm2-pot-divider" />
+                    <div>
+                      <div className="tm2-pot-text">marks you can gain by fixing your priority topics</div>
+                      <div className="tm2-pot-sub">
+                        Based on {isNEET ? 'NEET' : 'JEE'} paper analysis · {urgentList.length} Urgent · {highList.length} High priority
+                      </div>
+                    </div>
+                  </div>
+                  <button className="btn btn-sm" style={{ background:'rgba(220,38,38,.08)', color:'#DC2626', border:'1px solid rgba(220,38,38,.18)', flexShrink:0 }} onClick={() => onNav('guidance')}>
+                    See Plan →
+                  </button>
+                </div>
+              )}
+
+              {/* Topic grid — grouped by priority, subject-collapsed for Important/Maintain */}
+              {filteredFlat.length === 0 ? (
+                <div className="tm2-empty">
+                  {tmFilter === 'week' ? 'No topics planned for this week yet.' : 'No topics in this category.'}
+                </div>
+              ) : groups.map((group, gi) => {
+                const ps = PRIORITY_STYLE[group.key] || PRIORITY_STYLE.Maintain;
+                const useSubGroups = tmFilter === 'all' && (group.key === 'Important' || group.key === 'Maintain');
+
+                const renderCard = (t, ci, delayBase) => {
+                  const ts = PRIORITY_STYLE[t.label] || PRIORITY_STYLE.Maintain;
+                  const pct = LABEL_PCT[t.label] || 80;
+                  const dashOff = CIRC_TOPIC - Math.round((pct / 100) * CIRC_TOPIC);
+                  return (
+                    <div key={ci} className={'tm2-card ' + ts.cls} style={{ animationDelay: (delayBase + ci * 0.04) + 's' }}>
+                      <div className="tm2-card-accent" />
+                      <div className="tm2-card-top">
+                        <div className="tm2-card-name">{t.name}</div>
+                        <div className="tm2-card-ring-wrap">
+                          <svg width="44" height="44" viewBox="0 0 44 44">
+                            <circle className="tm2-topic-ring-track" cx="22" cy="22" r={R_TOPIC} />
+                            <circle className="tm2-topic-ring-fill" cx="22" cy="22" r={R_TOPIC} stroke={ts.color} style={{ '--ring-dash': dashOff, animationDelay: (delayBase + ci * 0.04 + 0.12) + 's' }} />
+                          </svg>
+                          <div className="tm2-card-ring-val" style={{ color: ts.color }}>{pct}%</div>
+                        </div>
+                      </div>
+                      <div className="tm2-badges">
+                        <span className="tm2-badge-subj" style={{ background: (SUBJ_COLOR[t.subject] || {}).bg, color: (SUBJ_COLOR[t.subject] || {}).color, borderColor: (SUBJ_COLOR[t.subject] || {}).border }}>{t.subject}</span>
+                        <span className="tm2-badge-priority" style={{ background: ts.bg, color: ts.color }}>{ts.label}</span>
+                        {t.isThisWeek && <span className="tm2-badge-week">📅 This Week</span>}
+                      </div>
+                      <div className="tm2-bar-wrap">
+                        <div className="tm2-bar">
+                          <div className="tm2-bar-fill" style={{ '--bar-w': pct + '%', background: ts.color + 'cc', animationDelay: (delayBase + ci * 0.04 + 0.2) + 's' }} />
+                        </div>
+                      </div>
+                      <div className="tm2-stats">
+                        {t.estMarks > 0 && (
+                          <>
+                            <div className="tm2-stat">
+                              <div className="tm2-stat-val" style={{ color: ts.color }}>~{t.estMarks}</div>
+                              <div className="tm2-stat-lbl">{isNEET ? 'NEET' : 'JEE'} marks</div>
+                            </div>
+                            <div className="tm2-stat-div" />
+                          </>
+                        )}
+                        <div className="tm2-stat">
+                          <div className="tm2-stat-val">{t.hours}</div>
+                          <div className="tm2-stat-lbl">this week</div>
+                        </div>
+                      </div>
+                      <div className="tm2-card-footer">
+                        <button className="tm2-study-btn" onClick={() => onNav('guidance')}>Study this →</button>
+                      </div>
+                    </div>
+                  );
+                };
+
+                return (
+                  <div key={group.key}>
+                    <div className="tm2-section-hdr">
+                      <div className="tm2-section-dot" style={{ background: ps.dot || '#94A3B8' }} />
+                      <div className="tm2-section-label" style={{ color: ps.color || 'var(--text3)' }}>{group.label}</div>
+                      <div className="tm2-section-count">{group.topics.length} topic{group.topics.length !== 1 ? 's' : ''}</div>
+                      <div className="tm2-section-line" />
+                    </div>
+
+                    {useSubGroups ? (() => {
+                      const bySubj = {};
+                      for (const t of group.topics) {
+                        if (!bySubj[t.subject]) { bySubj[t.subject] = { topics: [], icon: t.icon }; }
+                        bySubj[t.subject].topics.push(t);
+                      }
+                      return Object.entries(bySubj).map(([subj, data], si) => {
+                        const grpKey = group.key + '|' + subj;
+                        const isGrpOpen = openTopicGroups.has(grpKey);
+                        const doneCount = data.topics.filter(t => studyPlan.completedThisWeek?.includes(t.name)).length;
+                        const sc = SUBJ_COLOR[subj] || { bg:'rgba(15,31,61,.07)', color:'var(--navy3)', border:'rgba(15,31,61,.12)' };
+                        const spSubjInfo = studyPlan.subjectFocus?.find(sf => sf.subject === subj);
+                        const subjPct = spSubjInfo?.scorePct ?? null;
+                        return (
+                          <div key={subj} className="tm2-subgrp-wrap">
+                            <div className="tm2-subgrp-hdr" style={{ borderLeftColor: sc.color, background: sc.bg }} onClick={() => toggleTopicGroup(grpKey)}>
+                              <div className="tm2-subgrp-icon-box" style={{ background: sc.bg, borderColor: sc.border }}>
+                                {data.icon}
+                              </div>
+                              <div className="tm2-subgrp-info">
+                                <span className="tm2-subgrp-name">{subj}</span>
+                                {subjPct !== null && (
+                                  <span className="tm2-subgrp-score">{subjPct}%</span>
+                                )}
+                              </div>
+                              {doneCount > 0 && (
+                                <span className="tm2-subgrp-done">{doneCount} done ✓</span>
+                              )}
+                              <span className="tm2-subgrp-count-pill" style={{ background: sc.bg, color: sc.color, borderColor: sc.border }}>
+                                {data.topics.length} topic{data.topics.length !== 1 ? 's' : ''}
+                              </span>
+                              <svg className="tm2-subgrp-arrow" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" strokeWidth="2" style={{ transform: isGrpOpen ? 'rotate(180deg)' : '' }}>
+                                <path d="M6 9l6 6 6-6"/>
+                              </svg>
+                            </div>
+                            <div className={'tm2-subgrp-body' + (isGrpOpen ? ' open' : '')}>
+                              <div className="tm2-grid" style={{ padding: '4px 0 8px' }}>
+                                {data.topics.map((t, ci) => renderCard(t, ci, si * 0.1))}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      });
+                    })() : (
+                      <div className="tm2-grid">
+                        {group.topics.map((t, ci) => renderCard(t, ci, gi * 0.12))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </>
+          );
+        })()}
+
+        {!isForge && (
+          <div className="upgrade-banner" style={{ marginTop: '24px' }}>
+            <div className="ub-text">
+              <div className="ub-label">Unlock Feature</div>
+              <div className="ub-title">Practice questions matched to your weak chapters</div>
+              <div className="ub-sub">{examTarget.toLowerCase().includes('neet') ? 'Genetics, Ecology, Organic Chemistry' : 'Electrostatics, Mechanics, Integration'} — questions at exactly your level, from previous {examTarget.toLowerCase().includes('neet') ? 'NEET' : 'JEE'} papers.</div>
+            </div>
+            <div className="ub-actions">
+              <button className="btn btn-gold" onClick={() => onOpenModal('upgrade-modal')}>Unlock Question Bank</button>
+            </div>
           </div>
-          <div className="ub-actions">
-            <button className="btn btn-gold" onClick={() => onOpenModal('upgrade-modal')}>Unlock Question Bank</button>
-          </div>
-        </div>
+        )}
       </div>
 
       {/* ══════════ STUDY PLAN ══════════ */}
