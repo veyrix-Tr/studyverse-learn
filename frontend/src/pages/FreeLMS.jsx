@@ -12,6 +12,7 @@ const FreeLMS = () => {
   const [toast, setToast] = useState({ show: false, msg: '' });
   const [profile, setProfile] = useState(null);
   const [habitLogs, setHabitLogs] = useState([]);
+  const [notifications, setNotifications] = useState([]);
   const toastTimer = useRef(null);
 
   useEffect(() => {
@@ -44,6 +45,37 @@ const FreeLMS = () => {
       .catch(() => {});
   }, []);
 
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token || !userId) return;
+    fetch(`${import.meta.env.VITE_API_URL}/api/student/${userId}/notifications`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(r => r.ok ? r.json() : [])
+      .then(data => { if (Array.isArray(data)) setNotifications(data); })
+      .catch(() => {});
+  }, [userId]);
+
+  const markNotifRead = async (id) => {
+    const token = localStorage.getItem('token');
+    await fetch(`${import.meta.env.VITE_API_URL}/api/student/${userId}/notifications/${id}/read`, {
+      method: 'PUT', headers: { Authorization: `Bearer ${token}` },
+    }).catch(() => {});
+    setNotifications(prev => prev.map(n => n.id === id ? { ...n, readAt: new Date().toISOString() } : n));
+  };
+
+  const markAllNotifRead = async () => {
+    const token = localStorage.getItem('token');
+    const unread = notifications.filter(n => !n.readAt);
+    await Promise.all(unread.map(n =>
+      fetch(`${import.meta.env.VITE_API_URL}/api/student/${userId}/notifications/${n.id}/read`, {
+        method: 'PUT', headers: { Authorization: `Bearer ${token}` },
+      }).catch(() => {})
+    ));
+    setNotifications(prev => prev.map(n => ({ ...n, readAt: n.readAt || new Date().toISOString() })));
+    if (unread.length > 0) showToast('All notifications marked as read ✓');
+  };
+
   const showToast = (msg) => {
     setToast({ show: true, msg });
     clearTimeout(toastTimer.current);
@@ -54,7 +86,7 @@ const FreeLMS = () => {
     <div className="free-app">
       <FreeSidebar activePage={activePage} onNav={setActivePage} profile={profile} />
       <div className="free-main">
-        <FreeTopbar activePage={activePage} onNav={setActivePage} />
+        <FreeTopbar activePage={activePage} onNav={setActivePage} unreadCount={notifications.filter(n => !n.readAt).length} />
         <FreeContent
           activePage={activePage}
           onNav={setActivePage}
@@ -62,6 +94,9 @@ const FreeLMS = () => {
           onShowToast={showToast}
           profile={profile}
           habitLogs={habitLogs}
+          notifications={notifications}
+          onMarkNotifRead={markNotifRead}
+          onMarkAllNotifRead={markAllNotifRead}
           onHabitSaved={(log) => setHabitLogs(prev => {
             const exists = prev.findIndex(l => l.date === log.date);
             if (exists >= 0) { const next = [...prev]; next[exists] = log; return next; }

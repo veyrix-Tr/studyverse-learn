@@ -154,7 +154,7 @@ const getGreeting = () => {
 
 
 
-const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, habitLogs = [], onHabitSaved }) => {
+const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, habitLogs = [], onHabitSaved, notifications = [], onMarkNotifRead, onMarkAllNotifRead }) => {
   const { id: userId } = useParams();
   const p = (name) => `page${activePage === name ? ' on' : ''}`;
   const firstName = profile?.name?.split(' ')[0] || 'there';
@@ -236,6 +236,7 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
   };
 
   const [openWeeks, setOpenWeeks] = useState(new Set([0]));
+  const [notifFilter, setNotifFilter] = useState('all');
   const toggleWeek = (i) => setOpenWeeks(prev => { const n = new Set(prev); n.has(i) ? n.delete(i) : n.add(i); return n; });
   const [showDiagSummary, setShowDiagSummary] = useState(false);
 
@@ -1740,22 +1741,143 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
 
       {/* ══════════ NOTIFICATIONS ══════════ */}
       <div className={p('notif')}>
-        <div className="card">
-          <div className="sh"><div className="sh-t">Notifications</div><span className="sh-a" onClick={() => onShowToast('All marked as read')}>Mark all read</span></div>
-          {[
-            { dot: 'var(--gold)', title: 'Diagnostic Ready', body: '— Your topic weakness map has been generated. See your results.', time: 'Just now' },
-            { dot: 'var(--text3)', title: 'Habit Check-in', body: "— You haven't logged today's habits yet.", time: '2 hours ago' },
-            { dot: 'var(--text3)', title: 'Study Tip', body: '— Electrostatics is your #1 weak area. Even 90 minutes today moves the needle.', time: 'Yesterday' },
-          ].map((n, i) => (
-            <div key={i} style={{ display: 'flex', gap: '12px', padding: '13px 0', borderBottom: i < 2 ? '1px solid var(--b)' : 'none' }}>
-              <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: n.dot, flexShrink: 0, marginTop: '5px' }}></div>
-              <div>
-                <div style={{ fontSize: '13px', color: 'var(--text2)' }}><strong style={{ color: 'var(--text)' }}>{n.title}</strong>{n.body}</div>
-                <div style={{ fontSize: '11px', color: 'var(--text3)', marginTop: '3px' }}>{n.time}</div>
+        <style dangerouslySetInnerHTML={{ __html:
+          '@keyframes nfItemIn{from{opacity:0;transform:translateX(-14px)}to{opacity:1;transform:none}}' +
+          '@keyframes nfEmptyIn{from{opacity:0;transform:translateY(16px) scale(.96)}to{opacity:1;transform:none}}' +
+          '@keyframes nfIconPop{from{transform:scale(0) rotate(-20deg)}to{transform:scale(1) rotate(0)}}' +
+          '@keyframes nfPulseRing{0%{box-shadow:0 0 0 0 rgba(232,168,48,.5)}70%{box-shadow:0 0 0 6px rgba(232,168,48,0)}100%{box-shadow:0 0 0 0 rgba(232,168,48,0)}}' +
+          '@keyframes nfReadFade{to{opacity:.55}}' +
+          '@keyframes nfHeaderIn{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:none}}' +
+          '.nf-item{animation:nfItemIn .32s cubic-bezier(.4,0,.2,1) both;border-radius:12px;transition:background .15s,box-shadow .15s}' +
+          '.nf-item:hover{background:var(--cream2);box-shadow:0 2px 10px rgba(15,31,61,.05)}' +
+          '.nf-item.read{animation:nfReadFade .4s ease forwards}' +
+          '.nf-icon-box{animation:nfIconPop .35s cubic-bezier(.34,1.56,.64,1) both}' +
+          '.nf-unread-dot{animation:nfPulseRing 2s ease infinite}' +
+          '.nf-filter-btn{border:1px solid var(--b);background:var(--cream);color:var(--text2);font-size:12px;font-weight:600;padding:5px 14px;border-radius:20px;cursor:pointer;transition:all .15s}' +
+          '.nf-filter-btn.on{background:var(--navy);color:var(--gold);border-color:transparent}' +
+          '.nf-filter-btn:hover:not(.on){border-color:var(--navy3);color:var(--text)}'
+        }} />
+
+        {(() => {
+          const timeAgo = (iso) => {
+            const secs = Math.floor((Date.now() - new Date(iso)) / 1000);
+            if (secs < 60) return 'Just now';
+            if (secs < 3600) return Math.floor(secs / 60) + 'm ago';
+            if (secs < 86400) return Math.floor(secs / 3600) + 'h ago';
+            if (secs < 604800) return Math.floor(secs / 86400) + 'd ago';
+            return new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+          };
+
+          const TYPE_META = {
+            Diagnostic:         { color: '#E8A830', bg: 'rgba(232,168,48,.12)', border: 'rgba(232,168,48,.28)', nav: 'diagnostic',  icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#E8A830" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg> },
+            Feedback:           { color: '#22C55E', bg: 'rgba(34,197,94,.1)',   border: 'rgba(34,197,94,.25)',  nav: null,           icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22C55E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> },
+            Announcement:       { color: '#1C2E50', bg: 'rgba(28,46,80,.08)',   border: 'rgba(28,46,80,.18)',   nav: null,           icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1C2E50" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg> },
+            Reminder:           { color: '#F97316', bg: 'rgba(249,115,22,.1)',  border: 'rgba(249,115,22,.25)', nav: null,           icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#F97316" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> },
+            'Motivational Note':{ color: '#A855F7', bg: 'rgba(168,85,247,.1)', border: 'rgba(168,85,247,.25)', nav: null,           icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A855F7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg> },
+            'Schedule Update':  { color: '#3B82F6', bg: 'rgba(59,130,246,.1)', border: 'rgba(59,130,246,.25)', nav: 'sessions',     icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> },
+            'Session Note':     { color: '#3B82F6', bg: 'rgba(59,130,246,.1)', border: 'rgba(59,130,246,.25)', nav: 'sessions',     icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg> },
+          };
+          const DEFAULT_META = { color: 'var(--navy3)', bg: 'rgba(15,31,61,.07)', border: 'rgba(15,31,61,.15)', nav: null, icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--navy3)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg> };
+
+          const unreadCount = notifications.filter(n => !n.readAt).length;
+          const filtered = notifFilter === 'unread' ? notifications.filter(n => !n.readAt) : notifications;
+
+          const handleClick = (n) => {
+            const meta = TYPE_META[n.type] || DEFAULT_META;
+            if (!n.readAt) onMarkNotifRead(n.id);
+            if (meta.nav) onNav(meta.nav);
+          };
+
+          return (
+            <>
+              {/* Header */}
+              <div style={{ background: 'linear-gradient(135deg,var(--navy) 0%,var(--navy3) 100%)', borderRadius: '20px', padding: '22px 26px', marginBottom: '16px', position: 'relative', overflow: 'hidden', animation: 'nfHeaderIn .35s cubic-bezier(.4,0,.2,1) both' }}>
+                <div style={{ position: 'absolute', top: -40, right: -40, width: 150, height: 150, borderRadius: '50%', background: 'rgba(232,168,48,.06)', pointerEvents: 'none' }} />
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}>
+                  <div>
+                    <div style={{ fontFamily: 'var(--fs)', fontSize: '19px', fontWeight: 700, color: '#FDF8F0', marginBottom: '4px' }}>Notifications</div>
+                    <div style={{ fontSize: '12.5px', color: 'rgba(253,248,240,.45)' }}>
+                      {notifications.length === 0 ? 'Nothing yet — stay tuned' : `${notifications.length} total · ${unreadCount} unread`}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                    {unreadCount > 0 && (
+                      <div style={{ textAlign: 'center', background: 'rgba(232,168,48,.15)', border: '1px solid rgba(232,168,48,.3)', borderRadius: '12px', padding: '8px 16px' }}>
+                        <div style={{ fontFamily: 'var(--fs)', fontSize: '22px', fontWeight: 800, color: 'var(--gold)', lineHeight: 1 }}>{unreadCount}</div>
+                        <div style={{ fontSize: '10px', color: 'rgba(253,248,240,.45)', marginTop: '2px', textTransform: 'uppercase' }}>Unread</div>
+                      </div>
+                    )}
+                    {unreadCount > 0 && (
+                      <button onClick={onMarkAllNotifRead} style={{ background: 'rgba(255,255,255,.1)', border: '1px solid rgba(255,255,255,.15)', borderRadius: '10px', padding: '8px 14px', color: 'rgba(253,248,240,.8)', fontSize: '12px', fontWeight: 600, cursor: 'pointer', transition: 'all .15s' }}
+                        onMouseOver={e => e.currentTarget.style.background = 'rgba(255,255,255,.18)'}
+                        onMouseOut={e => e.currentTarget.style.background = 'rgba(255,255,255,.1)'}>
+                        Mark all read
+                      </button>
+                    )}
+                  </div>
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+
+              {/* Filter tabs */}
+              {notifications.length > 0 && (
+                <div style={{ display: 'flex', gap: '6px', marginBottom: '14px' }}>
+                  {[{ key: 'all', label: 'All (' + notifications.length + ')' }, { key: 'unread', label: 'Unread (' + unreadCount + ')' }].map(f => (
+                    <button key={f.key} className={'nf-filter-btn' + (notifFilter === f.key ? ' on' : '')} onClick={() => setNotifFilter(f.key)}>{f.label}</button>
+                  ))}
+                </div>
+              )}
+
+              {/* Items */}
+              {filtered.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '56px 24px', animation: 'nfEmptyIn .45s cubic-bezier(.4,0,.2,1) both' }}>
+                  <div style={{ width: '64px', height: '64px', borderRadius: '20px', background: 'var(--cream)', border: '1px solid var(--b)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', boxShadow: 'var(--sh)' }}>
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                  </div>
+                  <div style={{ fontFamily: 'var(--fs)', fontSize: '17px', fontWeight: 700, color: 'var(--text)', marginBottom: '6px' }}>
+                    {notifFilter === 'unread' ? 'All caught up!' : 'No notifications yet'}
+                  </div>
+                  <div style={{ fontSize: '13px', color: 'var(--text3)', lineHeight: 1.6 }}>
+                    {notifFilter === 'unread' ? 'You have no unread notifications.' : 'Updates from your admin and faculty will appear here.'}
+                  </div>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {filtered.map((n, i) => {
+                    const meta = TYPE_META[n.type] || DEFAULT_META;
+                    const isUnread = !n.readAt;
+                    const isClickable = isUnread || meta.nav;
+                    return (
+                      <div
+                        key={n.id}
+                        className={'nf-item' + (n.readAt ? ' read' : '')}
+                        onClick={() => { if (isClickable) handleClick(n); }}
+                        style={{ display: 'flex', gap: '14px', padding: '14px 16px', cursor: isClickable ? 'pointer' : 'default', opacity: n.readAt ? 0.6 : 1, animationDelay: (i * 0.05) + 's' }}
+                      >
+                        {/* Icon box */}
+                        <div className="nf-icon-box" style={{ width: '40px', height: '40px', borderRadius: '12px', background: meta.bg, border: '1px solid ' + meta.border, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, animationDelay: (i * 0.05 + 0.08) + 's' }}>
+                          {meta.icon}
+                        </div>
+
+                        {/* Content */}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                            <span style={{ fontSize: '11px', fontWeight: 700, color: meta.color, background: meta.bg, border: '1px solid ' + meta.border, borderRadius: '20px', padding: '2px 8px', flexShrink: 0 }}>{n.type}</span>
+                            {meta.nav && <span style={{ fontSize: '10.5px', color: 'var(--text3)' }}>→ {meta.nav === 'diagnostic' ? 'View Diagnostic' : 'View Sessions'}</span>}
+                          </div>
+                          <div style={{ fontSize: '13.5px', color: 'var(--text)', fontWeight: isUnread ? 500 : 400, lineHeight: 1.55 }}>{n.content}</div>
+                          <div style={{ fontSize: '11px', color: 'var(--text3)', marginTop: '5px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span>{timeAgo(n.createdAt)}</span>
+                            {isUnread && <span className="nf-unread-dot" style={{ width: '7px', height: '7px', borderRadius: '50%', background: meta.color, display: 'inline-block', flexShrink: 0 }} />}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </>
+          );
+        })()}
       </div>
 
       {/* ══════════ MY PROGRESS (forge) ══════════ */}
