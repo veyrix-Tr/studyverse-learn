@@ -11,6 +11,9 @@ const pageTitles = {
   resources: 'Resources',
   plans: 'Plans & Pricing',
   notif: 'Notifications',
+  progress: 'My Progress',
+  tests: 'Weekly Tests',
+  feedback: 'Weekly Feedback',
 };
 
 const FreeTopbar = ({ activePage, onNav, unreadCount = 0 }) => (

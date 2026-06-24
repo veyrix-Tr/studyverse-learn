@@ -1,4 +1,4 @@
-const FreeSidebar = ({ activePage, onNav, profile }) => {
+const FreeSidebar = ({ activePage, onNav, profile, onOpenModal }) => {
   const ni = (page) => `ni${activePage === page ? ' on' : ''}`;
   const name = profile?.name || 'Student';
   const initial = name.charAt(0).toUpperCase();
@@ -33,16 +33,23 @@ const FreeSidebar = ({ activePage, onNav, profile }) => {
             <span style={{ fontSize: '16px', fontWeight: '800', color: '#E8A830', letterSpacing: '0.08em', fontFamily: 'var(--fb)', textTransform: 'uppercase' }}>Forge</span>
           </div>
           <div style={{ fontSize: '10.5px', color: 'rgba(253,248,240,0.45)', fontStyle: 'italic', marginBottom: '9px' }}>Build your score, problem by problem</div>
-          <div onClick={() => onNav('plans')} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: '#E8A830', cursor: 'pointer', fontWeight: '600' }}>
+          <div onClick={() => onOpenModal('upgrade-modal')} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: '#E8A830', cursor: 'pointer', fontWeight: '600' }}>
             Upgrade to Apex
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
           </div>
         </div>
       ) : (
-        <div className="tier-strip">
-          <div className="tier-label">Current Plan</div>
-          <div className="tier-name">Spark</div>
-          <div className="tier-cta" onClick={() => onNav('plans')}>Upgrade for more →</div>
+        <div style={{ margin: '10px 14px', borderRadius: '10px', padding: '12px 14px', background: 'linear-gradient(135deg, rgba(232,168,48,0.12) 0%, rgba(232,168,48,0.04) 100%)', border: '1px solid rgba(232,168,48,0.25)' }}>
+          <div style={{ fontSize: '9.5px', color: 'rgba(253,248,240,0.45)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '5px' }}>Current Plan</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '7px', marginBottom: '3px' }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#E8A830" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+            <span style={{ fontSize: '16px', fontWeight: '800', color: '#E8A830', letterSpacing: '0.08em', fontFamily: 'var(--fb)', textTransform: 'uppercase' }}>Spark</span>
+          </div>
+          <div style={{ fontSize: '10.5px', color: 'rgba(253,248,240,0.45)', fontStyle: 'italic', marginBottom: '9px' }}>Diagnostic, topic map & study plan</div>
+          <div onClick={() => onOpenModal('upgrade-modal')} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: '#E8A830', cursor: 'pointer', fontWeight: '600' }}>
+            Upgrade for more
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </div>
         </div>
       )}
 

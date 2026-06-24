@@ -672,6 +672,13 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
                     </div>
                   ))}
                 </div>
+                {/* Section label skeleton */}
+                <div style={{ display:'flex', alignItems:'center', gap:'8px', margin:'16px 0 10px' }}>
+                  <div className="sk" style={{ width:9, height:9, borderRadius:'50%', flexShrink:0 }} />
+                  <div className="sk" style={{ height:10, width:'12%' }} />
+                  <div className="sk" style={{ height:10, width:'8%' }} />
+                  <div style={{ flex:1, height:1, background:'var(--b)' }} />
+                </div>
                 <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px' }}>
                   {[1,2,3,4].map(i => (
                     <div key={i} style={{ background:'var(--cream)', border:'1px solid var(--b)', borderRadius:'14px', padding:'14px 14px 12px 18px', display:'flex', flexDirection:'column', gap:'8px' }}>
@@ -681,7 +688,33 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
                       </div>
                       <div className="sk" style={{ height:10, width:'60%' }} />
                       <div className="sk" style={{ height:4, borderRadius:'10px' }} />
-                      <div className="sk" style={{ height:11, width:'40%' }} />
+                      <div style={{ display:'flex', gap:'8px' }}>
+                        <div className="sk" style={{ height:11, width:'35%' }} />
+                        <div className="sk" style={{ height:11, width:'25%' }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {/* Second section */}
+                <div style={{ display:'flex', alignItems:'center', gap:'8px', margin:'16px 0 10px' }}>
+                  <div className="sk" style={{ width:9, height:9, borderRadius:'50%', flexShrink:0 }} />
+                  <div className="sk" style={{ height:10, width:'10%' }} />
+                  <div className="sk" style={{ height:10, width:'9%' }} />
+                  <div style={{ flex:1, height:1, background:'var(--b)' }} />
+                </div>
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px' }}>
+                  {[1,2,3,4].map(i => (
+                    <div key={i} style={{ background:'var(--cream)', border:'1px solid var(--b)', borderRadius:'14px', padding:'14px 14px 12px 18px', display:'flex', flexDirection:'column', gap:'8px' }}>
+                      <div style={{ display:'flex', gap:'10px', alignItems:'flex-start' }}>
+                        <div className="sk" style={{ flex:1, height:14 }} />
+                        <div className="sk" style={{ width:44, height:44, borderRadius:'50%', flexShrink:0 }} />
+                      </div>
+                      <div className="sk" style={{ height:10, width:'55%' }} />
+                      <div className="sk" style={{ height:4, borderRadius:'10px' }} />
+                      <div style={{ display:'flex', gap:'8px' }}>
+                        <div className="sk" style={{ height:11, width:'30%' }} />
+                        <div className="sk" style={{ height:11, width:'28%' }} />
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -1022,18 +1055,6 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
           );
         })()}
 
-        {!isForge && (
-          <div className="upgrade-banner" style={{ marginTop: '24px' }}>
-            <div className="ub-text">
-              <div className="ub-label">Unlock Feature</div>
-              <div className="ub-title">Practice questions matched to your weak chapters</div>
-              <div className="ub-sub">{examTarget.toLowerCase().includes('neet') ? 'Genetics, Ecology, Organic Chemistry' : 'Electrostatics, Mechanics, Integration'} — questions at exactly your level, from previous {examTarget.toLowerCase().includes('neet') ? 'NEET' : 'JEE'} papers.</div>
-            </div>
-            <div className="ub-actions">
-              <button className="btn btn-gold" onClick={() => onOpenModal('upgrade-modal')}>Unlock Question Bank</button>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* ══════════ STUDY PLAN ══════════ */}
@@ -1274,13 +1295,13 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
           );
         })() : (
           /* Locked state — skeleton + lock card */
-          <div style={{ position: 'relative', borderRadius: '16px', overflow: 'hidden', minHeight: 'calc(100vh - 80px)', background: 'rgba(253,248,240,0.93)', backdropFilter: 'blur(10px)' }}>
+          <div style={{ position: 'relative', borderRadius: '16px', overflow: 'hidden', minHeight: 'calc(100vh - 80px)', background: 'var(--cream2)' }}>
             {/* Skeleton placeholders */}
-            <div style={{ padding: '32px 24px 24px', display: 'flex', flexDirection: 'column', gap: '14px', pointerEvents: 'none', userSelect: 'none' }}>
+            <div style={{ padding: '32px 24px 24px', display: 'flex', flexDirection: 'column', gap: '14px', pointerEvents: 'none', userSelect: 'none', filter: 'blur(2.5px)' }}>
               {/* Overview strip */}
               <div style={{ display: 'flex', gap: '15px' }}>
                 {[1,2,3,4].map(i => (
-                  <div key={i} style={{ flex: 1, background: '#fff', border: '1px solid rgba(15,31,61,0.08)', borderRadius: '12px', padding: '40px 14px', display: 'flex', flexDirection: 'column', gap: '7px' }}>
+                  <div key={i} style={{ flex: 1, background: 'rgba(200,200,200,0.22)', border: '1px solid rgba(15,31,61,0.04)', borderRadius: '12px', padding: '40px 14px', display: 'flex', flexDirection: 'column', gap: '7px' }}>
                     <div className="sk" style={{ height: 18, width: '60%' }}/>
                     <div className="sk" style={{ height: 10, width: '45%' }}/>
                     <div className="sk" style={{ height: 10, width: '45%' }}/>
@@ -1288,7 +1309,7 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
                 ))}
               </div>
               {/* Subject bars */}
-              <div style={{ background: '#fff', border: '1px solid rgba(15,31,61,0.08)', borderRadius: '12px', padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div style={{ background: 'rgba(200,200,200,0.22)', border: '1px solid rgba(15,31,61,0.04)', borderRadius: '12px', padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <div className="sk" style={{ height: 15, width: '30%' }}/>
                 {[1,2,3].map(i => (
                   <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -1300,7 +1321,7 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
               </div>
               {/* Focus cards */}
               {[1,2,3,4].map(i => (
-                <div key={i} style={{ background: '#fff', border: '1px solid rgba(15,31,61,0.08)', borderRadius: '12px', padding: '14px 16px', display: 'flex', gap: '12px' }}>
+                <div key={i} style={{ background: 'rgba(200,200,200,0.22)', border: '1px solid rgba(15,31,61,0.04)', borderRadius: '12px', padding: '14px 16px', display: 'flex', gap: '12px' }}>
                   <div className="sk" style={{ width: 4, borderRadius: '99px', flexShrink: 0, alignSelf: 'stretch' }}/>
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '7px' }}>
                     <div className="sk" style={{ height: 13, width: '25%' }}/>

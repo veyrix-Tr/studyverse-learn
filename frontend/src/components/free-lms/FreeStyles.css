@@ -575,7 +575,7 @@ body.free-mode .tm2-study-btn { font-size:12px;font-weight:700;color:var(--text3
 body.free-mode .tm2-study-btn:hover { color:var(--gold) }
 body.free-mode .tm2-empty { text-align:center;padding:40px 20px;color:var(--text3);font-size:13px }
 body.free-mode .tm2-locked { position:relative;border-radius:16px;overflow:hidden;min-height:380px }
-body.free-mode .tm2-lock-blur { filter:blur(3px);pointer-events:none;user-select:none;opacity:.55 }
+body.free-mode .tm2-lock-blur { pointer-events:none;user-select:none;opacity:.45 }
 body.free-mode .tm2-lock-overlay { position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:24px }
 
 /* Subject sub-groups (Important / Maintain) */
