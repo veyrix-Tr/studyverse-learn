@@ -336,9 +336,14 @@ router.get('/notifications', requireAuth, async (req, res) => {
     const profile = await prisma.studentProfile.findUnique({ where: { userId: req.params.userId } });
     if (!profile) return res.json([]);
 
+    // FacultyNotification only relevant to Forge & Apex (they have assigned faculty)
+    const hasFaculty = profile.plan === 'forge' || profile.plan === 'apex';
+
     const [adminMsgs, facultyNotifs] = await Promise.all([
       prisma.adminMessage.findMany({ where: { studentId: profile.id }, orderBy: { createdAt: 'desc' } }),
-      prisma.facultyNotification.findMany({ where: { studentId: profile.id }, orderBy: { createdAt: 'desc' } }),
+      hasFaculty
+        ? prisma.facultyNotification.findMany({ where: { studentId: profile.id }, orderBy: { createdAt: 'desc' } })
+        : Promise.resolve([]),
     ]);
 
     const merged = [
@@ -586,6 +591,26 @@ router.post('/feedback', requireAuth, async (req, res) => {
     });
 
     res.json({ success: true, feedback });
+
+    // Fix 6: notify all admins of new feedback — fire and forget
+    (async () => {
+      try {
+        const [user, admins] = await Promise.all([
+          prisma.user.findUnique({ where: { id: req.params.userId }, select: { name: true } }),
+          prisma.adminProfile.findMany({ where: { isActive: true }, select: { id: true } }),
+        ]);
+        if (user && admins.length) {
+          await prisma.adminMessage.createMany({
+            data: admins.map(a => ({
+              content: `${user.name} submitted feedback on their weekly report — ${rating}/5 stars.`,
+              type: 'Feedback',
+              studentId: profile.id,
+              adminId: a.id,
+            })),
+          });
+        }
+      } catch { /* non-critical */ }
+    })();
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to submit feedback' });

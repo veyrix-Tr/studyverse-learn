@@ -88,21 +88,6 @@ const WeeklyReport = ({ week, meta, score, change, changeClass, isOpen, onToggle
 // ─────────────────────────────────────────────────────────────────────────────
 
 
-const ratingTopics = [
-  { group: '📐 Mathematics', topics: [
-    { key: 'limits', label: 'Limits & Continuity' },
-    { key: 'integration', label: 'Integration' },
-    { key: 'coordinate', label: 'Coordinate Geometry' },
-  ]},
-  { group: '⚡ Physics', topics: [
-    { key: 'mechanics', label: "Mechanics (Newton's Laws, Work-Energy)" },
-    { key: 'electro', label: 'Electrostatics & Current Electricity' },
-  ]},
-  { group: '⚛️ Chemistry', topics: [
-    { key: 'physical-chem', label: 'Physical Chemistry (Mole Concept, Equilibrium)' },
-    { key: 'organic', label: 'Organic Chemistry (Reactions, Mechanisms)' },
-  ]},
-];
 
 
 const habitItems = [
@@ -186,7 +171,6 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
   const [studyPlan, setStudyPlan]           = useState(null);
   const [studyPlanError, setStudyPlanError] = useState(false);
   const [studyPlanRetry, setStudyPlanRetry] = useState(0);
-  const [ratings] = useState({});
 
   useEffect(() => {
     const sp = profile?.studentProfile;
@@ -268,9 +252,14 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
     const takenAt = profile?.studentProfile?.diagnosticTakenAt;
     if (!takenAt) return;
     const retakeAt = new Date(new Date(takenAt).getTime() + 3 * 30 * 24 * 60 * 60 * 1000);
-    const tick = () => setRetakeSecs(Math.max(0, Math.floor((retakeAt - Date.now()) / 1000)));
+    let id;
+    const tick = () => {
+      const secs = Math.max(0, Math.floor((retakeAt - Date.now()) / 1000));
+      setRetakeSecs(secs);
+      if (secs === 0) clearInterval(id);
+    };
     tick();
-    const id = setInterval(tick, 1000);
+    id = setInterval(tick, 1000);
     return () => clearInterval(id);
   }, [profile?.studentProfile?.diagnosticTakenAt]);
 
@@ -334,23 +323,6 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
   };
   const dotGrid = buildDotGrid();
 
-  // Rating helpers — converts 1–5 scale to 0–100 percentage
-  const ratingToPct = (r) => Math.round((r / 5) * 100);
-  const subjectAvg = (keys) => {
-    const rated = keys.filter(k => ratings[k]);
-    if (!rated.length) return null;
-    return Math.round(rated.reduce((s, k) => s + ratingToPct(ratings[k]), 0) / rated.length);
-  };
-  const pctMeta = (pct) => {
-    if (pct === null) return { color: 'var(--text3)', barCls: 'pb-navy', note: 'Pending', tag: 'Pending', tagCls: 'ok-tag' };
-    if (pct <= 40) return { color: 'var(--red)', barCls: 'pb-red', note: 'Critical Gap', tag: 'Weak', tagCls: 'weak-tag' };
-    if (pct <= 55) return { color: 'var(--orange)', barCls: 'pb-orange', note: 'Needs Work', tag: 'Avg', tagCls: 'ok-tag' };
-    if (pct <= 70) return { color: 'var(--gold)', barCls: 'pb-gold', note: 'Average', tag: 'Avg', tagCls: 'ok-tag' };
-    return { color: 'var(--green)', barCls: 'pb-green', note: 'Good', tag: 'Good', tagCls: 'good-tag' };
-  };
-  const mathPct = subjectAvg(['limits', 'integration', 'coordinate']);
-  const physPct = subjectAvg(['mechanics', 'electro']);
-  const chemPct = subjectAvg(['physical-chem', 'organic']);
 
 
   return (
@@ -1480,26 +1452,91 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
               ));
             })()}
           </>
-        ) : (
-          <div className="lock-wrap">
-            <div className="lock-blur">
-              <div className="card mb">
-                <div className="sh-t" style={{ marginBottom: '14px' }}>Electrostatics — Weak Area Questions</div>
-                <div className="mcq-card"><div className="mcq-q">Q1. A charge of 4μC is placed at the origin. What is the electric field at a point 2m away?</div><div className="mcq-opts"><div className="mcq-opt">A. 4500 N/C</div><div className="mcq-opt">B. 9000 N/C</div><div className="mcq-opt">C. 18000 N/C</div><div className="mcq-opt">D. 2250 N/C</div></div></div>
-                <div className="mcq-card"><div className="mcq-q">Q2. The work done in moving a charge of 3C from A to B across a potential difference of 12V is:</div><div className="mcq-opts"><div className="mcq-opt">A. 4 J</div><div className="mcq-opt">B. 36 J</div><div className="mcq-opt">C. 0.25 J</div><div className="mcq-opt">D. 15 J</div></div></div>
+        ) : (() => {
+            const isNEET = examTarget.toLowerCase().includes('neet');
+            const weakTopics = studyPlan
+              ? Object.values(studyPlan.subjectTopics || {}).flat()
+                  .filter(t => t.label === 'Urgent' || t.label === 'High')
+                  .slice(0, 4)
+              : [];
+            const topicNames = weakTopics.length > 0
+              ? weakTopics.map(t => t.name)
+              : isNEET
+                ? ['Genetics', 'Organic Chemistry', 'Human Physiology']
+                : ['Electrostatics', 'Integration', 'Mechanics'];
+            const previewTitle = weakTopics.length > 0
+              ? topicNames[0] + ' — Your Weak Area'
+              : isNEET ? 'Genetics — Weak Area Questions' : 'Electrostatics — Weak Area Questions';
+            const TOPIC_CLR = { Urgent: '#DC2626', High: '#EA580C', Important: '#D97706', Maintain: '#22C55E' };
+            return (
+              <div className="lock-wrap">
+                <div className="lock-blur">
+                  <div className="card mb">
+                    <div className="sh-t" style={{ marginBottom: '14px' }}>{previewTitle}</div>
+                    <div className="mcq-card">
+                      <div className="mcq-q">Q1. Based on your diagnostic, this topic has the highest impact on your score. Unlock to see curated questions.</div>
+                      <div className="mcq-opts">
+                        <div className="mcq-opt">A. Option A</div><div className="mcq-opt">B. Option B</div>
+                        <div className="mcq-opt">C. Option C</div><div className="mcq-opt">D. Option D</div>
+                      </div>
+                    </div>
+                    <div className="mcq-card">
+                      <div className="mcq-q">Q2. Previous year {isNEET ? 'NEET' : 'JEE Mains'} question matched to your level.</div>
+                      <div className="mcq-opts">
+                        <div className="mcq-opt">A. Option A</div><div className="mcq-opt">B. Option B</div>
+                        <div className="mcq-opt">C. Option C</div><div className="mcq-opt">D. Option D</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div className="lock-overlay">
+                  <div style={{ background: 'linear-gradient(135deg,#0F1F3D 0%,#1C2E50 100%)', borderRadius: '20px', padding: '32px 28px', textAlign: 'center', boxShadow: '0 24px 64px rgba(15,31,61,.3), 0 4px 16px rgba(15,31,61,.15)', maxWidth: '380px', width: '100%', border: '1px solid rgba(232,168,48,.2)', position: 'relative', overflow: 'hidden' }}>
+                    <div style={{ position: 'absolute', top: -40, right: -40, width: 140, height: 140, borderRadius: '50%', background: 'rgba(232,168,48,.06)', pointerEvents: 'none' }} />
+                    <div style={{ width: '56px', height: '56px', borderRadius: '16px', background: 'rgba(232,168,48,.15)', border: '1.5px solid rgba(232,168,48,.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 18px' }}>
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#E8A830" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    </div>
+                    <div style={{ fontFamily: 'var(--fs)', fontSize: '19px', fontWeight: 700, color: '#FDF8F0', marginBottom: '8px', lineHeight: 1.3 }}>
+                      {diagDone ? 'Your question bank is ready' : 'Personalised Question Bank'}
+                    </div>
+                    <div style={{ fontSize: '13px', color: 'rgba(253,248,240,.5)', lineHeight: 1.7, marginBottom: diagDone && weakTopics.length > 0 ? '14px' : '20px' }}>
+                      {diagDone
+                        ? 'Questions matched to your exact weak topics from the diagnostic — sorted by difficulty and exam pattern.'
+                        : 'Take the diagnostic first, then unlock questions matched to your specific weak topics.'}
+                    </div>
+                    {diagDone && topicNames.length > 0 && (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', justifyContent: 'center', marginBottom: '20px' }}>
+                        {weakTopics.length > 0
+                          ? weakTopics.map((t, i) => (
+                              <span key={i} style={{ fontSize: '11px', fontWeight: 700, color: TOPIC_CLR[t.label] || '#E8A830', background: (TOPIC_CLR[t.label] || '#E8A830') + '1a', border: '1px solid ' + (TOPIC_CLR[t.label] || '#E8A830') + '44', borderRadius: '20px', padding: '3px 10px' }}>{t.name}</span>
+                            ))
+                          : topicNames.map((name, i) => (
+                              <span key={i} style={{ fontSize: '11px', fontWeight: 600, color: 'rgba(253,248,240,.6)', background: 'rgba(255,255,255,.08)', borderRadius: '20px', padding: '3px 10px' }}>{name}</span>
+                            ))
+                        }
+                      </div>
+                    )}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '20px', textAlign: 'left' }}>
+                      {[
+                        'Matched to your diagnostic weak areas',
+                        'Previous ' + (isNEET ? 'NEET' : 'JEE Mains') + ' papers · sorted by difficulty',
+                        'Progress tracked question-by-question',
+                      ].map((f, i) => (
+                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: 'rgba(253,248,240,.6)' }}>
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#22C55E" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                          {f}
+                        </div>
+                      ))}
+                    </div>
+                    <button className="btn btn-gold btn-full" onClick={() => onOpenModal('upgrade-modal')} style={{ width: '100%', justifyContent: 'center', padding: '12px 0', fontSize: '14px' }}>
+                      Unlock Question Bank →
+                    </button>
+                    <div style={{ fontSize: '11px', color: 'rgba(253,248,240,.3)', marginTop: '10px' }}>Upgrade to Forge · Instant access</div>
+                  </div>
+                </div>
               </div>
-            </div>
-            <div className="lock-overlay">
-              <div className="lock-box">
-                <div className="lock-icon">🔒</div>
-                <div className="lock-title">Unlock Question Bank</div>
-                <div className="lock-sub">Get questions matched exactly to your weak topics — Electrostatics, Mechanics, Integration — from JEE Mains papers. Sorted by difficulty.</div>
-                <button className="btn btn-gold btn-full" onClick={() => onOpenModal('upgrade-modal')}>Unlock Access</button>
-                <div style={{ fontSize: '11px', color: 'var(--text3)', marginTop: '10px' }}>Or upgrade to Forge to get instant access</div>
-              </div>
-            </div>
-          </div>
-        )}
+            );
+          })()
+        }
       </div>
 
       {/* ══════════ BOOK SESSION ══════════ */}

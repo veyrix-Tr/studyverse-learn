@@ -160,24 +160,38 @@ const AdminLMS = ({ expectedRole }) => {
     }
   };
 
-  const sendMessage = async (to, type, content) => {
+  const sendMessage = async (to, type, content, targetPlan) => {
     const token = localStorage.getItem('token');
     const res = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/${userId}/messages`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ studentId: to, content: content.trim(), type }),
+      body: JSON.stringify({ studentId: to, content: content.trim(), type, targetPlan: targetPlan && targetPlan !== 'all' ? targetPlan : null }),
     });
     if (!res.ok) throw new Error('Failed to send');
     const data = await res.json();
-    const recipient = to === 'all' ? 'All Students' : students.find(s => String(s.id) === String(to))?.name || 'Student';
-    setSentMessages(prev => [{
-      id: data.id ?? Date.now(),
-      content,
-      type,
-      recipient,
-      createdAt: new Date().toISOString(),
-    }, ...prev]);
-    showToast(to === 'all' ? 'Message sent to all students ✓' : `Message sent to ${recipient} ✓`);
+    const PLAN_LABEL = { spark: 'Spark only', forge: 'Forge & above', apex: 'Apex only' };
+    let recipient;
+    if (Array.isArray(to)) {
+      // Fix 1: use String coercion so number/string IDs both match
+      const names = to.map(id => students.find(s => String(s.id) === String(id))?.name).filter(Boolean);
+      recipient = names.length <= 3 ? names.join(', ') : `${names.slice(0, 2).join(', ')} +${names.length - 2} more`;
+    } else if (to === 'all') {
+      recipient = targetPlan && targetPlan !== 'all' ? PLAN_LABEL[targetPlan] + ' students' : 'All Students';
+    } else {
+      recipient = students.find(s => String(s.id) === String(to))?.name || 'Student';
+    }
+    showToast(`Message sent to ${recipient} ✓`);
+    // Refresh history separately — isolated so a refresh failure never causes
+    // the caller to think the send itself failed
+    try {
+      const fresh = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/${userId}/messages`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (fresh.ok) {
+        const freshData = await fresh.json();
+        if (Array.isArray(freshData)) setSentMessages(freshData);
+      }
+    } catch { /* history refresh failed — send still succeeded */ }
   };
 
   const approveResource = async (id) => {

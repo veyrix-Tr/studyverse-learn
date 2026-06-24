@@ -233,10 +233,23 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
   const [platformToggles, setPlatformToggles] = useState([true, true, true, true, true, true, true]);
   const [decliningId, setDecliningId] = useState(null);
   const [declineReason, setDeclineReason] = useState('');
-  const [msgTo, setMsgTo] = useState('all');
+  const [msgMode, setMsgMode] = useState('all'); // 'all' | 'select'
+  const [msgPlan, setMsgPlan] = useState('all');
+  const [msgSelectedIds, setMsgSelectedIds] = useState(new Set());
+  const [msgSearch, setMsgSearch] = useState('');
   const [msgType, setMsgType] = useState('Announcement');
   const [msgContent, setMsgContent] = useState('');
   const [msgSending, setMsgSending] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+  const [histTypeFilter, setHistTypeFilter] = useState('all');
+  const [histPlanFilter, setHistPlanFilter] = useState('all');
+
+  const toggleMsgStudent = (id) => setMsgSelectedIds(prev => {
+    const nid = Number(id); // normalise to number — prevents string/number duplicates in Set
+    const next = new Set(prev);
+    if (next.has(nid)) { next.delete(nid); } else { next.add(nid); }
+    return next;
+  });
   const [reportsTab, setReportsTab] = useState(0);
   const [expandedReportId, setExpandedReportId] = useState(null);
   const [rejectingReportId, setRejectingReportId] = useState(null);
@@ -245,11 +258,19 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
 
   const sendMessage = async () => {
     if (!msgContent.trim()) { onShowToast('Please write a message'); return; }
+    if (msgMode === 'select' && msgSelectedIds.size === 0) { onShowToast('Select at least one student'); return; }
     setMsgSending(true);
     try {
-      await onSendMessage(msgTo, msgType, msgContent);
+      if (msgMode === 'select') {
+        await onSendMessage(Array.from(msgSelectedIds), msgType, msgContent, null);
+      } else {
+        await onSendMessage('all', msgType, msgContent, msgPlan !== 'all' ? msgPlan : null);
+      }
       setMsgContent('');
-      setMsgTo('all');
+      setMsgMode('all');
+      setMsgPlan('all');
+      setMsgSelectedIds(new Set());
+      setMsgSearch('');
       setMsgType('Announcement');
     } catch {
       onShowToast('Failed to send message. Try again.');
@@ -261,6 +282,10 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
   const pendingResources = resources.filter(r => r.status === 'pending');
   const approvedResources = resources.filter(r => r.status === 'approved');
   const declinedResources = resources.filter(r => r.status === 'declined');
+
+  useEffect(() => {
+    if (activePage !== 'messages') setShowHistory(false);
+  }, [activePage]);
 
   useEffect(() => {
     if (!isSuperAdmin && (activePage === 'admins' || activePage === 'settings')) {
@@ -853,51 +878,279 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
 
       {/* ══ MESSAGES ══ */}
       <div className={pg('messages')} id="p-messages">
-        <div className="msg-compose mb">
-          <div className="sh"><div className="sh-t">Compose Message</div><span style={{ fontSize: '12px', color: 'var(--text3)' }}>Appears on student's dashboard immediately</span></div>
-          <div className="fg" style={{ marginBottom: '12px' }}>
-            <label>Send to</label>
-            <select className="fi" value={msgTo} onChange={e => setMsgTo(e.target.value)}>
-              <option value="all">All Students</option>
-              {students.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-            </select>
-          </div>
-          <div className="fg" style={{ marginBottom: '12px' }}>
-            <label>Message Type</label>
-            <select className="fi" value={msgType} onChange={e => setMsgType(e.target.value)}>
-              <option>Announcement</option>
-              <option>Reminder</option>
-              <option>Motivational Note</option>
-              <option>Schedule Update</option>
-            </select>
-          </div>
-          <div className="fg" style={{ marginBottom: '12px' }}>
-            <label>Message</label>
-            <textarea className="fi" rows="4" placeholder="Write your message — it will appear as a notification on the student's dashboard..." value={msgContent} onChange={e => setMsgContent(e.target.value)}></textarea>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '9px' }}>
-            <button className="btn btn-gold btn-sm" disabled={msgSending} onClick={sendMessage}>{msgSending ? 'Sending…' : 'Send Now →'}</button>
-          </div>
-        </div>
+        <style dangerouslySetInnerHTML={{ __html:
+          '@keyframes msgCardIn{from{opacity:0;transform:translateY(16px) scale(.98)}to{opacity:1;transform:none}}' +
+          '@keyframes msgHistIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}' +
+          '@keyframes msgRowIn{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:none}}' +
+          '@keyframes msgDotPop{0%{transform:scale(0)}60%{transform:scale(1.3)}100%{transform:scale(1)}}' +
+          '@keyframes msgHeaderPulse{0%,100%{opacity:1}50%{opacity:.85}}' +
+          '.msg-card-anim{animation:msgCardIn .42s cubic-bezier(.4,0,.2,1) both}' +
+          '.msg-card-anim-2{animation:msgCardIn .42s cubic-bezier(.4,0,.2,1) .08s both}' +
+          '.msg-hist-open{animation:msgHistIn .25s cubic-bezier(.4,0,.2,1) both}' +
+          '.msg-row-anim{animation:msgRowIn .28s cubic-bezier(.4,0,.2,1) both}' +
+          '.msg-dot-anim{animation:msgDotPop .3s cubic-bezier(.34,1.56,.64,1) both}' +
+          '.chip-nv.on{background:rgba(232,168,48,.25) !important;border-color:rgba(232,168,48,.6) !important;color:#0F1F3D !important;font-weight:700}' +
+          '.mh-row{animation:msgRowIn .22s ease both;display:flex;gap:12px;padding:13px 16px;transition:background .12s}' +
+          '.mh-row:hover{background:rgba(15,31,61,.025)}' +
+          '.mh-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-top:5px}' +
+          '.ms-list{max-height:186px;overflow-y:auto;border:1px solid var(--b);border-radius:8px;margin-top:6px}' +
+          '.ms-row{display:flex;align-items:center;gap:10px;padding:9px 13px;cursor:pointer;border-bottom:1px solid var(--b);transition:background .12s}' +
+          '.ms-row:last-child{border-bottom:none}' +
+          '.ms-row:hover{background:var(--cream2)}' +
+          '.ms-row.on{background:var(--gd)}' +
+          '.ms-cb{width:14px;height:14px;border-radius:3px;border:1.5px solid var(--b);flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all .12s}' +
+          '.ms-cb.on{background:var(--navy);border-color:var(--navy)}' +
+          '.msg-page-bg{background:rgba(15,31,61,.025);border-radius:var(--rl);padding:24px;margin:-4px}' +
+          '.msg-hist-toggle-row{display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding:14px 22px;border-radius:var(--rl);transition:background .15s;user-select:none}' +
+          '.msg-hist-toggle-row:hover{background:rgba(15,31,61,.03)}'
+        }} />
 
-        <div className="sh"><div className="sh-t">Sent Messages</div></div>
-        <div className="card" style={{ padding: '14px 18px' }}>
-          {sentMessages.length === 0 ? (
-            <div style={{ fontSize: '13px', color: 'var(--text3)', padding: '12px 0' }}>No messages sent yet.</div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
-              {sentMessages.map((m, i, arr) => (
-                <div key={m.id} style={{ padding: '12px 0', borderBottom: i < arr.length - 1 ? '1px solid var(--b)' : 'none' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
-                    <div style={{ fontSize: '13px', fontWeight: '600' }}>{m.type}</div>
-                    <div style={{ fontSize: '11px', color: 'var(--text3)' }}>{new Date(m.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} · {m.recipient}</div>
-                  </div>
-                  <div style={{ fontSize: '12.5px', color: 'var(--text2)' }}>{m.content}</div>
+        {(() => {
+          const TYPE_DOT = { Announcement:'#0F1F3D', Reminder:'#F97316', 'Motivational Note':'#7C3AED', 'Schedule Update':'#2563EB' };
+          const recipientCount = msgMode === 'select' ? msgSelectedIds.size
+            : students.filter(s => {
+                if (msgPlan === 'spark') return s.plan === 'spark';
+                if (msgPlan === 'forge') return s.plan === 'forge' || s.plan === 'apex';
+                if (msgPlan === 'apex') return s.plan === 'apex';
+                return true;
+              }).length;
+          const filtered = students.filter(s => s.name.toLowerCase().includes(msgSearch.toLowerCase()));
+          const canSend = msgContent.trim() && (msgMode !== 'select' || msgSelectedIds.size > 0);
+          const timeAgo = (iso) => {
+            const d = Math.floor((Date.now() - new Date(iso)) / 1000);
+            if (d < 60) return 'just now';
+            if (d < 3600) return Math.floor(d / 60) + 'm ago';
+            if (d < 86400) return Math.floor(d / 3600) + 'h ago';
+            if (d < 604800) return Math.floor(d / 86400) + 'd ago';
+            return new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+          };
+          const histFiltered = sentMessages.filter(m => {
+            const typeOk = h
+            // Fix 2: 'All Students' (all-plans broadcast) should pass any plan filter
+            const planOk = histPlanFilter === 'all'
+              || m.recipient === 'All Students'
+              || (m.recipient || '').toLowerCase().includes(histPlanFilter);
+            return typeOk && planOk;
+          });
+
+          return (
+            <div className="msg-page-bg">
+              {/* ── Compose card ── */}
+              <div className="card mb msg-card-anim" style={{ padding: 0, overflow: 'hidden', boxShadow: '0 4px 24px rgba(15,31,61,.09)' }}>
+                <div style={{ background: 'linear-gradient(135deg,var(--navy) 0%,var(--navy3) 100%)', padding: '16px 22px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ fontFamily: 'var(--fs)', fontSize: '16px', fontWeight: 700, color: '#FDF8F0' }}>Compose Message</div>
+                  <span style={{ fontSize: '12.5px', color: 'rgba(253,248,240,.72)', fontWeight: 400 }}>Delivered to student dashboards immediately</span>
                 </div>
-              ))}
+                <div style={{ padding: '20px 22px' }}>
+
+                {/* Recipients */}
+                <div className="fg">
+                  <label>Recipients</label>
+                  <div className="target-chips">
+                    <div className={'chip chip-nv' + (msgMode === 'all' ? ' on' : '')} onClick={() => { setMsgMode('all'); setMsgSelectedIds(new Set()); setMsgSearch(''); }}>Broadcast to all</div>
+                    <div className={'chip chip-nv' + (msgMode === 'select' ? ' on' : '')} onClick={() => { setMsgMode('select'); setMsgSearch(''); }}>Select students</div>
+                  </div>
+                </div>
+
+                {/* Broadcast — plan filter */}
+                {msgMode === 'all' && (
+                  <div className="fg">
+                    <label>Target plan <span style={{ fontWeight: 400, color: 'var(--text3)' }}>— {recipientCount} student{recipientCount !== 1 ? 's' : ''} will receive this</span></label>
+                    <div className="target-chips">
+                      {[{ k: 'all', l: 'All plans' }, { k: 'spark', l: 'Spark only' }, { k: 'forge', l: 'Forge & above' }, { k: 'apex', l: 'Apex only' }].map(p => (
+                        <div key={p.k} className={'chip chip-nv' + (msgPlan === p.k ? ' on' : '')} onClick={() => setMsgPlan(p.k)}>{p.l}</div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Select students */}
+                {msgMode === 'select' && (
+                  <div className="fg">
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                      <label style={{ margin: 0 }}>
+                        Select students
+                        {msgSelectedIds.size > 0 && (
+                          <span style={{ marginLeft: '8px', fontSize: '11.5px', fontWeight: 600, color: '#15803D', background: 'rgba(34,197,94,.12)', border: '1px solid rgba(34,197,94,.28)', borderRadius: '20px', padding: '1px 8px' }}>
+                            {msgSelectedIds.size} selected
+                          </span>
+                        )}
+                      </label>
+                      {msgSelectedIds.size > 0 && (
+                        <span className="sh-a" style={{ color: 'var(--text3)', fontSize: '12px' }} onClick={() => setMsgSelectedIds(new Set())}>Clear all</span>
+                      )}
+                    </div>
+
+                    {/* Quick-select chips */}
+                    <div style={{ display: 'flex', gap: '6px', marginBottom: '10px', flexWrap: 'wrap' }}>
+                      {[{ l: 'All Spark', p: 'spark' }, { l: 'All Forge', p: 'forge' }, { l: 'All Apex', p: 'apex' }, { l: 'Everyone', p: null }].map(q => {
+                        const count = students.filter(s => q.p ? s.plan === q.p : true).length;
+                        const allSel = count > 0 && students.filter(s => q.p ? s.plan === q.p : true).every(s => msgSelectedIds.has(s.id));
+                        return (
+                          <button key={q.l}
+                            onClick={() => setMsgSelectedIds(new Set(students.filter(s => q.p ? s.plan === q.p : true).map(s => s.id)))}
+                            style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '5px 12px', borderRadius: '6px', border: '1px solid', fontSize: '12.5px', fontWeight: 500, cursor: 'pointer', transition: 'all .14s',
+                              borderColor: allSel ? 'var(--navy)' : 'var(--b)',
+                              background: allSel ? 'var(--navy)' : 'var(--cream2)',
+                              color: allSel ? '#FDF8F0' : 'var(--text2)' }}>
+                            {q.l}
+                            <span style={{ fontSize: '11px', opacity: .7 }}>({count})</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Search */}
+                    <input className="fi" type="text" placeholder="Search by name..." value={msgSearch} onChange={e => setMsgSearch(e.target.value)} style={{ marginBottom: '0' }} />
+
+                    {/* Student list */}
+                    <div className="ms-list">
+                      {filtered.length === 0
+                        ? <div style={{ padding: '14px', textAlign: 'center', fontSize: '13px', color: 'var(--text3)' }}>No students match</div>
+                        : filtered.map(s => {
+                            const isSel = msgSelectedIds.has(s.id);
+                            return (
+                              <div key={s.id} className={'ms-row' + (isSel ? ' on' : '')} onClick={() => toggleMsgStudent(s.id)}>
+                                <div className={'ms-cb' + (isSel ? ' on' : '')}>
+                                  {isSel && <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#FDF8F0" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}
+                                </div>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.name}</div>
+                                  <div style={{ fontSize: '11.5px', color: 'var(--text3)' }}>{s.plan} · {s.examTarget || '—'}</div>
+                                </div>
+                              </div>
+                            );
+                          })
+                      }
+                    </div>
+                  </div>
+                )}
+
+                {/* Type */}
+                <div className="fg">
+                  <label>Type</label>
+                  <select className="fi" value={msgType} onChange={e => setMsgType(e.target.value)}>
+                    <option>Announcement</option>
+                    <option>Reminder</option>
+                    <option>Motivational Note</option>
+                    <option>Schedule Update</option>
+                  </select>
+                </div>
+
+                {/* Message — full width */}
+                <div className="fg">
+                  <label>
+                    Message
+                    <span style={{ float: 'right', fontWeight: 400, color: msgContent.length > 400 ? 'var(--orange)' : 'var(--text3)' }}>{msgContent.length} / 500</span>
+                  </label>
+                  <textarea className="fi" rows={5} placeholder="Write your message..." value={msgContent} onChange={e => setMsgContent(e.target.value)} style={{ resize: 'vertical', width: '100%', boxSizing: 'border-box' }} />
+                </div>
+
+                {/* Status + Send */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '14px' }}>
+                  <span style={{ fontSize: '12.5px', color: canSend ? 'var(--text3)' : 'var(--red)' }}>
+                    {canSend
+                      ? (msgMode === 'select' ? msgSelectedIds.size : recipientCount) + ' recipient' + ((msgMode === 'select' ? msgSelectedIds.size : recipientCount) !== 1 ? 's' : '')
+                      : (!msgContent.trim() ? 'Write a message to continue' : 'Select at least one student')}
+                  </span>
+                  <button className="btn btn-gold btn-sm" disabled={!canSend || msgSending} onClick={sendMessage} style={{ opacity: !canSend ? 0.5 : 1 }}>
+                    {msgSending ? 'Sending…' : 'Send Message →'}
+                  </button>
+                </div>
+                </div>
+              </div>
+
+              {/* ── History card ── */}
+              <div className="card msg-card-anim-2" style={{ boxShadow: '0 4px 24px rgba(15,31,61,.09)' }}>
+                {/* Toggle header */}
+                <div className="msg-hist-toggle-row" onClick={() => setShowHistory(v => !v)}>
+                  <div className="sh-t">
+                    Message History
+                    {sentMessages.length > 0 && <span style={{ fontFamily: 'var(--fb)', fontSize: '13px', fontWeight: 400, color: 'var(--text3)', marginLeft: '10px' }}>{sentMessages.length} sent</span>}
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    {sentMessages.length > 0 && !showHistory && (
+                      <span style={{ fontSize: '12px', color: 'var(--text3)' }}>Click to view</span>
+                    )}
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" strokeWidth="2" style={{ transition: 'transform .2s', transform: showHistory ? 'rotate(180deg)' : '' }}>
+                      <path d="M6 9l6 6 6-6"/>
+                    </svg>
+                  </div>
+                </div>
+
+                {/* Expanded panel */}
+                {showHistory && (
+                  <div className="msg-hist-open" style={{ marginTop: '16px' }}>
+                    {/* Filters */}
+                    <div style={{ border: '1px solid var(--b)', borderRadius: '10px', overflow: 'hidden', marginBottom: '14px' }}>
+                      <div style={{ display: 'flex', alignItems: 'stretch', background: 'var(--cream)' }}>
+                        {/* Filter label */}
+                        <div style={{ display: 'flex', alignItems: 'center', padding: '0 16px', background: 'var(--navy)', borderRight: '1px solid rgba(255,255,255,.1)', flexShrink: 0 }}>
+                          <span style={{ fontSize: '11px', fontWeight: 700, color: 'rgba(253,248,240,.7)', textTransform: 'uppercase', letterSpacing: '.08em' }}>Filter</span>
+                        </div>
+                        {/* Type */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', borderRight: '1px solid var(--b)', flexShrink: 0 }}>
+                          <span style={{ fontSize: '11.5px', fontWeight: 600, color: 'var(--text3)' }}>Type</span>
+                          <select className="fi" value={histTypeFilter} onChange={e => setHistTypeFilter(e.target.value)} style={{ padding: '5px 10px', fontSize: '12.5px', width: 'auto', margin: 0 }}>
+                            <option value="all">All</option>
+                            <option>Announcement</option>
+                            <option>Reminder</option>
+                            <option>Motivational Note</option>
+                            <option>Schedule Update</option>
+                          </select>
+                        </div>
+                        {/* Plan */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', borderRight: '1px solid var(--b)', flexShrink: 0 }}>
+                          <span style={{ fontSize: '11.5px', fontWeight: 600, color: 'var(--text3)' }}>Plan</span>
+                          <select className="fi" value={histPlanFilter} onChange={e => setHistPlanFilter(e.target.value)} style={{ padding: '5px 10px', fontSize: '12.5px', width: 'auto', margin: 0 }}>
+                            <option value="all">All</option>
+                            <option value="spark">Spark</option>
+                            <option value="forge">Forge</option>
+                            <option value="apex">Apex</option>
+                          </select>
+                        </div>
+                        {/* Clear + count */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 16px', marginLeft: 'auto' }}>
+                          {(histTypeFilter !== 'all' || histPlanFilter !== 'all') && (
+                            <button onClick={() => { setHistTypeFilter('all'); setHistPlanFilter('all'); }} style={{ padding: '4px 12px', borderRadius: '6px', border: '1px solid var(--b)', background: 'var(--cream2)', color: 'var(--text2)', fontSize: '12px', fontWeight: 600, cursor: 'pointer', transition: 'all .12s' }}>
+                              Reset
+                            </button>
+                          )}
+                          <span style={{ fontSize: '12px', color: 'var(--text3)', whiteSpace: 'nowrap' }}>
+                            <strong style={{ color: 'var(--text)', fontWeight: 700 }}>{histFiltered.length}</strong> result{histFiltered.length !== 1 ? 's' : ''}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Rows */}
+                    {histFiltered.length === 0 ? (
+                      <div style={{ padding: '28px 0', textAlign: 'center', color: 'var(--text3)', fontSize: '13px' }}>
+                        {sentMessages.length === 0 ? 'No messages sent yet.' : 'No messages match these filters.'}
+                      </div>
+                    ) : (
+                      <div style={{ border: '1px solid var(--b)', borderRadius: '10px', overflow: 'hidden' }}>
+                        {histFiltered.map((m, i) => (
+                          <div key={m.id} className="mh-row msg-row-anim" style={{ animationDelay: (i * 0.04) + 's', background: i % 2 === 0 ? 'var(--cream)' : 'var(--cream2)' }}>
+                            <div className="mh-dot msg-dot-anim" style={{ background: TYPE_DOT[m.type] || 'var(--navy3)', animationDelay: (i * 0.04 + 0.1) + 's' }} />
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '3px' }}>
+                                <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text)' }}>{m.type}</span>
+                                <span style={{ fontSize: '12px', background: 'var(--cream2)', border: '1px solid var(--b)', borderRadius: '20px', padding: '1px 9px', color: 'var(--text2)' }}>→ {m.recipient}</span>
+                                <span style={{ fontSize: '11.5px', color: 'var(--text3)', marginLeft: 'auto', flexShrink: 0 }}>{timeAgo(m.createdAt)}</span>
+                              </div>
+                              <div style={{ fontSize: '13px', color: 'var(--text2)', lineHeight: 1.55, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{m.content}</div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
-          )}
-        </div>
+          );
+        })()}
       </div>
 
       {/* ══ ADMIN ACCOUNTS (SUPER ONLY) ══ */}

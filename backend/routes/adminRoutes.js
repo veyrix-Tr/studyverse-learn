@@ -331,27 +331,50 @@ router.put('/admins/:id/reactivate', requireAuth, async (req, res) => {
   }
 });
 
-// POST /api/admin/messages — send message to one or all students
+// POST /api/admin/messages — send message to one or all students, with optional plan targeting
 router.post('/messages', requireAuth, async (req, res) => {
   try {
-    const { studentId, content, type } = req.body;
+    const { studentId, content, type, targetPlan } = req.body;
     if (!content || !content.trim()) return res.status(400).json({ error: 'Message content is required' });
+    if (content.trim().length > 500) return res.status(400).json({ error: 'Message too long (max 500 characters)' });
 
     const ap = await prisma.adminProfile.findUnique({ where: { userId: req.params.userId } });
     if (!ap) return res.status(403).json({ error: 'Not an admin' });
 
-    if (studentId === 'all') {
-      const students = await prisma.studentProfile.findMany({ select: { id: true } });
+    const msgType = type || 'Announcement';
+    const msgContent = content.trim();
+    const sentAt = new Date();
+
+    // Multi-select: array of specific student IDs
+    if (Array.isArray(studentId)) {
+      const ids = studentId.map(Number).filter(n => !isNaN(n));
+      if (ids.length === 0) return res.status(400).json({ error: 'No valid student IDs' });
       await prisma.adminMessage.createMany({
-        data: students.map(s => ({ content: content.trim(), type: type || 'Announcement', studentId: s.id, adminId: ap.id })),
+        data: ids.map(sid => ({ content: msgContent, type: msgType, studentId: sid, adminId: ap.id, createdAt: sentAt })),
       });
-      return res.json({ success: true, sent: students.length });
+      // Fix 5: return sentAt so frontend gets a consistent, real timestamp
+      return res.json({ success: true, sent: ids.length, sentAt: sentAt.toISOString() });
+    }
+
+    if (studentId === 'all') {
+      let planWhere = {};
+      if (targetPlan === 'spark') planWhere = { plan: 'spark' };
+      else if (targetPlan === 'forge') planWhere = { plan: { in: ['forge', 'apex'] } };
+      else if (targetPlan === 'apex') planWhere = { plan: 'apex' };
+
+      const students = await prisma.studentProfile.findMany({ where: planWhere, select: { id: true } });
+      if (students.length === 0) return res.json({ success: true, sent: 0, sentAt: sentAt.toISOString() });
+
+      await prisma.adminMessage.createMany({
+        data: students.map(s => ({ content: msgContent, type: msgType, studentId: s.id, adminId: ap.id, createdAt: sentAt })),
+      });
+      return res.json({ success: true, sent: students.length, sentAt: sentAt.toISOString() });
     }
 
     const sid = parseInt(studentId);
     if (isNaN(sid)) return res.status(400).json({ error: 'Invalid student ID' });
     const msg = await prisma.adminMessage.create({
-      data: { content: content.trim(), type: type || 'Announcement', studentId: sid, adminId: ap.id },
+      data: { content: msgContent, type: msgType, studentId: sid, adminId: ap.id },
     });
     res.json({ success: true, id: msg.id });
   } catch (err) {
@@ -366,26 +389,47 @@ router.get('/messages', requireAuth, async (req, res) => {
     const ap = await prisma.adminProfile.findUnique({ where: { userId: req.params.userId } });
     if (!ap) return res.status(403).json({ error: 'Not an admin' });
 
+    // Only fetch manually composed messages — exclude system-generated types
+    const SYSTEM_TYPES = ['Diagnostic', 'Feedback'];
     const msgs = await prisma.adminMessage.findMany({
-      where: { adminId: ap.id },
+      where: { adminId: ap.id, type: { notIn: SYSTEM_TYPES } },
       include: { student: { include: { user: { select: { name: true } } } } },
       orderBy: { createdAt: 'desc' },
       take: 100,
     });
 
-    // Group by content+type+minute to collapse broadcasts into one row
+    // Fix 7: group by adminId + type + content + 10-second window to collapse broadcasts
+    // but avoid merging two genuinely separate sends of the same message
     const groups = {};
     for (const m of msgs) {
-      const minute = new Date(m.createdAt).toISOString().slice(0, 16);
-      const key = `${minute}|${m.type}|${m.content}`;
-      if (!groups[key]) groups[key] = { id: m.id, content: m.content, type: m.type, createdAt: m.createdAt, count: 0 };
+      const tenSec = Math.floor(new Date(m.createdAt).getTime() / 10000);
+      const key = `${ap.id}|${tenSec}|${m.type}|${m.content}`;
+      if (!groups[key]) {
+        groups[key] = { id: m.id, content: m.content, type: m.type, createdAt: m.createdAt, count: 0, studentNames: [] };
+      }
       groups[key].count++;
+      const name = m.student?.user?.name;
+      if (name) groups[key].studentNames.push(name);
     }
 
     const result = Object.values(groups)
       .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
       .slice(0, 30)
-      .map(g => ({ id: g.id, content: g.content, type: g.type, createdAt: g.createdAt, recipient: g.count > 1 ? 'All Students' : msgs.find(m => m.id === g.id)?.student?.user?.name || 'Student' }));
+      .map(g => {
+        let recipient;
+        const resolvedNames = g.studentNames; // only names that resolved (student not deleted)
+        if (g.count === 1) {
+          recipient = resolvedNames[0] || 'Student';
+        } else if (resolvedNames.length <= 3) {
+          // show names if few enough, fall back to count if names didn't resolve
+          recipient = resolvedNames.length > 0
+            ? resolvedNames.join(', ')
+            : `${g.count} students`;
+        } else {
+          recipient = `${g.count} students`;
+        }
+        return { id: g.id, content: g.content, type: g.type, createdAt: g.createdAt, recipient };
+      });
 
     res.json(result);
   } catch (err) {
@@ -432,13 +476,21 @@ router.put('/resources/:id/approve', requireAuth, async (req, res) => {
       data: { status: 'approved', approvedAt: new Date(), approvedById: ap.id },
     });
 
-    // Notify all students whose exam target includes this resource's subject
-    const allStudents = await prisma.studentProfile.findMany({
-      select: { id: true, examTarget: true },
-    });
+    // Fix 4: explicit type-to-plan mapping — no implicit fallthrough
+    const APEX_ONLY_RESOURCE_TYPES   = ['Session Notes'];
+    const FORGE_ABOVE_RESOURCE_TYPES = ['MCQ Bank', 'Previous Year Papers', 'Practice Set', 'Study Material', 'Formula Sheet'];
+    const isKnownType = APEX_ONLY_RESOURCE_TYPES.includes(resource.type) || FORGE_ABOVE_RESOURCE_TYPES.includes(resource.type);
+
+    const allStudents = isKnownType ? await prisma.studentProfile.findMany({
+      select: { id: true, examTarget: true, plan: true },
+    }) : [];
+
     const relevantStudents = allStudents.filter(s => {
       const subjects = EXAM_SUBJECTS[s.examTarget] || [];
-      return subjects.includes(resource.subject);
+      if (!subjects.includes(resource.subject)) return false;
+      if (APEX_ONLY_RESOURCE_TYPES.includes(resource.type))   return s.plan === 'apex';
+      if (FORGE_ABOVE_RESOURCE_TYPES.includes(resource.type)) return s.plan === 'forge' || s.plan === 'apex';
+      return false; // unknown type — no notification
     });
     if (relevantStudents.length > 0) {
       await prisma.facultyNotification.createMany({

@@ -25,10 +25,6 @@ const FreeTopbar = ({ activePage, onNav, unreadCount = 0 }) => (
     }} />
     <div className="ph">{pageTitles[activePage] || 'Dashboard'}</div>
     <div className="tbr">
-      <div className="srch">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-        <input type="text" placeholder="Search topics..." />
-      </div>
       <div className="tbb" onClick={() => onNav('notif')} style={{ position: 'relative' }}>
         <svg
           className={'nf-bell' + (unreadCount > 0 ? ' ringing' : '')}

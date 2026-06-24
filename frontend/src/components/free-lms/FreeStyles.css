@@ -112,10 +112,6 @@ body.free-mode .free-main { margin-left: var(--sw); flex: 1; display: flex; flex
 body.free-mode .topbar { height: var(--th); background: var(--cream); border-bottom: 1px solid var(--b); display: flex; align-items: center; padding: 0 30px; gap: 16px; position: sticky; top: 0; z-index: 50; box-shadow: 0 1px 4px rgba(15,31,61,0.04); }
 body.free-mode .ph { font-family: var(--fs); font-size: 17px; font-weight: 600; color: var(--text); }
 body.free-mode .tbr { display: flex; align-items: center; gap: 9px; margin-left: auto; }
-body.free-mode .srch { display: flex; align-items: center; gap: 7px; background: var(--cream2); border: 1px solid var(--b); border-radius: 8px; padding: 7px 13px; width: 230px; transition: border-color .2s; }
-body.free-mode .srch:focus-within { border-color: var(--gold); }
-body.free-mode .srch input { background: none; border: none; outline: none; font-family: var(--fb); font-size: 13px; color: var(--text); width: 100%; }
-body.free-mode .srch input::placeholder { color: var(--text3); }
 body.free-mode .tbb { width: 36px; height: 36px; border-radius: 8px; background: var(--cream2); border: 1px solid var(--b); display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text3); transition: all .15s; position: relative; }
 body.free-mode .tbb:hover { background: var(--cream3); color: var(--text); }
 body.free-mode .npip { position: absolute; top: 7px; right: 7px; width: 6px; height: 6px; border-radius: 50%; background: var(--gold); border: 1.5px solid var(--cream); }
