@@ -45,6 +45,7 @@ model StudentProfile {
   facultyNotifications FacultyNotification[]
   habitLogs            HabitLog[]
   completedTopics      CompletedTopic[]
+  dailyReports         DailyReport[]
   weeklyReports        WeeklyReport[]
   parentFeedback       ParentFeedback[]
 }
@@ -231,6 +232,31 @@ model CompletedTopic {
 
   @@unique([studentId, topicName, weekNumber])
   @@index([studentId])
+}
+
+model DailyReport {
+  id              Int      @id @default(autoincrement())
+  date            String   // YYYY-MM-DD IST
+  mood            String   // '1'–'5'
+  showedUp        String   // 'Yes' | 'No'
+  hrsPhysics      Float?
+  hrsChemistry    Float?
+  hrsThird        Float?   // Biology or Maths depending on exam
+  focusQuality    Int      // 1–5
+  topicsDone      String?
+  questionsSolved Int?
+  mockToday       String?  // 'Yes' | 'No'
+  mockScore       String?
+  wentWell        String?
+  wentHard        String?
+  tomorrowOne     String?
+  noteForMentor   String?
+  createdAt       DateTime @default(now())
+
+  studentId Int
+  student   StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, date])
 }
 
 model HabitLog {

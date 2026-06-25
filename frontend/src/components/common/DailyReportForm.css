@@ -1,0 +1,273 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap');
+
+.drform {
+  --dr-navy:   #0F1F3D;
+  --dr-navy2:  #162443;
+  --dr-gold:   #E8A830;
+  --dr-gold2:  #F5C842;
+  --dr-gdim:   rgba(232,168,48,0.13);
+  --dr-gb:     rgba(232,168,48,0.30);
+  --dr-cream:  #FDF8F0;
+  --dr-cream2: #F5EDD8;
+  --dr-muted:  #6B7A99;
+  --dr-border: #D8CEBC;
+  --dr-green:  #1D7A4B;
+  --dr-red:    #C0392B;
+  --dr-sage:   #4ADE80;
+  --dr-fs: 'Playfair Display', Georgia, serif;
+  --dr-fb: 'DM Sans', sans-serif;
+  --dr-r: 10px;
+  --dr-rl: 14px;
+  --dr-sh: 0 2px 12px rgba(15,31,61,0.07);
+  --dr-shm: 0 8px 28px rgba(15,31,61,0.12);
+
+  font-family: var(--dr-fb);
+  color: var(--dr-navy);
+  font-size: 14px;
+  line-height: 1.6;
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 0 0 60px;
+}
+
+.drform *, .drform *::before, .drform *::after { box-sizing: border-box; }
+
+/* ── KEYFRAMES ── */
+@keyframes drFadeUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes drSuccIn {
+  from { opacity: 0; transform: translateY(24px) scale(.96); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes drCheckDraw {
+  to { stroke-dashoffset: 0; }
+}
+@keyframes drStepIn {
+  from { opacity: 0; transform: translateX(20px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes drPulse {
+  0%,100% { box-shadow: 0 0 0 0 rgba(232,168,48,.35); }
+  50%      { box-shadow: 0 0 0 6px rgba(232,168,48,0); }
+}
+
+/* ── HEADER ── */
+.drform .dr-header {
+  background: var(--dr-navy);
+  border-radius: var(--dr-rl);
+  padding: 22px 22px 20px;
+  margin-bottom: 20px;
+  position: relative; overflow: hidden;
+  animation: drFadeUp .35s ease both;
+  background-image: linear-gradient(135deg, var(--dr-navy) 0%, var(--dr-navy2) 100%);
+  box-shadow: var(--dr-shm);
+}
+.drform .dr-header::before {
+  content: '';
+  position: absolute; top: -50px; right: -50px;
+  width: 160px; height: 160px; border-radius: 50%;
+  background: rgba(255,255,255,.04); pointer-events: none;
+}
+.drform .dr-hdr-date {
+  font-size: 11px; font-weight: 600; letter-spacing: .08em;
+  text-transform: uppercase; color: rgba(253,248,240,.45); margin-bottom: 4px;
+}
+.drform .dr-hdr-title {
+  font-family: var(--dr-fs); font-size: 1.5rem; font-weight: 700;
+  color: #FDF8F0; margin-bottom: 3px;
+}
+.drform .dr-hdr-sub { font-size: 13px; color: rgba(253,248,240,.5); }
+
+/* ── PROGRESS BAR ── */
+.drform .dr-prog {
+  display: flex; gap: 6px; margin-bottom: 24px;
+  animation: drFadeUp .35s ease .05s both;
+}
+.drform .dr-pd {
+  height: 4px; flex: 1; border-radius: 2px;
+  background: var(--dr-border); transition: background .3s ease;
+}
+.drform .dr-pd.done { background: var(--dr-gold); }
+.drform .dr-pd.on   { background: var(--dr-navy); }
+
+/* ── STEP ── */
+.drform .dr-step { animation: drStepIn .3s cubic-bezier(.4,0,.2,1) both; }
+
+/* ── SECTION LABEL ── */
+.drform .dr-sec-lbl {
+  font-size: 10.5px; font-weight: 700; letter-spacing: .12em;
+  text-transform: uppercase; color: var(--dr-gold);
+  margin-bottom: 16px; padding-bottom: 10px;
+  border-bottom: 1px solid var(--dr-cream2);
+}
+
+/* ── QUESTION ── */
+.drform .dr-q { margin-bottom: 20px; }
+.drform .dr-q-lbl {
+  font-size: 14.5px; font-weight: 600; color: var(--dr-navy);
+  margin-bottom: 10px; line-height: 1.4;
+}
+.drform .dr-q-hint {
+  font-size: 12px; color: var(--dr-muted); font-style: italic; margin-bottom: 8px;
+}
+
+/* ── RADIO GROUP ── */
+.drform .dr-radio-group { display: flex; flex-direction: column; gap: 0; }
+.drform .dr-radio-label {
+  display: flex; align-items: center; gap: 13px;
+  padding: 14px 16px;
+  background: #fff; border: 1px solid var(--dr-border);
+  margin-bottom: -1px; font-size: 15px; color: var(--dr-navy);
+  cursor: pointer; transition: background .13s;
+}
+.drform .dr-radio-label:first-child { border-radius: 10px 10px 0 0; }
+.drform .dr-radio-label:last-child  { border-radius: 0 0 10px 10px; margin-bottom: 0; }
+.drform .dr-radio-label:hover { background: #fafaf8; }
+.drform .dr-radio-label.selected { background: var(--dr-gdim); border-color: var(--dr-gb); }
+.drform .dr-radio-label .dr-em { font-size: 20px; flex-shrink: 0; }
+.drform .dr-radio-circle {
+  width: 20px; height: 20px; border-radius: 50%;
+  border: 2px solid var(--dr-border); flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  transition: all .15s;
+}
+.drform .dr-radio-label.selected .dr-radio-circle {
+  border-color: var(--dr-navy); background: var(--dr-navy);
+}
+.drform .dr-radio-label.selected .dr-radio-circle::after {
+  content: ''; width: 8px; height: 8px; border-radius: 50%; background: #fff;
+}
+
+/* ── SCALE GROUP ── */
+.drform .dr-scale-group { display: flex; gap: 0; }
+.drform .dr-scale-label {
+  flex: 1; display: flex; align-items: center; justify-content: center;
+  flex-direction: column; gap: 5px;
+  padding: 14px 6px;
+  background: #fff; border: 1px solid var(--dr-border);
+  margin-right: -1px; font-size: 16px; font-weight: 600;
+  color: var(--dr-muted); cursor: pointer; text-align: center;
+  transition: all .13s;
+}
+.drform .dr-scale-label:first-child { border-radius: 10px 0 0 10px; }
+.drform .dr-scale-label:last-child  { border-radius: 0 10px 10px 0; margin-right: 0; }
+.drform .dr-scale-label.selected {
+  background: var(--dr-navy); color: #FDF8F0; border-color: var(--dr-navy); z-index: 1;
+}
+.drform .dr-scale-sub { font-size: 10px; font-weight: 400; }
+
+/* ── SUBJECT GRID ── */
+.drform .dr-subj-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; }
+.drform .dr-subj-box {
+  background: #fff; border: 1.5px solid var(--dr-border);
+  border-radius: 10px; padding: 14px 10px 10px; text-align: center;
+}
+.drform .dr-subj-name {
+  font-size: 10.5px; font-weight: 700; letter-spacing: .07em;
+  text-transform: uppercase; color: var(--dr-muted); margin-bottom: 8px;
+}
+.drform .dr-subj-input {
+  border: none; border-bottom: 1.5px solid var(--dr-border);
+  border-radius: 0; padding: 4px 0; text-align: center;
+  font-size: 22px; font-weight: 600; width: 100%;
+  background: transparent; outline: none; color: var(--dr-navy);
+  font-family: var(--dr-fb);
+}
+.drform .dr-subj-input:focus { border-bottom-color: var(--dr-navy); }
+.drform .dr-subj-unit { font-size: 10px; color: var(--dr-muted); margin-top: 4px; }
+
+/* ── TEXT INPUTS ── */
+.drform .dr-input {
+  width: 100%; font-family: var(--dr-fb); font-size: 15px; color: var(--dr-navy);
+  background: #fff; border: 1.5px solid var(--dr-border);
+  border-radius: 10px; padding: 13px 15px; outline: none;
+  transition: border-color .2s;
+}
+.drform .dr-input:focus { border-color: var(--dr-navy); }
+.drform .dr-textarea {
+  width: 100%; font-family: var(--dr-fb); font-size: 15px; color: var(--dr-navy);
+  background: #fff; border: 1.5px solid var(--dr-border);
+  border-radius: 10px; padding: 13px 15px; outline: none;
+  resize: vertical; min-height: 90px; line-height: 1.65;
+  transition: border-color .2s;
+}
+.drform .dr-textarea:focus { border-color: var(--dr-navy); }
+
+/* ── MOCK SCORE REVEAL ── */
+.drform .dr-mock-reveal { margin-top: 10px; animation: drFadeUp .2s ease both; }
+
+/* ── NAV BUTTONS ── */
+.drform .dr-nav { display: flex; gap: 10px; margin-top: 28px; }
+.drform .dr-btn-next {
+  flex: 1; background: var(--dr-navy); color: #FDF8F0; border: none;
+  border-radius: 12px; padding: 16px; font-family: var(--dr-fb);
+  font-size: 15px; font-weight: 700; cursor: pointer;
+  transition: all .18s; animation: drPulse 2.5s ease infinite;
+}
+.drform .dr-btn-next:hover { background: var(--dr-navy2); transform: translateY(-1px); }
+.drform .dr-btn-back {
+  background: transparent; color: var(--dr-muted); border: 1.5px solid var(--dr-border);
+  border-radius: 12px; padding: 16px 20px; font-family: var(--dr-fb);
+  font-size: 14px; font-weight: 600; cursor: pointer; transition: all .15s;
+}
+.drform .dr-btn-back:hover { border-color: var(--dr-navy); color: var(--dr-navy); }
+.drform .dr-btn-submit {
+  flex: 1; background: var(--dr-gold); color: var(--dr-navy); border: none;
+  border-radius: 12px; padding: 16px; font-family: var(--dr-fb);
+  font-size: 15px; font-weight: 800; cursor: pointer; transition: all .18s;
+}
+.drform .dr-btn-submit:hover { background: var(--dr-gold2); transform: translateY(-1px); box-shadow: 0 6px 20px rgba(232,168,48,.35); }
+.drform .dr-btn-submit:disabled { opacity: .6; cursor: default; transform: none; animation: none; }
+
+/* ── SUCCESS SCREEN ── */
+.drform .dr-success {
+  text-align: center; padding: 48px 16px 64px;
+  animation: drSuccIn .45s cubic-bezier(.4,0,.2,1) both;
+}
+.drform .dr-succ-icon {
+  width: 72px; height: 72px; border-radius: 50%;
+  background: var(--dr-navy); margin: 0 auto 22px;
+  display: flex; align-items: center; justify-content: center;
+}
+.drform .dr-succ-check {
+  stroke-dasharray: 50; stroke-dashoffset: 50;
+  animation: drCheckDraw .5s cubic-bezier(.4,0,.2,1) .3s both;
+}
+.drform .dr-succ-title {
+  font-family: var(--dr-fs); font-size: 1.65rem; font-weight: 700;
+  color: var(--dr-navy); margin-bottom: 12px;
+}
+.drform .dr-succ-sub {
+  font-size: 14px; color: var(--dr-muted); line-height: 1.8; max-width: 380px; margin: 0 auto;
+}
+.drform .dr-succ-sub strong { color: var(--dr-gold); font-weight: 700; }
+
+/* ── ALREADY SUBMITTED ── */
+.drform .dr-submitted-card {
+  background: #fff; border: 1.5px solid var(--dr-border);
+  border-radius: var(--dr-rl); padding: 20px 22px;
+  animation: drFadeUp .3s ease both;
+}
+.drform .dr-submitted-header {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 16px;
+}
+.drform .dr-submitted-tick {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: var(--dr-gdim); border: 1.5px solid var(--dr-gb);
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.drform .dr-field-row { display: flex; gap: 10px; margin-bottom: 10px; font-size: 13px; }
+.drform .dr-field-lbl {
+  font-size: 10.5px; font-weight: 700; color: var(--dr-muted);
+  text-transform: uppercase; letter-spacing: .05em; width: 110px; flex-shrink: 0; margin-top: 1px;
+}
+.drform .dr-field-val { color: var(--dr-navy); flex: 1; line-height: 1.6; }
+
+/* ── ANCHOR THEME OVERRIDE (body.anchor-mode.free-mode context) ── */
+/* Applied by AnchorStyles.css override of --dr-navy, etc. */
+
+@media (max-width: 400px) {
+  .drform .dr-subj-grid { grid-template-columns: 1fr 1fr; }
+}

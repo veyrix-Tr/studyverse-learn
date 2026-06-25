@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
+import DailyReportForm from '../common/DailyReportForm';
 
 const HABIT_ITEMS = [
   { key: 'sleep',    icon: '🌙', name: 'Slept before midnight',              desc: 'Your brain consolidates during sleep.' },
@@ -47,7 +48,7 @@ const computeStreak = (logs) => {
   return streak;
 };
 
-const AnchorContent = ({ activePage, onNav, onShowToast, habitLogs = [], onHabitSaved, resources = [] }) => {
+const AnchorContent = ({ activePage, onNav, onShowToast, habitLogs = [], onHabitSaved, resources = [], dailyReports = [], profile, onReportSubmitted }) => {
   const { id: userId } = useParams();
   const pg = (name) => `page${activePage === name ? ' on' : ''}`;
 
@@ -239,26 +240,18 @@ const AnchorContent = ({ activePage, onNav, onShowToast, habitLogs = [], onHabit
 
       {/* ══════════ DAILY REPORT ══════════ */}
       <div className={pg('report')}>
-        <div className="report-intro">
-          <div style={{ fontSize:'36px', flexShrink:0 }}>📝</div>
-          <div className="ri-text">
-            <div className="ri-title">Daily Report</div>
-            <div className="ri-sub">2 minutes. Be honest with yourself. Ajay reads this every morning before reaching out.</div>
-            <div className="ri-chips">
-              <span className="ri-chip">Submitted daily</span>
-              <span className="ri-chip">Mentor reads before 8 AM</span>
-              <span className="ri-chip">Builds your streak</span>
-            </div>
-          </div>
-        </div>
-        <div style={{ background:'var(--bg2)', border:'2px dashed rgba(74,222,128,0.25)', borderRadius:'var(--rl)', padding:'48px 32px', textAlign:'center' }}>
-          <div style={{ fontSize:'36px', marginBottom:'16px' }}>📋</div>
-          <div style={{ fontFamily:'var(--fs)', fontSize:'17px', fontWeight:700, color:'var(--t1)', marginBottom:'8px' }}>Daily Report Form</div>
-          <div style={{ fontSize:'13px', color:'var(--t3)', maxWidth:'440px', margin:'0 auto 20px', lineHeight:1.7 }}>
-            Share how your day went — topics covered, hours studied, what went well, what was hard, and any message for your mentor.
-          </div>
-          <button className="btn btn-green" onClick={() => onShowToast('Daily report form coming soon')}>Coming Soon</button>
-        </div>
+        {(() => {
+          const today = new Date(Date.now() + 5.5 * 60 * 60 * 1000).toISOString().slice(0, 10);
+          const todayReport = dailyReports.find(r => r.date === today) || null;
+          return (
+            <DailyReportForm
+              profile={profile}
+              mentorName="Ajay"
+              todayReport={todayReport}
+              onComplete={(report) => { onReportSubmitted?.(report); onShowToast('Report submitted ✓'); }}
+            />
+          );
+        })()}
       </div>
 
       {/* ══════════ WEEKLY CALLS ══════════ */}

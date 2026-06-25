@@ -617,4 +617,83 @@ router.post('/feedback', requireAuth, async (req, res) => {
   }
 });
 
+// GET /api/student/:userId/daily-reports — last 30 reports
+router.get('/daily-reports', requireAuth, async (req, res) => {
+  try {
+    const profile = await prisma.studentProfile.findUnique({ where: { userId: req.params.userId } });
+    if (!profile) return res.json([]);
+    const reports = await prisma.dailyReport.findMany({
+      where: { studentId: profile.id },
+      orderBy: { date: 'desc' },
+      take: 30,
+    });
+    res.json(reports);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch daily reports' });
+  }
+});
+
+// POST /api/student/:userId/daily-reports — submit today's report
+router.post('/daily-reports', requireAuth, async (req, res) => {
+  try {
+    const { mood, showedUp, hrsPhysics, hrsChemistry, hrsThird, focusQuality,
+            topicsDone, questionsSolved, mockToday, mockScore,
+            wentWell, wentHard, tomorrowOne, noteForMentor } = req.body;
+
+    if (!mood || !showedUp || !focusQuality)
+      return res.status(400).json({ error: 'mood, showedUp, focusQuality are required' });
+
+    const nowIST = new Date(Date.now() + 5.5 * 60 * 60 * 1000);
+    const date = nowIST.toISOString().slice(0, 10);
+
+    const profile = await prisma.studentProfile.findUnique({
+      where: { userId: req.params.userId },
+      include: { user: { select: { name: true } } },
+    });
+    if (!profile) return res.status(404).json({ error: 'Profile not found' });
+
+    const existing = await prisma.dailyReport.findUnique({
+      where: { studentId_date: { studentId: profile.id, date } },
+    });
+    if (existing) return res.status(409).json({ error: 'Report already submitted today' });
+
+    const report = await prisma.dailyReport.create({
+      data: {
+        studentId: profile.id, date, mood, showedUp,
+        hrsPhysics: hrsPhysics ? parseFloat(hrsPhysics) : null,
+        hrsChemistry: hrsChemistry ? parseFloat(hrsChemistry) : null,
+        hrsThird: hrsThird ? parseFloat(hrsThird) : null,
+        focusQuality: parseInt(focusQuality),
+        topicsDone: topicsDone?.trim() || null,
+        questionsSolved: questionsSolved ? parseInt(questionsSolved) : null,
+        mockToday: mockToday || null, mockScore: mockScore?.trim() || null,
+        wentWell: wentWell?.trim() || null, wentHard: wentHard?.trim() || null,
+        tomorrowOne: tomorrowOne?.trim() || null,
+        noteForMentor: noteForMentor?.trim() || null,
+      },
+    });
+
+    // Notify all active admins
+    (async () => {
+      try {
+        const admins = await prisma.adminProfile.findMany({ where: { isActive: true }, select: { id: true } });
+        if (admins.length) {
+          await prisma.adminMessage.createMany({
+            data: admins.map(a => ({
+              content: `${profile.user.name} submitted their daily report (Mood: ${mood}/5, Focus: ${focusQuality}/5).`,
+              type: 'Feedback', studentId: profile.id, adminId: a.id,
+            })),
+          });
+        }
+      } catch { /* non-critical */ }
+    })();
+
+    res.json(report);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to submit daily report' });
+  }
+});
+
 module.exports = router;

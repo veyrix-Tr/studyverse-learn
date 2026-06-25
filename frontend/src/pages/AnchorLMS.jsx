@@ -16,6 +16,7 @@ const AnchorLMS = () => {
   const [profile, setProfile] = useState(null);
   const [habitLogs, setHabitLogs] = useState([]);
   const [resources, setResources] = useState([]);
+  const [dailyReports, setDailyReports] = useState([]);
   const toastTimer = useRef(null);
 
   // Apply anchor-mode always; add free-mode only for study pages so FreeContent CSS works
@@ -63,6 +64,13 @@ const AnchorLMS = () => {
       .then(r => r.ok ? r.json() : [])
       .then(data => { if (Array.isArray(data)) setResources(data); })
       .catch(() => {});
+
+    fetch(`${import.meta.env.VITE_API_URL}/api/student/${userId}/daily-reports`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(r => r.ok ? r.json() : [])
+      .then(data => { if (Array.isArray(data)) setDailyReports(data); })
+      .catch(() => {});
   }, [userId]);
 
   const showToast = (msg) => {
@@ -103,6 +111,9 @@ const AnchorLMS = () => {
             onShowToast={showToast}
             habitLogs={habitLogs}
             resources={resources}
+            dailyReports={dailyReports}
+            profile={profile}
+            onReportSubmitted={(report) => setDailyReports(prev => [report, ...prev])}
             onHabitSaved={(log) => setHabitLogs(prev => {
               const exists = prev.findIndex(l => l.date === log.date);
               if (exists >= 0) { const next = [...prev]; next[exists] = log; return next; }
