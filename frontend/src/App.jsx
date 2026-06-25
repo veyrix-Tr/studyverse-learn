@@ -4,6 +4,7 @@ import AdminLMS from './pages/AdminLMS'
 import FacultyLMS from './pages/FacultyLMS'
 import StudentLMS from './pages/StudentLMS'
 import FreeLMS from './pages/FreeLMS'
+import AnchorLMS from './pages/AnchorLMS'
 import GoogleCallback from './pages/GoogleCallback'
 
 export const getTokenPayload = () => {
@@ -27,13 +28,17 @@ export const getStoredPlan = () => {
 };
 
 export const PAID_PLANS    = ['forge', 'apex', 'anchor']; // for admin counts, banners
-const SESSION_PLANS = ['apex', 'anchor'];          // routes to StudentLMS
+const SESSION_PLANS = ['apex'];                    // routes to StudentLMS (Apex only)
+const ANCHOR_PLANS  = ['anchor'];                  // routes to AnchorLMS
 
 export const homeForRole = (role, id) => {
   if (role === 'superadmin') return `/superadmin/${id}/dashboard`;
   if (role === 'admin')      return `/admin/${id}/dashboard`;
   if (role === 'faculty')    return `/faculty/${id}/dashboard`;
-  return SESSION_PLANS.includes(getStoredPlan()) ? `/student-v2/${id}/dashboard` : `/student/${id}/home`;
+  const plan = getStoredPlan();
+  if (SESSION_PLANS.includes(plan)) return `/student-v2/${id}/dashboard`;
+  if (ANCHOR_PLANS.includes(plan))  return `/anchor/${id}/dashboard`;
+  return `/student/${id}/home`;
 };
 
 // Redirects to the correct home based on stored token (used when no id in URL)
@@ -61,8 +66,15 @@ function AuthGuard({ expectedRole, requirePlan, children }) {
 
   if (expectedRole === 'student' && requirePlan) {
     const plan = getStoredPlan();
-    if (requirePlan === 'premium' && !SESSION_PLANS.includes(plan)) return <Navigate to={`/student/${payload.id}/home`} replace />;
-    if (requirePlan === 'free'    &&  SESSION_PLANS.includes(plan)) return <Navigate to={`/student-v2/${payload.id}/dashboard`} replace />;
+    if (requirePlan === 'premium' && !SESSION_PLANS.includes(plan)) {
+      if (ANCHOR_PLANS.includes(plan)) return <Navigate to={`/anchor/${payload.id}/dashboard`} replace />;
+      return <Navigate to={`/student/${payload.id}/home`} replace />;
+    }
+    if (requirePlan === 'free' && (SESSION_PLANS.includes(plan) || ANCHOR_PLANS.includes(plan))) {
+      if (ANCHOR_PLANS.includes(plan)) return <Navigate to={`/anchor/${payload.id}/dashboard`} replace />;
+      return <Navigate to={`/student-v2/${payload.id}/dashboard`} replace />;
+    }
+    if (requirePlan === 'anchor' && !ANCHOR_PLANS.includes(plan)) return <Navigate to={homeForRole(payload.role, payload.id)} replace />;
   }
 
   return children;
@@ -80,6 +92,10 @@ function App() {
       {/* Student — premium */}
       <Route path="/student-v2/:id"       element={<AuthGuard expectedRole="student" requirePlan="premium"><StudentLMS /></AuthGuard>} />
       <Route path="/student-v2/:id/:page" element={<AuthGuard expectedRole="student" requirePlan="premium"><StudentLMS /></AuthGuard>} />
+
+      {/* Student — Anchor */}
+      <Route path="/anchor/:id"       element={<AuthGuard expectedRole="student" requirePlan="anchor"><AnchorLMS /></AuthGuard>} />
+      <Route path="/anchor/:id/:page" element={<AuthGuard expectedRole="student" requirePlan="anchor"><AnchorLMS /></AuthGuard>} />
 
       {/* Student — free */}
       <Route path="/student/:id"       element={<AuthGuard expectedRole="student" requirePlan="free"><FreeLMS /></AuthGuard>} />

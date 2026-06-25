@@ -1,0 +1,1162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Studyverse — Anchor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,600&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════
+   ANCHOR — distinctly different
+   Deep forest green base. Warm, personal,
+   calm. This is not an academic platform.
+   It is a relationship.
+═══════════════════════════════════════ */
+:root {
+  /* Green scale — the Anchor identity */
+  --bg:    #0A1F12;
+  --bg2:   #0D2418;
+  --bg3:   #102D1E;
+  --bg4:   #163826;
+  --bg5:   #1D4730;
+
+  /* Gold — consistent Studyverse thread */
+  --gold:  #E8A830;
+  --gold2: #F5C842;
+  --gold3: #D4921A;
+  --gd:    rgba(232,168,48,0.13);
+  --gb:    rgba(232,168,48,0.28);
+
+  /* Text on dark green */
+  --t1:  #EAF4EC;           /* warm white-green */
+  --t2:  rgba(234,244,236,0.70);
+  --t3:  rgba(234,244,236,0.42);
+  --t4:  rgba(234,244,236,0.20);
+
+  /* Borders */
+  --b:   rgba(234,244,236,0.08);
+  --b2:  rgba(234,244,236,0.14);
+
+  /* Semantic */
+  --green: #4ADE80; --grdim: rgba(74,222,128,0.12);
+  --red:   #F87171; --rddim: rgba(248,113,113,0.10);
+  --amber: #FBBF24; --amdim: rgba(251,191,36,0.12);
+  --blue:  #93C5FD; --bldim: rgba(147,197,253,0.10);
+  --sage:  #86EFAC;         /* lighter green accent */
+
+  /* Type */
+  --fs: 'Playfair Display',Georgia,serif;
+  --fb: 'DM Sans',sans-serif;
+
+  /* Layout */
+  --sw: 272px;
+  --th: 66px;
+  --r:  10px;
+  --rl: 14px;
+  --rxl:20px;
+
+  /* Shadows */
+  --sh:  0 2px 12px rgba(0,0,0,0.35);
+  --shm: 0 8px 32px rgba(0,0,0,0.45);
+  --gold-glow: 0 0 0 3px rgba(232,168,48,0.2);
+}
+
+*,*::before,*::after { box-sizing:border-box; margin:0; padding:0 }
+html { scroll-behavior:smooth }
+body {
+  font-family:var(--fb);
+  background:var(--bg);
+  color:var(--t1);
+  font-size:14px;
+  line-height:1.6;
+  min-height:100vh;
+  overflow-x:hidden;
+}
+.app { display:flex; min-height:100vh }
+
+/* ── SIDEBAR ── */
+.sidebar {
+  width:var(--sw);
+  background:var(--bg2);
+  position:fixed; top:0; left:0; bottom:0;
+  z-index:100;
+  display:flex; flex-direction:column;
+  border-right:1px solid var(--b);
+  overflow-y:auto;
+}
+.sb-logo {
+  padding:22px 20px 18px;
+  border-bottom:1px solid var(--b);
+  display:flex; align-items:center; gap:11px;
+  flex-shrink:0;
+}
+.sb-words .w1 { font-family:var(--fb); font-weight:700; font-size:15px; letter-spacing:.07em; color:var(--t1) }
+.sb-words .w1 span { color:var(--gold) }
+.sb-words .w2 { font-size:9.5px; color:var(--gold); letter-spacing:.12em; text-transform:uppercase; font-weight:700 }
+
+/* Anchor tier badge */
+.tier-strip {
+  margin:12px 13px 4px;
+  border-radius:var(--rl);
+  padding:14px 16px;
+  background:linear-gradient(135deg, rgba(74,222,128,0.14), rgba(74,222,128,0.04));
+  border:1px solid rgba(74,222,128,0.22);
+  position:relative; overflow:hidden; flex-shrink:0;
+}
+.tier-strip::after {
+  content:'⚓';
+  position:absolute; right:10px; top:50%;
+  transform:translateY(-50%);
+  font-size:36px; opacity:.08;
+  pointer-events:none; line-height:1;
+}
+.tier-plan { font-size:20px; font-weight:800; font-family:var(--fb); color:var(--sage); letter-spacing:.05em; margin-bottom:2px }
+.tier-sub { font-size:10px; color:var(--t3); letter-spacing:.08em; text-transform:uppercase }
+
+/* Mentor card in sidebar */
+.sb-mentor {
+  margin:10px 12px 4px;
+  background:var(--bg3);
+  border:1px solid var(--b);
+  border-radius:var(--r);
+  padding:11px 13px;
+  display:flex; align-items:center; gap:10px;
+  flex-shrink:0;
+}
+.sb-mentor-av {
+  width:34px; height:34px; border-radius:50%;
+  border:2px solid var(--gold);
+  background:var(--gd);
+  display:flex; align-items:center; justify-content:center;
+  font-family:var(--fs); font-size:13px; font-weight:700;
+  color:var(--gold); flex-shrink:0;
+}
+.sb-mentor-name { font-size:12.5px; color:var(--t1); font-weight:600 }
+.sb-mentor-role { font-size:10px; color:var(--t3); margin-top:1px }
+.online-dot { width:8px; height:8px; border-radius:50%; background:var(--green); box-shadow:0 0 0 2px rgba(74,222,128,0.25); flex-shrink:0; margin-left:auto }
+
+.nb { padding:13px 12px 4px; flex-shrink:0 }
+.nl { font-size:9px; color:var(--t4); letter-spacing:.14em; text-transform:uppercase; padding:0 8px; margin-bottom:7px; font-weight:600 }
+.ni {
+  display:flex; align-items:center; gap:9px;
+  padding:9px 10px; border-radius:8px;
+  cursor:pointer; color:var(--t2);
+  font-size:13px; font-weight:400;
+  transition:all .15s; margin-bottom:2px;
+}
+.ni:hover { background:rgba(234,244,236,0.06); color:var(--t1) }
+.ni.on { background:rgba(74,222,128,0.12); color:var(--sage) }
+.ni.on .nic { opacity:1; color:var(--sage) }
+.nic { width:15px; height:15px; flex-shrink:0; opacity:.55 }
+.ni:hover .nic { opacity:.9 }
+.nbadge { margin-left:auto; font-size:10px; font-weight:700; padding:2px 7px; border-radius:20px }
+.nb-gold { background:var(--gold); color:var(--bg) }
+.nb-green { background:var(--grdim); color:var(--green); border:1px solid rgba(74,222,128,0.25) }
+.nb-dim { background:rgba(234,244,236,0.07); color:var(--t3); font-size:9px }
+
+.sb-bottom { margin-top:auto; padding:13px; border-top:1px solid var(--b); flex-shrink:0 }
+.sb-user {
+  display:flex; align-items:center; gap:10px;
+  padding:10px 12px; border-radius:9px;
+  background:rgba(234,244,236,0.04);
+  border:1px solid var(--b); cursor:pointer;
+}
+.user-av {
+  width:34px; height:34px; border-radius:50%;
+  border:2px solid var(--gold);
+  background:var(--gd);
+  display:flex; align-items:center; justify-content:center;
+  font-family:var(--fs); font-size:13px; font-weight:700;
+  color:var(--gold); flex-shrink:0;
+}
+.sb-uname { font-size:12.5px; color:var(--t1); font-weight:500 }
+.sb-uexam { font-size:10.5px; color:var(--t3); margin-top:1px }
+
+/* ── MAIN ── */
+.main { margin-left:var(--sw); flex:1; display:flex; flex-direction:column; min-height:100vh }
+
+/* ── TOPBAR ── */
+.topbar {
+  height:var(--th);
+  background:var(--bg2);
+  border-bottom:1px solid var(--b);
+  display:flex; align-items:center;
+  padding:0 28px; gap:14px;
+  position:sticky; top:0; z-index:50;
+  box-shadow:0 2px 16px rgba(0,0,0,0.3);
+}
+.topbar::after {
+  content:''; position:absolute;
+  bottom:0; left:0; right:0; height:1px;
+  background:linear-gradient(90deg, transparent, var(--sage), transparent);
+  opacity:.3;
+}
+.ph { font-family:var(--fs); font-size:17px; font-weight:700; color:var(--t1) }
+.anchor-badge {
+  display:flex; align-items:center; gap:6px;
+  background:rgba(74,222,128,0.1);
+  border:1px solid rgba(74,222,128,0.22);
+  border-radius:20px; padding:4px 12px;
+  font-size:11px; font-weight:700; color:var(--sage);
+  letter-spacing:.05em;
+}
+.tbr { display:flex; align-items:center; gap:9px; margin-left:auto }
+.tbb {
+  width:36px; height:36px; border-radius:8px;
+  background:var(--bg3); border:1px solid var(--b);
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer; color:var(--t3); transition:all .15s; position:relative;
+}
+.tbb:hover { background:var(--bg4); color:var(--t1); border-color:var(--gb) }
+.npip { position:absolute; top:7px; right:7px; width:6px; height:6px; border-radius:50%; background:var(--gold); border:1.5px solid var(--bg2) }
+
+/* ── CONTENT ── */
+.content { padding:28px; flex:1 }
+.page { display:none; animation:pi .2s ease }
+.page.on { display:block }
+@keyframes pi { from { opacity:0; transform:translateY(6px) } to { opacity:1; transform:translateY(0) } }
+
+/* ── BASE COMPONENTS ── */
+.card {
+  background:var(--bg2);
+  border:1px solid var(--b);
+  border-radius:var(--rl);
+  padding:20px 22px;
+  box-shadow:var(--sh);
+}
+.g2 { display:grid; grid-template-columns:1fr 1fr; gap:18px }
+.g3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px }
+.g4 { display:grid; grid-template-columns:repeat(4,1fr); gap:14px }
+.mb { margin-bottom:22px }
+.mbl { margin-bottom:28px }
+
+.sh { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px }
+.sh-t { font-family:var(--fs); font-size:16px; font-weight:700; color:var(--t1) }
+.sh-a { font-size:12px; color:var(--gold); cursor:pointer; font-weight:600 }
+.sh-a:hover { color:var(--gold2) }
+.div { height:1px; background:var(--b); margin:14px 0 }
+
+.btn { display:inline-flex; align-items:center; gap:7px; padding:9px 20px; border-radius:8px; font-family:var(--fb); font-size:13px; font-weight:600; cursor:pointer; transition:all .15s; border:none; letter-spacing:.01em }
+.btn-gold { background:var(--gold); color:var(--bg) }
+.btn-gold:hover { background:var(--gold2); box-shadow:var(--gold-glow) }
+.btn-green { background:rgba(74,222,128,0.15); color:var(--sage); border:1px solid rgba(74,222,128,0.25) }
+.btn-green:hover { background:rgba(74,222,128,0.25) }
+.btn-ghost { background:rgba(234,244,236,0.06); color:var(--t2); border:1px solid var(--b) }
+.btn-ghost:hover { background:rgba(234,244,236,0.1); color:var(--t1) }
+.btn-sm { padding:6px 14px; font-size:12px }
+.btn-full { width:100%; justify-content:center }
+
+.pill { display:inline-flex; align-items:center; padding:3px 9px; border-radius:20px; font-size:11px; font-weight:600 }
+.pg { background:var(--gd); color:var(--gold); border:1px solid var(--gb) }
+.pp { background:var(--grdim); color:var(--green) }
+.pr { background:var(--rddim); color:var(--red) }
+.pa { background:var(--amdim); color:var(--amber) }
+
+.pbar { height:5px; background:var(--bg4); border-radius:10px; overflow:hidden }
+.pbar-inner { height:100%; border-radius:10px; transition:width .7s ease }
+.pb-gold { background:linear-gradient(90deg,var(--gold3),var(--gold)) }
+.pb-green { background:var(--green) }
+.pb-sage { background:var(--sage) }
+.pb-amber { background:var(--amber) }
+
+/* ── STAT CARDS ── */
+.stat { background:var(--bg2); border:1px solid var(--b); border-radius:var(--rl); padding:18px 20px; position:relative; overflow:hidden }
+.stat::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; border-radius:var(--rl) var(--rl) 0 0 }
+.sa-gold::before { background:linear-gradient(90deg,var(--gold3),var(--gold)) }
+.sa-green::before { background:var(--sage) }
+.sa-amber::before { background:var(--amber) }
+.sa-blue::before { background:var(--blue) }
+.stat-l { font-size:10px; color:var(--t3); text-transform:uppercase; letter-spacing:.1em; margin-bottom:8px; font-weight:600 }
+.stat-v { font-family:var(--fs); font-size:28px; font-weight:700; color:var(--t1); line-height:1 }
+.stat-n { font-size:11.5px; margin-top:5px; font-weight:500 }
+.up { color:var(--green) }
+.warn { color:var(--amber) }
+.neu { color:var(--t3) }
+
+/* ── STREAK RING ── */
+.streak-ring {
+  display:flex; flex-direction:column; align-items:center;
+  justify-content:center; padding:24px 0;
+}
+.ring-outer {
+  width:100px; height:100px; border-radius:50%;
+  border:4px solid var(--bg4);
+  position:relative;
+  display:flex; align-items:center; justify-content:center;
+  margin-bottom:14px;
+}
+.ring-fill {
+  position:absolute; inset:0; border-radius:50%;
+  background:conic-gradient(var(--sage) 0% 70%, var(--bg4) 70%);
+  mask:radial-gradient(farthest-side, transparent calc(100% - 10px), black calc(100% - 10px));
+  -webkit-mask:radial-gradient(farthest-side, transparent calc(100% - 10px), black calc(100% - 10px));
+}
+.ring-val { font-family:var(--fs); font-size:30px; font-weight:800; color:var(--amber); position:relative; z-index:1 }
+.ring-emoji { font-size:12px; color:var(--t3); text-align:center }
+
+/* ── CONSISTENCY GRID ── */
+.week-grid { display:flex; gap:5px; flex-wrap:wrap; margin-top:12px }
+.wg-day {
+  width:28px; height:28px; border-radius:6px;
+  background:var(--bg4);
+  display:flex; align-items:center; justify-content:center;
+  font-size:10px; color:var(--t4); font-weight:500;
+  transition:all .2s;
+}
+.wg-day.logged { background:var(--sage); color:var(--bg) }
+.wg-day.missed { background:rgba(248,113,113,0.15); color:var(--red) }
+.wg-day.today { background:var(--gold); color:var(--bg); font-weight:700 }
+.wg-day.future { opacity:.3 }
+
+/* ── DAILY REPORT EMBED ── */
+.report-intro {
+  background:linear-gradient(135deg, var(--bg3), var(--bg4));
+  border:1px solid var(--gb);
+  border-radius:var(--rl);
+  padding:20px 24px;
+  margin-bottom:18px;
+  display:flex; align-items:center; gap:18px;
+}
+.ri-text .ri-title { font-family:var(--fs); font-size:17px; font-weight:700; color:var(--t1); margin-bottom:4px }
+.ri-text .ri-sub { font-size:13px; color:var(--t2); line-height:1.7 }
+.ri-chips { display:flex; gap:8px; margin-top:10px; flex-wrap:wrap }
+.ri-chip { font-size:11px; font-weight:600; padding:4px 12px; border-radius:20px; background:rgba(234,244,236,0.07); color:var(--t2); border:1px solid var(--b) }
+
+/* ── PAST REPORT ITEMS ── */
+.report-item {
+  background:var(--bg3);
+  border:1px solid var(--b);
+  border-radius:var(--rl);
+  overflow:hidden;
+  margin-bottom:10px;
+}
+.ri-header {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:13px 16px; cursor:pointer; transition:background .15s;
+}
+.ri-header:hover { background:var(--bg4) }
+.ri-date { font-size:13px; font-weight:600; color:var(--t1) }
+.ri-summary { font-size:11.5px; color:var(--t3); margin-top:2px }
+.ri-mood { font-size:18px; flex-shrink:0 }
+.ri-body { display:none; padding:14px 16px; border-top:1px solid var(--b); background:var(--bg4) }
+.ri-body.open { display:block }
+.ri-field { display:flex; gap:10px; margin-bottom:10px }
+.ri-field-label { font-size:11px; color:var(--t3); font-weight:600; width:100px; flex-shrink:0; text-transform:uppercase; letter-spacing:.05em; margin-top:1px }
+.ri-field-val { font-size:13px; color:var(--t2); flex:1; line-height:1.6 }
+.ri-mentor-reply {
+  margin-top:10px;
+  padding:11px 13px;
+  background:var(--bg);
+  border-radius:8px;
+  border-left:3px solid var(--gold);
+}
+.ri-reply-text { font-size:12.5px; color:var(--t1); line-height:1.7 }
+.ri-reply-by { font-size:10.5px; color:var(--t4); margin-top:4px }
+
+/* ── MENTOR CARD ── */
+.mentor-card {
+  background:linear-gradient(135deg, var(--bg3), var(--bg4));
+  border:1px solid var(--gb);
+  border-radius:var(--rl);
+  padding:20px 22px;
+}
+.mc-top { display:flex; align-items:center; gap:14px; margin-bottom:16px }
+.mc-av {
+  width:50px; height:50px; border-radius:50%;
+  border:2.5px solid var(--gold);
+  background:var(--gd);
+  display:flex; align-items:center; justify-content:center;
+  font-family:var(--fs); font-size:20px; font-weight:700;
+  color:var(--gold); flex-shrink:0;
+}
+.mc-name { font-family:var(--fs); font-size:16px; font-weight:700; color:var(--t1) }
+.mc-role { font-size:11px; color:var(--gold); font-weight:600; margin-top:2px }
+.mentor-note {
+  font-size:13px; color:var(--t2);
+  font-style:italic; line-height:1.9;
+  border-left:3px solid var(--gold);
+  padding-left:14px; margin-bottom:16px;
+}
+.mc-stats { display:grid; grid-template-columns:repeat(3,1fr); gap:10px }
+.mc-stat { background:rgba(234,244,236,0.04); border-radius:8px; padding:10px; text-align:center; border:1px solid var(--b) }
+.mc-stat-v { font-family:var(--fs); font-size:18px; font-weight:700; color:var(--sage) }
+.mc-stat-l { font-size:10px; color:var(--t3); margin-top:2px }
+
+/* ── WEEKLY CALL ── */
+.call-card {
+  background:var(--bg3);
+  border:1px solid var(--b);
+  border-radius:var(--rl);
+  padding:16px 18px;
+  margin-bottom:10px;
+  display:flex; align-items:center; gap:14px;
+  transition:all .15s; cursor:pointer;
+}
+.call-card:hover { border-color:var(--gb); background:var(--bg4) }
+.call-icon { width:40px; height:40px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0 }
+.call-info { flex:1; min-width:0 }
+.call-title { font-size:13.5px; font-weight:600; color:var(--t1) }
+.call-meta { font-size:12px; color:var(--t3); margin-top:2px }
+.call-badge { font-size:11px; font-weight:600; padding:3px 10px; border-radius:6px; flex-shrink:0 }
+.c-upcoming { background:var(--gd); color:var(--gold) }
+.c-done { background:rgba(234,244,236,0.06); color:var(--t3) }
+.c-live { background:var(--grdim); color:var(--green) }
+
+/* ── HABIT TRACKER ── */
+.habit-row { display:flex; align-items:center; justify-content:space-between; padding:12px 0; border-bottom:1px solid var(--b) }
+.habit-row:last-child { border-bottom:none }
+.habit-left { display:flex; align-items:center; gap:12px }
+.habit-icon { font-size:17px; width:34px; height:34px; border-radius:8px; background:var(--bg4); display:flex; align-items:center; justify-content:center; flex-shrink:0 }
+.habit-name { font-size:13px; font-weight:600; color:var(--t1) }
+.habit-desc { font-size:11.5px; color:var(--t3); margin-top:1px }
+.ht-yes,.ht-no { padding:5px 14px; border-radius:7px; font-size:12px; font-weight:600; border:1.5px solid; cursor:pointer; transition:all .15s }
+.ht-yes { border-color:rgba(74,222,128,0.3); color:var(--green); background:transparent }
+.ht-yes:hover,.ht-yes.active { background:var(--grdim); border-color:var(--green) }
+.ht-no { border-color:rgba(248,113,113,0.25); color:var(--red); background:transparent }
+.ht-no:hover,.ht-no.active { background:var(--rddim); border-color:var(--red) }
+.hd { width:10px; height:10px; border-radius:3px; background:var(--bg4) }
+.hd.y { background:var(--sage) }
+.hd.n { background:rgba(248,113,113,0.2) }
+.hd.t { background:var(--gold) }
+
+/* ── STUDY PLAN ── */
+.plan-week {
+  background:var(--bg3);
+  border:1px solid var(--b);
+  border-radius:var(--rl);
+  overflow:hidden;
+  margin-bottom:12px;
+}
+.pw-header {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:13px 16px; cursor:pointer; transition:background .15s;
+}
+.pw-header:hover { background:var(--bg4) }
+.pw-title { font-family:var(--fs); font-size:14px; font-weight:700; color:var(--t1) }
+.pw-sub { font-size:11.5px; color:var(--t3); margin-top:2px }
+.pw-body { display:none; padding:14px 16px; border-top:1px solid var(--b) }
+.pw-body.open { display:block }
+.plan-item {
+  display:flex; align-items:flex-start; gap:10px;
+  padding:9px 0; border-bottom:1px solid var(--b);
+}
+.plan-item:last-child { border-bottom:none }
+.plan-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; margin-top:5px }
+.plan-text { font-size:13px; color:var(--t2); flex:1; line-height:1.6 }
+.plan-note { font-size:11.5px; color:var(--t4); margin-top:3px; font-style:italic }
+
+/* ── PARENT VIEW ── */
+.parent-hero {
+  background:linear-gradient(135deg, var(--bg3), var(--bg4));
+  border:1px solid var(--gb);
+  border-radius:var(--rxl);
+  padding:22px 24px;
+  margin-bottom:20px;
+}
+
+/* ── TOPIC MAP (read-only from Spark diagnostic) ── */
+.tm-subject { border-radius:var(--rl); overflow:hidden; border:1px solid var(--b); background:var(--bg2); margin-bottom:10px }
+.tms-header { display:flex; align-items:center; gap:12px; padding:13px 16px; cursor:pointer; border-bottom:1px solid var(--b); background:var(--bg2); transition:background .15s }
+.tms-header:hover { background:var(--bg3) }
+.tms-icon { font-size:18px; width:34px; height:34px; border-radius:8px; background:var(--bg4); display:flex; align-items:center; justify-content:center; flex-shrink:0 }
+.tms-name { font-family:var(--fs); font-size:14px; font-weight:700; color:var(--t1); flex:1 }
+.tms-score { font-family:var(--fs); font-size:14px; font-weight:700 }
+.tms-arrow { transition:transform .2s; color:var(--t3) }
+.tms-body { padding:0 16px; max-height:0; overflow:hidden; transition:max-height .3s ease, padding .3s ease }
+.tms-body.open { max-height:400px; padding:12px 16px }
+.cr-row { display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--b) }
+.cr-row:last-child { border-bottom:none }
+.cr-name { flex:1; font-size:12.5px; color:var(--t2) }
+.cr-bar { width:90px; flex-shrink:0 }
+.cr-pct { font-size:12px; font-weight:700; width:32px; text-align:right; flex-shrink:0 }
+.cr-tag { font-size:10px; font-weight:700; padding:2px 7px; border-radius:5px; flex-shrink:0; width:52px; text-align:center }
+.weak-tag { background:rgba(248,113,113,0.12); color:var(--red) }
+.ok-tag { background:var(--amdim); color:var(--amber) }
+.good-tag { background:var(--grdim); color:var(--green) }
+
+/* ── MODAL ── */
+.overlay { position:fixed; inset:0; background:rgba(0,0,0,0.65); display:none; align-items:center; justify-content:center; z-index:200; backdrop-filter:blur(6px) }
+.overlay.open { display:flex }
+.modal { background:var(--bg2); border-radius:var(--rxl); padding:28px; width:480px; max-width:94vw; animation:mi .2s ease; box-shadow:0 24px 64px rgba(0,0,0,0.5); border:1px solid var(--b2) }
+@keyframes mi { from { opacity:0; transform:scale(.95) } to { opacity:1; transform:scale(1) } }
+.mt { font-family:var(--fs); font-size:18px; font-weight:700; color:var(--t1); margin-bottom:4px }
+.ms { font-size:12.5px; color:var(--t3); margin-bottom:18px }
+.fg { margin-bottom:13px }
+.fg label { display:block; font-size:12px; color:var(--t2); margin-bottom:5px; font-weight:500 }
+.fi { width:100%; padding:10px 12px; background:var(--bg3); border:1.5px solid var(--b); border-radius:8px; color:var(--t1); font-family:var(--fb); font-size:13px; outline:none; transition:border-color .2s }
+.fi:focus { border-color:var(--gold) }
+.ma { display:flex; gap:9px; margin-top:18px; justify-content:flex-end }
+
+/* ── TABS ── */
+.tabs { display:flex; gap:2px; background:var(--bg3); border:1px solid var(--b); padding:4px; border-radius:9px; width:fit-content; margin-bottom:20px }
+.tab { padding:7px 17px; border-radius:6px; font-size:13px; font-weight:500; cursor:pointer; color:var(--t3); transition:all .15s }
+.tab.on { background:var(--bg4); color:var(--t1); box-shadow:0 1px 4px rgba(0,0,0,0.3); font-weight:600 }
+
+/* ── TOAST ── */
+.toast { position:fixed; bottom:26px; right:26px; background:var(--bg3); border:1px solid var(--gb); border-radius:10px; padding:12px 18px; font-size:13px; color:var(--t1); display:flex; align-items:center; gap:9px; z-index:300; transform:translateY(60px); opacity:0; transition:all .3s ease; box-shadow:0 8px 32px rgba(0,0,0,0.4) }
+.toast.show { transform:translateY(0); opacity:1 }
+.tpip { width:7px; height:7px; border-radius:50%; background:var(--gold); flex-shrink:0 }
+
+@media(max-width:1100px){.g4{grid-template-columns:1fr 1fr}.g3{grid-template-columns:1fr 1fr}}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:10px}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- ══ SIDEBAR ══ -->
+<aside class="sidebar">
+  <div class="sb-logo">
+    <svg width="36" height="36" viewBox="0 0 100 100" fill="none">
+      <path d="M50 5L90 28V72L50 95L10 72V28L50 5Z" stroke="#E8A830" stroke-width="6" stroke-linejoin="round"/>
+      <path d="M68 32C68 32 60 25 50 25C40 25 32 32 32 40C32 55 68 50 68 65C68 73 60 80 50 80C40 80 32 73 32 73" stroke="#EAF4EC" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <div class="sb-words">
+      <div class="w1">STUDY<span>VERSE</span></div>
+      <div class="w2">JEE &amp; NEET</div>
+    </div>
+  </div>
+
+  <div class="tier-strip">
+    <div class="tier-plan">⚓ ANCHOR</div>
+    <div class="tier-sub">Someone in your corner, every day</div>
+  </div>
+
+  <!-- Mentor -->
+  <div class="sb-mentor">
+    <div class="sb-mentor-av">A</div>
+    <div>
+      <div class="sb-mentor-name">Ajay Sharma</div>
+      <div class="sb-mentor-role">Your Mentor · Next call: Fri 6PM</div>
+    </div>
+    <div class="online-dot"></div>
+  </div>
+
+  <div class="nb">
+    <div class="nl">My Anchor</div>
+    <div class="ni on" onclick="nav('dashboard',this)">
+      <svg class="nic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
+      Dashboard
+    </div>
+    <div class="ni" onclick="nav('report',this)">
+      <svg class="nic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+      Daily Report
+      <span class="nbadge nb-gold">Due Today</span>
+    </div>
+    <div class="ni" onclick="nav('calls',this)">
+      <svg class="nic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.39 2 2 0 0 1 3.6 1.21h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.38a16 16 0 0 0 6 6l.94-.94a2 2 0 0 1 2.25-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.73 16z"/></svg>
+      Weekly Calls
+    </div>
+    <div class="ni" onclick="nav('habits',this)">
+      <svg class="nic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+      Habit Tracker
+    </div>
+    <div class="ni" onclick="nav('plan',this)">
+      <svg class="nic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+      My Study Plan
+    </div>
+  </div>
+
+  <div class="nb">
+    <div class="nl">From Spark</div>
+    <div class="ni" onclick="nav('topics',this)">
+      <svg class="nic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+      Topic Map
+      <span class="nbadge nb-dim">Diagnostic</span>
+    </div>
+    <div class="ni" onclick="nav('resources',this)">
+      <svg class="nic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      Resources
+    </div>
+  </div>
+
+  <div class="nb">
+    <div class="nl">Reports</div>
+    <div class="ni" onclick="nav('history',this)">
+      <svg class="nic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4l3 3m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/></svg>
+      Report History
+    </div>
+    <div class="ni" onclick="nav('parent',this)">
+      <svg class="nic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      Parent View
+    </div>
+  </div>
+
+  <div class="sb-bottom">
+    <div class="sb-user">
+      <div class="user-av">S</div>
+      <div>
+        <div class="sb-uname">Student</div>
+        <div class="sb-uexam">JEE Mains 2026 · Anchor</div>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<!-- ══ MAIN ══ -->
+<div class="main">
+  <header class="topbar">
+    <div class="ph" id="ph">Dashboard</div>
+    <div class="anchor-badge">⚓ ANCHOR</div>
+    <div class="tbr">
+      <button class="btn btn-gold btn-sm" onclick="nav('report',document.querySelectorAll('.ni')[1])">Submit Today's Report →</button>
+      <div class="tbb" onclick="nav('notif',null)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        <span class="npip"></span>
+      </div>
+    </div>
+  </header>
+
+  <div class="content">
+
+  <!-- ══════════ DASHBOARD ══════════ -->
+  <div class="page on" id="p-dashboard">
+
+    <div style="margin-bottom:22px;display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+      <div>
+        <div style="font-size:11px;color:var(--t3);text-transform:uppercase;letter-spacing:.1em;font-weight:600;margin-bottom:4px;">Wednesday, 15 April 2026</div>
+        <div style="font-family:var(--fs);font-size:24px;font-weight:700;color:var(--t1);">Good morning, Student.</div>
+        <div style="font-size:13.5px;color:var(--t2);margin-top:4px;">Your mentor read yesterday's report. Today's report is <strong style="color:var(--gold)">due before 10 PM.</strong></div>
+      </div>
+    </div>
+
+    <!-- Stats — consistency-focused, not academic -->
+    <div class="g4 mb">
+      <div class="stat sa-amber">
+        <div class="stat-l">Day Streak</div>
+        <div class="stat-v">🔥 14</div>
+        <div class="stat-n up">days straight</div>
+      </div>
+      <div class="stat sa-green">
+        <div class="stat-l">Reports Submitted</div>
+        <div class="stat-v">47</div>
+        <div class="stat-n up">of 48 days</div>
+      </div>
+      <div class="stat sa-gold">
+        <div class="stat-l">Mentor Responses</div>
+        <div class="stat-v">41</div>
+        <div class="stat-n" style="color:var(--sage);">every reply counts</div>
+      </div>
+      <div class="stat sa-blue">
+        <div class="stat-l">Calls Completed</div>
+        <div class="stat-v">6</div>
+        <div class="stat-n up">↑ Next: Fri 6PM</div>
+      </div>
+    </div>
+
+    <div class="g2 mb">
+
+      <!-- Streak + consistency grid -->
+      <div class="card">
+        <div class="sh"><div class="sh-t">Your Consistency</div><span style="font-size:12px;color:var(--t3);">April 2026</span></div>
+        <div class="streak-ring">
+          <div class="ring-outer">
+            <div class="ring-fill"></div>
+            <div class="ring-val">14</div>
+          </div>
+          <div class="ring-emoji">🔥 Day streak · 70% of month</div>
+        </div>
+        <div class="sh" style="margin-bottom:8px;"><div style="font-size:12px;color:var(--t3);font-weight:500;">This month — daily reports</div></div>
+        <div class="week-grid">
+          <div class="wg-day logged">1</div><div class="wg-day logged">2</div><div class="wg-day logged">3</div><div class="wg-day logged">4</div>
+          <div class="wg-day logged">5</div><div class="wg-day logged">6</div><div class="wg-day logged">7</div><div class="wg-day logged">8</div>
+          <div class="wg-day logged">9</div><div class="wg-day logged">10</div><div class="wg-day logged">11</div><div class="wg-day logged">12</div>
+          <div class="wg-day logged">13</div><div class="wg-day logged">14</div><div class="wg-day today">15</div>
+          <div class="wg-day future">16</div><div class="wg-day future">17</div><div class="wg-day future">18</div><div class="wg-day future">19</div>
+          <div class="wg-day future">20</div><div class="wg-day future">21</div><div class="wg-day future">22</div><div class="wg-day future">23</div>
+          <div class="wg-day future">24</div><div class="wg-day future">25</div><div class="wg-day future">26</div><div class="wg-day future">27</div>
+          <div class="wg-day future">28</div><div class="wg-day future">29</div><div class="wg-day future">30</div>
+        </div>
+        <div style="display:flex;gap:12px;margin-top:12px;">
+          <div style="display:flex;align-items:center;gap:5px;font-size:10.5px;color:var(--t3);"><div class="wg-day logged" style="width:14px;height:14px;border-radius:3px;font-size:0;"></div>Submitted</div>
+          <div style="display:flex;align-items:center;gap:5px;font-size:10.5px;color:var(--t3);"><div class="wg-day today" style="width:14px;height:14px;border-radius:3px;font-size:0;"></div>Today</div>
+          <div style="display:flex;align-items:center;gap:5px;font-size:10.5px;color:var(--t3);"><div class="wg-day" style="width:14px;height:14px;border-radius:3px;font-size:0;opacity:.5;"></div>Future</div>
+        </div>
+      </div>
+
+      <!-- Mentor -->
+      <div class="mentor-card">
+        <div class="mc-top">
+          <div class="mc-av">A</div>
+          <div>
+            <div class="mc-name">Ajay Sharma</div>
+            <div class="mc-role">Your Mentor · Anchor Program</div>
+          </div>
+        </div>
+        <div class="mentor-note">
+          "You've shown up 14 days straight. I read every report. The pattern I'm noticing — your focus quality drops on days when you skip morning study. Let's talk about this on Friday's call. For now: commit to starting before noon every day this week."
+        </div>
+        <div class="mc-stats">
+          <div class="mc-stat"><div class="mc-stat-v">48</div><div class="mc-stat-l">Days Together</div></div>
+          <div class="mc-stat"><div class="mc-stat-v">47</div><div class="mc-stat-l">Reports Read</div></div>
+          <div class="mc-stat"><div class="mc-stat-v">6</div><div class="mc-stat-l">Calls Done</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Today's report CTA -->
+    <div style="background:linear-gradient(135deg,var(--bg3),var(--bg4));border:1px solid var(--gb);border-radius:var(--rl);padding:20px 24px;display:flex;align-items:center;gap:20px;margin-bottom:22px;">
+      <div style="font-size:36px;flex-shrink:0;">📝</div>
+      <div style="flex:1;">
+        <div style="font-family:var(--fs);font-size:16px;font-weight:700;color:var(--t1);margin-bottom:4px;">Today's report — not submitted yet</div>
+        <div style="font-size:13px;color:var(--t2);">2 minutes. Ajay reads this before the next session. Be honest with yourself.</div>
+      </div>
+      <button class="btn btn-gold" onclick="nav('report',document.querySelectorAll('.ni')[1])">Submit Now →</button>
+    </div>
+
+    <!-- Next mentor call -->
+    <div class="sh"><div class="sh-t">This Week</div></div>
+    <div class="call-card">
+      <div class="call-icon" style="background:var(--gd);">📞</div>
+      <div class="call-info">
+        <div class="call-title">Weekly Mentor Call</div>
+        <div class="call-meta">Ajay Sharma · Friday, Apr 18 · 6:00 PM · 45 min</div>
+      </div>
+      <span class="call-badge c-upcoming">Fri 6PM</span>
+    </div>
+    <div class="call-card">
+      <div class="call-icon" style="background:var(--bg4);">📋</div>
+      <div class="call-info">
+        <div class="call-title">Study Plan Updated</div>
+        <div class="call-meta">Ajay revised your plan based on last week's reports · Apr 14</div>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="nav('plan',document.querySelectorAll('.ni')[4])">View Plan →</button>
+    </div>
+  </div>
+
+  <!-- ══════════ DAILY REPORT ══════════ -->
+  <div class="page" id="p-report">
+    <div class="report-intro">
+      <div style="font-size:36px;flex-shrink:0;">📝</div>
+      <div class="ri-text">
+        <div class="ri-title">Daily Report</div>
+        <div class="ri-sub">2 minutes. Be honest with yourself. Ajay reads this every morning before reaching out.</div>
+        <div class="ri-chips">
+          <span class="ri-chip">Submitted daily</span>
+          <span class="ri-chip">Mentor reads before 8 AM</span>
+          <span class="ri-chip">Builds your streak</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── EMBEDDED DAILY REPORT FORM ──
+         Developer note: embed studyverse-daily-report.html here.
+         Same integration approach as the diagnostic form.
+
+         Option A (recommended): include the form HTML directly, scoping
+         all CSS inside a #daily-report-embed wrapper. Remove the topbar
+         and outer <html>/<head>/<body> tags from the form. Pre-fill
+         the hidden student_name field from the logged-in user's name.
+         Change "Vinay" in the success screen to the student's
+         assigned mentor name (dynamic from database).
+
+         Option B: iframe pointing to the hosted form URL with
+         ?student=NAME&exam=jee passed as URL params.
+
+         The form already submits to Google Sheets via hidden iframe POST.
+         No changes needed to the submission logic.
+    -->
+    <div id="daily-report-embed">
+      <div style="background:var(--bg2);border:2px dashed rgba(74,222,128,0.25);border-radius:var(--rl);padding:48px 32px;text-align:center;">
+        <div style="font-size:36px;margin-bottom:16px;">📋</div>
+        <div style="font-family:var(--fs);font-size:17px;font-weight:700;color:var(--t1);margin-bottom:8px;">Daily Report Form goes here</div>
+        <div style="font-size:13px;color:var(--t3);max-width:440px;margin:0 auto 20px;line-height:1.7;">
+          Developer: embed <code style="background:var(--bg3);padding:2px 7px;border-radius:4px;font-size:12px;">studyverse-daily-report.html</code> inside this container.<br>
+          Pre-fill <code style="background:var(--bg3);padding:2px 7px;border-radius:4px;font-size:12px;">student_name</code> from logged-in user.<br>
+          Replace "Vinay" in the success message with the student's assigned mentor name.
+        </div>
+        <button class="btn btn-green" onclick="showToast('Form will be embedded here by developer')">Preview Form Flow</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ WEEKLY CALLS ══════════ -->
+  <div class="page" id="p-calls">
+    <div style="background:var(--bg3);border:1px solid var(--b);border-radius:var(--rl);padding:14px 18px;margin-bottom:20px;border-left:3px solid var(--sage);font-size:13px;color:var(--t2);">
+      📞 Weekly calls are not teaching sessions. They are 45 minutes of honest conversation about your preparation — what's working, what isn't, and what needs to change this week.
+    </div>
+
+    <div class="sh"><div class="sh-t">Upcoming</div></div>
+    <div class="call-card" style="border-color:var(--gb);">
+      <div class="call-icon" style="background:var(--gd);">📞</div>
+      <div class="call-info">
+        <div class="call-title">Weekly Mentor Call — Week 7</div>
+        <div class="call-meta">Mentor: Ajay Sharma · Friday, Apr 18 · 6:00 PM · 45 min</div>
+      </div>
+      <button class="btn btn-gold btn-sm" onclick="showToast('Call link will be sent to your WhatsApp before Friday')">Details</button>
+    </div>
+
+    <div class="sh" style="margin-top:8px;"><div class="sh-t">Past Calls</div></div>
+
+    <div class="plan-week">
+      <div class="pw-header" onclick="togglePlan(this)">
+        <div><div class="pw-title">Week 6 Call — Apr 11</div><div class="pw-sub">Focus: study schedule restructure + Physics gap</div></div>
+        <svg class="tms-arrow" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <div class="pw-body open">
+        <div style="font-size:13px;color:var(--t2);font-style:italic;border-left:3px solid var(--gold);padding-left:13px;margin-bottom:12px;line-height:1.8;">"We identified that the afternoon slump is the real problem — not lack of motivation. Moving high-focus work to mornings. Physics daily target reduced from 3h to 2h but with guaranteed problem-solving minimum."</div>
+        <div style="font-size:12px;color:var(--t3);">Duration: 42 min · Apr 11, 6:00 PM</div>
+        <div style="margin-top:10px;padding:10px 12px;background:var(--bg);border-radius:8px;">
+          <div style="font-size:11px;color:var(--t3);font-weight:600;text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px;">Action items from this call</div>
+          <div style="font-size:12.5px;color:var(--t2);display:flex;flex-direction:column;gap:5px;">
+            <div>✓ Start Physics before noon every day</div>
+            <div>✓ 10 problems minimum — no exceptions</div>
+            <div>✓ Log energy level in daily report</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="plan-week">
+      <div class="pw-header" onclick="togglePlan(this)">
+        <div><div class="pw-title">Week 5 Call — Apr 4</div><div class="pw-sub">Exam anxiety + mock test strategy</div></div>
+        <svg class="tms-arrow" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <div class="pw-body">
+        <div style="font-size:13px;color:var(--t2);font-style:italic;border-left:3px solid var(--gold);padding-left:13px;line-height:1.8;">"Talked about performance anxiety on mocks vs. practice. Shifted approach — mocks are data, not grades. Agreed on one full mock per fortnight strategy."</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ HABIT TRACKER ══════════ -->
+  <div class="page" id="p-habits">
+    <div class="g2 mb">
+      <div class="card">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px;">
+          <div><div style="font-family:var(--fs);font-size:16px;font-weight:700;color:var(--t1);">Today's Habits</div><div style="font-size:12px;color:var(--t3);">Wednesday, 15 April 2026</div></div>
+          <span style="font-family:var(--fs);font-size:20px;color:var(--amber);">🔥 14</span>
+        </div>
+        <div id="habit-list">
+          <div class="habit-row"><div class="habit-left"><div class="habit-icon">🌙</div><div><div class="habit-name">Slept before midnight</div><div class="habit-desc">Your brain consolidates during sleep.</div></div></div><div style="display:flex;gap:8px;"><div class="ht-yes" onclick="logHabit(this,'sleep','yes')">Yes</div><div class="ht-no" onclick="logHabit(this,'sleep','no')">No</div></div></div>
+          <div class="habit-row"><div class="habit-left"><div class="habit-icon">📖</div><div><div class="habit-name">Studied for at least 4 hours</div><div class="habit-desc">Focused. Not just open books.</div></div></div><div style="display:flex;gap:8px;"><div class="ht-yes" onclick="logHabit(this,'study','yes')">Yes</div><div class="ht-no" onclick="logHabit(this,'study','no')">No</div></div></div>
+          <div class="habit-row"><div class="habit-left"><div class="habit-icon">🔁</div><div><div class="habit-name">Revised yesterday's topics</div><div class="habit-desc">24h revision = 80% better retention.</div></div></div><div style="display:flex;gap:8px;"><div class="ht-yes" onclick="logHabit(this,'revision','yes')">Yes</div><div class="ht-no" onclick="logHabit(this,'revision','no')">No</div></div></div>
+          <div class="habit-row"><div class="habit-left"><div class="habit-icon">📵</div><div><div class="habit-name">No social media during study hours</div><div class="habit-desc">Phone breaks destroy flow state.</div></div></div><div style="display:flex;gap:8px;"><div class="ht-yes" onclick="logHabit(this,'phone','yes')">Yes</div><div class="ht-no" onclick="logHabit(this,'phone','no')">No</div></div></div>
+          <div class="habit-row"><div class="habit-left"><div class="habit-icon">❓</div><div><div class="habit-name">Solved at least 10 problems</div><div class="habit-desc">JEE is a problem-solving exam.</div></div></div><div style="display:flex;gap:8px;"><div class="ht-yes" onclick="logHabit(this,'problems','yes')">Yes</div><div class="ht-no" onclick="logHabit(this,'problems','no')">No</div></div></div>
+        </div>
+        <div id="habit-save" style="display:none;margin-top:14px;text-align:right;"><button class="btn btn-gold btn-sm" onclick="saveHabits()">Save ✓</button></div>
+      </div>
+      <div class="card">
+        <div style="font-family:var(--fs);font-size:15px;font-weight:600;color:var(--t1);margin-bottom:14px;">Last 14 Days</div>
+        <div style="text-align:center;padding:10px 0 16px;">
+          <div style="font-family:var(--fs);font-size:38px;font-weight:700;color:var(--sage);" id="week-score">4</div>
+          <div style="font-size:13px;color:var(--t3);">today</div>
+        </div>
+        <div class="div"></div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <div style="display:flex;align-items:center;gap:8px;"><div style="font-size:11px;color:var(--t3);width:60px;">Sleep</div><div style="display:flex;gap:4px;"><div class="hd y"></div><div class="hd y"></div><div class="hd n"></div><div class="hd y"></div><div class="hd y"></div><div class="hd y"></div><div class="hd y"></div><div class="hd y"></div><div class="hd y"></div><div class="hd n"></div><div class="hd y"></div><div class="hd y"></div><div class="hd y"></div><div class="hd t"></div></div></div>
+          <div style="display:flex;align-items:center;gap:8px;"><div style="font-size:11px;color:var(--t3);width:60px;">Study 4h</div><div style="display:flex;gap:4px;"><div class="hd y"></div><div class="hd y"></div><div class="hd y"></div><div class="hd y"></div><div class="hd n"></div><div class="hd y"></div><div class="hd y"></div><div class="hd y"></div><div class="hd y"></div><div class="hd y"></div><div class="hd y"></div><div class="hd y"></div><div class="hd y"></div><div class="hd t"></div></div></div>
+          <div style="display:flex;align-items:center;gap:8px;"><div style="font-size:11px;color:var(--t3);width:60px;">Revision</div><div style="display:flex;gap:4px;"><div class="hd n"></div><div class="hd y"></div><div class="hd y"></div><div class="hd y"></div><div class="hd y"></div><div class="hd y"></div><div class="hd n"></div><div class="hd y"></div><div class="hd y"></div><div class="hd y"></div><div class="hd n"></div><div class="hd y"></div><div class="hd y"></div><div class="hd t"></div></div></div>
+          <div style="display:flex;align-items:center;gap:8px;"><div style="font-size:11px;color:var(--t3);width:60px;">No phone</div><div style="display:flex;gap:4px;"><div class="hd y"></div><div class="hd y"></div><div class="hd n"></div><div class="hd n"></div><div class="hd y"></div><div class="hd y"></div><div class="hd y"></div><div class="hd y"></div><div class="hd y"></div><div class="hd n"></div><div class="hd y"></div><div class="hd y"></div><div class="hd y"></div><div class="hd t"></div></div></div>
+          <div style="display:flex;align-items:center;gap:8px;"><div style="font-size:11px;color:var(--t3);width:60px;">10 probs</div><div style="display:flex;gap:4px;"><div class="hd y"></div><div class="hd y"></div><div class="hd n"></div><div class="hd y"></div><div class="hd y"></div><div class="hd y"></div><div class="hd y"></div><div class="hd y"></div><div class="hd y"></div><div class="hd y"></div><div class="hd y"></div><div class="hd y"></div><div class="hd n"></div><div class="hd t"></div></div></div>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:12px;">
+          <div style="display:flex;align-items:center;gap:5px;font-size:10.5px;color:var(--t3);"><div class="hd y"></div>Done</div>
+          <div style="display:flex;align-items:center;gap:5px;font-size:10.5px;color:var(--t3);"><div class="hd n"></div>Missed</div>
+          <div style="display:flex;align-items:center;gap:5px;font-size:10.5px;color:var(--t3);"><div class="hd t"></div>Today</div>
+        </div>
+      </div>
+    </div>
+    <!-- Mentor sees your habits note -->
+    <div class="card" style="background:var(--bg3);border-color:var(--gb);">
+      <div style="font-family:var(--fs);font-size:14px;font-weight:600;color:var(--t1);margin-bottom:6px;">Your mentor sees this</div>
+      <div style="font-size:13px;color:var(--t2);line-height:1.8;">Ajay reviews your habit history before every weekly call. Patterns in your data — like skipping revision on Sundays or phone usage spiking mid-week — inform what he brings up on the call. You don't need to explain yourself. The data speaks.</div>
+    </div>
+  </div>
+
+  <!-- ══════════ STUDY PLAN ══════════ -->
+  <div class="page" id="p-plan">
+    <div style="background:var(--bg3);border:1px solid var(--b);border-radius:var(--rl);padding:14px 18px;margin-bottom:20px;display:flex;align-items:flex-start;gap:12px;">
+      <div style="font-size:20px;flex-shrink:0;">🗓️</div>
+      <div>
+        <div style="font-size:13.5px;font-weight:600;color:var(--t1);margin-bottom:2px;">Updated by Ajay · Apr 14</div>
+        <div style="font-size:12.5px;color:var(--t2);">This plan is reviewed and revised every week based on your daily reports and weekly call. It is not a generic syllabus — it is built around where you actually are right now.</div>
+      </div>
+    </div>
+
+    <div class="plan-week">
+      <div class="pw-header" onclick="togglePlan(this)">
+        <div><div class="pw-title">This Week — Apr 15 to 21</div><div class="pw-sub">Focus: Physics morning routine + Integration</div></div>
+        <svg class="tms-arrow" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <div class="pw-body open">
+        <div class="plan-item">
+          <div class="plan-dot" style="background:var(--red);"></div>
+          <div><div class="plan-text">Start Physics before noon — every single day this week</div><div class="plan-note">Mentor note: "Your focus quality data shows the morning window is your peak. Stop wasting it."</div></div>
+        </div>
+        <div class="plan-item">
+          <div class="plan-dot" style="background:var(--amber);"></div>
+          <div><div class="plan-text">Integration — 45 min daily. Substitution method first, then by parts</div><div class="plan-note">Based on your coaching schedule gap — you haven't covered this yet</div></div>
+        </div>
+        <div class="plan-item">
+          <div class="plan-dot" style="background:var(--sage);"></div>
+          <div><div class="plan-text">Minimum 10 problems solved per day — no exceptions</div><div class="plan-note">Non-negotiable. From this week's call agreement.</div></div>
+        </div>
+        <div class="plan-item">
+          <div class="plan-dot" style="background:var(--sage);"></div>
+          <div><div class="plan-text">30 min revision every evening — yesterday's topics only</div><div class="plan-note">Builds long-term retention without extra time investment</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="plan-week">
+      <div class="pw-header" onclick="togglePlan(this)">
+        <div><div class="pw-title">Last Week — Apr 8 to 14</div><div class="pw-sub">Restructured study schedule</div></div>
+        <svg class="tms-arrow" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <div class="pw-body">
+        <div class="plan-item"><div class="plan-dot" style="background:var(--sage);"></div><div><div class="plan-text">Move high-focus work to morning slots</div></div></div>
+        <div class="plan-item"><div class="plan-dot" style="background:var(--sage);"></div><div><div class="plan-text">Reduce Physics target to 2h — but guarantee problem-solving</div></div></div>
+        <div class="plan-item"><div class="plan-dot" style="background:var(--sage);"></div><div><div class="plan-text">One full mock every 2 weeks — treat as data, not a test</div></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ REPORT HISTORY ══════════ -->
+  <div class="page" id="p-history">
+    <div style="font-size:13px;color:var(--t2);margin-bottom:18px;">47 reports submitted since Day 1. Ajay reads every one.</div>
+
+    <div class="report-item">
+      <div class="ri-header" onclick="toggleReport(this)">
+        <div><div class="ri-date">Tuesday, Apr 14</div><div class="ri-summary">4.5h · Focus: 4/5 · Showed up ✓</div></div>
+        <div style="display:flex;align-items:center;gap:10px;"><div class="ri-mood">💪</div><svg class="tms-arrow" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></div>
+      </div>
+      <div class="ri-body open">
+        <div class="ri-field"><div class="ri-field-label">Topics Done</div><div class="ri-field-val">Integration by parts, Kinematics revision, Organic mechanisms (naming)</div></div>
+        <div class="ri-field"><div class="ri-field-label">Problems</div><div class="ri-field-val">18 questions solved</div></div>
+        <div class="ri-field"><div class="ri-field-label">Went Well</div><div class="ri-field-val">ILATE rule finally clicked. Got 6/8 integration questions right.</div></div>
+        <div class="ri-field"><div class="ri-field-label">Felt Hard</div><div class="ri-field-val">Choosing u in non-standard integration forms — still uncertain.</div></div>
+        <div class="ri-field"><div class="ri-field-label">For Mentor</div><div class="ri-field-val">Should I do the mock this weekend or wait until after Electrostatics?</div></div>
+        <div class="ri-mentor-reply">
+          <div class="ri-reply-text">Wait until after Electrostatics. Your Physics gap would pull the mock score down artificially and that's not useful data right now. Mock in 2 weeks — once we've done the Gauss's Law session.</div>
+          <div class="ri-reply-by">Ajay Sharma · Apr 15, 7:48 AM</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="report-item">
+      <div class="ri-header" onclick="toggleReport(this)">
+        <div><div class="ri-date">Monday, Apr 13</div><div class="ri-summary">3h · Focus: 3/5 · Showed up ✓</div></div>
+        <div style="display:flex;align-items:center;gap:10px;"><div class="ri-mood">😐</div><svg class="tms-arrow" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></div>
+      </div>
+      <div class="ri-body">
+        <div class="ri-field"><div class="ri-field-label">Topics Done</div><div class="ri-field-val">Mole concept revision, some Organic reading</div></div>
+        <div class="ri-field"><div class="ri-field-label">Went Hard</div><div class="ri-field-val">Feeling distracted. Instagram kept pulling me in.</div></div>
+        <div class="ri-mentor-reply">
+          <div class="ri-reply-text">Honest report. That's what matters. Put phone in another room tomorrow morning. Not negotiable.</div>
+          <div class="ri-reply-by">Ajay Sharma · Apr 14, 8:02 AM</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="report-item">
+      <div class="ri-header" onclick="toggleReport(this)">
+        <div><div class="ri-date">Sunday, Apr 12</div><div class="ri-summary">Rest day · Showed up ✓</div></div>
+        <div style="display:flex;align-items:center;gap:10px;"><div class="ri-mood">🙂</div><svg class="tms-arrow" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></div>
+      </div>
+      <div class="ri-body">
+        <div class="ri-field"><div class="ri-field-label">Note</div><div class="ri-field-val">Rest day but did 30 min revision. Feeling recharged.</div></div>
+        <div class="ri-mentor-reply">
+          <div class="ri-reply-text">Good. Rest is part of the plan. See you on the call.</div>
+          <div class="ri-reply-by">Ajay Sharma · Apr 13, 8:15 AM</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ TOPIC MAP (from Spark diagnostic) ══════════ -->
+  <div class="page" id="p-topics">
+    <div style="background:var(--bg3);border:1px solid var(--b);border-radius:var(--rl);padding:12px 16px;margin-bottom:18px;border-left:3px solid var(--sage);font-size:13px;color:var(--t2);">
+      📊 From your diagnostic. Your mentor uses this to understand your starting point — but Anchor doesn't teach subjects. If you need help on a specific topic, consider upgrading to Apex.
+    </div>
+    <div class="tm-subject">
+      <div class="tms-header" onclick="toggleSubj(this)">
+        <div class="tms-icon">⚡</div><div class="tms-name">Physics</div>
+        <div class="pbar" style="width:110px;flex-shrink:0;"><div class="pbar-inner pb-amber" style="width:41%"></div></div>
+        <div class="tms-score" style="color:var(--amber);width:38px;text-align:right;">41%</div>
+        <svg class="tms-arrow" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <div class="tms-body open">
+        <div class="cr-row"><div class="cr-name">Electrostatics</div><div class="cr-bar"><div class="pbar"><div class="pbar-inner" style="width:31%;background:var(--red)"></div></div></div><div class="cr-pct" style="color:var(--red);">31%</div><div class="cr-tag weak-tag">Weak</div></div>
+        <div class="cr-row"><div class="cr-name">Mechanics</div><div class="cr-bar"><div class="pbar"><div class="pbar-inner pb-amber" style="width:44%"></div></div></div><div class="cr-pct" style="color:var(--amber);">44%</div><div class="cr-tag ok-tag">Avg</div></div>
+        <div class="cr-row"><div class="cr-name">Waves &amp; Optics</div><div class="cr-bar"><div class="pbar"><div class="pbar-inner pb-green" style="width:72%"></div></div></div><div class="cr-pct" style="color:var(--green);">72%</div><div class="cr-tag good-tag">Good</div></div>
+      </div>
+    </div>
+    <div class="tm-subject">
+      <div class="tms-header" onclick="toggleSubj(this)">
+        <div class="tms-icon">📐</div><div class="tms-name">Mathematics</div>
+        <div class="pbar" style="width:110px;flex-shrink:0;"><div class="pbar-inner pb-amber" style="width:54%"></div></div>
+        <div class="tms-score" style="color:var(--amber);width:38px;text-align:right;">54%</div>
+        <svg class="tms-arrow" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <div class="tms-body">
+        <div class="cr-row"><div class="cr-name">Integration</div><div class="cr-bar"><div class="pbar"><div class="pbar-inner" style="width:42%;background:var(--red)"></div></div></div><div class="cr-pct" style="color:var(--red);">42%</div><div class="cr-tag weak-tag">Weak</div></div>
+        <div class="cr-row"><div class="cr-name">Trigonometry</div><div class="cr-bar"><div class="pbar"><div class="pbar-inner pb-green" style="width:74%"></div></div></div><div class="cr-pct" style="color:var(--green);">74%</div><div class="cr-tag good-tag">Good</div></div>
+      </div>
+    </div>
+    <!-- Apex upsell — relevant here -->
+    <div style="background:linear-gradient(135deg,var(--bg3),var(--bg4));border:1px solid var(--gb);border-radius:var(--rl);padding:18px 20px;margin-top:16px;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;">
+      <div>
+        <div style="font-size:10px;color:var(--gold);font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px;">Want these gaps fixed?</div>
+        <div style="font-family:var(--fs);font-size:15px;font-weight:700;color:var(--t1);margin-bottom:3px;">Upgrade to Apex for 1-to-1 subject sessions</div>
+        <div style="font-size:12.5px;color:var(--t2);">Anchor gives you a mentor. Apex adds a subject faculty who teaches specifically to your gaps.</div>
+      </div>
+      <button class="btn btn-gold btn-sm" onclick="showToast('Contacting Studyverse about Apex upgrade...')">Enquire About Apex →</button>
+    </div>
+  </div>
+
+  <!-- ══════════ RESOURCES ══════════ -->
+  <div class="page" id="p-resources">
+    <div style="font-size:10.5px;color:var(--t3);text-transform:uppercase;letter-spacing:.09em;font-weight:600;margin-bottom:10px;">Free Resources</div>
+    <div style="display:flex;align-items:center;gap:14px;padding:13px 16px;border-radius:var(--r);background:var(--bg2);border:1px solid var(--b);margin-bottom:8px;cursor:pointer;transition:all .15s;" onclick="showToast('Downloading...')" onmouseover="this.style.borderColor='var(--gb)'" onmouseout="this.style.borderColor='var(--b)'">
+      <div style="width:38px;height:38px;border-radius:9px;background:var(--gd);border:1px solid var(--gb);display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;">📕</div>
+      <div><div style="font-size:13px;font-weight:500;color:var(--t1);">NCERT Chemistry Class XI</div><div style="font-size:11.5px;color:var(--t3);margin-top:2px;">PDF • 18.4 MB</div></div>
+      <button class="btn btn-sm btn-ghost" style="margin-left:auto;flex-shrink:0;">↓</button>
+    </div>
+    <div style="display:flex;align-items:center;gap:14px;padding:13px 16px;border-radius:var(--r);background:var(--bg2);border:1px solid var(--b);margin-bottom:8px;cursor:pointer;transition:all .15s;" onclick="showToast('Downloading...')" onmouseover="this.style.borderColor='var(--gb)'" onmouseout="this.style.borderColor='var(--b)'">
+      <div style="width:38px;height:38px;border-radius:9px;background:var(--gd);border:1px solid var(--gb);display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;">📗</div>
+      <div><div style="font-size:13px;font-weight:500;color:var(--t1);">NCERT Mathematics Class XII</div><div style="font-size:11.5px;color:var(--t3);margin-top:2px;">PDF • 22.1 MB</div></div>
+      <button class="btn btn-sm btn-ghost" style="margin-left:auto;flex-shrink:0;">↓</button>
+    </div>
+    <div style="margin-top:20px;background:var(--bg3);border:1px solid var(--b);border-radius:var(--rl);padding:16px 18px;text-align:center;">
+      <div style="font-size:13px;color:var(--t2);margin-bottom:10px;">Premium resources (HC Verma, PYQ papers, formula sheets) are available in the Forge and Apex plans.</div>
+      <button class="btn btn-ghost btn-sm" onclick="showToast('Enquiry sent...')">Enquire About Forge →</button>
+    </div>
+  </div>
+
+  <!-- ══════════ PARENT VIEW ══════════ -->
+  <div class="page" id="p-parent">
+    <div class="parent-hero">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:12px;">
+        <div>
+          <div style="font-family:var(--fs);font-size:20px;font-weight:700;color:var(--t1);margin-bottom:4px;">Parent View</div>
+          <div style="font-size:13px;color:var(--t2);">Weekly update from your child's mentor. Every Sunday morning.</div>
+        </div>
+        <button class="btn btn-gold btn-sm" onclick="showToast('Report downloaded!')">↓ Download</button>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
+        <div style="background:rgba(234,244,236,0.05);border:1px solid var(--b);border-radius:var(--r);padding:14px;text-align:center;">
+          <div style="font-family:var(--fs);font-size:22px;font-weight:700;color:var(--sage);">47/48</div>
+          <div style="font-size:10.5px;color:var(--t3);margin-top:3px;">Daily Reports</div>
+        </div>
+        <div style="background:rgba(234,244,236,0.05);border:1px solid var(--b);border-radius:var(--r);padding:14px;text-align:center;">
+          <div style="font-family:var(--fs);font-size:22px;font-weight:700;color:var(--amber);">🔥 14</div>
+          <div style="font-size:10.5px;color:var(--t3);margin-top:3px;">Day Streak</div>
+        </div>
+        <div style="background:rgba(234,244,236,0.05);border:1px solid var(--b);border-radius:var(--r);padding:14px;text-align:center;">
+          <div style="font-family:var(--fs);font-size:22px;font-weight:700;color:var(--gold);">6</div>
+          <div style="font-size:10.5px;color:var(--t3);margin-top:3px;">Calls Done</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mentor's note to parents -->
+    <div style="background:var(--bg2);border:1px solid var(--b);border-radius:var(--rl);padding:20px 22px;margin-bottom:18px;">
+      <div style="font-size:11px;color:var(--t3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px;font-weight:600;">Mentor's Note to Parents — Week 7</div>
+      <div style="font-size:14px;font-style:italic;color:var(--t2);line-height:1.9;border-left:3px solid var(--gold);padding-left:14px;margin-bottom:12px;font-family:var(--fs);">
+        "Your child has submitted 47 of 48 daily reports — an exceptional level of commitment. What I'm noticing in the data: focus quality is higher on days when study begins before noon. We discussed this on Friday's call and agreed to a morning-first approach this week. Mindset is strong. The one area to watch: exam anxiety on mock tests. We are working on this — treating mocks as data rather than judgement. Overall, I am genuinely impressed by the consistency shown so far."
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div class="mc-av" style="width:32px;height:32px;font-size:13px;">A</div>
+        <div><div style="font-size:13px;font-weight:600;color:var(--t1);">Ajay Sharma</div><div style="font-size:11px;color:var(--t3);">Mentor, Studyverse · Apr 13, 2026</div></div>
+      </div>
+    </div>
+
+    <!-- This week's data -->
+    <div style="background:var(--bg2);border:1px solid var(--b);border-radius:var(--rl);padding:18px 20px;">
+      <div style="font-size:12px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:14px;">This Week's Data</div>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--b);"><span style="font-size:13px;color:var(--t2);">Reports submitted</span><span style="font-size:13px;font-weight:700;color:var(--sage);">7 / 7</span></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--b);"><span style="font-size:13px;color:var(--t2);">Avg study hours/day</span><span style="font-size:13px;font-weight:700;color:var(--t1);">4.2 hrs</span></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--b);"><span style="font-size:13px;color:var(--t2);">Avg focus quality</span><span style="font-size:13px;font-weight:700;color:var(--gold);">3.8 / 5</span></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;"><span style="font-size:13px;color:var(--t2);">Problems solved</span><span style="font-size:13px;font-weight:700;color:var(--t1);">94 problems</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ NOTIFICATIONS ══════════ -->
+  <div class="page" id="p-notif">
+    <div class="card">
+      <div class="sh"><div class="sh-t">Notifications</div><span class="sh-a" onclick="showToast('All marked as read')">Mark all read</span></div>
+      <div style="display:flex;gap:12px;padding:13px 0;border-bottom:1px solid var(--b);"><div style="width:7px;height:7px;border-radius:50%;background:var(--gold);flex-shrink:0;margin-top:5px;"></div><div><div style="font-size:13px;color:var(--t2);"><strong style="color:var(--t1);">Mentor Reply</strong> — Ajay replied to your Apr 14 daily report.</div><div style="font-size:11px;color:var(--t3);margin-top:2px;">7:48 AM today</div></div></div>
+      <div style="display:flex;gap:12px;padding:13px 0;border-bottom:1px solid var(--b);"><div style="width:7px;height:7px;border-radius:50%;background:var(--gold);flex-shrink:0;margin-top:5px;"></div><div><div style="font-size:13px;color:var(--t2);"><strong style="color:var(--t1);">Study Plan Updated</strong> — Ajay revised your plan for this week.</div><div style="font-size:11px;color:var(--t3);margin-top:2px;">Yesterday</div></div></div>
+      <div style="display:flex;gap:12px;padding:13px 0;border-bottom:1px solid var(--b);"><div style="width:7px;height:7px;border-radius:50%;background:var(--sage);flex-shrink:0;margin-top:5px;"></div><div><div style="font-size:13px;color:var(--t2);"><strong style="color:var(--t1);">Call Reminder</strong> — Weekly mentor call this Friday at 6:00 PM. Block your calendar.</div><div style="font-size:11px;color:var(--t3);margin-top:2px;">2 days ago</div></div></div>
+      <div style="display:flex;gap:12px;padding:13px 0;"><div style="width:7px;height:7px;border-radius:50%;background:var(--t4);flex-shrink:0;margin-top:5px;"></div><div><div style="font-size:13px;color:var(--t2);"><strong style="color:var(--t1);">Weekly Parent Report</strong> — Week 7 report sent to your parents. Sunday, Apr 13.</div><div style="font-size:11px;color:var(--t3);margin-top:2px;">Sunday</div></div></div>
+    </div>
+  </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+</div><!-- /app -->
+
+<!-- TOAST -->
+<div class="toast" id="t"><div class="tpip"></div><span id="tmsg">Done</span></div>
+
+<script>
+const ptitles = {
+  dashboard:'Dashboard', report:'Daily Report', calls:'Weekly Calls',
+  habits:'Habit Tracker', plan:'My Study Plan', topics:'Topic Map',
+  resources:'Resources', history:'Report History', parent:'Parent View',
+  notif:'Notifications'
+};
+
+function nav(page, el) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('on'));
+  document.querySelectorAll('.ni').forEach(n => n.classList.remove('on'));
+  const p = document.getElementById('p-' + page);
+  if (p) p.classList.add('on');
+  if (el) el.classList.add('on');
+  document.getElementById('ph').textContent = ptitles[page] || page;
+}
+
+function toggleSubj(hdr) {
+  const body = hdr.nextElementSibling;
+  const arrow = hdr.querySelector('.tms-arrow');
+  const isOpen = body.classList.toggle('open');
+  if (arrow) arrow.style.transform = isOpen ? 'rotate(180deg)' : '';
+}
+
+function togglePlan(hdr) {
+  const body = hdr.nextElementSibling;
+  const arrow = hdr.querySelector('.tms-arrow');
+  const isOpen = body.classList.toggle('open');
+  if (arrow) arrow.style.transform = isOpen ? 'rotate(180deg)' : '';
+}
+
+function toggleReport(hdr) {
+  const body = hdr.nextElementSibling;
+  const arrow = hdr.querySelector('.tms-arrow');
+  const isOpen = body.classList.toggle('open');
+  if (arrow) arrow.style.transform = isOpen ? 'rotate(180deg)' : '';
+}
+
+// Habits
+const habitState = {};
+let habitCount = 0;
+function logHabit(el, habit, val) {
+  const row = el.closest('.habit-row');
+  row.querySelectorAll('.ht-yes,.ht-no').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  if (!habitState[habit]) habitCount++;
+  habitState[habit] = val;
+  document.getElementById('week-score').textContent = habitCount;
+  document.getElementById('habit-save').style.display =
+    Object.keys(habitState).length >= 5 ? 'block' : 'none';
+}
+function saveHabits() {
+  document.getElementById('habit-save').style.display = 'none';
+  showToast('Habits saved ✓');
+}
+
+// Toast
+let tid;
+function showToast(msg) {
+  const t = document.getElementById('t');
+  document.getElementById('tmsg').textContent = msg;
+  t.classList.add('show');
+  clearTimeout(tid);
+  tid = setTimeout(() => t.classList.remove('show'), 3200);
+}
+</script>
+</body>
+</html>
