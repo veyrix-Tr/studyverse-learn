@@ -296,3 +296,34 @@ body.anchor-mode ::-webkit-scrollbar-track { background: var(--bg); }
 body.anchor-mode ::-webkit-scrollbar-thumb { background: var(--bg4); border-radius: 10px; }
 
 @media(max-width:1100px) { body.anchor-mode .g4 { grid-template-columns: 1fr 1fr; } body.anchor-mode .g3 { grid-template-columns: 1fr 1fr; } }
+
+/* ── STUDY GUIDANCE lock background — anchor theme ──
+   --sp-lock-bg is undefined in free-mode → falls back to var(--cream2).
+   In anchor + free mode we define it so the lock container uses anchor green.
+── */
+body.anchor-mode.free-mode { --sp-lock-bg: var(--bg2); }
+
+/* ── DIAGNOSTIC FORM — anchor theme override ──
+   When anchor-mode + free-mode are both active (study pages),
+   replace the navy tones in .dform with anchor forest greens.
+   Gold accents and cream form fields stay untouched.
+── */
+body.anchor-mode.free-mode .dform {
+  --df-navy:  #0A1F12;
+  --df-navy2: #0D2418;
+  --df-navy3: #102D1E;
+  --df-b2:    rgba(74,222,128,0.14);
+}
+
+/* Header and step-nav: 1px narrower + deeper shadow on dark bg */
+body.anchor-mode.free-mode .dform .df-header   { padding-left: calc(1.75rem - 1px); padding-right: calc(1.75rem - 1px); box-shadow: 0 8px 32px rgba(0,0,0,0.45); }
+body.anchor-mode.free-mode .dform .df-step-nav { box-shadow: 0 2px 16px rgba(0,0,0,0.4); }
+
+/* Water tank fill — sage green instead of navy blue */
+body.anchor-mode.free-mode .dform .df-tank-fill {
+  background: linear-gradient(180deg, #4ADE80 0%, #16A34A 100%);
+}
+body.anchor-mode.free-mode .dform .df-drop { background: #86EFAC; }
+
+/* Success ring stroke — green instead of navy */
+body.anchor-mode.free-mode .dform .df-success circle[stroke] { stroke: #4ADE80; }

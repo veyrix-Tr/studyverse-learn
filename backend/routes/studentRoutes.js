@@ -435,11 +435,11 @@ router.post('/habits', requireAuth, async (req, res) => {
 const RESOURCE_TYPES      = ['Study Material', 'Formula Sheet', 'Session Notes'];
 const QUESTION_BANK_TYPES = ['MCQ Bank', 'Previous Year Papers', 'Practice Set'];
 
-// GET /api/student/resources — approved resources matching student's exam subjects (Forge & above only)
+// GET /api/student/resources — approved resources matching student's exam subjects (Forge, Apex, Anchor)
 router.get('/resources', requireAuth, async (req, res) => {
   try {
     const profile = await prisma.studentProfile.findUnique({ where: { userId: req.params.userId } });
-    if (!profile || !['forge', 'apex'].includes(profile.plan)) return res.json([]);
+    if (!profile || !['forge', 'apex', 'anchor'].includes(profile.plan)) return res.json([]);
 
     const subjects = EXAM_SUBJECTS[profile.examTarget] || [];
     if (!subjects.length) return res.json([]);

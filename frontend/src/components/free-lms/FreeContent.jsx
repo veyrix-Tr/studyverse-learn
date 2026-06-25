@@ -95,7 +95,7 @@ const habitItems = [
   { key: 'study', icon: '📖', name: 'Studied for at least 4 hours', desc: 'Focused study, not just sitting with a book.' },
   { key: 'revision', icon: '🔁', name: "Revised yesterday's topics", desc: 'Revision within 24h improves retention by 80%.' },
   { key: 'phone', icon: '📵', name: 'No social media during study hours', desc: 'Even 5-minute breaks break your flow completely.' },
-  { key: 'problems', icon: '❓', name: 'Solved at least 10 problems', desc: 'JEE is a problem-solving exam. Read less, solve more.' },
+  { key: 'problems', icon: '❓', name: 'Solved at least 10 problems', desc: 'Competitive exams are problem-solving exams. Read less, solve more.' },
 ];
 
 const HABIT_KEYS = ['sleep', 'study', 'revision', 'phone', 'problems'];
@@ -1494,7 +1494,7 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
           );
         })() : (
           /* Locked state — skeleton + lock card */
-          <div style={{ position: 'relative', borderRadius: '16px', overflow: 'hidden', minHeight: 'calc(100vh - 80px)', background: 'var(--cream2)' }}>
+          <div style={{ position: 'relative', borderRadius: '16px', overflow: 'hidden', minHeight: 'calc(100vh - 80px)', background: 'var(--sp-lock-bg, var(--cream2))' }}>
             {/* Skeleton placeholders */}
             <div style={{ padding: '32px 24px 24px', display: 'flex', flexDirection: 'column', gap: '14px', pointerEvents: 'none', userSelect: 'none', filter: 'blur(2.5px)' }}>
               {/* Overview strip */}
@@ -1635,7 +1635,7 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
 
         <div className="card" style={{ background: 'var(--navy)', borderColor: 'var(--bi)' }}>
           <div style={{ fontFamily: 'var(--fs)', fontSize: '15px', fontWeight: 600, color: 'var(--inv)', marginBottom: '6px' }}>Why habits matter more than you think</div>
-          <div style={{ fontSize: '13px', color: 'var(--inv2)', lineHeight: 1.8 }}>The difference between a 120-scorer and a 160-scorer in JEE Mains is rarely intelligence. It's the student who slept well, revised consistently, and solved problems every single day — vs. the one who studied 8 hours randomly. <strong style={{ color: 'var(--gold)' }}>Consistency is the actual exam strategy.</strong></div>
+          <div style={{ fontSize: '13px', color: 'var(--inv2)', lineHeight: 1.8 }}>The difference between a good rank and a great rank is rarely intelligence. It's the student who slept well, revised consistently, and solved problems every single day — vs. the one who studied 8 hours randomly. <strong style={{ color: 'var(--gold)' }}>Consistency is the actual exam strategy.</strong></div>
         </div>
       </div>
 

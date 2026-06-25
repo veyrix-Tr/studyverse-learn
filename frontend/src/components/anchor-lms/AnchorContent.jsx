@@ -1,12 +1,16 @@
 import { useState } from 'react';
+import { useParams } from 'react-router-dom';
 
 const HABIT_ITEMS = [
-  { key: 'sleep',    icon: '🌙', name: 'Slept before midnight',          desc: 'Your brain consolidates during sleep.' },
-  { key: 'study',    icon: '📖', name: 'Studied for at least 4 hours',   desc: 'Focused. Not just open books.' },
-  { key: 'revision', icon: '🔁', name: "Revised yesterday's topics",     desc: '24h revision = 80% better retention.' },
+  { key: 'sleep',    icon: '🌙', name: 'Slept before midnight',              desc: 'Your brain consolidates during sleep.' },
+  { key: 'study',    icon: '📖', name: 'Studied for at least 4 hours',       desc: 'Focused. Not just open books.' },
+  { key: 'revision', icon: '🔁', name: "Revised yesterday's topics",         desc: '24h revision = 80% better retention.' },
   { key: 'phone',    icon: '📵', name: 'No social media during study hours', desc: 'Phone breaks destroy flow state.' },
-  { key: 'problems', icon: '❓', name: 'Solved at least 10 problems',    desc: 'JEE is a problem-solving exam.' },
+  { key: 'problems', icon: '❓', name: 'Solved at least 10 problems',        desc: 'Competitive exams reward consistent problem-solving.' },
 ];
+
+const HABIT_KEYS = ['sleep', 'study', 'revision', 'phone', 'problems'];
+const HABIT_LABELS = { sleep: 'Sleep', study: 'Study 4h', revision: 'Revision', phone: 'No phone', problems: '10 probs' };
 
 const MONTH_DAYS = [
   { d: 1, s: 'logged' },  { d: 2, s: 'logged' },  { d: 3, s: 'logged' },  { d: 4, s: 'logged' },
@@ -19,16 +23,35 @@ const MONTH_DAYS = [
   { d: 28, s: 'future' }, { d: 29, s: 'future' }, { d: 30, s: 'future' },
 ];
 
-const HD_ROW = [
-  { label: 'Sleep',    dots: ['y','y','n','y','y','y','y','y','y','n','y','y','y','t'] },
-  { label: 'Study 4h', dots: ['y','y','y','y','n','y','y','y','y','y','y','y','y','t'] },
-  { label: 'Revision', dots: ['n','y','y','y','y','y','n','y','y','y','n','y','y','t'] },
-  { label: 'No phone', dots: ['y','y','n','n','y','y','y','y','y','n','y','y','y','t'] },
-  { label: '10 probs', dots: ['y','y','n','y','y','y','y','y','y','y','y','y','n','t'] },
-];
+const getTodayIST = () => {
+  const ist = new Date(Date.now() + 5.5 * 60 * 60 * 1000);
+  return ist.toISOString().slice(0, 10);
+};
 
-const AnchorContent = ({ activePage, onNav, onShowToast }) => {
+const computeStreak = (logs) => {
+  if (!logs.length) return 0;
+  const sorted = [...logs].sort((a, b) => b.date.localeCompare(a.date));
+  const today = getTodayIST();
+  const yesterday = new Date(Date.now() + 5.5 * 60 * 60 * 1000 - 86400000).toISOString().slice(0, 10);
+  if (sorted[0].date !== today && sorted[0].date !== yesterday) return 0;
+  let streak = 0;
+  let expected = sorted[0].date;
+  for (const log of sorted) {
+    if (log.date !== expected) break;
+    if (!HABIT_KEYS.every(k => log[k] === true)) break;
+    streak++;
+    const d = new Date(expected);
+    d.setDate(d.getDate() - 1);
+    expected = d.toISOString().slice(0, 10);
+  }
+  return streak;
+};
+
+const AnchorContent = ({ activePage, onNav, onShowToast, habitLogs = [], onHabitSaved, resources = [] }) => {
+  const { id: userId } = useParams();
   const pg = (name) => `page${activePage === name ? ' on' : ''}`;
+
+  const [resTab, setResTab] = useState(0);
 
   // Expandable sections
   const [openSections, setOpenSections] = useState(new Set(['plan-this', 'call-week6', 'report-apr14', 'subj-physics']));
@@ -40,15 +63,63 @@ const AnchorContent = ({ activePage, onNav, onShowToast }) => {
 
   // Habits
   const [habitState, setHabitState] = useState({});
-  const [habitSaved, setHabitSaved] = useState(false);
-  const habitCount = Object.keys(habitState).filter(k => habitState[k] === 'yes').length;
+  const [habitSaving, setHabitSaving] = useState(false);
+
+  const today = getTodayIST();
+  const todayLog = habitLogs.find(l => l.date === today) || null;
+  const alreadyCheckedIn = !!todayLog;
+  const streak = computeStreak(habitLogs);
+
+  const effectiveState = alreadyCheckedIn
+    ? Object.fromEntries(HABIT_KEYS.map(k => [k, todayLog[k] ? 'yes' : 'no']))
+    : habitState;
+
+  const habitCount = alreadyCheckedIn
+    ? HABIT_KEYS.filter(k => todayLog[k]).length
+    : Object.keys(habitState).filter(k => habitState[k] === 'yes').length;
   const allHabitsDone = Object.keys(habitState).length === 5;
 
   const logHabit = (key, val) => {
-    if (habitSaved) return;
+    if (alreadyCheckedIn) return;
     setHabitState(prev => ({ ...prev, [key]: val }));
   };
-  const saveHabits = () => { setHabitSaved(true); onShowToast('Habits saved ✓'); };
+
+  const saveHabits = async () => {
+    if (habitSaving || alreadyCheckedIn) return;
+    setHabitSaving(true);
+    const token = localStorage.getItem('token');
+    try {
+      const body = Object.fromEntries(HABIT_KEYS.map(k => [k, habitState[k] === 'yes']));
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/student/${userId}/habits`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      onHabitSaved?.(data.log);
+      setHabitState({});
+      onShowToast('Check-in saved for today ✓');
+    } catch {
+      onShowToast('Failed to save. Try again.');
+    } finally {
+      setHabitSaving(false);
+    }
+  };
+
+  // Build real 14-day dot grid from habitLogs
+  const logMap = Object.fromEntries(habitLogs.map(l => [l.date, l]));
+  const hdRow = HABIT_KEYS.map(k => {
+    const dots = [];
+    for (let i = 13; i >= 0; i--) {
+      const d = new Date(Date.now() + 5.5 * 60 * 60 * 1000 - i * 86400000);
+      const dateStr = d.toISOString().slice(0, 10);
+      if (dateStr === today && !alreadyCheckedIn) { dots.push('t'); }
+      else if (logMap[dateStr]) { dots.push(logMap[dateStr][k] ? 'y' : 'n'); }
+      else { dots.push('e'); }
+    }
+    return { label: HABIT_LABELS[k], dots };
+  });
 
   return (
     <div className="content">
@@ -68,8 +139,8 @@ const AnchorContent = ({ activePage, onNav, onShowToast }) => {
         <div className="g4 mb">
           <div className="stat sa-amber">
             <div className="stat-l">Day Streak</div>
-            <div className="stat-v">🔥 14</div>
-            <div className="stat-n up">days straight</div>
+            <div className="stat-v">{streak > 0 ? `🔥 ${streak}` : '—'}</div>
+            <div className="stat-n up">{streak > 0 ? 'days straight' : 'start today'}</div>
           </div>
           <div className="stat sa-green">
             <div className="stat-l">Reports Submitted</div>
@@ -251,26 +322,28 @@ const AnchorContent = ({ activePage, onNav, onShowToast }) => {
                 <div style={{ fontFamily:'var(--fs)', fontSize:'16px', fontWeight:700, color:'var(--t1)' }}>Today's Habits</div>
                 <div style={{ fontSize:'12px', color:'var(--t3)' }}>{new Date().toLocaleDateString('en-IN', { weekday:'long', day:'numeric', month:'long', year:'numeric' })}</div>
               </div>
-              <span style={{ fontFamily:'var(--fs)', fontSize:'20px', color:'var(--amber)' }}>🔥 14</span>
+              {streak > 0 && <span style={{ fontFamily:'var(--fs)', fontSize:'20px', color:'var(--amber)' }}>🔥 {streak}</span>}
             </div>
+            {alreadyCheckedIn && <div style={{ fontSize:'12.5px', color:'var(--green)', fontWeight:500, marginBottom:'14px' }}>✓ Today's check-in is saved. See you tomorrow!</div>}
             {HABIT_ITEMS.map(h => (
-              <div key={h.key} className="habit-row">
+              <div key={h.key} className="habit-row" style={alreadyCheckedIn ? { opacity: 0.85 } : {}}>
                 <div className="habit-left">
                   <div className="habit-icon">{h.icon}</div>
                   <div><div className="habit-name">{h.name}</div><div className="habit-desc">{h.desc}</div></div>
                 </div>
                 <div style={{ display:'flex', gap:'8px' }}>
-                  <div className={`ht-yes${habitState[h.key] === 'yes' ? ' active' : ''}`} onClick={() => logHabit(h.key, 'yes')}>Yes</div>
-                  <div className={`ht-no${habitState[h.key] === 'no' ? ' active' : ''}`} onClick={() => logHabit(h.key, 'no')}>No</div>
+                  <div className={`ht-yes${effectiveState[h.key] === 'yes' ? ' active' : ''}`} onClick={() => logHabit(h.key, 'yes')}>Yes</div>
+                  <div className={`ht-no${effectiveState[h.key] === 'no' ? ' active' : ''}`} onClick={() => logHabit(h.key, 'no')}>No</div>
                 </div>
               </div>
             ))}
-            {!habitSaved && allHabitsDone && (
+            {!alreadyCheckedIn && allHabitsDone && (
               <div style={{ marginTop:'14px', textAlign:'right' }}>
-                <button className="btn btn-gold btn-sm" onClick={saveHabits}>Save ✓</button>
+                <button className="btn btn-gold btn-sm" onClick={saveHabits} disabled={habitSaving}>
+                  {habitSaving ? 'Saving…' : 'Save ✓'}
+                </button>
               </div>
             )}
-            {habitSaved && <div style={{ marginTop:'14px', fontSize:'12.5px', color:'var(--green)', fontWeight:600 }}>✓ Saved for today</div>}
           </div>
 
           <div className="card">
@@ -281,7 +354,7 @@ const AnchorContent = ({ activePage, onNav, onShowToast }) => {
             </div>
             <div className="div" />
             <div style={{ display:'flex', flexDirection:'column', gap:'8px' }}>
-              {HD_ROW.map(row => (
+              {hdRow.map(row => (
                 <div key={row.label} style={{ display:'flex', alignItems:'center', gap:'8px' }}>
                   <div style={{ fontSize:'11px', color:'var(--t3)', width:'60px' }}>{row.label}</div>
                   <div style={{ display:'flex', gap:'4px' }}>
@@ -468,24 +541,81 @@ const AnchorContent = ({ activePage, onNav, onShowToast }) => {
 
       {/* ══════════ RESOURCES ══════════ */}
       <div className={pg('resources')}>
-        <div style={{ fontSize:'10.5px', color:'var(--t3)', textTransform:'uppercase', letterSpacing:'.09em', fontWeight:600, marginBottom:'10px' }}>Free Resources</div>
-        {[
-          { icon: '📕', name: 'NCERT Chemistry Class XI', meta: 'PDF • 18.4 MB', url: 'https://ncert.nic.in/textbook.php?kech1=0-14' },
-          { icon: '📗', name: 'NCERT Mathematics Class XII', meta: 'PDF • 22.1 MB', url: 'https://ncert.nic.in/textbook.php?lemh1=0-13' },
-        ].map((r, i) => (
-          <div key={i} style={{ display:'flex', alignItems:'center', gap:'14px', padding:'13px 16px', borderRadius:'var(--r)', background:'var(--bg2)', border:'1px solid var(--b)', marginBottom:'8px', cursor:'pointer', transition:'all .15s' }}
-            onClick={() => window.open(r.url, '_blank', 'noreferrer')}
-            onMouseOver={e => e.currentTarget.style.borderColor = 'var(--gb)'}
-            onMouseOut={e => e.currentTarget.style.borderColor = 'var(--b)'}>
-            <div style={{ width:'38px', height:'38px', borderRadius:'9px', background:'var(--gd)', border:'1px solid var(--gb)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'17px', flexShrink:0 }}>{r.icon}</div>
-            <div><div style={{ fontSize:'13px', fontWeight:500, color:'var(--t1)' }}>{r.name}</div><div style={{ fontSize:'11.5px', color:'var(--t3)', marginTop:'2px' }}>{r.meta}</div></div>
-            <button className="btn btn-sm btn-ghost" style={{ marginLeft:'auto', flexShrink:0 }} onClick={e => { e.stopPropagation(); window.open(r.url, '_blank', 'noreferrer'); }}>↓</button>
-          </div>
-        ))}
-        <div style={{ marginTop:'20px', background:'var(--bg3)', border:'1px solid var(--b)', borderRadius:'var(--rl)', padding:'16px 18px', textAlign:'center' }}>
-          <div style={{ fontSize:'13px', color:'var(--t2)', marginBottom:'10px' }}>Premium resources (HC Verma, PYQ papers, formula sheets) are available in the Forge and Apex plans.</div>
-          <button className="btn btn-ghost btn-sm" onClick={() => onShowToast('Enquiry sent...')}>Enquire About Forge →</button>
+        {/* Tabs — anchor theme */}
+        <div style={{ display:'flex', gap:'2px', background:'var(--bg3)', border:'1px solid var(--b)', padding:'4px', borderRadius:'9px', width:'fit-content', marginBottom:'20px' }}>
+          {['All', 'Study Material', 'Formula Sheet', 'Session Notes'].map((t, i) => (
+            <div key={t} onClick={() => setResTab(i)}
+              style={{ padding:'7px 17px', borderRadius:'6px', fontSize:'13px', fontWeight: resTab === i ? 600 : 500, cursor:'pointer', transition:'all .15s',
+                background: resTab === i ? 'var(--bg4)' : 'transparent',
+                color: resTab === i ? 'var(--t1)' : 'var(--t3)',
+                boxShadow: resTab === i ? '0 1px 4px rgba(0,0,0,0.3)' : 'none' }}>
+              {t}
+            </div>
+          ))}
         </div>
+
+        {(() => {
+          const TYPE_MAP = [null, 'Study Material', 'Formula Sheet', 'Session Notes'];
+          const filtered = resTab === 0 ? resources : resources.filter(r => r.type === TYPE_MAP[resTab]);
+
+          if (filtered.length === 0 && resources.length === 0) {
+            // No resources from backend yet — show free NCERT
+            return (
+              <>
+                <div style={{ fontSize:'10.5px', color:'var(--t3)', textTransform:'uppercase', letterSpacing:'.09em', fontWeight:600, marginBottom:'10px' }}>Free Resources</div>
+                {[
+                  { name: 'NCERT Chemistry Class XI',   meta: 'PDF • 18.4 MB', url: 'https://ncert.nic.in/textbook.php?kech1=0-14' },
+                  { name: 'NCERT Mathematics Class XII', meta: 'PDF • 22.1 MB', url: 'https://ncert.nic.in/textbook.php?lemh1=0-13' },
+                ].map((r, i) => (
+                  <div key={i}
+                    style={{ display:'flex', alignItems:'center', gap:'14px', padding:'13px 16px', borderRadius:'var(--r)', background:'var(--bg2)', border:'1px solid var(--b)', marginBottom:'8px', cursor:'pointer', transition:'all .15s' }}
+                    onClick={() => window.open(r.url, '_blank', 'noreferrer')}
+                    onMouseOver={e => e.currentTarget.style.borderColor = 'var(--gb)'}
+                    onMouseOut={e => e.currentTarget.style.borderColor = 'var(--b)'}>
+                    <div style={{ width:'38px', height:'38px', borderRadius:'9px', background:'var(--gd)', border:'1px solid var(--gb)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                    </div>
+                    <div>
+                      <div style={{ fontSize:'13px', fontWeight:500, color:'var(--t1)' }}>{r.name}</div>
+                      <div style={{ fontSize:'11.5px', color:'var(--t3)', marginTop:'2px' }}>{r.meta}</div>
+                    </div>
+                    <button className="btn btn-sm btn-ghost" style={{ marginLeft:'auto', flexShrink:0 }} onClick={e => { e.stopPropagation(); window.open(r.url, '_blank', 'noreferrer'); }}>↓ Download</button>
+                  </div>
+                ))}
+              </>
+            );
+          }
+
+          if (filtered.length === 0) {
+            return (
+              <div style={{ fontSize:'13px', color:'var(--t3)', padding:'32px 0', textAlign:'center' }}>
+                No {TYPE_MAP[resTab] || 'materials'} available yet.
+              </div>
+            );
+          }
+
+          return filtered.map(r => (
+            <div key={r.id}
+              style={{ display:'flex', alignItems:'center', gap:'14px', padding:'14px 16px', borderRadius:'var(--rl)', background:'var(--bg2)', border:'1px solid var(--b)', marginBottom:'10px', transition:'all .15s', cursor:'pointer' }}
+              onMouseOver={e => { e.currentTarget.style.borderColor = 'var(--b2)'; e.currentTarget.style.background = 'var(--bg3)'; }}
+              onMouseOut={e => { e.currentTarget.style.borderColor = 'var(--b)'; e.currentTarget.style.background = 'var(--bg2)'; }}>
+              <div style={{ width:'40px', height:'40px', borderRadius:'10px', background:'var(--gd)', border:'1px solid var(--gb)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              </div>
+              <div style={{ flex:1, minWidth:0 }}>
+                <div style={{ fontSize:'13.5px', fontWeight:600, color:'var(--t1)', marginBottom:'2px' }}>{r.title}</div>
+                <div style={{ fontSize:'12px', color:'var(--t3)' }}>{r.subject} · {r.type} · By {r.facultyName}</div>
+                {r.description && <div style={{ fontSize:'11.5px', color:'var(--t3)', marginTop:'3px', fontStyle:'italic' }}>{r.description}</div>}
+              </div>
+              <div style={{ display:'flex', gap:'6px', flexShrink:0 }}>
+                <a href={`${import.meta.env.VITE_API_URL}/api/files/proxy?url=${encodeURIComponent(r.cloudinaryUrl)}`}
+                  target="_blank" rel="noreferrer" className="btn btn-sm btn-ghost" style={{ textDecoration:'none' }}>↗ View</a>
+                <a href={`${import.meta.env.VITE_API_URL}/api/files/proxy?url=${encodeURIComponent(r.cloudinaryUrl)}&download=1`}
+                  target="_blank" rel="noreferrer" className="btn btn-sm btn-green" style={{ textDecoration:'none' }}>↓ Download</a>
+              </div>
+            </div>
+          ));
+        })()}
       </div>
 
       {/* ══════════ PARENT VIEW ══════════ */}
@@ -499,7 +629,7 @@ const AnchorContent = ({ activePage, onNav, onShowToast }) => {
             <button className="btn btn-gold btn-sm" onClick={() => onShowToast('Report downloaded!')}>↓ Download</button>
           </div>
           <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'12px' }}>
-            {[{ v:'47/48', l:'Daily Reports', c:'var(--sage)' }, { v:'🔥 14', l:'Day Streak', c:'var(--amber)' }, { v:'6', l:'Calls Done', c:'var(--gold)' }].map(s => (
+            {[{ v:'47/48', l:'Daily Reports', c:'var(--sage)' }, { v: streak > 0 ? `🔥 ${streak}` : '—', l:'Day Streak', c:'var(--amber)' }, { v:'6', l:'Calls Done', c:'var(--gold)' }].map(s => (
               <div key={s.l} style={{ background:'rgba(234,244,236,0.05)', border:'1px solid var(--b)', borderRadius:'var(--r)', padding:'14px', textAlign:'center' }}>
                 <div style={{ fontFamily:'var(--fs)', fontSize:'22px', fontWeight:700, color: s.c }}>{s.v}</div>
                 <div style={{ fontSize:'10.5px', color:'var(--t3)', marginTop:'3px' }}>{s.l}</div>
