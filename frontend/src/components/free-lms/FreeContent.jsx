@@ -225,25 +225,38 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
   const [showDiagSummary, setShowDiagSummary] = useState(false);
 
   // Toggle topic completion for current week
+  const [confirmTopic, setConfirmTopic] = useState(null); // topic name pending confirmation
+
   const toggleTopic = async (topicName, subject) => {
     if (!studyPlan) return;
     const weekNumber = studyPlan.currentWeekNum;
     const token = localStorage.getItem('token');
     const isNowDone = !studyPlan.completedThisWeek.includes(topicName);
-    setStudyPlan(prev => ({
-      ...prev,
-      completedThisWeek: isNowDone
-        ? [...prev.completedThisWeek, topicName]
-        : prev.completedThisWeek.filter(t => t !== topicName),
-      thisWeek: isNowDone
-        ? prev.thisWeek.filter(t => t.topic !== topicName)
-        : prev.thisWeek,
-    }));
+    if (isNowDone) {
+      // Optimistic: immediately move to completed list
+      setStudyPlan(prev => ({
+        ...prev,
+        completedThisWeek: [...prev.completedThisWeek, topicName],
+        thisWeek: prev.thisWeek.filter(t => t.topic !== topicName),
+      }));
+    } else {
+      // Optimistic: immediately remove from completed list so user sees reaction
+      setStudyPlan(prev => ({
+        ...prev,
+        completedThisWeek: prev.completedThisWeek.filter(t => t !== topicName),
+      }));
+    }
     await fetch(`${import.meta.env.VITE_API_URL}/api/student/${userId}/topics/complete`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({ topicName, subject, weekNumber }),
     }).catch(() => {});
+    if (isNowDone) {
+      onShowToast(`${topicName} marked as done ✓`);
+    } else {
+      onShowToast(`${topicName} moved back to your list`);
+      setStudyPlanRetry(r => r + 1);
+    }
   };
 
   // Live countdown to diagnostic retake (3 months from diagnosticTakenAt)
@@ -395,7 +408,11 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
           <div className="card" style={{ borderTop: '3px solid var(--gold)' }}>
             <div style={{ fontSize: '28px', marginBottom: '10px' }}>🗺️</div>
             <div style={{ fontFamily: 'var(--fs)', fontSize: '15px', fontWeight: 600, color: 'var(--text)', marginBottom: '6px' }}>Topic Weakness Map</div>
-            <div style={{ fontSize: '12.5px', color: 'var(--text2)', lineHeight: 1.7 }}>See your exact weak chapters across Physics, Chemistry, and Maths — prioritised by JEE weight.</div>
+            <div style={{ fontSize: '12.5px', color: 'var(--text2)', lineHeight: 1.7 }}>
+              {profile?.examTarget === 'NEET'
+                ? 'See your exact weak chapters across Physics, Chemistry, and Biology — prioritised by NEET weight.'
+                : 'See your exact weak chapters across Physics, Chemistry, and Maths — prioritised by JEE weight.'}
+            </div>
             <div style={{ marginTop: '12px' }}><span className="pill pp">Free forever</span></div>
           </div>
           <div className="card" style={{ borderTop: '3px solid var(--navy3)' }}>
@@ -407,7 +424,7 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
           <div className="card" style={{ borderTop: '3px solid var(--green)' }}>
             <div style={{ fontSize: '28px', marginBottom: '10px' }}>✅</div>
             <div style={{ fontFamily: 'var(--fs)', fontSize: '15px', fontWeight: 600, color: 'var(--text)', marginBottom: '6px' }}>Daily Habit Tracker</div>
-            <div style={{ fontSize: '12.5px', color: 'var(--text2)', lineHeight: 1.7 }}>5 habits every serious JEE student needs. Check in daily. Build the discipline that separates rankers.</div>
+            <div style={{ fontSize: '12.5px', color: 'var(--text2)', lineHeight: 1.7 }}>5 habits every serious aspirant needs. Check in daily. Build the discipline that separates rankers.</div>
             <div style={{ marginTop: '12px' }}><span className="pill pp">Free forever</span></div>
           </div>
           <div className="card" style={{ borderTop: '3px solid var(--gold)', opacity: .7 }}>
@@ -416,7 +433,7 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
             <div style={{ fontSize: '12.5px', color: 'var(--text2)', lineHeight: 1.7 }}>Questions matched to your weak topics, difficulty level, and exam pattern.</div>
             <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <span className="pill po">Unlock</span>
-              <button className="btn btn-sm btn-gold" onClick={() => onOpenModal('upgrade-modal')}>Get Access</button>
+              <button className="btn btn-sm btn-gold" onClick={() => onNav('plans')}>Get Access</button>
             </div>
           </div>
           <div className="card" style={{ borderTop: '3px solid var(--navy3)', opacity: .7 }}>
@@ -1147,19 +1164,190 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
                 })}
               </div>
 
+              <style dangerouslySetInnerHTML={{ __html:
+                '@keyframes spDoneRowIn{from{opacity:0;transform:translateY(-8px) scale(.97)}to{opacity:1;transform:none}}' +
+                '@keyframes spConfirmIn{from{opacity:0;transform:scale(.85) translateY(4px)}to{opacity:1;transform:none}}' +
+                '@keyframes spUndoFade{from{opacity:1;transform:none}to{opacity:0;transform:translateX(-10px)}}' +
+                '@keyframes spCheckPop{0%{transform:scale(0)}60%{transform:scale(1.3)}100%{transform:scale(1)}}' +
+                '.sp-done-row{animation:spDoneRowIn .32s cubic-bezier(.34,1.4,.64,1) both}' +
+                '.sp-confirm-btns{animation:spConfirmIn .22s cubic-bezier(.34,1.4,.64,1) both}' +
+                '.sp-done-check{animation:spCheckPop .3s cubic-bezier(.34,1.56,.64,1) both}' +
+                '.sp-mark-btn{transition:all .15s}' +
+                '.sp-mark-btn:hover{background:rgba(34,197,94,.15) !important;border-color:rgba(34,197,94,.7) !important;transform:translateY(-1px)}' +
+                '.sp-undo-btn{transition:all .15s}' +
+                '.sp-undo-btn:hover{background:rgba(34,197,94,.08) !important;border-color:rgba(34,197,94,.5) !important}' +
+                '.sp-yes-btn{transition:all .15s}' +
+                '.sp-yes-btn:hover{background:#15803D !important;transform:translateY(-1px);box-shadow:0 4px 12px rgba(21,128,61,.35)}' +
+                '.sp-cancel-btn{transition:all .15s}' +
+                '.sp-cancel-btn:hover{background:var(--cream3) !important}'
+              }} />
+
               {/* This week focus */}
               <div className="sh sp-in" style={{ animationDelay: '.22s' }}><div className="sh-t">This Week — What to Study</div><span className="pill pp">Personalised</span></div>
+
+              {/* Completed topics this week */}
               {studyPlan.completedThisWeek?.length > 0 && (
-                <div style={{ fontSize:'12px', color:'var(--text3)', marginBottom:'8px', display:'flex', alignItems:'center', gap:'6px' }}>
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#22C55E" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                  {studyPlan.completedThisWeek.length} topic{studyPlan.completedThisWeek.length > 1 ? 's' : ''} done this week — great work!
+                <div className="card sp-in" style={{ marginBottom:'12px', padding:'14px 18px', border:'1.5px solid rgba(34,197,94,.25)', background:'rgba(34,197,94,.04)', animationDelay:'.24s' }}>
+                  <div style={{ fontSize:'12px', fontWeight:700, color:'#15803D', textTransform:'uppercase', letterSpacing:'.06em', marginBottom:'10px', display:'flex', alignItems:'center', gap:'6px' }}>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#22C55E" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    Completed this week ({studyPlan.completedThisWeek.length})
+                  </div>
+                  <div style={{ display:'flex', flexDirection:'column', gap:'7px' }}>
+                    {studyPlan.completedThisWeek.map((topicName, i) => {
+                      // derive subject from subjectTopics keys — topic objects don't carry a subject field
+                      let topicSubject = '';
+                      for (const [subj, topics] of Object.entries(studyPlan.subjectTopics || {})) {
+                        if (topics.some(t => t.name === topicName)) { topicSubject = subj; break; }
+                      }
+                      return (
+                        <div key={i} className="sp-done-row" style={{ display:'flex', alignItems:'center', gap:'10px', padding:'8px 12px', background:'rgba(34,197,94,.07)', borderRadius:'8px', border:'1px solid rgba(34,197,94,.18)', animationDelay: (i * 0.06) + 's' }}>
+                          <div className="sp-done-check" style={{ width:'20px', height:'20px', borderRadius:'50%', background:'rgba(34,197,94,.15)', border:'1.5px solid rgba(34,197,94,.35)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, animationDelay: (i * 0.06 + 0.1) + 's' }}>
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#22C55E" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                          </div>
+                          <div style={{ flex:1, minWidth:0 }}>
+                            <div style={{ fontSize:'13px', fontWeight:600, color:'var(--text)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{topicName}</div>
+                            {topicSubject && <div style={{ fontSize:'11px', color:'var(--text3)', marginTop:'1px' }}>{topicSubject}</div>}
+                          </div>
+                          <button className="sp-undo-btn" onClick={() => toggleTopic(topicName, topicSubject)}
+                            style={{ border:'1px solid rgba(34,197,94,.3)', background:'none', borderRadius:'6px', padding:'4px 10px', fontSize:'11.5px', fontWeight:600, color:'#15803D', cursor:'pointer', flexShrink:0 }}>
+                            Undo
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
-              {studyPlan.thisWeek.length === 0 && (
-                <div className="card" style={{ textAlign:'center', padding:'20px', color:'var(--green)', fontWeight:600 }}>
-                  🎉 All this week's topics are done! Check back Monday for next week's plan.
-                </div>
-              )}
+
+              {/* All done — research-backed activity panel */}
+              {studyPlan.thisWeek.length === 0 && (() => {
+                const nowIST = new Date(Date.now() + 5.5 * 60 * 60 * 1000);
+                const dayIST = nowIST.getDay(); // 0=Sun,1=Mon,...,6=Sat
+                const isWeekend = dayIST === 0 || dayIST === 5 || dayIST === 6; // Fri/Sat/Sun
+                const daysEarlyMap = { 1:'4 days', 2:'3 days', 3:'2 days', 4:'1 day', 5:'', 6:'', 0:'' };
+                const daysEarly = daysEarlyMap[dayIST];
+                const nextWeekTopic = (studyPlan.weeklyRoadmap || []).find(w => !w.isCurrent && w.topics?.length > 0);
+
+                return (
+                  <div className="sp-in" style={{ animationDelay: '.27s' }}>
+                    {/* Header */}
+                    <div style={{ background: 'linear-gradient(135deg,var(--navy) 0%,var(--navy3) 100%)', borderRadius: '16px', padding: '18px 22px', marginBottom: '14px', position: 'relative', overflow: 'hidden' }}>
+                      <div style={{ position: 'absolute', top: -30, right: -30, width: 110, height: 110, borderRadius: '50%', background: 'rgba(34,197,94,.08)', pointerEvents: 'none' }} />
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: 'rgba(34,197,94,.15)', border: '1.5px solid rgba(34,197,94,.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#22C55E" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                        </div>
+                        <div>
+                          <div style={{ fontFamily: 'var(--fs)', fontSize: '16px', fontWeight: 700, color: '#FDF8F0', marginBottom: '2px' }}>This week is complete</div>
+                          <div style={{ fontSize: '12px', color: 'rgba(253,248,240,.45)' }}>
+                            {isWeekend ? 'Use the weekend to consolidate — revision now beats starting new topics.' : `You're ${daysEarly} ahead. Research shows retrieval practice this week builds lasting memory.`}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Activity cards */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+
+                      {/* 1. Retrieval Practice — highest impact always */}
+                      <div className="card sp-in" style={{ padding: '16px 18px', animationDelay: '.3s', borderLeft: '3px solid var(--gold)' }}>
+                        <div style={{ display: 'flex', gap: '14px', alignItems: 'flex-start' }}>
+                          <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: 'var(--gold-dim)', border: '1px solid var(--gold-b)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontFamily: 'var(--fs)', fontSize: '13px', fontWeight: 800, color: 'var(--gold)' }}>1</div>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text)', marginBottom: '3px' }}>Retrieval Practice</div>
+                            <div style={{ fontSize: '12.5px', color: 'var(--text3)', lineHeight: 1.6, marginBottom: '10px' }}>Without looking at notes, write down everything you remember from this week. Studies show this beats re-reading by 50% for long-term retention.</div>
+                            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                              <button className="btn btn-sm btn-gold" onClick={() => onNav('topics')}>Review Topic Map</button>
+                              <span style={{ fontSize: '11px', color: 'var(--text3)', alignSelf: 'center' }}>Highest impact</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 2. Interleaved Practice Problems */}
+                      <div className="card sp-in" style={{ padding: '16px 18px', animationDelay: '.35s', borderLeft: '3px solid var(--navy3)' }}>
+                        <div style={{ display: 'flex', gap: '14px', alignItems: 'flex-start' }}>
+                          <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: 'rgba(28,46,80,.08)', border: '1px solid rgba(28,46,80,.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontFamily: 'var(--fs)', fontSize: '13px', fontWeight: 800, color: 'var(--navy3)' }}>2</div>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text)', marginBottom: '3px' }}>Mixed Problem Practice</div>
+                            <div style={{ fontSize: '12.5px', color: 'var(--text3)', lineHeight: 1.6, marginBottom: '10px' }}>Solve problems across different topics from this week, not one subject at a time. Interleaving feels harder but produces 2x better long-term results.</div>
+                            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                              <button className="btn btn-sm btn-ghost" onClick={() => onNav('questions')}>Question Bank</button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 3. Weak area consolidation */}
+                      <div className="card sp-in" style={{ padding: '16px 18px', animationDelay: '.40s', borderLeft: '3px solid var(--orange)' }}>
+                        <div style={{ display: 'flex', gap: '14px', alignItems: 'flex-start' }}>
+                          <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: 'rgba(249,115,22,.08)', border: '1px solid rgba(249,115,22,.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontFamily: 'var(--fs)', fontSize: '13px', fontWeight: 800, color: 'var(--orange)' }}>3</div>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text)', marginBottom: '3px' }}>Consolidate Weak Areas</div>
+                            <div style={{ fontSize: '12.5px', color: 'var(--text3)', lineHeight: 1.6, marginBottom: '10px' }}>For each topic you found hard this week, write: "Why does this concept work?" and "How does this connect to what I already know?" This elaborative interrogation deepens understanding.</div>
+                            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                              <button className="btn btn-sm btn-ghost" onClick={() => onNav('topics')}>See Urgent Topics</button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 4. Get Ahead — Mon-Thu only, opt-in */}
+                      {!isWeekend && nextWeekTopic && (
+                        <div className="card sp-in" style={{ padding: '16px 18px', animationDelay: '.45s', background: 'rgba(232,168,48,.04)', border: '1.5px solid var(--gold-b)' }}>
+                          <div style={{ display: 'flex', gap: '14px', alignItems: 'flex-start' }}>
+                            <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: 'var(--gold-dim)', border: '1px solid var(--gold-b)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontFamily: 'var(--fs)', fontSize: '13px', fontWeight: 800, color: 'var(--gold)' }}>4</div>
+                            <div style={{ flex: 1 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '3px' }}>
+                                <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text)' }}>Get Ahead — Next Week Preview</div>
+                                <span style={{ fontSize: '10.5px', fontWeight: 600, color: '#B45309', background: 'rgba(232,168,48,.15)', borderRadius: '20px', padding: '2px 8px', border: '1px solid var(--gold-b)' }}>Optional</span>
+                              </div>
+                              <div style={{ fontSize: '12.5px', color: 'var(--text3)', lineHeight: 1.6, marginBottom: '10px' }}>A light preview only — read definitions and key formulas, nothing more. Early exposure improves next week's learning speed by 30%.</div>
+                              <div style={{ background: 'var(--cream2)', borderRadius: '8px', padding: '10px 14px', marginBottom: '10px' }}>
+                                <div style={{ fontSize: '11px', color: 'var(--text3)', marginBottom: '3px' }}>Next week starts with</div>
+                                <div style={{ fontSize: '13.5px', fontWeight: 700, color: 'var(--text)' }}>{nextWeekTopic.topics[0]?.topic || 'Next week topics'}</div>
+                                <div style={{ fontSize: '11.5px', color: 'var(--text3)', marginTop: '1px' }}>{nextWeekTopic.topics[0]?.subject}</div>
+                              </div>
+                              <div style={{ fontSize: '11.5px', color: 'var(--text3)', fontStyle: 'italic' }}>Do this only after completing activities 1–3 above.</div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Weekend message */}
+                      {isWeekend && (
+                        <div style={{ fontSize: '12px', color: 'var(--text3)', textAlign: 'center', padding: '8px 0', lineHeight: 1.6 }}>
+                          Weekend is for consolidation — new topics start Monday. Sleep is your best study tool right now.
+                        </div>
+                      )}
+
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Previous week pending topics */}
+              {(() => {
+                const prevPending = (studyPlan.weeklyRoadmap || []).filter(w => !w.isCurrent && w.daysLeft <= 0 && w.topics?.length > 0);
+                if (!prevPending.length) return null;
+                return (
+                  <div className="card sp-in" style={{ marginBottom:'12px', padding:'14px 18px', border:'1.5px solid rgba(249,115,22,.2)', background:'rgba(249,115,22,.03)', animationDelay:'.25s' }}>
+                    <div style={{ fontSize:'12px', fontWeight:700, color:'#C2410C', textTransform:'uppercase', letterSpacing:'.06em', marginBottom:'10px', display:'flex', alignItems:'center', gap:'6px' }}>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#F97316" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                      Pending from previous weeks
+                    </div>
+                    {prevPending.flatMap(w => w.topics).slice(0, 5).map((t, i) => (
+                      <div key={i} style={{ display:'flex', alignItems:'center', gap:'8px', padding:'6px 0', borderBottom:'1px solid rgba(249,115,22,.1)' }}>
+                        <div style={{ width:'6px', height:'6px', borderRadius:'50%', background:'#F97316', flexShrink:0 }} />
+                        <div style={{ fontSize:'13px', color:'var(--text2)', flex:1 }}>{t.topic}</div>
+                        <div style={{ fontSize:'11px', color:'var(--text3)' }}>{t.subject}</div>
+                      </div>
+                    ))}
+                    <div style={{ fontSize:'11.5px', color:'var(--text3)', marginTop:'10px' }}>These topics were in your previous plan — consider covering them this week.</div>
+                  </div>
+                );
+              })()}
+
               {studyPlan.thisWeek.map((item, i) => (
                 <div key={i} className="sp-focus sp-in" style={{ animationDelay: `${0.26 + i * 0.07}s` }}>
                   <div className="sp-focus-bar" style={{ background: UC[item.color] || UC.gray }} />
@@ -1172,13 +1360,24 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
                       <div className="sp-focus-right">
                         <div className="sp-focus-hours">{item.hours}h this week</div>
                         <span className="sp-focus-label" style={{ background: UB[item.color], color: UC[item.color] }}>{item.label}</span>
-                        <button
-                          onClick={() => toggleTopic(item.topic, item.subject)}
-                          title="Mark as done"
-                          style={{ border:'1.5px solid rgba(34,197,94,0.4)', background:'rgba(34,197,94,0.07)', borderRadius:'8px', padding:'3px 10px', fontSize:'11px', fontWeight:700, color:'#16A34A', cursor:'pointer', display:'flex', alignItems:'center', gap:'4px', marginTop:'2px', transition:'all .15s' }}>
-                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                          Done
-                        </button>
+                        {confirmTopic === item.topic ? (
+                          <div className="sp-confirm-btns" style={{ display:'flex', gap:'6px', marginTop:'4px' }}>
+                            <button className="sp-yes-btn" onClick={() => { toggleTopic(item.topic, item.subject); setConfirmTopic(null); }}
+                              style={{ border:'none', background:'#16A34A', borderRadius:'7px', padding:'6px 14px', fontSize:'12.5px', fontWeight:700, color:'#fff', cursor:'pointer' }}>
+                              Yes, done
+                            </button>
+                            <button className="sp-cancel-btn" onClick={() => setConfirmTopic(null)}
+                              style={{ border:'1px solid var(--b)', background:'var(--cream2)', borderRadius:'7px', padding:'6px 12px', fontSize:'12.5px', fontWeight:600, color:'var(--text2)', cursor:'pointer' }}>
+                              Cancel
+                            </button>
+                          </div>
+                        ) : (
+                          <button className="sp-mark-btn" onClick={() => setConfirmTopic(item.topic)}
+                            style={{ border:'1.5px solid rgba(34,197,94,0.45)', background:'rgba(34,197,94,0.08)', borderRadius:'8px', padding:'6px 14px', fontSize:'12.5px', fontWeight:700, color:'#16A34A', cursor:'pointer', display:'flex', alignItems:'center', gap:'7px', marginTop:'4px', whiteSpace:'nowrap' }}>
+                            <span style={{ width:'14px', height:'14px', borderRadius:'3px', border:'2px solid rgba(34,197,94,0.6)', background:'transparent', display:'inline-block', flexShrink:0 }} />
+                            Mark as Done
+                          </button>
+                        )}
                       </div>
                     </div>
                     <div className="sp-focus-reason">{item.reason}</div>
@@ -1548,7 +1747,7 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
                         </div>
                       ))}
                     </div>
-                    <button className="btn btn-gold btn-full" onClick={() => onOpenModal('upgrade-modal')} style={{ width: '100%', justifyContent: 'center', padding: '12px 0', fontSize: '14px' }}>
+                    <button className="btn btn-gold btn-full" onClick={() => onNav('plans')} style={{ width: '100%', justifyContent: 'center', padding: '12px 0', fontSize: '14px' }}>
                       Unlock Question Bank →
                     </button>
                     <div style={{ fontSize: '11px', color: 'rgba(253,248,240,.3)', marginTop: '10px' }}>Upgrade to Forge · Instant access</div>
@@ -1584,10 +1783,10 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
             </div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '12px', borderTop: '1px solid var(--b)' }}>
               <div>
-                <div style={{ fontFamily: 'var(--fs)', fontSize: '22px', fontWeight: 700, color: 'var(--text)' }}>₹ XX</div>
+                <div style={{ fontFamily: 'var(--fs)', fontSize: '22px', fontWeight: 700, color: 'var(--text)' }}>₹ 99</div>
                 <div style={{ fontSize: '11px', color: 'var(--text3)' }}>per 60-minute session</div>
               </div>
-              <button className="btn btn-gold" onClick={() => onOpenModal('book-modal')}>Book Now →</button>
+              <button className="btn btn-gold" onClick={() => onNav('plans')}>Book Now →</button>
             </div>
             <div className="st-price-badge">Pay per session</div>
           </div>
@@ -1630,7 +1829,7 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
               ))}
             </div>
           </div>
-          <button className="btn btn-gold" style={{ fontSize: '14px', padding: '13px 26px', flexShrink: 0 }} onClick={() => onOpenModal('enroll-modal')}>Talk to Us About Enrollment →</button>
+          <button className="btn btn-gold" style={{ fontSize: '14px', padding: '13px 26px', flexShrink: 0 }} onClick={() => onNav('plans')}>Talk to Us About Enrollment →</button>
         </div>
       </div>
 
@@ -1668,41 +1867,78 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
             })()}
           </>
         ) : (
-          <>
+          <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+            {/* Free section header */}
+            <div style={{ padding: '14px 20px 10px', borderBottom: '1px solid var(--b)', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <span style={{ fontFamily: 'var(--fs)', fontSize: '14px', fontWeight: 600, color: 'var(--text)' }}>Free Resources</span>
+              <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--green)', background: 'var(--green-dim)', borderRadius: '20px', padding: '2px 9px', border: '1px solid rgba(34,197,94,.2)' }}>Always free</span>
+            </div>
+            {/* Free NCERT rows */}
             {[
-              { icon: '📕', name: 'NCERT Chemistry Class XI',   meta: 'PDF • 18.4 MB • Free', url: 'https://ncert.nic.in/textbook.php?kech1=0-14' },
-              { icon: '📗', name: 'NCERT Mathematics Class XII', meta: 'PDF • 22.1 MB • Free', url: 'https://ncert.nic.in/textbook.php?lemh1=0-13' },
-            ].map((r, i) => (
-              <div key={i} className="res-row" style={{ cursor: 'pointer' }} onClick={() => window.open(r.url, '_blank', 'noreferrer')}>
-                <div className="rr-icon">{r.icon}</div>
+              { name: 'NCERT Chemistry Class XI', meta: 'PDF • 18.4 MB', url: 'https://ncert.nic.in/textbook.php?kech1=0-14' },
+              { name: 'NCERT Mathematics Class XII', meta: 'PDF • 22.1 MB', url: 'https://ncert.nic.in/textbook.php?lemh1=0-13' },
+            ].map((r, i, arr) => (
+              <div key={i} className="res-row" style={{ cursor: 'pointer', borderBottom: i < arr.length - 1 ? '1px solid var(--b)' : 'none', borderRadius: 0, margin: 0 }} onClick={() => window.open(r.url, '_blank', 'noreferrer')}>
+                <div className="rr-icon">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                </div>
                 <div><div className="rr-name">{r.name}</div><div className="rr-meta">{r.meta}</div></div>
-                <button className="btn btn-sm btn-ghost" style={{ marginLeft: 'auto', flexShrink: 0 }} onClick={e => { e.stopPropagation(); window.open(r.url, '_blank', 'noreferrer'); }}>↓ Download</button>
+                <button className="btn btn-sm btn-ghost" style={{ marginLeft: 'auto', flexShrink: 0 }} onClick={e => { e.stopPropagation(); window.open(r.url, '_blank', 'noreferrer'); }}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                  Download
+                </button>
               </div>
             ))}
-            <div className="lock-wrap" style={{ marginTop: '4px' }}>
+            {/* Premium section divider */}
+            <div style={{ padding: '14px 20px 10px', borderTop: '1px solid var(--b)', borderBottom: '1px solid var(--b)', background: 'var(--cream2)', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <span style={{ fontFamily: 'var(--fs)', fontSize: '14px', fontWeight: 600, color: 'var(--text)' }}>Premium Resources</span>
+              <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--gold)', background: 'var(--gold-dim)', borderRadius: '20px', padding: '2px 9px', border: '1px solid var(--gold-b)' }}>Forge & above</span>
+            </div>
+            {/* Locked premium section */}
+            <div className="lock-wrap" style={{ minHeight: '460px' }}>
               <div className="lock-blur">
                 {[
-                  { icon: '📘', name: 'H.C. Verma — Concepts of Physics Vol 1 & 2', meta: 'PDF • Curated by Ajay' },
-                  { icon: '📑', name: 'JEE Mains 2023 & 2024 — Papers + Solutions', meta: 'PDF • 4 papers with detailed solutions' },
-                  { icon: '📄', name: "Formula Sheet — All 3 Subjects (Ajay's Edition)", meta: 'PDF • Mentor-curated, JEE pattern' },
-                  { icon: '🗒️', name: 'Electrostatics & Mechanics — Concept Notes', meta: 'PDF • Matched to your weak areas' },
+                  { name: 'H.C. Verma — Concepts of Physics Vol 1 & 2', meta: 'PDF • Curated by mentor' },
+                  { name: 'JEE Mains 2023 & 2024 — Papers + Solutions', meta: 'PDF • 4 papers with detailed solutions' },
+                  { name: 'Formula Sheet — All 3 Subjects', meta: 'PDF • Mentor-curated, JEE pattern' },
+                  { name: 'Electrostatics & Mechanics — Concept Notes', meta: 'PDF • Matched to your weak areas' },
                 ].map((r, i) => (
-                  <div key={i} className="res-row">
-                    <div className="rr-icon">{r.icon}</div>
+                  <div key={i} className="res-row" style={{ borderRadius: 0, margin: 0 }}>
+                    <div className="rr-icon">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                    </div>
                     <div><div className="rr-name">{r.name}</div><div className="rr-meta">{r.meta}</div></div>
                   </div>
                 ))}
               </div>
               <div className="lock-overlay">
-                <div className="lock-box">
-                  <div className="lock-icon">🔒</div>
-                  <div className="lock-title">Unlock Premium Resources</div>
-                  <div className="lock-sub">HC Verma PDFs, PYQ papers with solutions, and Ajay's personal formula sheets — matched to your weak topics.</div>
-                  <button className="btn btn-gold btn-full" onClick={() => onOpenModal('upgrade-modal')}>Unlock Resources</button>
+                <div style={{ background: 'linear-gradient(135deg,#0F1F3D 0%,#1C2E50 100%)', borderRadius: '20px', padding: '32px 28px', textAlign: 'center', boxShadow: '0 24px 64px rgba(15,31,61,.3), 0 4px 16px rgba(15,31,61,.15)', maxWidth: '380px', width: '100%', border: '1px solid rgba(232,168,48,.2)', position: 'relative', overflow: 'hidden' }}>
+                  <div style={{ position: 'absolute', top: -40, right: -40, width: 140, height: 140, borderRadius: '50%', background: 'rgba(232,168,48,.06)', pointerEvents: 'none' }} />
+                  <div style={{ width: '56px', height: '56px', borderRadius: '16px', background: 'rgba(232,168,48,.15)', border: '1.5px solid rgba(232,168,48,.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 18px' }}>
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#E8A830" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                  </div>
+                  <div style={{ fontFamily: 'var(--fs)', fontSize: '19px', fontWeight: 700, color: '#FDF8F0', marginBottom: '8px', lineHeight: 1.3 }}>Premium Resources</div>
+                  <div style={{ fontSize: '13px', color: 'rgba(253,248,240,.5)', lineHeight: 1.7, marginBottom: '20px' }}>HC Verma PDFs, PYQ papers with solutions, and mentor-curated formula sheets — all matched to your weak topics.</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '20px', textAlign: 'left' }}>
+                    {[
+                      'HC Verma Vol 1 & 2 — full PDFs',
+                      'JEE Mains PYQ papers + detailed solutions',
+                      'Formula sheets for all 3 subjects',
+                    ].map((f, i) => (
+                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: 'rgba(253,248,240,.6)' }}>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#22C55E" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                        {f}
+                      </div>
+                    ))}
+                  </div>
+                  <button className="btn btn-gold btn-full" onClick={() => onNav('plans')} style={{ width: '100%', justifyContent: 'center', padding: '12px 0', fontSize: '14px' }}>
+                    Unlock Resources →
+                  </button>
+                  <div style={{ fontSize: '11px', color: 'rgba(253,248,240,.3)', marginTop: '10px' }}>Upgrade to Forge · Instant access</div>
                 </div>
               </div>
             </div>
-          </>
+          </div>
         )}
       </div>
 
@@ -1727,7 +1963,9 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
               <div className="pc-feat">Basic NCERT resources</div>
               <div className="pc-feat no">Custom question bank</div>
               <div className="pc-feat no">Faculty sessions</div>
-              <div className="pc-feat no">Mentorship &amp; accountability</div>
+              <div className="pc-feat no">Mentorship &amp; accountability</div>4. createdAt missing from /me endpoint — reverted, breaks enrollment-date logic
+
+
             </div>
             <button className="btn btn-ghost btn-full" style={{ opacity: 0.6, cursor: 'default' }}>Current Plan</button>
           </div>
@@ -1737,7 +1975,7 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
             <div className="pc-badge">GET STARTED</div>
             <div className="pc-name">Forge</div>
             <div className="pc-tagline">Build your score, problem by problem</div>
-            <div className="pc-price" style={{ color: 'var(--gold)' }}>₹ XX</div>
+            <div className="pc-price" style={{ color: 'var(--gold)' }}>₹ 999/-</div>
             <div className="pc-sub">Monthly</div>
             <div className="pc-feats">
               <div className="pc-feat">Everything in Spark</div>
@@ -1748,7 +1986,7 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
               <div className="pc-feat no">Live faculty sessions</div>
               <div className="pc-feat no">Dedicated mentor</div>
             </div>
-            <button className="btn btn-gold btn-full" onClick={() => onOpenModal('upgrade-modal')}>Get Forge →</button>
+            <button className="btn btn-gold btn-full" onClick={() => onNav('plans')}>Get Forge →</button>
           </div>
 
           {/* ── Apex ── */}
@@ -1756,7 +1994,7 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
             <div className="pc-badge" style={{ background: 'var(--gold)', color: '#0F1F3D' }}>COMPLETE PROGRAM</div>
             <div className="pc-name" style={{ color: '#fff' }}>Apex</div>
             <div className="pc-tagline" style={{ color: 'rgba(253,248,240,0.6)' }}>The highest point</div>
-            <div className="pc-price" style={{ color: 'var(--gold)' }}>₹ XX</div>
+            <div className="pc-price" style={{ color: 'var(--gold)' }}>₹ 2499/-</div>
             <div className="pc-sub" style={{ color: 'rgba(253,248,240,0.6)' }}>Per month · Personalised</div>
             <div className="pc-feats">
               <div className="pc-feat" style={{ color: 'rgba(253,248,240,0.9)' }}>Everything in Forge</div>
@@ -1768,14 +2006,14 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
               <div className="pc-feat" style={{ color: 'rgba(253,248,240,0.9)' }}>Doubt desk — reply within 4 hours</div>
               <div className="pc-feat" style={{ color: 'rgba(253,248,240,0.9)' }}>Mentor-assigned tests based on your progress</div>
             </div>
-            <button className="btn btn-gold btn-full" onClick={() => onOpenModal('enroll-modal')}>Talk to Us →</button>
+            <button className="btn btn-gold btn-full" onClick={() => onNav('plans')}>Talk to Us →</button>
           </div>
 
           {/* ── Anchor ── */}
           <div className="price-card">
             <div className="pc-name">Anchor</div>
             <div className="pc-tagline">Someone in your corner, every day</div>
-            <div className="pc-price">₹ XX</div>
+            <div className="pc-price">₹ 799/-</div>
             <div className="pc-sub">Monthly · Mentorship only</div>
             <div className="pc-feats">
               <div className="pc-feat">Everything in Spark (free features)</div>
@@ -1787,12 +2025,12 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
               <div className="pc-feat no">Live teaching sessions</div>
               <div className="pc-feat no">Question bank</div>
             </div>
-            <button className="btn btn-navy btn-full" onClick={() => onOpenModal('enroll-modal')}>Talk to Us →</button>
+            <button className="btn btn-navy btn-full" onClick={() => onNav('plans')}>Talk to Us →</button>
           </div>
         </div>
         <div style={{ background: 'var(--cream)', border: '1px solid var(--gold-b)', borderRadius: 'var(--rl)', padding: '18px 22px', textAlign: 'center', boxShadow: 'var(--sh)', marginTop: '16px' }}>
           <div style={{ fontFamily: 'var(--fs)', fontSize: '15px', fontWeight: 600, marginBottom: '4px' }}>Not ready to commit? That's fine.</div>
-          <div style={{ fontSize: '13px', color: 'var(--text2)', marginBottom: '14px' }}>Book a single session with Ajay for <strong>₹ XX</strong>. No plan needed. Pay only for what you need.</div>
+          <div style={{ fontSize: '13px', color: 'var(--text2)', marginBottom: '14px' }}>Book a single session with Ajay for <strong>₹ 99</strong>. No plan needed. Pay only for what you need.</div>
           <button className="btn btn-gold" onClick={() => onNav('sessions')}>Book a Single Session →</button>
         </div>
       </div>

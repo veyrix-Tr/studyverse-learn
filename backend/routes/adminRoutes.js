@@ -234,7 +234,7 @@ router.get('/student/:studentUserId/diagnostic', requireAuth, async (req, res) =
     const weeklyScores = await prisma.weeklyScore.findMany({
       where: { studentId: profile.id }, orderBy: { testDate: 'desc' },
     });
-    const SUBJ_MAP = { 'maths':'Mathematics','math':'Mathematics','bio':'Biology','biology':'Biology','physics':'Physics','chemistry':'Chemistry','mathematics':'Mathematics' };
+    const SUBJ_MAP = { 'maths':'Maths','math':'Maths','mathematics':'Maths','bio':'Biology','biology':'Biology','physics':'Physics','chemistry':'Chemistry' };
     let liveScores = null;
     if (weeklyScores.length > 0) {
       const latest = {};
@@ -357,6 +357,10 @@ router.post('/messages', requireAuth, async (req, res) => {
     }
 
     if (studentId === 'all') {
+      const VALID_PLANS = ['spark', 'forge', 'apex', null, undefined];
+      if (targetPlan !== undefined && targetPlan !== null && !['spark', 'forge', 'apex'].includes(targetPlan)) {
+        return res.status(400).json({ error: `Invalid targetPlan "${targetPlan}". Must be spark, forge, or apex.` });
+      }
       let planWhere = {};
       if (targetPlan === 'spark') planWhere = { plan: 'spark' };
       else if (targetPlan === 'forge') planWhere = { plan: { in: ['forge', 'apex'] } };

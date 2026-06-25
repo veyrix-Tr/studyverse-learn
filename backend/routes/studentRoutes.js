@@ -16,6 +16,7 @@ router.get('/me', requireAuth, async (req, res) => {
             plan: true, examTarget: true, targetYear: true,
             grade: true, planEndDate: true,
             diagnosticScore: true, diagnosticTakenAt: true,
+            createdAt: true,
           },
         },
       },
@@ -135,10 +136,9 @@ router.get('/study-plan', requireAuth, async (req, res) => {
     if (weeklyScores.length > 0) {
       // Normalise subject names to match algorithm keys (handles Maths/Math → Mathematics, Bio → Biology)
       const SUBJ_MAP = {
-        'maths': 'Mathematics', 'math': 'Mathematics',
+        'maths': 'Maths', 'math': 'Maths', 'mathematics': 'Maths',
         'bio': 'Biology', 'biology': 'Biology',
         'physics': 'Physics', 'chemistry': 'Chemistry',
-        'mathematics': 'Mathematics',
       };
       const latest = {};
       for (const s of weeklyScores) {

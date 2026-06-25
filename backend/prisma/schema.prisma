@@ -230,6 +230,7 @@ model CompletedTopic {
   student    StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   @@unique([studentId, topicName, weekNumber])
+  @@index([studentId])
 }
 
 model HabitLog {

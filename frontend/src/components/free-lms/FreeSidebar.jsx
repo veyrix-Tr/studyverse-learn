@@ -33,7 +33,7 @@ const FreeSidebar = ({ activePage, onNav, profile, onOpenModal }) => {
             <span style={{ fontSize: '16px', fontWeight: '800', color: '#E8A830', letterSpacing: '0.08em', fontFamily: 'var(--fb)', textTransform: 'uppercase' }}>Forge</span>
           </div>
           <div style={{ fontSize: '10.5px', color: 'rgba(253,248,240,0.45)', fontStyle: 'italic', marginBottom: '9px' }}>Build your score, problem by problem</div>
-          <div onClick={() => onOpenModal('upgrade-modal')} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: '#E8A830', cursor: 'pointer', fontWeight: '600' }}>
+          <div onClick={() => onNav('plans')} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: '#E8A830', cursor: 'pointer', fontWeight: '600' }}>
             Upgrade to Apex
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
           </div>
@@ -46,7 +46,7 @@ const FreeSidebar = ({ activePage, onNav, profile, onOpenModal }) => {
             <span style={{ fontSize: '16px', fontWeight: '800', color: '#E8A830', letterSpacing: '0.08em', fontFamily: 'var(--fb)', textTransform: 'uppercase' }}>Spark</span>
           </div>
           <div style={{ fontSize: '10.5px', color: 'rgba(253,248,240,0.45)', fontStyle: 'italic', marginBottom: '9px' }}>Diagnostic, topic map & study plan</div>
-          <div onClick={() => onOpenModal('upgrade-modal')} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: '#E8A830', cursor: 'pointer', fontWeight: '600' }}>
+          <div onClick={() => onNav('plans')} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: '#E8A830', cursor: 'pointer', fontWeight: '600' }}>
             Upgrade for more
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
           </div>
@@ -111,13 +111,11 @@ const FreeSidebar = ({ activePage, onNav, profile, onOpenModal }) => {
             My Progress
           </div>
         )}
-        {!isForge && (
-          <div className={ni('plans')} onClick={() => onNav('plans')}>
-            <svg className="nic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-            See All Plans
-            <span className="nbadge gold">Upgrade</span>
-          </div>
-        )}
+        <div className={ni('plans')} onClick={() => onNav('plans')}>
+          <svg className="nic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          See All Plans
+          <span className="nbadge gold">{isForge ? 'Apex' : 'Upgrade'}</span>
+        </div>
       </div>
 
 
