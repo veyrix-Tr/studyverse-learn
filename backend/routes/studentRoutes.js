@@ -1,7 +1,7 @@
 const express  = require('express');
 const router   = express.Router({ mergeParams: true });
 const prisma   = require('../lib/prisma');
-const { requireAuth } = require('../middleware/auth');
+const { requireAuth, validateUrlUser } = require('../middleware/auth');
 const { generateStudyPlan } = require('../lib/studyPlanAlgorithm');
 
 // GET /api/student/me
@@ -618,7 +618,7 @@ router.post('/feedback', requireAuth, async (req, res) => {
 });
 
 // GET /api/student/:userId/daily-reports — last 30 reports
-router.get('/daily-reports', requireAuth, async (req, res) => {
+router.get('/daily-reports', requireAuth, validateUrlUser, async (req, res) => {
   try {
     const profile = await prisma.studentProfile.findUnique({ where: { userId: req.params.userId } });
     if (!profile) return res.json([]);
@@ -635,7 +635,7 @@ router.get('/daily-reports', requireAuth, async (req, res) => {
 });
 
 // POST /api/student/:userId/daily-reports — submit today's report
-router.post('/daily-reports', requireAuth, async (req, res) => {
+router.post('/daily-reports', requireAuth, validateUrlUser, async (req, res) => {
   try {
     const { mood, showedUp, hrsPhysics, hrsChemistry, hrsThird, focusQuality,
             topicsDone, questionsSolved, mockToday, mockScore,

@@ -55,7 +55,7 @@ const AnchorContent = ({ activePage, onNav, onShowToast, habitLogs = [], onHabit
   const [resTab, setResTab] = useState(0);
 
   // Expandable sections
-  const [openSections, setOpenSections] = useState(new Set(['plan-this', 'call-week6', 'report-apr14', 'subj-physics']));
+  const [openSections, setOpenSections] = useState(new Set(['call-week6', 'report-apr14', 'subj-physics']));
   const toggleSection = (key) => setOpenSections(prev => {
     const next = new Set(prev);
     if (next.has(key)) { next.delete(key); } else { next.add(key); }
@@ -70,6 +70,34 @@ const AnchorContent = ({ activePage, onNav, onShowToast, habitLogs = [], onHabit
   const todayLog = habitLogs.find(l => l.date === today) || null;
   const alreadyCheckedIn = !!todayLog;
   const streak = computeStreak(habitLogs);
+
+  // Daily report stats for parent view
+  const drStreak = (() => {
+    if (!dailyReports.length) return 0;
+    const sorted = [...dailyReports].sort((a, b) => b.date.localeCompare(a.date));
+    const yesterday = new Date(Date.now() + 5.5 * 60 * 60 * 1000 - 86400000).toISOString().slice(0, 10);
+    let exp = (sorted[0]?.date === today) ? today : yesterday;
+    let s = 0;
+    for (const r of sorted) {
+      if (r.date !== exp) break;
+      s++;
+      const dd = new Date(exp + 'T00:00:00'); dd.setDate(dd.getDate() - 1);
+      exp = dd.toISOString().slice(0, 10);
+    }
+    return s;
+  })();
+  const drLast7 = (() => {
+    const cutoff = new Date(Date.now() + 5.5 * 60 * 60 * 1000 - 6 * 86400000).toISOString().slice(0, 10);
+    return dailyReports.filter(r => r.date >= cutoff);
+  })();
+  const drSubmitted7 = drLast7.length;
+  const drAvgHrs = drLast7.length
+    ? (drLast7.reduce((s, r) => s + (r.hrsPhysics || 0) + (r.hrsChemistry || 0) + (r.hrsThird || 0), 0) / drLast7.length).toFixed(1)
+    : null;
+  const drAvgFocus = drLast7.length
+    ? (drLast7.reduce((s, r) => s + r.focusQuality, 0) / drLast7.length).toFixed(1)
+    : null;
+  const drQsSolved7 = drLast7.reduce((s, r) => s + (r.questionsSolved || 0), 0);
 
   const effectiveState = alreadyCheckedIn
     ? Object.fromEntries(HABIT_KEYS.map(k => [k, todayLog[k] ? 'yes' : 'no']))
@@ -234,7 +262,7 @@ const AnchorContent = ({ activePage, onNav, onShowToast, habitLogs = [], onHabit
             <div className="call-title">Study Plan Updated</div>
             <div className="call-meta">Ajay revised your plan based on last week's reports · Apr 14</div>
           </div>
-          <button className="btn btn-ghost btn-sm" onClick={() => onNav('plan')}>View Plan →</button>
+          <button className="btn btn-ghost btn-sm" onClick={() => onNav('guidance')}>Study Guidance →</button>
         </div>
       </div>
 
@@ -248,6 +276,7 @@ const AnchorContent = ({ activePage, onNav, onShowToast, habitLogs = [], onHabit
               profile={profile}
               mentorName="Ajay"
               todayReport={todayReport}
+              dailyReports={dailyReports}
               onComplete={(report) => { onReportSubmitted?.(report); onShowToast('Report submitted ✓'); }}
             />
           );
@@ -371,53 +400,6 @@ const AnchorContent = ({ activePage, onNav, onShowToast, habitLogs = [], onHabit
       </div>
 
       {/* ══════════ STUDY PLAN ══════════ */}
-      <div className={pg('plan')}>
-        <div style={{ background:'var(--bg3)', border:'1px solid var(--b)', borderRadius:'var(--rl)', padding:'14px 18px', marginBottom:'20px', display:'flex', alignItems:'flex-start', gap:'12px' }}>
-          <div style={{ fontSize:'20px', flexShrink:0 }}>🗓️</div>
-          <div>
-            <div style={{ fontSize:'13.5px', fontWeight:600, color:'var(--t1)', marginBottom:'2px' }}>Updated by Ajay · Apr 14</div>
-            <div style={{ fontSize:'12.5px', color:'var(--t2)' }}>This plan is reviewed and revised every week based on your daily reports and weekly call. It is not a generic syllabus — it is built around where you actually are right now.</div>
-          </div>
-        </div>
-
-        {[
-          {
-            key: 'plan-this', title: 'This Week — Apr 15 to 21', sub: 'Focus: Physics morning routine + Integration',
-            items: [
-              { color: 'var(--red)', text: 'Start Physics before noon — every single day this week', note: 'Mentor note: "Your focus quality data shows the morning window is your peak. Stop wasting it."' },
-              { color: 'var(--amber)', text: 'Integration — 45 min daily. Substitution method first, then by parts', note: "Based on your coaching schedule gap — you haven't covered this yet" },
-              { color: 'var(--sage)', text: 'Minimum 10 problems solved per day — no exceptions', note: 'Non-negotiable. From this week\'s call agreement.' },
-              { color: 'var(--sage)', text: '30 min revision every evening — yesterday\'s topics only', note: 'Builds long-term retention without extra time investment' },
-            ]
-          },
-          {
-            key: 'plan-last', title: 'Last Week — Apr 8 to 14', sub: 'Restructured study schedule',
-            items: [
-              { color: 'var(--sage)', text: 'Move high-focus work to morning slots', note: '' },
-              { color: 'var(--sage)', text: 'Reduce Physics target to 2h — but guarantee problem-solving', note: '' },
-              { color: 'var(--sage)', text: 'One full mock every 2 weeks — treat as data, not a test', note: '' },
-            ]
-          }
-        ].map(week => (
-          <div key={week.key} className="plan-week">
-            <div className="pw-header" onClick={() => toggleSection(week.key)}>
-              <div><div className="pw-title">{week.title}</div><div className="pw-sub">{week.sub}</div></div>
-              <svg className="tms-arrow" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ transform: openSections.has(week.key) ? 'rotate(180deg)' : '' }}><path d="M6 9l6 6 6-6"/></svg>
-            </div>
-            {openSections.has(week.key) && (
-              <div className="pw-body">
-                {week.items.map((item, i) => (
-                  <div key={i} className="plan-item">
-                    <div className="plan-dot" style={{ background: item.color }} />
-                    <div><div className="plan-text">{item.text}</div>{item.note && <div className="plan-note">{item.note}</div>}</div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-
       {/* ══════════ REPORT HISTORY ══════════ */}
       <div className={pg('history')}>
         <div style={{ fontSize:'13px', color:'var(--t2)', marginBottom:'18px' }}>47 reports submitted since Day 1. Ajay reads every one.</div>
@@ -617,12 +599,15 @@ const AnchorContent = ({ activePage, onNav, onShowToast, habitLogs = [], onHabit
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'16px', flexWrap:'wrap', gap:'12px' }}>
             <div>
               <div style={{ fontFamily:'var(--fs)', fontSize:'20px', fontWeight:700, color:'var(--t1)', marginBottom:'4px' }}>Parent View</div>
-              <div style={{ fontSize:'13px', color:'var(--t2)' }}>Weekly update from your child's mentor. Every Sunday morning.</div>
+              <div style={{ fontSize:'13px', color:'var(--t2)' }}>Your child's progress — updated each time they submit a daily report.</div>
             </div>
-            <button className="btn btn-gold btn-sm" onClick={() => onShowToast('Report downloaded!')}>↓ Download</button>
           </div>
           <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'12px' }}>
-            {[{ v:'47/48', l:'Daily Reports', c:'var(--sage)' }, { v: streak > 0 ? `🔥 ${streak}` : '—', l:'Day Streak', c:'var(--amber)' }, { v:'6', l:'Calls Done', c:'var(--gold)' }].map(s => (
+            {[
+              { v: dailyReports.length > 0 ? String(dailyReports.length) : '—', l: 'Reports (last 30d)', c: 'var(--sage)' },
+              { v: drStreak > 0 ? String(drStreak) : '—', l: 'Day Streak', c: 'var(--amber)' },
+              { v: drAvgFocus ? drAvgFocus + ' / 5' : '—', l: 'Avg Focus', c: 'var(--gold)' },
+            ].map(s => (
               <div key={s.l} style={{ background:'rgba(234,244,236,0.05)', border:'1px solid var(--b)', borderRadius:'var(--r)', padding:'14px', textAlign:'center' }}>
                 <div style={{ fontFamily:'var(--fs)', fontSize:'22px', fontWeight:700, color: s.c }}>{s.v}</div>
                 <div style={{ fontSize:'10.5px', color:'var(--t3)', marginTop:'3px' }}>{s.l}</div>
@@ -631,33 +616,55 @@ const AnchorContent = ({ activePage, onNav, onShowToast, habitLogs = [], onHabit
           </div>
         </div>
 
-        <div style={{ background:'var(--bg2)', border:'1px solid var(--b)', borderRadius:'var(--rl)', padding:'20px 22px', marginBottom:'18px' }}>
-          <div style={{ fontSize:'11px', color:'var(--t3)', textTransform:'uppercase', letterSpacing:'.08em', marginBottom:'12px', fontWeight:600 }}>Mentor's Note to Parents — Week 7</div>
-          <div style={{ fontSize:'14px', fontStyle:'italic', color:'var(--t2)', lineHeight:1.9, borderLeft:'3px solid var(--gold)', paddingLeft:'14px', marginBottom:'12px', fontFamily:'var(--fs)' }}>
-            "Your child has submitted 47 of 48 daily reports — an exceptional level of commitment. What I'm noticing in the data: focus quality is higher on days when study begins before noon. We discussed this on Friday's call and agreed to a morning-first approach this week. Mindset is strong. The one area to watch: exam anxiety on mock tests. We are working on this — treating mocks as data rather than judgement. Overall, I am genuinely impressed by the consistency shown so far."
+        {dailyReports.length === 0 ? (
+          <div style={{ background:'var(--bg2)', border:'1px solid var(--b)', borderRadius:'var(--rl)', padding:'36px 22px', textAlign:'center' }}>
+            <div style={{ fontSize:'28px', marginBottom:'10px', opacity:.4 }}>📊</div>
+            <div style={{ fontSize:'14px', color:'var(--t3)' }}>No reports submitted yet. Data will appear here once your child starts submitting daily reports.</div>
           </div>
-          <div style={{ display:'flex', alignItems:'center', gap:'10px' }}>
-            <div className="mc-av" style={{ width:'32px', height:'32px', fontSize:'13px' }}>A</div>
-            <div><div style={{ fontSize:'13px', fontWeight:600, color:'var(--t1)' }}>Ajay Sharma</div><div style={{ fontSize:'11px', color:'var(--t3)' }}>Mentor, Studyverse · Apr 13, 2026</div></div>
+        ) : (
+          <div style={{ background:'var(--bg2)', border:'1px solid var(--b)', borderRadius:'var(--rl)', padding:'18px 20px', marginBottom:'18px' }}>
+            <div style={{ fontSize:'12px', fontWeight:600, color:'var(--t3)', textTransform:'uppercase', letterSpacing:'.07em', marginBottom:'14px' }}>Last 7 Days</div>
+            <div style={{ display:'flex', flexDirection:'column', gap:'0' }}>
+              {[
+                { label: 'Reports submitted', val: drSubmitted7 + ' / 7', c: drSubmitted7 >= 6 ? 'var(--sage)' : drSubmitted7 >= 4 ? 'var(--gold)' : 'var(--t1)' },
+                { label: 'Avg study hours / day', val: drAvgHrs ? drAvgHrs + ' hrs' : '—', c: 'var(--t1)' },
+                { label: 'Avg focus quality', val: drAvgFocus ? drAvgFocus + ' / 5' : '—', c: 'var(--gold)' },
+                { label: 'Problems solved', val: drQsSolved7 > 0 ? drQsSolved7 + ' problems' : '—', c: 'var(--t1)' },
+              ].map((row, i, arr) => (
+                <div key={row.label} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'10px 0', borderBottom: i < arr.length - 1 ? '1px solid var(--b)' : 'none' }}>
+                  <span style={{ fontSize:'13px', color:'var(--t2)' }}>{row.label}</span>
+                  <span style={{ fontSize:'13px', fontWeight:700, color: row.c }}>{row.val}</span>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
-        <div style={{ background:'var(--bg2)', border:'1px solid var(--b)', borderRadius:'var(--rl)', padding:'18px 20px' }}>
-          <div style={{ fontSize:'12px', fontWeight:600, color:'var(--t3)', textTransform:'uppercase', letterSpacing:'.07em', marginBottom:'14px' }}>This Week's Data</div>
-          <div style={{ display:'flex', flexDirection:'column', gap:'10px' }}>
-            {[
-              { label: 'Reports submitted', val: '7 / 7', c: 'var(--sage)' },
-              { label: 'Avg study hours/day', val: '4.2 hrs', c: 'var(--t1)' },
-              { label: 'Avg focus quality', val: '3.8 / 5', c: 'var(--gold)' },
-              { label: 'Problems solved', val: '94 problems', c: 'var(--t1)' },
-            ].map((row, i, arr) => (
-              <div key={row.label} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'9px 0', borderBottom: i < arr.length - 1 ? '1px solid var(--b)' : 'none' }}>
-                <span style={{ fontSize:'13px', color:'var(--t2)' }}>{row.label}</span>
-                <span style={{ fontSize:'13px', fontWeight:700, color: row.c }}>{row.val}</span>
-              </div>
-            ))}
+        {dailyReports.length > 0 && (
+          <div style={{ background:'var(--bg2)', border:'1px solid var(--b)', borderRadius:'var(--rl)', padding:'18px 20px' }}>
+            <div style={{ fontSize:'12px', fontWeight:600, color:'var(--t3)', textTransform:'uppercase', letterSpacing:'.07em', marginBottom:'14px' }}>Recent Reports</div>
+            {dailyReports.slice(0, 7).map((r, i, arr) => {
+              const moods = ['','😩','😐','🙂','💪','🔥'];
+              const totalHrs = ((r.hrsPhysics || 0) + (r.hrsChemistry || 0) + (r.hrsThird || 0)).toFixed(1);
+              const d = new Date(r.date + 'T00:00:00');
+              const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+              const label = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getDay()] + ', ' + d.getDate() + ' ' + months[d.getMonth()];
+              return (
+                <div key={r.id} style={{ display:'flex', alignItems:'flex-start', gap:'12px', padding:'10px 0', borderBottom: i < arr.length - 1 ? '1px solid var(--b)' : 'none' }}>
+                  <div style={{ fontSize:'18px', flexShrink:0, marginTop:'1px' }}>{moods[parseInt(r.mood)] || '—'}</div>
+                  <div style={{ flex:1 }}>
+                    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'3px' }}>
+                      <span style={{ fontSize:'13px', fontWeight:600, color:'var(--t1)' }}>{label}</span>
+                      <span style={{ fontSize:'11px', color:'var(--t3)' }}>Focus {r.focusQuality}/5{parseFloat(totalHrs) > 0 ? ' · ' + totalHrs + 'h' : ''}</span>
+                    </div>
+                    {r.wentWell && <div style={{ fontSize:'12.5px', color:'var(--t2)', lineHeight:1.5 }}>Went well: {r.wentWell}</div>}
+                    {r.wentHard && <div style={{ fontSize:'12.5px', color:'rgba(234,244,236,.38)', lineHeight:1.5, marginTop:'2px' }}>Felt hard: {r.wentHard}</div>}
+                  </div>
+                </div>
+              );
+            })}
           </div>
-        </div>
+        )}
       </div>
 
       {/* ══════════ NOTIFICATIONS ══════════ */}
