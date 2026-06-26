@@ -2,27 +2,52 @@ import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import DailyReportForm from '../common/DailyReportForm';
 
+const HABIT_ICONS = {
+  sleep: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#86EFAC" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+    </svg>
+  ),
+  study: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#86EFAC" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+      <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+    </svg>
+  ),
+  revision: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#86EFAC" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+      <path d="M3 3v5h5"/>
+    </svg>
+  ),
+  phone: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#86EFAC" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="5" y="2" width="14" height="20" rx="2"/>
+      <line x1="9" y1="7" x2="15" y2="7"/>
+      <line x1="9" y1="10" x2="15" y2="10"/>
+      <circle cx="17" cy="17" r="4" fill="#102D1E" stroke="#F87171" strokeWidth="1.8"/>
+      <line x1="14.5" y1="19.5" x2="19.5" y2="14.5" stroke="#F87171" strokeWidth="1.8"/>
+    </svg>
+  ),
+  problems: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#86EFAC" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 20h9"/>
+      <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+    </svg>
+  ),
+};
+
 const HABIT_ITEMS = [
-  { key: 'sleep',    icon: '🌙', name: 'Slept before midnight',              desc: 'Your brain consolidates during sleep.' },
-  { key: 'study',    icon: '📖', name: 'Studied for at least 4 hours',       desc: 'Focused. Not just open books.' },
-  { key: 'revision', icon: '🔁', name: "Revised yesterday's topics",         desc: '24h revision = 80% better retention.' },
-  { key: 'phone',    icon: '📵', name: 'No social media during study hours', desc: 'Phone breaks destroy flow state.' },
-  { key: 'problems', icon: '❓', name: 'Solved at least 10 problems',        desc: 'Competitive exams reward consistent problem-solving.' },
+  { key: 'sleep',    name: 'Slept before midnight',              desc: 'Your brain consolidates during sleep.' },
+  { key: 'study',    name: 'Studied for at least 4 hours',       desc: 'Focused. Not just open books.' },
+  { key: 'revision', name: "Revised yesterday's topics",         desc: '24h revision = 80% better retention.' },
+  { key: 'phone',    name: 'No social media during study hours', desc: 'Phone breaks destroy flow state.' },
+  { key: 'problems', name: 'Solved at least 10 problems',        desc: 'Competitive exams reward consistent problem-solving.' },
 ];
 
 const HABIT_KEYS = ['sleep', 'study', 'revision', 'phone', 'problems'];
 const HABIT_LABELS = { sleep: 'Sleep', study: 'Study 4h', revision: 'Revision', phone: 'No phone', problems: '10 probs' };
 
-const MONTH_DAYS = [
-  { d: 1, s: 'logged' },  { d: 2, s: 'logged' },  { d: 3, s: 'logged' },  { d: 4, s: 'logged' },
-  { d: 5, s: 'logged' },  { d: 6, s: 'logged' },  { d: 7, s: 'logged' },  { d: 8, s: 'logged' },
-  { d: 9, s: 'logged' },  { d: 10, s: 'logged' }, { d: 11, s: 'logged' }, { d: 12, s: 'logged' },
-  { d: 13, s: 'logged' }, { d: 14, s: 'logged' }, { d: 15, s: 'today' },
-  { d: 16, s: 'future' }, { d: 17, s: 'future' }, { d: 18, s: 'future' }, { d: 19, s: 'future' },
-  { d: 20, s: 'future' }, { d: 21, s: 'future' }, { d: 22, s: 'future' }, { d: 23, s: 'future' },
-  { d: 24, s: 'future' }, { d: 25, s: 'future' }, { d: 26, s: 'future' }, { d: 27, s: 'future' },
-  { d: 28, s: 'future' }, { d: 29, s: 'future' }, { d: 30, s: 'future' },
-];
 
 const getTodayIST = () => {
   const ist = new Date(Date.now() + 5.5 * 60 * 60 * 1000);
@@ -55,7 +80,7 @@ const AnchorContent = ({ activePage, onNav, onShowToast, habitLogs = [], onHabit
   const [resTab, setResTab] = useState(0);
 
   // Expandable sections
-  const [openSections, setOpenSections] = useState(new Set(['call-week6', 'report-apr14', 'subj-physics']));
+  const [openSections, setOpenSections] = useState(new Set(['call-week6', 'subj-physics']));
   const toggleSection = (key) => setOpenSections(prev => {
     const next = new Set(prev);
     if (next.has(key)) { next.delete(key); } else { next.add(key); }
@@ -98,6 +123,27 @@ const AnchorContent = ({ activePage, onNav, onShowToast, habitLogs = [], onHabit
     ? (drLast7.reduce((s, r) => s + r.focusQuality, 0) / drLast7.length).toFixed(1)
     : null;
   const drQsSolved7 = drLast7.reduce((s, r) => s + (r.questionsSolved || 0), 0);
+
+  // Current-month grid + ring for dashboard consistency card
+  const nowIST = new Date(Date.now() + 5.5 * 60 * 60 * 1000);
+  const cyear = nowIST.getUTCFullYear();
+  const cmonth = nowIST.getUTCMonth();
+  const daysInMonth = new Date(cyear, cmonth + 1, 0).getDate();
+  const todayDay = nowIST.getUTCDate();
+  const reportDateSet = new Set(dailyReports.map(r => r.date));
+  const todayDRDone = reportDateSet.has(today);
+  const monthLabel = nowIST.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+  let submittedThisMonth = 0;
+  const monthDays = [];
+  for (let d = 1; d <= daysInMonth; d++) {
+    const ds = cyear + '-' + String(cmonth + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+    let s = 'future';
+    if (ds === today) { s = todayDRDone ? 'logged' : 'today'; }
+    else if (ds < today) { s = reportDateSet.has(ds) ? 'logged' : 'missed'; }
+    if (s === 'logged') submittedThisMonth++;
+    monthDays.push({ d, s });
+  }
+  const ringPct = todayDay > 0 ? Math.round((submittedThisMonth / todayDay) * 100) : 0;
 
   const effectiveState = alreadyCheckedIn
     ? Object.fromEntries(HABIT_KEYS.map(k => [k, todayLog[k] ? 'yes' : 'no']))
@@ -160,21 +206,28 @@ const AnchorContent = ({ activePage, onNav, onShowToast, habitLogs = [], onHabit
             <div style={{ fontSize:'11px', color:'var(--t3)', textTransform:'uppercase', letterSpacing:'.1em', fontWeight:600, marginBottom:'4px' }}>
               {new Date().toLocaleDateString('en-IN', { weekday:'long', day:'numeric', month:'long', year:'numeric' })}
             </div>
-            <div style={{ fontFamily:'var(--fs)', fontSize:'24px', fontWeight:700, color:'var(--t1)' }}>Good morning, Student.</div>
-            <div style={{ fontSize:'13.5px', color:'var(--t2)', marginTop:'4px' }}>Your mentor read yesterday's report. Today's report is <strong style={{ color:'var(--gold)' }}>due before 10 PM.</strong></div>
+            <div style={{ fontFamily:'var(--fs)', fontSize:'24px', fontWeight:700, color:'var(--t1)' }}>{(() => { const h = new Date(Date.now() + 5.5*60*60*1000).getUTCHours(); return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening'; })()}, {profile?.name?.split(' ')[0] || 'there'}.</div>
+            <div style={{ fontSize:'13.5px', color:'var(--t2)', marginTop:'4px' }}>{(() => {
+              const yesterdayStr = new Date(Date.now() + 5.5 * 60 * 60 * 1000 - 86400000).toISOString().slice(0, 10);
+              const hadYesterday = dailyReports.some(r => r.date === yesterdayStr);
+              if (todayDRDone) return <span>Today's report is <strong style={{ color:'var(--sage)' }}>in. ✓</strong> See you tomorrow.</span>;
+              if (hadYesterday) return <span>Yesterday's report was received. Today's report is <strong style={{ color:'var(--gold)' }}>due before 10 PM.</strong></span>;
+              if (dailyReports.length === 0) return <span>Start strong — <strong style={{ color:'var(--gold)' }}>submit your first daily report.</strong></span>;
+              return <span>Today's report is <strong style={{ color:'var(--gold)' }}>due before 10 PM.</strong></span>;
+            })()}</div>
           </div>
         </div>
 
         <div className="g4 mb">
           <div className="stat sa-amber">
             <div className="stat-l">Day Streak</div>
-            <div className="stat-v">{streak > 0 ? `🔥 ${streak}` : '—'}</div>
-            <div className="stat-n up">{streak > 0 ? 'days straight' : 'start today'}</div>
+            <div className="stat-v" style={{ fontSize: drStreak > 0 ? undefined : '15px' }}>{drStreak > 0 ? drStreak : 'None yet'}</div>
+            <div className="stat-n up">{drStreak > 0 ? 'days straight' : 'submit first report'}</div>
           </div>
           <div className="stat sa-green">
             <div className="stat-l">Reports Submitted</div>
-            <div className="stat-v">47</div>
-            <div className="stat-n up">of 48 days</div>
+            <div className="stat-v">{dailyReports.length}</div>
+            <div className="stat-n up">{submittedThisMonth} this month</div>
           </div>
           <div className="stat sa-gold">
             <div className="stat-l">Mentor Responses</div>
@@ -193,27 +246,27 @@ const AnchorContent = ({ activePage, onNav, onShowToast, habitLogs = [], onHabit
           <div className="card">
             <div className="sh">
               <div className="sh-t">Your Consistency</div>
-              <span style={{ fontSize:'12px', color:'var(--t3)' }}>April 2026</span>
+              <span style={{ fontSize:'12px', color:'var(--t3)' }}>{monthLabel}</span>
             </div>
             <div className="streak-ring">
               <div className="ring-outer">
-                <div className="ring-fill" style={{ background: 'conic-gradient(var(--sage) 0% 70%, var(--bg4) 70%)' }} />
-                <div className="ring-val">14</div>
+                <div className="ring-fill" style={{ background: 'conic-gradient(var(--sage) 0% ' + ringPct + '%, var(--bg4) ' + ringPct + '%)' }} />
+                <div className="ring-val">{drStreak}</div>
               </div>
-              <div className="ring-emoji">🔥 Day streak · 70% of month</div>
+              <div className="ring-emoji">{drStreak > 0 ? '🔥' : '📅'} Day streak · {ringPct}% of month</div>
             </div>
             <div className="sh" style={{ marginBottom:'8px' }}>
               <div style={{ fontSize:'12px', color:'var(--t3)', fontWeight:500 }}>This month — daily reports</div>
             </div>
             <div className="week-grid">
-              {MONTH_DAYS.map(({ d, s }) => (
+              {monthDays.map(({ d, s }) => (
                 <div key={d} className={`wg-day ${s}`}>{s !== 'future' ? d : ''}</div>
               ))}
             </div>
             <div style={{ display:'flex', gap:'12px', marginTop:'12px' }}>
-              <div style={{ display:'flex', alignItems:'center', gap:'5px', fontSize:'10.5px', color:'var(--t3)' }}><div className="wg-day logged" style={{ width:'14px', height:'14px', borderRadius:'3px', fontSize:0 }} />Submitted</div>
-              <div style={{ display:'flex', alignItems:'center', gap:'5px', fontSize:'10.5px', color:'var(--t3)' }}><div className="wg-day today" style={{ width:'14px', height:'14px', borderRadius:'3px', fontSize:0 }} />Today</div>
-              <div style={{ display:'flex', alignItems:'center', gap:'5px', fontSize:'10.5px', color:'var(--t3)' }}><div className="wg-day" style={{ width:'14px', height:'14px', borderRadius:'3px', fontSize:0, opacity:.5 }} />Future</div>
+              <div style={{ display:'flex', alignItems:'center', gap:'5px', fontSize:'10.5px', color:'var(--t3)' }}><div className="wg-day logged" style={{ width:'16px', height:'16px', borderRadius:'4px', fontSize:0 }} />Submitted</div>
+              <div style={{ display:'flex', alignItems:'center', gap:'5px', fontSize:'10.5px', color:'var(--t3)' }}><div className="wg-day today" style={{ width:'16px', height:'16px', borderRadius:'4px', fontSize:0 }} />Today</div>
+              <div style={{ display:'flex', alignItems:'center', gap:'5px', fontSize:'10.5px', color:'var(--t3)' }}><div className="wg-day" style={{ width:'16px', height:'16px', borderRadius:'4px', fontSize:0, opacity:.5 }} />Future</div>
             </div>
           </div>
 
@@ -230,21 +283,27 @@ const AnchorContent = ({ activePage, onNav, onShowToast, habitLogs = [], onHabit
               "You've shown up 14 days straight. I read every report. The pattern I'm noticing — your focus quality drops on days when you skip morning study. Let's talk about this on Friday's call. For now: commit to starting before noon every day this week."
             </div>
             <div className="mc-stats">
-              <div className="mc-stat"><div className="mc-stat-v">48</div><div className="mc-stat-l">Days Together</div></div>
-              <div className="mc-stat"><div className="mc-stat-v">47</div><div className="mc-stat-l">Reports Read</div></div>
-              <div className="mc-stat"><div className="mc-stat-v">6</div><div className="mc-stat-l">Calls Done</div></div>
+              <div className="mc-stat"><div className="mc-stat-v">{dailyReports.length}</div><div className="mc-stat-l">Reports Read</div></div>
+              <div className="mc-stat"><div className="mc-stat-v" style={{ fontSize: drStreak > 0 ? undefined : '13px' }}>{drStreak > 0 ? drStreak : 'None yet'}</div><div className="mc-stat-l">Day Streak</div></div>
+              <div className="mc-stat"><div className="mc-stat-v">{ringPct}%</div><div className="mc-stat-l">Month Rate</div></div>
             </div>
           </div>
         </div>
 
         {/* Today's report CTA */}
-        <div style={{ background:'linear-gradient(135deg,var(--bg3),var(--bg4))', border:'1px solid var(--gb)', borderRadius:'var(--rl)', padding:'20px 24px', display:'flex', alignItems:'center', gap:'20px', marginBottom:'22px' }}>
-          <div style={{ fontSize:'36px', flexShrink:0 }}>📝</div>
-          <div style={{ flex:1 }}>
-            <div style={{ fontFamily:'var(--fs)', fontSize:'16px', fontWeight:700, color:'var(--t1)', marginBottom:'4px' }}>Today's report — not submitted yet</div>
-            <div style={{ fontSize:'13px', color:'var(--t2)' }}>2 minutes. Ajay reads this before the next session. Be honest with yourself.</div>
+        <div style={{ background: todayDRDone ? 'linear-gradient(135deg,rgba(74,222,128,.08),rgba(74,222,128,.04))' : 'linear-gradient(135deg,var(--bg3),var(--bg4))', border: '1px solid ' + (todayDRDone ? 'rgba(74,222,128,.25)' : 'var(--gb)'), borderRadius:'var(--rl)', padding:'20px 24px', display:'flex', alignItems:'center', gap:'20px', marginBottom:'22px' }}>
+          <div style={{ width:'44px', height:'44px', borderRadius:'12px', background: todayDRDone ? 'rgba(74,222,128,.15)' : 'rgba(232,168,48,.12)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+            {todayDRDone
+              ? <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#4ADE80" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+              : <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#E8A830" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>}
           </div>
-          <button className="btn btn-gold" onClick={() => onNav('report')}>Submit Now →</button>
+          <div style={{ flex:1 }}>
+            <div style={{ fontFamily:'var(--fs)', fontSize:'16px', fontWeight:700, color:'var(--t1)', marginBottom:'4px' }}>{todayDRDone ? "Today's report is in." : "Today's report — not submitted yet"}</div>
+            <div style={{ fontSize:'13px', color:'var(--t2)' }}>{todayDRDone ? 'Your mentor will read this before your next session. Come back tomorrow.' : '2 minutes. Your mentor reads this before every session. Be honest.'}</div>
+          </div>
+          {todayDRDone
+            ? <button className="btn btn-ghost btn-sm" onClick={() => onNav('report')}>View →</button>
+            : <button className="btn btn-gold" onClick={() => onNav('report')}>Submit Now →</button>}
         </div>
 
         <div className="sh"><div className="sh-t">This Week</div></div>
@@ -350,7 +409,7 @@ const AnchorContent = ({ activePage, onNav, onShowToast, habitLogs = [], onHabit
             {HABIT_ITEMS.map(h => (
               <div key={h.key} className="habit-row" style={alreadyCheckedIn ? { opacity: 0.85 } : {}}>
                 <div className="habit-left">
-                  <div className="habit-icon">{h.icon}</div>
+                  <div className="habit-icon">{HABIT_ICONS[h.key]}</div>
                   <div><div className="habit-name">{h.name}</div><div className="habit-desc">{h.desc}</div></div>
                 </div>
                 <div style={{ display:'flex', gap:'8px' }}>
@@ -399,61 +458,56 @@ const AnchorContent = ({ activePage, onNav, onShowToast, habitLogs = [], onHabit
         </div>
       </div>
 
-      {/* ══════════ STUDY PLAN ══════════ */}
       {/* ══════════ REPORT HISTORY ══════════ */}
       <div className={pg('history')}>
-        <div style={{ fontSize:'13px', color:'var(--t2)', marginBottom:'18px' }}>47 reports submitted since Day 1. Ajay reads every one.</div>
-
-        {[
-          {
-            key: 'report-apr14', date: 'Tuesday, Apr 14', summary: '4.5h · Focus: 4/5 · Showed up ✓', mood: '💪',
-            fields: [
-              { label: 'Topics Done', val: 'Integration by parts, Kinematics revision, Organic mechanisms (naming)' },
-              { label: 'Problems', val: '18 questions solved' },
-              { label: 'Went Well', val: 'ILATE rule finally clicked. Got 6/8 integration questions right.' },
-              { label: 'Felt Hard', val: 'Choosing u in non-standard integration forms — still uncertain.' },
-              { label: 'For Mentor', val: 'Should I do the mock this weekend or wait until after Electrostatics?' },
-            ],
-            reply: { text: 'Wait until after Electrostatics. Your Physics gap would pull the mock score down artificially and that\'s not useful data right now. Mock in 2 weeks — once we\'ve done the Gauss\'s Law session.', by: 'Ajay Sharma · Apr 15, 7:48 AM' }
-          },
-          {
-            key: 'report-apr13', date: 'Monday, Apr 13', summary: '3h · Focus: 3/5 · Showed up ✓', mood: '😐',
-            fields: [
-              { label: 'Topics Done', val: 'Mole concept revision, some Organic reading' },
-              { label: 'Went Hard', val: 'Feeling distracted. Instagram kept pulling me in.' },
-            ],
-            reply: { text: 'Honest report. That\'s what matters. Put phone in another room tomorrow morning. Not negotiable.', by: 'Ajay Sharma · Apr 14, 8:02 AM' }
-          },
-          {
-            key: 'report-apr12', date: 'Sunday, Apr 12', summary: 'Rest day · Showed up ✓', mood: '🙂',
-            fields: [{ label: 'Note', val: 'Rest day but did 30 min revision. Feeling recharged.' }],
-            reply: { text: 'Good. Rest is part of the plan. See you on the call.', by: 'Ajay Sharma · Apr 13, 8:15 AM' }
-          }
-        ].map(report => (
-          <div key={report.key} className="report-item">
-            <div className="ri-header" onClick={() => toggleSection(report.key)}>
-              <div><div className="ri-date">{report.date}</div><div className="ri-summary">{report.summary}</div></div>
-              <div style={{ display:'flex', alignItems:'center', gap:'10px' }}>
-                <div className="ri-mood">{report.mood}</div>
-                <svg className="tms-arrow" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ transform: openSections.has(report.key) ? 'rotate(180deg)' : '' }}><path d="M6 9l6 6 6-6"/></svg>
-              </div>
-            </div>
-            {openSections.has(report.key) && (
-              <div className="ri-body open">
-                {report.fields.map((f, i) => (
-                  <div key={i} className="ri-field">
-                    <div className="ri-field-label">{f.label}</div>
-                    <div className="ri-field-val">{f.val}</div>
-                  </div>
-                ))}
-                <div className="ri-mentor-reply">
-                  <div className="ri-reply-text">{report.reply.text}</div>
-                  <div className="ri-reply-by">{report.reply.by}</div>
-                </div>
-              </div>
-            )}
+        {dailyReports.length === 0 ? (
+          <div style={{ textAlign:'center', padding:'48px 0', color:'var(--t3)', fontSize:'14px' }}>
+            <div style={{ fontSize:'32px', marginBottom:'12px', opacity:.4 }}>📋</div>
+            No reports yet. Submit your first daily report to see your history here.
           </div>
-        ))}
+        ) : (
+          <>
+            <div style={{ fontSize:'13px', color:'var(--t2)', marginBottom:'18px' }}>
+              {dailyReports.length} report{dailyReports.length !== 1 ? 's' : ''} submitted. Your mentor reads every one.
+            </div>
+            {dailyReports.map(r => {
+              const key = 'r-' + r.id;
+              const d = new Date(r.date + 'T00:00:00');
+              const dateLabel = d.toLocaleDateString('en-IN', { weekday:'long', day:'numeric', month:'short', year:'numeric' });
+              const totalHrs = ((r.hrsPhysics || 0) + (r.hrsChemistry || 0) + (r.hrsThird || 0)).toFixed(1);
+              const moodEmojis = ['','😩','😐','🙂','💪','🔥'];
+              const summaryParts = [];
+              if (parseFloat(totalHrs) > 0) summaryParts.push(totalHrs + 'h studied');
+              summaryParts.push('Focus: ' + r.focusQuality + '/5');
+              summaryParts.push('Showed up ' + (r.showedUp === 'Yes' ? '✓' : '✗'));
+              return (
+                <div key={key} className="report-item">
+                  <div className="ri-header" onClick={() => toggleSection(key)}>
+                    <div>
+                      <div className="ri-date">{dateLabel}</div>
+                      <div className="ri-summary">{summaryParts.join(' · ')}</div>
+                    </div>
+                    <div style={{ display:'flex', alignItems:'center', gap:'10px' }}>
+                      <div className="ri-mood">{moodEmojis[parseInt(r.mood)] || ''}</div>
+                      <svg className="tms-arrow" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ transform: openSections.has(key) ? 'rotate(180deg)' : '' }}><path d="M6 9l6 6 6-6"/></svg>
+                    </div>
+                  </div>
+                  {openSections.has(key) && (
+                    <div className="ri-body open">
+                      {r.topicsDone    && <div className="ri-field"><div className="ri-field-label">Topics Done</div><div className="ri-field-val">{r.topicsDone}</div></div>}
+                      {r.questionsSolved && <div className="ri-field"><div className="ri-field-label">Problems</div><div className="ri-field-val">{r.questionsSolved} solved</div></div>}
+                      {r.mockToday === 'Yes' && <div className="ri-field"><div className="ri-field-label">Mock / Test</div><div className="ri-field-val">{r.mockScore || 'Attempted'}</div></div>}
+                      {r.wentWell     && <div className="ri-field"><div className="ri-field-label">Went Well</div><div className="ri-field-val">{r.wentWell}</div></div>}
+                      {r.wentHard     && <div className="ri-field"><div className="ri-field-label">Felt Hard</div><div className="ri-field-val">{r.wentHard}</div></div>}
+                      {r.tomorrowOne  && <div className="ri-field"><div className="ri-field-label">Tomorrow</div><div className="ri-field-val">{r.tomorrowOne}</div></div>}
+                      {r.noteForMentor && <div className="ri-field"><div className="ri-field-label">For Mentor</div><div className="ri-field-val" style={{ fontStyle:'italic' }}>{r.noteForMentor}</div></div>}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </>
+        )}
       </div>
 
       {/* ══════════ TOPIC MAP ══════════ */}
@@ -604,9 +658,9 @@ const AnchorContent = ({ activePage, onNav, onShowToast, habitLogs = [], onHabit
           </div>
           <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'12px' }}>
             {[
-              { v: dailyReports.length > 0 ? String(dailyReports.length) : '—', l: 'Reports (last 30d)', c: 'var(--sage)' },
-              { v: drStreak > 0 ? String(drStreak) : '—', l: 'Day Streak', c: 'var(--amber)' },
-              { v: drAvgFocus ? drAvgFocus + ' / 5' : '—', l: 'Avg Focus', c: 'var(--gold)' },
+              { v: dailyReports.length > 0 ? String(dailyReports.length) : 'None yet', l: 'Reports (last 30d)', c: 'var(--sage)' },
+              { v: drStreak > 0 ? String(drStreak) : 'None yet', l: 'Day Streak', c: 'var(--amber)' },
+              { v: drAvgFocus ? drAvgFocus + ' / 5' : 'No data', l: 'Avg Focus', c: 'var(--gold)' },
             ].map(s => (
               <div key={s.l} style={{ background:'rgba(234,244,236,0.05)', border:'1px solid var(--b)', borderRadius:'var(--r)', padding:'14px', textAlign:'center' }}>
                 <div style={{ fontFamily:'var(--fs)', fontSize:'22px', fontWeight:700, color: s.c }}>{s.v}</div>
@@ -627,9 +681,9 @@ const AnchorContent = ({ activePage, onNav, onShowToast, habitLogs = [], onHabit
             <div style={{ display:'flex', flexDirection:'column', gap:'0' }}>
               {[
                 { label: 'Reports submitted', val: drSubmitted7 + ' / 7', c: drSubmitted7 >= 6 ? 'var(--sage)' : drSubmitted7 >= 4 ? 'var(--gold)' : 'var(--t1)' },
-                { label: 'Avg study hours / day', val: drAvgHrs ? drAvgHrs + ' hrs' : '—', c: 'var(--t1)' },
-                { label: 'Avg focus quality', val: drAvgFocus ? drAvgFocus + ' / 5' : '—', c: 'var(--gold)' },
-                { label: 'Problems solved', val: drQsSolved7 > 0 ? drQsSolved7 + ' problems' : '—', c: 'var(--t1)' },
+                { label: 'Avg study hours / day', val: drAvgHrs ? drAvgHrs + ' hrs' : 'Not logged', c: 'var(--t1)' },
+                { label: 'Avg focus quality', val: drAvgFocus ? drAvgFocus + ' / 5' : 'Not logged', c: 'var(--gold)' },
+                { label: 'Problems solved', val: drQsSolved7 > 0 ? drQsSolved7 + ' problems' : 'Not logged', c: 'var(--t1)' },
               ].map((row, i, arr) => (
                 <div key={row.label} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'10px 0', borderBottom: i < arr.length - 1 ? '1px solid var(--b)' : 'none' }}>
                   <span style={{ fontSize:'13px', color:'var(--t2)' }}>{row.label}</span>
@@ -651,7 +705,7 @@ const AnchorContent = ({ activePage, onNav, onShowToast, habitLogs = [], onHabit
               const label = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getDay()] + ', ' + d.getDate() + ' ' + months[d.getMonth()];
               return (
                 <div key={r.id} style={{ display:'flex', alignItems:'flex-start', gap:'12px', padding:'10px 0', borderBottom: i < arr.length - 1 ? '1px solid var(--b)' : 'none' }}>
-                  <div style={{ fontSize:'18px', flexShrink:0, marginTop:'1px' }}>{moods[parseInt(r.mood)] || '—'}</div>
+                  <div style={{ fontSize:'18px', flexShrink:0, marginTop:'1px' }}>{moods[parseInt(r.mood)] || ''}</div>
                   <div style={{ flex:1 }}>
                     <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'3px' }}>
                       <span style={{ fontSize:'13px', fontWeight:600, color:'var(--t1)' }}>{label}</span>

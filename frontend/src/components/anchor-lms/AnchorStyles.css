@@ -169,7 +169,7 @@ body.anchor-mode .ring-emoji { font-size: 12px; color: var(--t3); text-align: ce
 
 /* ── CONSISTENCY GRID ── */
 body.anchor-mode .week-grid { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 12px; }
-body.anchor-mode .wg-day { width: 28px; height: 28px; border-radius: 6px; background: var(--bg4); display: flex; align-items: center; justify-content: center; font-size: 10px; color: var(--t4); font-weight: 500; transition: all .2s; }
+body.anchor-mode .wg-day { width: 34px; height: 34px; border-radius: 7px; background: var(--bg4); display: flex; align-items: center; justify-content: center; font-size: 11px; color: var(--t4); font-weight: 500; transition: all .2s; }
 body.anchor-mode .wg-day.logged { background: var(--sage); color: var(--bg); }
 body.anchor-mode .wg-day.missed { background: rgba(248,113,113,0.15); color: var(--red); }
 body.anchor-mode .wg-day.today { background: var(--gold); color: var(--bg); font-weight: 700; }
@@ -226,7 +226,7 @@ body.anchor-mode .c-live { background: var(--grdim); color: var(--green); }
 body.anchor-mode .habit-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--b); }
 body.anchor-mode .habit-row:last-child { border-bottom: none; }
 body.anchor-mode .habit-left { display: flex; align-items: center; gap: 12px; }
-body.anchor-mode .habit-icon { font-size: 17px; width: 34px; height: 34px; border-radius: 8px; background: var(--bg4); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+body.anchor-mode .habit-icon { font-size: 22px; width: 42px; height: 42px; border-radius: 10px; background: var(--bg4); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 body.anchor-mode .habit-name { font-size: 13px; font-weight: 600; color: var(--t1); }
 body.anchor-mode .habit-desc { font-size: 11.5px; color: var(--t3); margin-top: 1px; }
 body.anchor-mode .ht-yes, body.anchor-mode .ht-no { padding: 5px 14px; border-radius: 7px; font-size: 12px; font-weight: 600; border: 1.5px solid; cursor: pointer; transition: all .15s; }
@@ -303,27 +303,66 @@ body.anchor-mode ::-webkit-scrollbar-thumb { background: var(--bg4); border-radi
 ── */
 body.anchor-mode.free-mode { --sp-lock-bg: var(--bg2); }
 
-/* ── DIAGNOSTIC FORM — anchor theme override ──
-   When anchor-mode + free-mode are both active (study pages),
-   replace the navy tones in .dform with anchor forest greens.
-   Gold accents and cream form fields stay untouched.
+/* ── DIAGNOSTIC FORM — full anchor theme override ──
+   anchor-mode + free-mode = study pages.
+   Replace every navy/cream tone with anchor dark greens.
 ── */
 body.anchor-mode.free-mode .dform {
-  --df-navy:  #0A1F12;
-  --df-navy2: #0D2418;
-  --df-navy3: #102D1E;
-  --df-b2:    rgba(74,222,128,0.14);
+  --df-navy:   #0A1F12;
+  --df-navy2:  #0D2418;
+  --df-navy3:  #102D1E;
+  --df-cream:  #102D1E;
+  --df-cream2: #163826;
+  --df-cream3: #1A4230;
+  --df-text:   #EAF4EC;
+  --df-text2:  rgba(234,244,236,.65);
+  --df-text3:  rgba(234,244,236,.38);
+  --df-b:      rgba(234,244,236,.08);
+  --df-b2:     rgba(74,222,128,.14);
+  --df-sh:     0 2px 12px rgba(0,0,0,.25);
+  --df-shm:    0 8px 28px rgba(0,0,0,.4);
 }
 
-/* Header and step-nav: 1px narrower + deeper shadow on dark bg */
-body.anchor-mode.free-mode .dform .df-header   { padding-left: calc(1.75rem - 1px); padding-right: calc(1.75rem - 1px); box-shadow: 0 8px 32px rgba(0,0,0,0.45); }
-body.anchor-mode.free-mode .dform .df-step-nav { box-shadow: 0 2px 16px rgba(0,0,0,0.4); }
+/* Deeper shadows on dark bg */
+body.anchor-mode.free-mode .dform .df-header   { box-shadow: 0 8px 32px rgba(0,0,0,.5); }
+body.anchor-mode.free-mode .dform .df-step-nav { box-shadow: 0 2px 16px rgba(0,0,0,.4); }
 
-/* Water tank fill — sage green instead of navy blue */
-body.anchor-mode.free-mode .dform .df-tank-fill {
-  background: linear-gradient(180deg, #4ADE80 0%, #16A34A 100%);
-}
+/* Section cards — dark green bg with sage border on hover */
+body.anchor-mode.free-mode .dform .df-sec { background: #0D2418; border-color: rgba(234,244,236,.08); }
+body.anchor-mode.free-mode .dform .df-sec:hover { box-shadow: 0 4px 20px rgba(0,0,0,.35); }
+
+/* Timer pill */
+body.anchor-mode.free-mode .dform .df-timer { background: rgba(234,244,236,.07); color: rgba(234,244,236,.5); }
+
+/* Radio / checkbox options */
+body.anchor-mode.free-mode .dform .df-opt { background: rgba(234,244,236,.04); border-color: rgba(234,244,236,.1); color: var(--df-text2); }
+body.anchor-mode.free-mode .dform .df-opt:hover { background: rgba(234,244,236,.08); border-color: rgba(234,244,236,.2); color: var(--df-text); }
+
+/* Water tank fill — sage green */
+body.anchor-mode.free-mode .dform .df-tank-fill { background: linear-gradient(180deg, #4ADE80 0%, #16A34A 100%); }
 body.anchor-mode.free-mode .dform .df-drop { background: #86EFAC; }
 
-/* Success ring stroke — green instead of navy */
+/* Success ring */
 body.anchor-mode.free-mode .dform .df-success circle[stroke] { stroke: #4ADE80; }
+
+/* Scrollbar inside form */
+body.anchor-mode.free-mode .dform ::-webkit-scrollbar-track { background: #0A1F12; }
+body.anchor-mode.free-mode .dform ::-webkit-scrollbar-thumb { background: #163826; }
+
+/* Override cream variables so skeleton card containers match anchor dark green */
+body.anchor-mode.free-mode { --cream: #102D1E; --cream2: #164826; --cream3: #1A7230; }
+
+/* Skeleton shimmer — neutral cream tint instead of green */
+body.anchor-mode.free-mode .sk { background: linear-gradient(90deg, rgba(234,244,236,0.02) 25%, rgba(234,244,236,0.05) 50%, rgba(234,244,236,0.02) 75%); background-size: 400px 100%; }
+
+/* Topic map skeleton — light green shimmer */
+body.anchor-mode.free-mode .page#p-topics .sk { background: linear-gradient(90deg, rgba(74,222,128,0.04) 25%, rgba(74,222,128,0.10) 50%, rgba(74,222,128,0.04) 75%); background-size: 400px 100%; }
+
+/* Study guidance locked state — skeleton container cards (neutral, no green shimmer) */
+body.anchor-mode.free-mode [style*="rgba(200,200,200"] { background: rgba(234,244,236,0.04) !important; border-color: rgba(234,244,236,0.08) !important; }
+
+/* Study guidance lock card */
+body.anchor-mode.free-mode .sp-lock-card { background: #0D2418 !important; border-color: rgba(74,222,128,0.15) !important; box-shadow: 0 20px 60px rgba(0,0,0,0.5) !important; }
+body.anchor-mode.free-mode .sp-lock-card [style*="color: var(--text)"] { color: #EAF4EC !important; }
+body.anchor-mode.free-mode .sp-lock-card [style*="color: var(--text2)"] { color: rgba(234,244,236,0.65) !important; }
+body.anchor-mode.free-mode .sp-lock-card [style*="color: var(--text3)"] { color: rgba(234,244,236,0.38) !important; }

@@ -7,7 +7,6 @@ import AnchorTopbar from '../components/anchor-lms/AnchorTopbar';
 import AnchorContent from '../components/anchor-lms/AnchorContent';
 import FreeContent from '../components/free-lms/FreeContent';
 
-// Pages that use exact Spark/Forge components & styling
 const STUDY_PAGES = ['diagnostic', 'topics', 'guidance'];
 
 const AnchorLMS = () => {
@@ -83,7 +82,12 @@ const AnchorLMS = () => {
 
   return (
     <div className="anchor-app">
-      <AnchorSidebar activePage={activePage} onNav={setActivePage} profile={profile} />
+      <AnchorSidebar
+        activePage={activePage}
+        onNav={setActivePage}
+        profile={profile}
+        reportDoneToday={dailyReports.some(r => r.date === new Date(Date.now() + 5.5 * 60 * 60 * 1000).toISOString().slice(0, 10))}
+      />
       <div className="anchor-main">
         <AnchorTopbar activePage={activePage} onNav={setActivePage} />
 

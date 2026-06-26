@@ -738,7 +738,7 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
               </div>
             </div>
             <div className="tm2-lock-overlay">
-              <div style={{ background:'#fff', borderRadius:'20px', padding:'36px 28px', textAlign:'center', boxShadow:'0 20px 60px rgba(15,31,61,.16), 0 4px 16px rgba(15,31,61,.08)', maxWidth:'340px', width:'100%', border:'1px solid rgba(15,31,61,.07)' }}>
+              <div className="sp-lock-card" style={{ background:'#fff', borderRadius:'20px', padding:'36px 28px', textAlign:'center', boxShadow:'0 20px 60px rgba(15,31,61,.16), 0 4px 16px rgba(15,31,61,.08)', maxWidth:'340px', width:'100%', border:'1px solid rgba(15,31,61,.07)' }}>
                 <div style={{ width:'56px', height:'56px', borderRadius:'16px', background:'linear-gradient(135deg,#0F1F3D,#1C2E50)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 16px' }}>
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#E8A830" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
                 </div>
@@ -1500,7 +1500,7 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
               {/* Overview strip */}
               <div style={{ display: 'flex', gap: '15px' }}>
                 {[1,2,3,4].map(i => (
-                  <div key={i} style={{ flex: 1, background: 'rgba(200,200,200,0.22)', border: '1px solid rgba(15,31,61,0.04)', borderRadius: '12px', padding: '40px 14px', display: 'flex', flexDirection: 'column', gap: '7px' }}>
+                  <div key={i} style={{ flex: 1, background: 'var(--cream)', border: '1px solid var(--b)', borderRadius: '12px', padding: '40px 14px', display: 'flex', flexDirection: 'column', gap: '7px' }}>
                     <div className="sk" style={{ height: 18, width: '60%' }}/>
                     <div className="sk" style={{ height: 10, width: '45%' }}/>
                     <div className="sk" style={{ height: 10, width: '45%' }}/>
@@ -1508,7 +1508,7 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
                 ))}
               </div>
               {/* Subject bars */}
-              <div style={{ background: 'rgba(200,200,200,0.22)', border: '1px solid rgba(15,31,61,0.04)', borderRadius: '12px', padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div style={{ background: 'var(--cream)', border: '1px solid var(--b)', borderRadius: '12px', padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <div className="sk" style={{ height: 15, width: '30%' }}/>
                 {[1,2,3].map(i => (
                   <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -1520,7 +1520,7 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
               </div>
               {/* Focus cards */}
               {[1,2,3,4].map(i => (
-                <div key={i} style={{ background: 'rgba(200,200,200,0.22)', border: '1px solid rgba(15,31,61,0.04)', borderRadius: '12px', padding: '14px 16px', display: 'flex', gap: '12px' }}>
+                <div key={i} style={{ background: 'var(--cream)', border: '1px solid var(--b)', borderRadius: '12px', padding: '14px 16px', display: 'flex', gap: '12px' }}>
                   <div className="sk" style={{ width: 4, borderRadius: '99px', flexShrink: 0, alignSelf: 'stretch' }}/>
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '7px' }}>
                     <div className="sk" style={{ height: 13, width: '25%' }}/>
@@ -1534,7 +1534,7 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
 
             {/* Lock card centred on top */}
             <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
-              <div style={{ background: '#fff', borderRadius: '20px', padding: '36px 30px', textAlign: 'center', boxShadow: '0 20px 60px rgba(15,31,61,0.16), 0 4px 16px rgba(15,31,61,0.08)', maxWidth: '360px', width: '100%', border: '1px solid rgba(15,31,61,0.07)' }}>
+              <div className="sp-lock-card" style={{ background: '#fff', borderRadius: '20px', padding: '36px 30px', textAlign: 'center', boxShadow: '0 20px 60px rgba(15,31,61,0.16), 0 4px 16px rgba(15,31,61,0.08)', maxWidth: '360px', width: '100%', border: '1px solid rgba(15,31,61,0.07)' }}>
                 <div style={{ width: '58px', height: '58px', borderRadius: '16px', background: 'linear-gradient(135deg, #0F1F3D 0%, #1C2E50 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 18px' }}>
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#E8A830" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
                 </div>
