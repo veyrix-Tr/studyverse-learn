@@ -264,7 +264,10 @@ router.post('/doubts', requireAuth, async (req, res) => {
     if (!question || !question.trim()) return res.status(400).json({ error: 'Question is required' });
     if (!subject) return res.status(400).json({ error: 'Subject is required' });
 
-    const profile = await prisma.studentProfile.findUnique({ where: { userId: req.params.userId } });
+    const profile = await prisma.studentProfile.findUnique({
+      where: { userId: req.params.userId },
+      include: { user: { select: { name: true } } },
+    });
     if (!profile) return res.status(403).json({ error: 'Student not found' });
 
     const validSubjects = EXAM_SUBJECTS[profile.examTarget] || [];
@@ -281,6 +284,15 @@ router.post('/doubts', requireAuth, async (req, res) => {
       data: { question: question.trim(), subject, studentId: profile.id, facultyId: session.facultyId },
       include: { faculty: { include: { user: { select: { name: true } } } } },
     });
+
+    // Notify faculty via FacultyAlert
+    prisma.facultyAlert.create({
+      data: {
+        facultyId: session.facultyId,
+        type: 'Doubt',
+        content: `New ${doubt.subject} doubt from ${profile.user?.name || 'a student'}: "${doubt.question.length > 80 ? doubt.question.slice(0, 80) + '…' : doubt.question}"`,
+      },
+    }).catch(() => {});
 
     res.json({
       id: doubt.id,

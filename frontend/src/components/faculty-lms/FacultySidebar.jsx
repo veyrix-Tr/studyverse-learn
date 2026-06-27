@@ -5,7 +5,7 @@ const isToday = (iso) => {
   return d.getFullYear() === n.getFullYear() && d.getMonth() === n.getMonth() && d.getDate() === n.getDate();
 };
 
-const FacultySidebar = ({ activePage, onNav, onShowToast, profile, sessions = [], doubts = [], students = [], weeklyReports = [], mentorStudents = [], mentorDailyReports = [] }) => {
+const FacultySidebar = ({ activePage, onNav, onShowToast, profile, sessions = [], doubts = [], students = [], weeklyReports = [], mentorStudents = [], mentorDailyReports = [], unreadAlerts = 0 }) => {
   const name = profile?.name || 'Faculty';
   const initial = name.charAt(0).toUpperCase();
   const subject = profile?.facultyProfile?.subject || '';
@@ -126,6 +126,13 @@ const FacultySidebar = ({ activePage, onNav, onShowToast, profile, sessions = []
                 ? <span className="nbadge circle">{mentorDailyReports.length}</span>
                 : null;
           })()}
+        </div>
+        <div className={`ni${activePage === 'notifications' ? ' on' : ''}`} onClick={() => onNav('notifications')}>
+          <svg className="nic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+          </svg>
+          Notifications
+          {unreadAlerts > 0 && <span className="nbadge gold">{unreadAlerts > 9 ? '9+' : unreadAlerts}</span>}
         </div>
       </div>
 

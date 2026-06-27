@@ -74,6 +74,7 @@ model FacultyProfile {
   mentorStudents       StudentProfile[]       @relation("MentorAssignment")
   mentorNotes          MentorNote[]
   mentorCalls          MentorCall[]
+  facultyAlerts        FacultyAlert[]
 }
 
 model AdminMessage {
@@ -313,6 +314,19 @@ model MentorCall {
   mentor    FacultyProfile @relation(fields: [mentorId], references: [id], onDelete: Cascade)
 
   @@index([studentId])
+}
+
+model FacultyAlert {
+  id        Int       @id @default(autoincrement())
+  content   String
+  type      String    // 'Doubt', 'Call Reminder', 'Admin', 'Resource', 'Report', 'Mentor Report'
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  facultyId Int
+  faculty   FacultyProfile @relation(fields: [facultyId], references: [id], onDelete: Cascade)
+
+  @@index([facultyId])
 }
 
 model Otp {

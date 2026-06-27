@@ -15,6 +15,11 @@ const FacultyLMS = () => {
   const [profile, setProfile] = useState(null);
   const [mentorStudents, setMentorStudents] = useState([]);
   const [mentorDailyReports, setMentorDailyReports] = useState([]);
+  const [notifications, setNotifications] = useState([]);  // computed call reminders
+  const [alerts, setAlerts] = useState([]);               // stored faculty alerts (DB)
+  const alertsRef = useRef([]);
+  const remindedRef = useRef(new Set());
+  useEffect(() => { alertsRef.current = alerts; }, [alerts]);
   const [sessions, setSessions] = useState([]);
   const [doubts, setDoubts] = useState([]);
   const [students, setStudents] = useState([]);
@@ -241,6 +246,111 @@ const FacultyLMS = () => {
     return () => clearInterval(id);
   }, [profile]);
 
+  // Compute faculty notifications + fire 30-min reminders for mentor calls
+  useEffect(() => {
+    if (!profile) return;
+    const compute = () => {
+      const now = Date.now();
+      const notifs = [];
+
+      // Upcoming mentor calls in next 2 hours
+      mentorStudents.forEach(s => {
+        if (!s.nextCall || s.nextCall.completed) return;
+        const start = new Date(s.nextCall.scheduledAt).getTime();
+        const end   = start + s.nextCall.durationMin * 60 * 1000;
+        if (end <= now) return; // already ended
+        const minsUntil = Math.round((start - now) / 60000);
+
+        // Check if a class session is within 25 min of this call start
+        const sessionConflict = sessions.some(sess => {
+          const sd = Math.abs(new Date(sess.scheduledAt).getTime() - start) / 60000;
+          return sd <= 25;
+        });
+
+        notifs.push({
+          id: `call-${s.nextCall.id}`,
+          type: 'call',
+          studentName: s.name,
+          scheduledAt: s.nextCall.scheduledAt,
+          durationMin: s.nextCall.durationMin,
+          meetLink: s.nextCall.meetLink,
+          minsUntil: Math.max(0, minsUntil),
+          isLive: now >= start - 10 * 60 * 1000 && now <= end,
+          sessionConflict,
+        });
+
+        // Toast once when entering 30-min window (and no session conflict)
+        if (!sessionConflict && minsUntil <= 30 && minsUntil > 0 && !remindedRef.current.has(s.nextCall.id)) {
+          remindedRef.current.add(s.nextCall.id);
+          showToast(`📞 Mentor call with ${s.name} in ${minsUntil} min`);
+        }
+      });
+
+      setNotifications(notifs);
+    };
+
+    compute();
+    const id = setInterval(compute, 60000);
+    return () => clearInterval(id);
+  }, [profile, mentorStudents, sessions]);
+
+  // Poll sessions every 20s — keeps Live/Upcoming status on dashboard accurate
+  useEffect(() => {
+    if (!profile) return;
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    const id = setInterval(() => {
+      fetch(`${import.meta.env.VITE_API_URL}/api/faculty/${userId}/sessions`, { headers: { Authorization: `Bearer ${token}` } })
+        .then(r => r.ok ? r.json() : null)
+        .then(data => { if (Array.isArray(data)) setSessions(data); })
+        .catch(() => {});
+    }, 20000);
+    return () => clearInterval(id);
+  }, [profile]);
+
+  // Poll mentor-students every 20s — keeps today's calls, Join button, and call status live
+  useEffect(() => {
+    if (!profile) return;
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    const id = setInterval(() => {
+      fetch(`${import.meta.env.VITE_API_URL}/api/faculty/${userId}/mentor-students`, { headers: { Authorization: `Bearer ${token}` } })
+        .then(r => r.ok ? r.json() : null)
+        .then(data => { if (Array.isArray(data)) setMentorStudents(data); })
+        .catch(() => {});
+    }, 20000);
+    return () => clearInterval(id);
+  }, [profile]);
+
+  // Fetch alerts on load, then poll every 30s — toast on new ones
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    const h = { Authorization: `Bearer ${token}` };
+    const url = `${import.meta.env.VITE_API_URL}/api/faculty/${userId}/alerts`;
+    fetch(url, { headers: h }).then(r => r.ok ? r.json() : []).then(d => { if (Array.isArray(d)) setAlerts(d); }).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (!profile) return;
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    const id = setInterval(() => {
+      fetch(`${import.meta.env.VITE_API_URL}/api/faculty/${userId}/alerts`, { headers: { Authorization: `Bearer ${token}` } })
+        .then(r => r.ok ? r.json() : null)
+        .then(fresh => {
+          if (!Array.isArray(fresh)) return;
+          const prev = alertsRef.current;
+          fresh.forEach(a => {
+            if (!prev.find(p => p.id === a.id)) showToast(a.content);
+          });
+          setAlerts(fresh);
+        })
+        .catch(() => {});
+    }, 30000);
+    return () => clearInterval(id);
+  }, [profile]);
+
   return (
     <div className="faculty-app">
       <FacultySidebar
@@ -254,6 +364,7 @@ const FacultyLMS = () => {
         weeklyReports={weeklyReports}
         mentorStudents={mentorStudents}
         mentorDailyReports={mentorDailyReports}
+        unreadAlerts={alerts.filter(a => !a.readAt).length}
       />
       <div className="faculty-main">
         <FacultyTopbar
@@ -261,6 +372,20 @@ const FacultyLMS = () => {
           onOpenModal={setOpenModal}
           onNav={setActivePage}
           onShowToast={showToast}
+          sessions={sessions}
+          mentorStudents={mentorStudents}
+          notifications={notifications}
+          alerts={alerts}
+          onMarkAlertRead={async (id) => {
+            const token = localStorage.getItem('token');
+            await fetch(`${import.meta.env.VITE_API_URL}/api/faculty/${userId}/alerts/${id}/read`, { method: 'PUT', headers: { Authorization: `Bearer ${token}` } }).catch(() => {});
+            setAlerts(prev => prev.map(a => a.id === id ? { ...a, readAt: new Date().toISOString() } : a));
+          }}
+          onMarkAllAlertsRead={async () => {
+            const token = localStorage.getItem('token');
+            await fetch(`${import.meta.env.VITE_API_URL}/api/faculty/${userId}/alerts/read-all`, { method: 'PUT', headers: { Authorization: `Bearer ${token}` } }).catch(() => {});
+            setAlerts(prev => prev.map(a => ({ ...a, readAt: a.readAt || new Date().toISOString() })));
+          }}
           pendingDoubts={doubts.filter(d => !d.answeredAt).length}
         />
         <FacultyContent
@@ -290,6 +415,17 @@ const FacultyLMS = () => {
           mentorStudents={mentorStudents}
           onMentorStudentUpdated={(updated) => setMentorStudents(prev => prev.map(s => s.id === updated.id ? { ...s, ...updated } : s))}
           mentorDailyReports={mentorDailyReports}
+          alerts={alerts}
+          onMarkAlertRead={async (id) => {
+            const token = localStorage.getItem('token');
+            await fetch(`${import.meta.env.VITE_API_URL}/api/faculty/${userId}/alerts/${id}/read`, { method: 'PUT', headers: { Authorization: `Bearer ${token}` } }).catch(() => {});
+            setAlerts(prev => prev.map(a => a.id === id ? { ...a, readAt: new Date().toISOString() } : a));
+          }}
+          onMarkAllAlertsRead={async () => {
+            const token = localStorage.getItem('token');
+            await fetch(`${import.meta.env.VITE_API_URL}/api/faculty/${userId}/alerts/read-all`, { method: 'PUT', headers: { Authorization: `Bearer ${token}` } }).catch(() => {});
+            setAlerts(prev => prev.map(a => ({ ...a, readAt: a.readAt || new Date().toISOString() })));
+          }}
         />
       </div>
       <FacultyModals

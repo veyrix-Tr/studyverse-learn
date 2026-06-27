@@ -177,7 +177,7 @@ const getDaysRemaining = (examTarget, targetYear) => {
 };
 
 
-const fmtTime = (iso) => new Date(iso).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+const fmtTime = (iso) => new Date(iso).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' });
 const fmtDate = (iso) => new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
 const isUpcoming = (iso) => new Date(iso) > new Date();
 const isLive = (iso, duration) => { const s = new Date(iso), e = new Date(s.getTime() + (duration || 60) * 60000), n = new Date(); return n >= s && n <= e; };
@@ -856,7 +856,7 @@ const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
                             return (
                               <div key={c.id} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'9px 11px', background:'var(--cream2)', borderRadius:'8px', borderLeft:`3px solid ${statusColor}` }}>
                                 <div>
-                                  <div style={{ fontSize:'13px', fontWeight:600, color:'var(--text)' }}>{new Date(c.scheduledAt).toLocaleDateString('en-IN', { weekday:'short', day:'numeric', month:'short' })} · {new Date(c.scheduledAt).toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit', hour12:true })}</div>
+                                  <div style={{ fontSize:'13px', fontWeight:600, color:'var(--text)' }}>{new Date(c.scheduledAt).toLocaleDateString('en-IN', { weekday:'short', day:'numeric', month:'short', timeZone:'Asia/Kolkata' })} · {new Date(c.scheduledAt).toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit', hour12:true, timeZone:'Asia/Kolkata' })}</div>
                                   <div style={{ fontSize:'11px', color:'var(--text3)', marginTop:'2px' }}>{c.durationMin} min{c.notes ? ` · ${c.notes}` : ''}</div>
                                 </div>
                                 <span style={{ fontSize:'10px', fontWeight:700, color:statusColor }}>{statusLabel}</span>

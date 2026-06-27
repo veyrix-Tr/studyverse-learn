@@ -1,14 +1,16 @@
 import { useState, useEffect, useRef, Fragment } from 'react';
 import { useParams } from 'react-router-dom';
 
-const fmtTime = (iso) => new Date(iso).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+const fmtTime = (iso) => new Date(iso).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' });
 const fmtDate = (iso) => new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
 const isUpcoming = (iso) => new Date(iso) > new Date();
 const isLive = (iso, duration) => { const s = new Date(iso), e = new Date(s.getTime() + (duration || 60) * 60000), n = new Date(); return n >= s && n <= e; };
 const canStart = (iso) => { const s = new Date(iso), n = new Date(); return s - n <= 15 * 60000 && n < s; };
+const istNow = () => new Date(Date.now() + 5.5 * 60 * 60 * 1000);
 const isToday = (iso) => {
-  const d = new Date(iso), n = new Date();
-  return d.getFullYear() === n.getFullYear() && d.getMonth() === n.getMonth() && d.getDate() === n.getDate();
+  const d = new Date(new Date(iso).getTime() + 5.5 * 60 * 60 * 1000);
+  const n = istNow();
+  return d.getUTCFullYear() === n.getUTCFullYear() && d.getUTCMonth() === n.getUTCMonth() && d.getUTCDate() === n.getUTCDate();
 };
 const isPast7Days = (iso) => {
   const d = new Date(iso), n = new Date();
@@ -93,7 +95,7 @@ const DoubtItem = ({ priority, av, name, time, pills, question, answer, helpful,
   </div>
 );
 
-const getGreeting = () => { const h = new Date().getHours(); if (h < 12) return 'Good morning'; if (h < 17) return 'Good afternoon'; return 'Good evening'; };
+const getGreeting = () => { const h = new Date(Date.now() + 5.5 * 60 * 60 * 1000).getUTCHours(); if (h < 12) return 'Good morning'; if (h < 17) return 'Good afternoon'; return 'Good evening'; };
 
 function getCurrentWeekInfo() {
   const now = new Date();
@@ -134,7 +136,7 @@ const pctColor = (p) => p >= 75 ? 'var(--green)' : p >= 60 ? 'var(--gold)' : p >
 const pctBar   = (p) => p >= 75 ? 'pb-green' : p >= 60 ? 'pb-gold' : p >= 45 ? 'pb-orange' : 'pb-red';
 const pctFlag  = (p) => p >= 75 ? ['On track', 'pp'] : p >= 60 ? ['Progressing', 'po'] : ['Needs support', 'pr'];
 
-const FacultyContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, sessions = [], doubts = [], students = [], resources = [], onDoubtAnswered, onSessionNoteUpdated, onResourceDeleted, onResourceAdded, weeklyReports = [], onReportCreated, onReportUpdated, onReportSubmitted, onReportDeleted, parentFeedback = [], mentorStudents = [], onMentorStudentUpdated, mentorDailyReports = [] }) => {
+const FacultyContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, sessions = [], doubts = [], students = [], resources = [], onDoubtAnswered, onSessionNoteUpdated, onResourceDeleted, onResourceAdded, weeklyReports = [], onReportCreated, onReportUpdated, onReportSubmitted, onReportDeleted, parentFeedback = [], mentorStudents = [], onMentorStudentUpdated, mentorDailyReports = [], alerts = [], onMarkAlertRead, onMarkAllAlertsRead }) => {
   const { id: userId } = useParams();
   const firstName = profile?.name?.split(' ').find(p => !p.startsWith('Dr')) || profile?.name?.split(' ')[0] || 'there';
   const [scheduleTab, setScheduleTab] = useState(0);
@@ -509,6 +511,68 @@ const FacultyContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
             )}
           </div>
         </div>
+
+        {/* ── Today's Mentor Calls ── */}
+        {(() => {
+          const todayCalls = mentorStudents
+            .filter(s => s.nextCall && isToday(s.nextCall.scheduledAt))
+            .map(s => ({ ...s.nextCall, studentName: s.name }));
+          if (!todayCalls.length) return null;
+          return (
+            <div className="card mb">
+              <div className="sh">
+                <div className="sh-t">Today's Mentor Calls</div>
+                <span className="sh-a" onClick={() => onNav('mentor')}>All mentees →</span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {todayCalls.map(c => {
+                  const now = Date.now();
+                  const start = new Date(c.scheduledAt).getTime();
+                  const end   = start + c.durationMin * 60 * 1000;
+                  const live  = now >= start - 10 * 60 * 1000 && now <= end && !c.completed;
+                  const done  = c.completed || end < now;
+                  return (
+                    <div key={c.id} className="sched-item" style={{ cursor: 'default' }}>
+                      <div className="sched-time">{fmtTime(c.scheduledAt)}</div>
+                      <div className="sched-dot" style={{ background: done ? 'var(--green)' : live ? '#ef4444' : 'var(--gold)', boxShadow: live ? '0 0 0 3px rgba(239,68,68,0.2)' : 'none' }} />
+                      <div className="sched-info">
+                        <div className="sched-name">{c.studentName}</div>
+                        <div className="sched-meta">Mentor Call · {c.durationMin} min{c.notes ? ` · ${c.notes}` : ''}</div>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '5px' }}>
+                        <div className={`sched-status ${done ? '' : live ? 's-live' : 's-up'}`} style={live ? { display: 'flex', alignItems: 'center', gap: 5 } : {}}>
+                          {done ? 'Done' : live ? <><span style={{ width: 7, height: 7, borderRadius: '50%', background: '#ef4444', display: 'inline-block', animation: 'pulse 1.5s infinite', flexShrink: 0 }} />Live</> : 'Upcoming'}
+                        </div>
+                        {c.meetLink && !done && (
+                          <a
+                            href={live ? c.meetLink : undefined}
+                            target="_blank" rel="noopener noreferrer"
+                            onClick={e => { if (!live) e.preventDefault(); }}
+                            style={{
+                              display: 'inline-flex', alignItems: 'center', gap: '5px',
+                              padding: '3px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 600,
+                              textDecoration: 'none', transition: 'all .15s',
+                              cursor: live ? 'pointer' : 'not-allowed',
+                              background: live ? '#16a34a' : 'var(--cream2)',
+                              color: live ? '#fff' : 'var(--text3)',
+                              border: live ? 'none' : '1px solid var(--b)',
+                            }}
+                            title={live ? 'Join Google Meet' : 'Activates 10 min before call'}
+                          >
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                              <polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/>
+                            </svg>
+                            {live ? 'Join Now' : 'Join'}
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })()}
 
         <div className="sh">
           <div className="sh-t">Student Snapshot</div>
@@ -1112,6 +1176,16 @@ const FacultyContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
         />
       </div>
 
+      {/* ══════════ NOTIFICATIONS ══════════ */}
+      <div className={`page${activePage === 'notifications' ? ' on' : ''}`}>
+        <NotificationsPage
+          alerts={alerts}
+          onNav={onNav}
+          onMarkAlertRead={onMarkAlertRead}
+          onMarkAllAlertsRead={onMarkAllAlertsRead}
+        />
+      </div>
+
     </div>
   );
 };
@@ -1141,6 +1215,26 @@ const MentorPanel = ({ userId, mentorStudents, onMentorStudentUpdated, onShowToa
       loadDetail(mentorStudents[0]);
     }
   }, [mentorStudents]);
+
+  // Auto-complete calls when their end time passes
+  useEffect(() => {
+    if (!detail?.mentorCalls) return;
+    const timers = [];
+    detail.mentorCalls.forEach(c => {
+      if (c.completed) return;
+      const end = new Date(c.scheduledAt).getTime() + c.durationMin * 60 * 1000;
+      const msLeft = end - Date.now();
+      if (msLeft > 0) {
+        timers.push(setTimeout(() => {
+          markCallDone(c.id, c.notes || '');
+        }, msLeft));
+      } else if (msLeft <= 0 && Date.now() < end + 60 * 1000) {
+        // just ended (within 1 min grace) — mark done now
+        markCallDone(c.id, c.notes || '');
+      }
+    });
+    return () => timers.forEach(clearTimeout);
+  }, [detail?.mentorCalls]);
 
   const loadDetail = async (s) => {
     setSelected(s);
@@ -1214,7 +1308,7 @@ const MentorPanel = ({ userId, mentorStudents, onMentorStudentUpdated, onShowToa
   };
 
   const fmtD = (iso) => new Date(iso).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' });
-  const fmtT = (iso) => new Date(iso).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+  const fmtT = (iso) => new Date(iso).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' });
   const moods = ['', '😩', '😐', '🙂', '💪', '🔥'];
 
   if (mentorStudents.length === 0) {
@@ -1408,8 +1502,11 @@ const MentorPanel = ({ userId, mentorStudents, onMentorStudentUpdated, onShowToa
                     No calls scheduled yet.
                   </div>
                 ) : detail.mentorCalls.map(c => {
-                  const isPast = new Date(c.scheduledAt) < new Date();
-                  const canMarkDone = !c.completed && isPast;
+                  const now = Date.now();
+                  const start = new Date(c.scheduledAt).getTime();
+                  const end   = start + c.durationMin * 60 * 1000;
+                  const isLive = now >= start - 10 * 60 * 1000 && now <= end && !c.completed;
+                  const isPast = end < now;
                   const status = c.completed ? 'done' : isPast ? 'overdue' : 'upcoming';
                   return (
                     <div key={c.id} className={`mp-call-card mp-call-card-${status}`}>
@@ -1419,15 +1516,40 @@ const MentorPanel = ({ userId, mentorStudents, onMentorStudentUpdated, onShowToa
                       <div className="mpcc-body">
                         <div className="mpcc-row">
                           <div className="mpcc-dt">{fmtD(c.scheduledAt)} · {fmtT(c.scheduledAt)}</div>
-                          <span className={`mpcc-badge mpcc-badge-${status}`}>
-                            {c.completed ? '✓ Done' : isPast ? 'Overdue' : 'Upcoming'}
-                          </span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            {c.meetLink && !c.completed && (
+                              <a
+                                href={isLive ? c.meetLink : undefined}
+                                target="_blank" rel="noopener noreferrer"
+                                onClick={e => { if (!isLive) e.preventDefault(); }}
+                                style={{
+                                  display: 'inline-flex', alignItems: 'center', gap: '5px',
+                                  padding: '5px 12px', borderRadius: '7px', fontSize: '12px', fontWeight: 700,
+                                  textDecoration: 'none', transition: 'all .18s',
+                                  cursor: isLive ? 'pointer' : 'not-allowed',
+                                  background: isLive ? 'linear-gradient(135deg,#22C55E,#16a34a)' : 'rgba(15,31,61,0.06)',
+                                  color: isLive ? '#fff' : 'var(--text3)',
+                                  border: isLive ? 'none' : '1px solid var(--b)',
+                                  boxShadow: isLive ? '0 2px 10px rgba(34,197,94,0.3)' : 'none',
+                                }}
+                                title={isLive ? 'Join Google Meet' : 'Activates 10 min before call'}
+                              >
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                  <polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/>
+                                </svg>
+                                {isLive ? 'Join Now' : 'Join'}
+                              </a>
+                            )}
+                            <span className={`mpcc-badge mpcc-badge-${status}`}>
+                              {c.completed ? '✓ Done' : isPast ? 'Overdue' : 'Upcoming'}
+                            </span>
+                          </div>
                         </div>
                         <div className="mpcc-meta">{c.durationMin} min{c.notes ? ` · ${c.notes}` : ''}</div>
-                        {canMarkDone && (
+                        {!c.completed && (isLive || isPast) && (
                           <button className="mp-btn mp-btn-green mp-btn-sm" style={{ marginTop: '10px' }} onClick={() => markCallDone(c.id, c.notes || '')}>
                             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M20 6L9 17l-5-5"/></svg>
-                            Mark Complete
+                            {isLive ? 'End Call' : 'Mark Complete'}
                           </button>
                         )}
                       </div>
@@ -1585,6 +1707,87 @@ const DailyLogsPage = ({ mentorDailyReports = [], mentorStudents = [] }) => {
           })}
         </div>
       )}
+
+    </div>
+  );
+};
+
+// ── Notifications page ───────────────────────────────────────────────────────
+const TYPE_META = {
+  'Doubt':        { icon: '❓', color: 'var(--red)',   bg: 'rgba(239,68,68,0.08)',   label: 'Doubt',       nav: 'doubts'    },
+  'Resource':     { icon: '📄', color: 'var(--blue)',  bg: 'rgba(59,130,246,0.08)',  label: 'Resource',    nav: 'resources' },
+  'Report':       { icon: '📊', color: 'var(--green)', bg: 'rgba(34,197,94,0.08)',   label: 'Report',      nav: 'reports'   },
+  'Call':         { icon: '📞', color: 'var(--gold)',  bg: 'rgba(232,168,48,0.08)',  label: 'Call',        nav: 'mentor'    },
+  'Mentor Note':  { icon: '💬', color: 'var(--green)', bg: 'rgba(34,197,94,0.08)',   label: 'Mentor Note', nav: 'mentor'    },
+  'Mentor Report':{ icon: '📋', color: 'var(--text3)', bg: 'rgba(15,31,61,0.06)',    label: 'Mentor Report', nav: 'dailylogs'},
+  'Admin':        { icon: '📢', color: 'var(--gold)',  bg: 'rgba(232,168,48,0.08)',  label: 'Admin',       nav: 'dashboard' },
+};
+
+
+const timeAgoFac = (iso) => {
+  const s = Math.floor((Date.now() - new Date(iso)) / 1000);
+  if (s < 60) return 'just now';
+  if (s < 3600) return Math.floor(s / 60) + 'm ago';
+  if (s < 86400) return Math.floor(s / 3600) + 'h ago';
+  return Math.floor(s / 86400) + 'd ago';
+};
+
+const NotificationsPage = ({ alerts = [], onNav, onMarkAlertRead, onMarkAllAlertsRead }) => {
+  const unread = alerts.filter(a => !a.readAt).length;
+
+  if (alerts.length === 0) return (
+    <div>
+      <div className="sh" style={{ marginBottom: '16px' }}>
+        <div className="sh-t">Notifications</div>
+      </div>
+      <div className="card" style={{ padding: '64px 32px', textAlign: 'center' }}>
+        <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'var(--cream2)', border: '1.5px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', fontSize: '28px' }}>🔔</div>
+        <div style={{ fontFamily: 'var(--fs)', fontSize: '18px', fontWeight: 700, color: 'var(--text)', marginBottom: '8px' }}>No notifications yet</div>
+        <div style={{ fontSize: '13.5px', color: 'var(--text3)', lineHeight: 1.7, maxWidth: '360px', margin: '0 auto' }}>
+          You will be notified here when students submit doubts, admins approve your resources, mentor calls are scheduled, and more.
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div>
+      <div className="sh" style={{ marginBottom: '16px' }}>
+        <div className="sh-t">Notifications {unread > 0 && <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text3)', marginLeft: '6px' }}>· {unread} unread</span>}</div>
+        {unread > 0 && <button className="btn btn-ghost btn-sm" onClick={onMarkAllAlertsRead}>Mark all read</button>}
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        {alerts.map(a => {
+          const meta = TYPE_META[a.type] || { icon: '🔔', color: 'var(--text3)', bg: 'rgba(15,31,61,0.04)', label: a.type, nav: null };
+          const isUnread = !a.readAt;
+          return (
+            <div
+              key={a.id}
+              onClick={() => { if (isUnread) onMarkAlertRead?.(a.id); if (meta.nav) onNav(meta.nav); }}
+              style={{
+                display: 'flex', gap: '14px', padding: '14px 16px',
+                borderRadius: 'var(--rl)', cursor: 'pointer',
+                background: isUnread ? 'var(--cream)' : 'var(--cream2)',
+                border: `1.5px solid ${isUnread ? 'rgba(15,31,61,0.12)' : 'var(--border)'}`,
+                boxShadow: isUnread ? 'var(--shadow)' : 'none',
+                transition: 'all .15s',
+              }}
+              onMouseOver={e => e.currentTarget.style.borderColor = 'var(--gold)'}
+              onMouseOut={e => e.currentTarget.style.borderColor = isUnread ? 'rgba(15,31,61,0.12)' : 'var(--border)'}
+            >
+              <div style={{ width: '40px', height: '40px', borderRadius: '11px', flexShrink: 0, background: meta.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>{meta.icon}</div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                  <span style={{ fontSize: '11px', fontWeight: 700, color: meta.color, background: meta.bg, borderRadius: '20px', padding: '2px 8px' }}>{meta.label}</span>
+                  {isUnread && <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--gold)', display: 'inline-block' }} />}
+                </div>
+                <div style={{ fontSize: '13.5px', color: 'var(--text)', fontWeight: isUnread ? 500 : 400, lineHeight: 1.55 }}>{a.content}</div>
+                <div style={{ fontSize: '11px', color: 'var(--text3)', marginTop: '5px' }}>{timeAgoFac(a.createdAt)}</div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 };

@@ -46,22 +46,28 @@ router.get('/sessions', requireAuth, async (req, res) => {
     const fp = await prisma.facultyProfile.findUnique({ where: { userId: req.params.userId } });
     if (!fp) return res.json([]);
 
-    const [sessions, apexStudents] = await Promise.all([
+    const [sessions, allPremiumStudents] = await Promise.all([
       prisma.session.findMany({
         where: { facultyId: fp.id },
         orderBy: { scheduledAt: 'asc' },
       }),
       prisma.studentProfile.findMany({
-        where: { plan: 'apex' },
+        where: { plan: { in: ['apex', 'anchor'] } },
         include: { user: { select: { name: true } } },
       }),
     ]);
 
     res.json(sessions.map(s => {
-      const eligible = apexStudents.filter(sp =>
-        sp.grade === s.grade &&
-        (EXAM_SUBJECTS[sp.examTarget] || []).includes(s.subject)
-      );
+      const eligible = allPremiumStudents.filter(sp => {
+        if (sp.plan === 'apex') {
+          return sp.grade === s.grade && (EXAM_SUBJECTS[sp.examTarget] || []).includes(s.subject);
+        }
+        // anchor: enrolled if subject-faculty map assigns this faculty for the session subject
+        const sf = sp.subjectFaculty;
+        return sf && Object.entries(sf).some(([subj, facId]) =>
+          subj.toLowerCase() === s.subject.toLowerCase() && facId === fp.id
+        );
+      });
       return {
         id: s.id,
         title: s.title,
@@ -125,14 +131,29 @@ router.get('/students', requireAuth, async (req, res) => {
     const grades = gradeSessions.map(s => s.grade);
     if (grades.length === 0) return res.json([]);
 
-    // Premium students in those grades whose exam curriculum includes this faculty's subject
-    const students = await prisma.studentProfile.findMany({
+    // Apex students in those grades whose exam curriculum includes this faculty's subject
+    const apexStudents = await prisma.studentProfile.findMany({
       where: { grade: { in: grades }, plan: 'apex' },
       include: { user: { select: { name: true } } },
     });
-    const relevant = students.filter(sp =>
+    const relevantApex = apexStudents.filter(sp =>
       (EXAM_SUBJECTS[sp.examTarget] || []).includes(fp.subject)
     );
+
+    // Anchor students where this faculty is assigned for this subject via subjectFaculty map
+    const anchorStudents = await prisma.studentProfile.findMany({
+      where: { plan: 'anchor' },
+      include: { user: { select: { name: true } } },
+    });
+    const relevantAnchor = anchorStudents.filter(sp => {
+      const sf = sp.subjectFaculty;
+      if (!sf || typeof sf !== 'object') return false;
+      return Object.entries(sf).some(([subj, facId]) =>
+        subj.toLowerCase() === fp.subject.toLowerCase() && facId === fp.id
+      );
+    });
+
+    const relevant = [...relevantApex, ...relevantAnchor];
 
     const now = new Date();
     const result = await Promise.all(relevant.map(async (sp) => {
@@ -192,11 +213,13 @@ router.post('/sessions/:id/note', requireAuth, async (req, res) => {
     // Notify eligible students if a note was actually set
     if (trimmedNote) {
       const students = await prisma.studentProfile.findMany({
-        where: { grade: session.grade, plan: 'apex' },
+        where: { plan: { in: ['apex', 'anchor'] } },
       });
-      const eligible = students.filter(sp =>
-        (EXAM_SUBJECTS[sp.examTarget] || []).includes(session.subject)
-      );
+      const eligible = students.filter(sp => {
+        if (sp.plan === 'apex') return sp.grade === session.grade && (EXAM_SUBJECTS[sp.examTarget] || []).includes(session.subject);
+        const sf = sp.subjectFaculty;
+        return sf && Object.entries(sf).some(([subj, facId]) => subj.toLowerCase() === session.subject.toLowerCase() && facId === fp.id);
+      });
       if (eligible.length > 0) {
         // Delete old notification for this session (so we don't pile up duplicates on edits)
         await prisma.facultyNotification.deleteMany({
@@ -237,11 +260,13 @@ router.post('/sessions/:id/remind', requireAuth, async (req, res) => {
     if (!session || session.facultyId !== fp.id) return res.status(404).json({ error: 'Session not found' });
 
     const students = await prisma.studentProfile.findMany({
-      where: { grade: session.grade, plan: 'apex' },
+      where: { plan: { in: ['apex', 'anchor'] } },
     });
-    const eligible = students.filter(sp =>
-      (EXAM_SUBJECTS[sp.examTarget] || []).includes(session.subject)
-    );
+    const eligible = students.filter(sp => {
+      if (sp.plan === 'apex') return sp.grade === session.grade && (EXAM_SUBJECTS[sp.examTarget] || []).includes(session.subject);
+      const sf = sp.subjectFaculty;
+      return sf && Object.entries(sf).some(([subj, facId]) => subj.toLowerCase() === session.subject.toLowerCase() && facId === fp.id);
+    });
     if (eligible.length === 0) return res.json({ success: true, notified: 0 });
 
     const scheduledAt = new Date(session.scheduledAt);
@@ -291,11 +316,13 @@ router.post('/broadcast', requireAuth, async (req, res) => {
     if (grades.length === 0) return res.json({ success: true, notified: 0 });
 
     const students = await prisma.studentProfile.findMany({
-      where: { grade: { in: grades }, plan: 'apex' },
+      where: { plan: { in: ['apex', 'anchor'] } },
     });
-    const eligible = students.filter(sp =>
-      (EXAM_SUBJECTS[sp.examTarget] || []).includes(fp.subject)
-    );
+    const eligible = students.filter(sp => {
+      if (sp.plan === 'apex') return grades.includes(sp.grade) && (EXAM_SUBJECTS[sp.examTarget] || []).includes(fp.subject);
+      const sf = sp.subjectFaculty;
+      return sf && Object.entries(sf).some(([subj, facId]) => subj.toLowerCase() === fp.subject.toLowerCase() && facId === fp.id);
+    });
     if (eligible.length === 0) return res.json({ success: true, notified: 0 });
 
     await prisma.facultyNotification.createMany({
@@ -753,7 +780,7 @@ router.get('/mentor-students', requireAuth, async (req, res) => {
       reportedToday: s.dailyReports[0]?.date === today,
       lastReportDate: s.dailyReports[0]?.date || null,
       lastNote: s.mentorNotes[0] ? { id: s.mentorNotes[0].id, content: s.mentorNotes[0].content, weekOf: s.mentorNotes[0].weekOf, createdAt: s.mentorNotes[0].createdAt } : null,
-      nextCall: s.mentorCalls.find(c => !c.completed && new Date(c.scheduledAt) >= new Date()) || null,
+      nextCall: s.mentorCalls.find(c => !c.completed && new Date(c.scheduledAt).getTime() + c.durationMin * 60 * 1000 > Date.now()) || null,
     })));
   } catch (err) {
     console.error(err);
@@ -805,8 +832,9 @@ router.post('/mentor-student/:studentId/note', requireAuth, async (req, res) => 
     const sid = parseInt(req.params.studentId);
     const { content, weekOf } = req.body;
     if (!content?.trim()) return res.status(400).json({ error: 'Note content required' });
+    if (content.trim().length > 2000) return res.status(400).json({ error: 'Note too long (max 2000 chars)' });
 
-    const s = await prisma.studentProfile.findUnique({ where: { id: sid } });
+    const s = await prisma.studentProfile.findUnique({ where: { id: sid }, include: { user: { select: { name: true } } } });
     if (!s || s.mentorId !== fp.id) return res.status(403).json({ error: 'Not your mentee' });
 
     const wof = weekOf || (() => {
@@ -821,9 +849,14 @@ router.post('/mentor-student/:studentId/note', requireAuth, async (req, res) => 
 
     const admin = await prisma.adminProfile.findFirst({ orderBy: { id: 'asc' }, select: { id: true } });
     if (admin) await prisma.adminMessage.create({
-      data: { content: `${fp.user.name} left you a weekly note. Check your dashboard.`, type: 'Motivational Note', studentId: sid, adminId: admin.id },
+      data: { content: `${fp.user.name} left you a weekly note. Tap to read it.`, type: 'Motivational Note', studentId: sid, adminId: admin.id },
     });
     else console.warn('No admin profile found — student note notification skipped for studentId', sid);
+
+    // Self-alert: faculty's own notification that note was sent
+    prisma.facultyAlert.create({
+      data: { facultyId: fp.id, type: 'Mentor Note', content: `You sent a weekly note to ${s.user?.name || 'your mentee'} ✓` },
+    }).catch(() => {});
 
     res.json({ id: note.id, content: note.content, weekOf: note.weekOf, createdAt: note.createdAt, mentorName: fp.user.name });
   } catch (err) {
@@ -841,6 +874,7 @@ router.post('/mentor-student/:studentId/call', requireAuth, async (req, res) => 
     const sid = parseInt(req.params.studentId);
     const { scheduledAt, durationMin, meetLink, notes, completed } = req.body;
     if (!scheduledAt) return res.status(400).json({ error: 'scheduledAt required' });
+    if (!meetLink?.trim()) return res.status(400).json({ error: 'Google Meet link is required' });
 
     const s = await prisma.studentProfile.findUnique({ where: { id: sid } });
     if (!s || s.mentorId !== fp.id) return res.status(403).json({ error: 'Not your mentee' });
@@ -860,6 +894,15 @@ router.post('/mentor-student/:studentId/call', requireAuth, async (req, res) => 
         });
       }
     }
+
+    // Self-alert for faculty
+    const cs = await prisma.studentProfile.findUnique({ where: { id: sid }, include: { user: { select: { name: true } } } });
+    const callDateIST2 = new Date(new Date(scheduledAt).getTime() + 5.5 * 60 * 60 * 1000);
+    const callLabel = callDateIST2.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
+    const callTime2 = callDateIST2.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'UTC' });
+    prisma.facultyAlert.create({
+      data: { facultyId: fp.id, type: 'Call', content: `Mentor call with ${cs?.user?.name || 'mentee'} scheduled — ${callLabel} at ${callTime2}` },
+    }).catch(() => {});
 
     res.json({ id: call.id, scheduledAt: call.scheduledAt, durationMin: call.durationMin, meetLink: call.meetLink, notes: call.notes, completed: call.completed, mentorName: fp.user.name });
   } catch (err) {
@@ -886,6 +929,57 @@ router.put('/mentor-call/:callId', requireAuth, async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to update call' });
+  }
+});
+
+// ── FACULTY ALERTS ──────────────────────────────────────────────────────────
+
+// GET /api/faculty/:userId/alerts
+router.get('/alerts', requireAuth, async (req, res) => {
+  try {
+    const fp = await prisma.facultyProfile.findUnique({ where: { userId: req.params.userId } });
+    if (!fp) return res.json([]);
+    const alerts = await prisma.facultyAlert.findMany({
+      where: { facultyId: fp.id },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+    });
+    res.json(alerts);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch alerts' });
+  }
+});
+
+// PUT /api/faculty/:userId/alerts/read-all  ← must come before /:id/read
+router.put('/alerts/read-all', requireAuth, async (req, res) => {
+  try {
+    const fp = await prisma.facultyProfile.findUnique({ where: { userId: req.params.userId } });
+    if (!fp) return res.status(403).json({ error: 'Not a faculty' });
+    await prisma.facultyAlert.updateMany({
+      where: { facultyId: fp.id, readAt: null },
+      data: { readAt: new Date() },
+    });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to mark all read' });
+  }
+});
+
+// PUT /api/faculty/:userId/alerts/:id/read
+router.put('/alerts/:id/read', requireAuth, async (req, res) => {
+  try {
+    const fp = await prisma.facultyProfile.findUnique({ where: { userId: req.params.userId } });
+    if (!fp) return res.status(403).json({ error: 'Not a faculty' });
+    await prisma.facultyAlert.updateMany({
+      where: { id: parseInt(req.params.id), facultyId: fp.id },
+      data: { readAt: new Date() },
+    });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to mark read' });
   }
 });
 

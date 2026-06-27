@@ -10,6 +10,9 @@ async function main() {
   await prisma.weeklyReport.deleteMany();
   await prisma.resource.deleteMany();
   await prisma.adminMessage.deleteMany();
+  await prisma.facultyAlert.deleteMany();
+  await prisma.mentorCall.deleteMany();
+  await prisma.mentorNote.deleteMany();
   await prisma.facultyNotification.deleteMany();
   await prisma.habitLog.deleteMany();
   await prisma.weeklyScore.deleteMany();

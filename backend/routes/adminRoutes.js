@@ -200,6 +200,9 @@ router.post('/faculty', requireAuth, async (req, res) => {
 // PUT /api/admin/student/:studentUserId/mentor — assign or clear mentor
 router.put('/student/:studentUserId/mentor', requireAuth, async (req, res) => {
   try {
+    const ap = await prisma.adminProfile.findUnique({ where: { userId: req.params.userId } });
+    if (!ap) return res.status(403).json({ error: 'Not an admin' });
+
     const { mentorId } = req.body; // null to clear, facultyProfile.id to assign
     const profile = await prisma.studentProfile.findUnique({
       where: { userId: req.params.studentUserId },
@@ -213,7 +216,7 @@ router.put('/student/:studentUserId/mentor', requireAuth, async (req, res) => {
 
     const updated = await prisma.studentProfile.update({
       where: { userId: req.params.studentUserId },
-      data: { mentorId: mentorId || null },
+      data: { mentorId: mentorId != null ? parseInt(mentorId) || null : null },
       include: { mentor: { include: { user: { select: { name: true } } } } },
     });
 
@@ -227,6 +230,9 @@ router.put('/student/:studentUserId/mentor', requireAuth, async (req, res) => {
 // PUT /api/admin/student/:studentUserId/subject-faculty — assign or clear a faculty for a subject
 router.put('/student/:studentUserId/subject-faculty', requireAuth, async (req, res) => {
   try {
+    const ap = await prisma.adminProfile.findUnique({ where: { userId: req.params.userId } });
+    if (!ap) return res.status(403).json({ error: 'Not an admin' });
+
     const { subject, facultyId } = req.body; // subject: "Physics"|"Chemistry"|..., facultyId: number or null
     if (!subject) return res.status(400).json({ error: 'subject is required' });
 
@@ -564,6 +570,11 @@ router.put('/resources/:id/approve', requireAuth, async (req, res) => {
       });
     }
 
+    // Alert the faculty who submitted the resource
+    prisma.facultyAlert.create({
+      data: { facultyId: resource.facultyId, type: 'Resource', content: `Your resource "${resource.title}" (${resource.subject}) was approved by admin ✓` },
+    }).catch(() => {});
+
     res.json({ success: true });
   } catch (err) {
     console.error(err);
@@ -581,10 +592,16 @@ router.put('/resources/:id/decline', requireAuth, async (req, res) => {
     const id = parseInt(req.params.id);
     if (isNaN(id)) return res.status(400).json({ error: 'Invalid ID' });
 
-    await prisma.resource.update({
+    const resource = await prisma.resource.update({
       where: { id },
       data: { status: 'declined', declineReason: reason || null },
     });
+
+    // Alert the faculty
+    prisma.facultyAlert.create({
+      data: { facultyId: resource.facultyId, type: 'Resource', content: `Your resource "${resource.title}" (${resource.subject}) was declined${reason ? `: ${reason}` : ''}` },
+    }).catch(() => {});
+
     res.json({ success: true });
   } catch (err) {
     console.error(err);

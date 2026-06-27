@@ -98,7 +98,7 @@ const fmtDate = (iso) => {
   const d = new Date(normalized);
   return d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
 };
-const fmtTime = (iso) => new Date(iso).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+const fmtTime = (iso) => new Date(iso).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' });
 const timeAgo = (iso) => {
   const s = Math.floor((Date.now() - new Date(iso)) / 1000);
   if (s < 60) return 'just now';
@@ -241,9 +241,10 @@ const AnchorContent = ({
 
   // ── Calls ─────────────────────────────────────────────────────────────────
   const now = new Date();
-  const upcomingCalls = mentorCalls.filter(c => !c.completed && new Date(c.scheduledAt) >= now)
+  const callEndsAt = (c) => new Date(c.scheduledAt).getTime() + c.durationMin * 60 * 1000;
+  const upcomingCalls = mentorCalls.filter(c => !c.completed && callEndsAt(c) > now)
     .sort((a, b) => new Date(a.scheduledAt) - new Date(b.scheduledAt));
-  const pastCalls = mentorCalls.filter(c => c.completed || new Date(c.scheduledAt) < now)
+  const pastCalls = mentorCalls.filter(c => c.completed || callEndsAt(c) <= now)
     .sort((a, b) => new Date(b.scheduledAt) - new Date(a.scheduledAt));
   const nextCall = upcomingCalls[0] || null;
 
