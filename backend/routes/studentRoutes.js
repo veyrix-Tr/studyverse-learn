@@ -355,8 +355,8 @@ router.get('/notifications', requireAuth, async (req, res) => {
     const profile = await prisma.studentProfile.findUnique({ where: { userId: req.params.userId } });
     if (!profile) return res.json([]);
 
-    // FacultyNotification only relevant to Forge & Apex (they have assigned faculty)
-    const hasFaculty = profile.plan === 'forge' || profile.plan === 'apex';
+    // FacultyNotification relevant to all paid plans (Forge, Apex, Anchor have assigned faculty)
+    const hasFaculty = ['forge', 'apex', 'anchor'].includes(profile.plan);
 
     // Exclude system-generated activity messages (report submissions, diagnostic) — those are admin-only
     const SYSTEM_CONTENT_PREFIXES = [' submitted their daily report', ' completed their diagnostic'];
@@ -726,7 +726,7 @@ router.post('/daily-reports', requireAuth, validateUrlUser, async (req, res) => 
 });
 
 // GET /api/student/:userId/mentor-notes — latest mentor notes for anchor student
-router.get('/mentor-notes', async (req, res) => {
+router.get('/mentor-notes', requireAuth, async (req, res) => {
   try {
     const profile = await prisma.studentProfile.findUnique({ where: { userId: req.params.userId } });
     if (!profile) return res.json([]);
@@ -752,7 +752,7 @@ router.get('/mentor-notes', async (req, res) => {
 });
 
 // GET /api/student/:userId/mentor-calls — call history + upcoming for anchor student
-router.get('/mentor-calls', async (req, res) => {
+router.get('/mentor-calls', requireAuth, async (req, res) => {
   try {
     const profile = await prisma.studentProfile.findUnique({ where: { userId: req.params.userId } });
     if (!profile) return res.json([]);
@@ -768,6 +768,7 @@ router.get('/mentor-calls', async (req, res) => {
       id: c.id,
       scheduledAt: c.scheduledAt,
       durationMin: c.durationMin,
+      meetLink: c.meetLink,
       notes: c.notes,
       completed: c.completed,
       mentorName: c.mentor?.user?.name || null,

@@ -788,7 +788,7 @@ router.get('/mentor-student/:studentId', requireAuth, async (req, res) => {
       dailyReports: s.dailyReports,
       habitLogs: s.habitLogs,
       mentorNotes: s.mentorNotes.map(n => ({ id: n.id, content: n.content, weekOf: n.weekOf, createdAt: n.createdAt, mentorName: n.mentor?.user?.name || null })),
-      mentorCalls: s.mentorCalls.map(c => ({ id: c.id, scheduledAt: c.scheduledAt, durationMin: c.durationMin, notes: c.notes, completed: c.completed, mentorName: c.mentor?.user?.name || null })),
+      mentorCalls: s.mentorCalls.map(c => ({ id: c.id, scheduledAt: c.scheduledAt, durationMin: c.durationMin, meetLink: c.meetLink, notes: c.notes, completed: c.completed, mentorName: c.mentor?.user?.name || null })),
     });
   } catch (err) {
     console.error(err);
@@ -819,12 +819,11 @@ router.post('/mentor-student/:studentId/note', requireAuth, async (req, res) => 
       data: { studentId: sid, mentorId: fp.id, content: content.trim(), weekOf: wof },
     });
 
-    const admin = await prisma.adminProfile.findFirst({ select: { id: true } });
-    if (admin) {
-      await prisma.adminMessage.create({
-        data: { content: `${fp.user.name} left you a weekly note. Check your dashboard.`, type: 'Motivational Note', studentId: sid, adminId: admin.id },
-      });
-    }
+    const admin = await prisma.adminProfile.findFirst({ orderBy: { id: 'asc' }, select: { id: true } });
+    if (admin) await prisma.adminMessage.create({
+      data: { content: `${fp.user.name} left you a weekly note. Check your dashboard.`, type: 'Motivational Note', studentId: sid, adminId: admin.id },
+    });
+    else console.warn('No admin profile found — student note notification skipped for studentId', sid);
 
     res.json({ id: note.id, content: note.content, weekOf: note.weekOf, createdAt: note.createdAt, mentorName: fp.user.name });
   } catch (err) {
@@ -840,29 +839,29 @@ router.post('/mentor-student/:studentId/call', requireAuth, async (req, res) => 
     if (!fp) return res.status(403).json({ error: 'Not a faculty' });
 
     const sid = parseInt(req.params.studentId);
-    const { scheduledAt, durationMin, notes, completed } = req.body;
+    const { scheduledAt, durationMin, meetLink, notes, completed } = req.body;
     if (!scheduledAt) return res.status(400).json({ error: 'scheduledAt required' });
 
     const s = await prisma.studentProfile.findUnique({ where: { id: sid } });
     if (!s || s.mentorId !== fp.id) return res.status(403).json({ error: 'Not your mentee' });
 
     const call = await prisma.mentorCall.create({
-      data: { studentId: sid, mentorId: fp.id, scheduledAt: new Date(scheduledAt), durationMin: durationMin || 45, notes: notes?.trim() || null, completed: completed ?? false },
+      data: { studentId: sid, mentorId: fp.id, scheduledAt: new Date(scheduledAt), durationMin: durationMin || 45, meetLink: meetLink?.trim() || null, notes: notes?.trim() || null, completed: completed ?? false },
     });
 
     if (!completed) {
-      const admin = await prisma.adminProfile.findFirst({ select: { id: true } });
+      const admin = await prisma.adminProfile.findFirst({ orderBy: { id: 'asc' }, select: { id: true } });
       if (admin) {
-        const callDate = new Date(scheduledAt);
-        const label = callDate.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' });
-        const time = callDate.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+        const callDateIST = new Date(new Date(scheduledAt).getTime() + 5.5 * 60 * 60 * 1000);
+        const label = callDateIST.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
+        const time  = callDateIST.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'UTC' });
         await prisma.adminMessage.create({
           data: { content: `Weekly mentor call scheduled — ${label} at ${time}. Duration: ${durationMin || 45} min.`, type: 'Reminder', studentId: sid, adminId: admin.id },
         });
       }
     }
 
-    res.json({ id: call.id, scheduledAt: call.scheduledAt, durationMin: call.durationMin, notes: call.notes, completed: call.completed, mentorName: fp.user.name });
+    res.json({ id: call.id, scheduledAt: call.scheduledAt, durationMin: call.durationMin, meetLink: call.meetLink, notes: call.notes, completed: call.completed, mentorName: fp.user.name });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to save call' });

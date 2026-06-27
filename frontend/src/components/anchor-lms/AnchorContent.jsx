@@ -1,12 +1,58 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import DailyReportForm from '../common/DailyReportForm';
+
+// Join button — active 10 min before call, disabled after call ends
+const JoinCallButton = ({ scheduledAt, durationMin, meetLink }) => {
+  const [active, setActive] = useState(false);
+  const timerRef = useRef(null);
+
+  useEffect(() => {
+    if (!meetLink) return;
+    const check = () => {
+      const now = Date.now();
+      const start = new Date(scheduledAt).getTime();
+      const end   = start + durationMin * 60 * 1000;
+      setActive(now >= start - 10 * 60 * 1000 && now <= end);
+    };
+    check();
+    timerRef.current = setInterval(check, 15000);
+    return () => clearInterval(timerRef.current);
+  }, [scheduledAt, durationMin, meetLink]);
+
+  if (!meetLink) return null;
+
+  return (
+    <a
+      href={active ? meetLink : undefined}
+      target="_blank"
+      rel="noopener noreferrer"
+      onClick={e => { if (!active) e.preventDefault(); }}
+      style={{
+        display: 'inline-flex', alignItems: 'center', gap: '6px',
+        padding: '7px 16px', borderRadius: '8px', fontSize: '12.5px', fontWeight: 700,
+        textDecoration: 'none', transition: 'all .18s', cursor: active ? 'pointer' : 'not-allowed',
+        background: active ? 'linear-gradient(135deg,#22C55E,#16a34a)' : 'rgba(234,244,236,0.06)',
+        color: active ? '#fff' : 'var(--t4)',
+        border: active ? 'none' : '1px solid var(--b)',
+        boxShadow: active ? '0 3px 12px rgba(34,197,94,0.35)' : 'none',
+        pointerEvents: 'auto',
+      }}
+      title={active ? 'Join Google Meet' : 'Activates 10 minutes before the call'}
+    >
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+        <polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/>
+      </svg>
+      {active ? 'Join Now' : 'Join Now (opens closer to call)'}
+    </a>
+  );
+};
 
 const HABIT_ICONS = {
   sleep: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#86EFAC" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>,
   study: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#86EFAC" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>,
   revision: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#86EFAC" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>,
-  phone: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" stroke="#86EFAC"/><line x1="9" y1="7" x2="15" y2="7" stroke="#86EFAC"/><line x1="9" y1="10" x2="15" y2="10" stroke="#86EFAC"/><circle cx="17" cy="17" r="4" fill="#102D1E" stroke="#F87171" strokeWidth="1.8"/><line x1="14.5" y1="19.5" x2="19.5" y2="14.5" stroke="#F87171" strokeWidth="1.8"/></svg>,
+  phone: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" stroke="#86EFAC"/><line x1="9" y1="7" x2="15" y2="7" stroke="#86EFAC"/><line x1="9" y1="10" x2="15" y2="10" stroke="#86EFAC"/><circle cx="17" cy="17" r="4" fill="#0A1F12" stroke="#F87171" strokeWidth="1.8"/><line x1="14.5" y1="19.5" x2="19.5" y2="14.5" stroke="#F87171" strokeWidth="1.8"/></svg>,
   problems: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#86EFAC" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>,
 };
 
@@ -46,7 +92,10 @@ const computeStreak = (logs) => {
 };
 
 const fmtDate = (iso) => {
-  const d = new Date(iso);
+  // Date-only strings (YYYY-MM-DD) are treated as UTC midnight by Date; appending IST time
+  // ensures the displayed date matches the IST date the note/call was created.
+  const normalized = /^\d{4}-\d{2}-\d{2}$/.test(iso) ? iso + 'T05:30:00' : iso;
+  const d = new Date(normalized);
   return d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
 };
 const fmtTime = (iso) => new Date(iso).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
@@ -60,11 +109,11 @@ const timeAgo = (iso) => {
 };
 
 const NotifTypeMeta = {
-  'Motivational Note': { color: '#86EFAC', bg: 'rgba(134,239,172,.10)', icon: '💬' },
-  'Reminder':          { color: '#93C5FD', bg: 'rgba(147,197,253,.10)', icon: '📞' },
-  'Announcement':      { color: '#E8A830', bg: 'rgba(232,168,48,.10)',  icon: '📢' },
-  'Feedback':          { color: '#86EFAC', bg: 'rgba(134,239,172,.08)', icon: '📋' },
-  'Diagnostic':        { color: '#FBBF24', bg: 'rgba(251,191,36,.10)',  icon: '🎯' },
+  'Motivational Note': { color: '#86EFAC', bg: 'rgba(134,239,172,.10)', icon: '💬', page: 'notes'      },
+  'Reminder':          { color: '#93C5FD', bg: 'rgba(147,197,253,.10)', icon: '📞', page: 'calls'      },
+  'Announcement':      { color: '#E8A830', bg: 'rgba(232,168,48,.10)',  icon: '📢', page: 'dashboard'  },
+  'Feedback':          { color: '#86EFAC', bg: 'rgba(134,239,172,.08)', icon: '📋', page: 'history'    },
+  'Diagnostic':        { color: '#FBBF24', bg: 'rgba(251,191,36,.10)',  icon: '🎯', page: 'diagnostic' },
 };
 
 const AnchorContent = ({
@@ -82,7 +131,7 @@ const AnchorContent = ({
   const mentorInitial = mentorName ? mentorName[0].toUpperCase() : '?';
 
   const [resTab, setResTab] = useState(0);
-  const [openSections, setOpenSections] = useState(new Set(['subj-physics']));
+  const [openSections, setOpenSections] = useState(new Set());
   const [notifFilter, setNotifFilter] = useState('all');
 
   const toggleSection = (key) => setOpenSections(prev => {
@@ -374,7 +423,10 @@ const AnchorContent = ({
               <div className="call-title">Weekly Mentor Call</div>
               <div className="call-meta">{mentorName || 'Mentor'} · {fmtDate(nextCall.scheduledAt)} · {fmtTime(nextCall.scheduledAt)} · {nextCall.durationMin} min</div>
             </div>
-            <span className="call-badge c-upcoming" onClick={() => onNav('calls')} style={{ cursor: 'pointer' }}>View →</span>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px', flexShrink: 0 }}>
+              <JoinCallButton scheduledAt={nextCall.scheduledAt} durationMin={nextCall.durationMin} meetLink={nextCall.meetLink} />
+              <span className="call-badge c-upcoming" onClick={() => onNav('calls')} style={{ cursor: 'pointer' }}>View →</span>
+            </div>
           </div>
         ) : (
           <div className="call-card" style={{ marginBottom: '10px', opacity: .7 }}>
@@ -405,6 +457,7 @@ const AnchorContent = ({
               mentorName={mentorFirst}
               todayReport={todayReport}
               dailyReports={dailyReports}
+              onShowToast={onShowToast}
               onComplete={(report) => { onReportSubmitted?.(report); onShowToast('Report submitted ✓'); }}
             />
           );
@@ -432,7 +485,10 @@ const AnchorContent = ({
               <div className="call-title">{c.mentorName} · Weekly Call</div>
               <div className="call-meta">{fmtDate(c.scheduledAt)} · {fmtTime(c.scheduledAt)} · {c.durationMin} min</div>
             </div>
-            <span className="call-badge c-upcoming">Upcoming</span>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px', flexShrink: 0 }}>
+              <JoinCallButton scheduledAt={c.scheduledAt} durationMin={c.durationMin} meetLink={c.meetLink} />
+              <span className="call-badge c-upcoming">Upcoming</span>
+            </div>
           </div>
         ))}
 
@@ -715,7 +771,7 @@ const AnchorContent = ({
                         <span style={{ fontSize: '11px', color: 'var(--t3)' }}>Focus {r.focusQuality}/5{parseFloat(totalHrs) > 0 ? ' · ' + totalHrs + 'h' : ''}</span>
                       </div>
                       {r.wentWell && <div style={{ fontSize: '12.5px', color: 'var(--t2)', lineHeight: 1.5 }}>Went well: {r.wentWell}</div>}
-                      {r.wentHard && <div style={{ fontSize: '12.5px', color: 'rgba(234,244,236,.38)', lineHeight: 1.5, marginTop: '2px' }}>Felt hard: {r.wentHard}</div>}
+                      {r.wentHard && <div style={{ fontSize: '12.5px', color: 'var(--t3)', lineHeight: 1.5, marginTop: '2px' }}>Felt hard: {r.wentHard}</div>}
                     </div>
                   </div>
                 );
@@ -775,10 +831,13 @@ const AnchorContent = ({
               const meta = NotifTypeMeta[n.type] || { color: 'var(--t3)', bg: 'rgba(234,244,236,.06)', icon: '🔔' };
               const isUnread = !n.readAt;
               return (
-                <div key={n.id} onClick={() => { if (isUnread) onMarkNotifRead(n.id); }}
-                  style={{ display: 'flex', gap: '13px', padding: '14px 16px', borderRadius: 'var(--rl)', background: isUnread ? 'var(--bg3)' : 'var(--bg2)', border: '1px solid ' + (isUnread ? 'var(--b2)' : 'var(--b)'), cursor: isUnread ? 'pointer' : 'default', opacity: n.readAt ? 0.6 : 1, transition: 'all .15s' }}
-                  onMouseOver={e => { if (isUnread) e.currentTarget.style.background = 'var(--bg4)'; }}
-                  onMouseOut={e => { if (isUnread) e.currentTarget.style.background = 'var(--bg3)'; }}>
+                <div key={n.id} onClick={() => {
+                    if (isUnread) onMarkNotifRead(n.id);
+                    if (meta.page) onNav(meta.page);
+                  }}
+                  style={{ display: 'flex', gap: '13px', padding: '14px 16px', borderRadius: 'var(--rl)', background: isUnread ? 'var(--bg3)' : 'var(--bg2)', border: '1px solid ' + (isUnread ? 'var(--b2)' : 'var(--b)'), cursor: 'pointer', opacity: n.readAt ? 0.72 : 1, transition: 'all .15s' }}
+                  onMouseOver={e => { e.currentTarget.style.background = 'var(--bg4)'; }}
+                  onMouseOut={e => { e.currentTarget.style.background = isUnread ? 'var(--bg3)' : 'var(--bg2)'; }}>
                   <div style={{ width: '38px', height: '38px', borderRadius: '11px', background: meta.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: '18px' }}>{meta.icon}</div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>

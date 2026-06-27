@@ -302,6 +302,7 @@ model MentorCall {
   id          Int      @id @default(autoincrement())
   scheduledAt DateTime
   durationMin Int      @default(45)
+  meetLink    String?
   notes       String?
   completed   Boolean  @default(false)
   createdAt   DateTime @default(now())

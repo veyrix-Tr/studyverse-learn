@@ -791,7 +791,7 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
           const isNEET = (t) => (t || '').toLowerCase().includes('neet');
           const subjectList = (student) => isNEET(student.examTarget)
             ? ['Physics', 'Chemistry', 'Biology']
-            : ['Physics', 'Chemistry', 'Mathematics'];
+            : ['Physics', 'Chemistry', 'Maths'];
 
           const facultyForSubject = (student, subject) => {
             const key = subject.toLowerCase();
@@ -1217,9 +1217,10 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
           const TYPE_DOT = { Announcement:'#0F1F3D', Reminder:'#F97316', 'Motivational Note':'#7C3AED', 'Schedule Update':'#2563EB' };
           const recipientCount = msgMode === 'select' ? msgSelectedIds.size
             : students.filter(s => {
-                if (msgPlan === 'spark') return s.plan === 'spark';
-                if (msgPlan === 'forge') return s.plan === 'forge' || s.plan === 'apex';
-                if (msgPlan === 'apex') return s.plan === 'apex';
+                if (msgPlan === 'spark')  return s.plan === 'spark';
+                if (msgPlan === 'forge')  return ['forge', 'apex', 'anchor'].includes(s.plan);
+                if (msgPlan === 'apex')   return s.plan === 'apex';
+                if (msgPlan === 'anchor') return s.plan === 'anchor';
                 return true;
               }).length;
           const filtered = students.filter(s => s.name.toLowerCase().includes(msgSearch.toLowerCase()));
@@ -1265,7 +1266,7 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
                   <div className="fg">
                     <label>Target plan <span style={{ fontWeight: 400, color: 'var(--text3)' }}>— {recipientCount} student{recipientCount !== 1 ? 's' : ''} will receive this</span></label>
                     <div className="target-chips">
-                      {[{ k: 'all', l: 'All plans' }, { k: 'spark', l: 'Spark only' }, { k: 'forge', l: 'Forge & above' }, { k: 'apex', l: 'Apex only' }].map(p => (
+                      {[{ k: 'all', l: 'All plans' }, { k: 'spark', l: 'Spark only' }, { k: 'forge', l: 'Forge & above' }, { k: 'apex', l: 'Apex only' }, { k: 'anchor', l: 'Anchor only' }].map(p => (
                         <div key={p.k} className={'chip chip-nv' + (msgPlan === p.k ? ' on' : '')} onClick={() => setMsgPlan(p.k)}>{p.l}</div>
                       ))}
                     </div>
@@ -1291,7 +1292,7 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
 
                     {/* Quick-select chips */}
                     <div style={{ display: 'flex', gap: '6px', marginBottom: '10px', flexWrap: 'wrap' }}>
-                      {[{ l: 'All Spark', p: 'spark' }, { l: 'All Forge', p: 'forge' }, { l: 'All Apex', p: 'apex' }, { l: 'Everyone', p: null }].map(q => {
+                      {[{ l: 'All Spark', p: 'spark' }, { l: 'All Forge', p: 'forge' }, { l: 'All Apex', p: 'apex' }, { l: 'All Anchor', p: 'anchor' }, { l: 'Everyone', p: null }].map(q => {
                         const count = students.filter(s => q.p ? s.plan === q.p : true).length;
                         const allSel = count > 0 && students.filter(s => q.p ? s.plan === q.p : true).every(s => msgSelectedIds.has(s.id));
                         return (
@@ -1415,6 +1416,7 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
                             <option value="spark">Spark</option>
                             <option value="forge">Forge</option>
                             <option value="apex">Apex</option>
+                            <option value="anchor">Anchor</option>
                           </select>
                         </div>
                         {/* Clear + count */}

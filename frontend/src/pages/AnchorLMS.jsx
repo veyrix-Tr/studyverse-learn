@@ -59,7 +59,7 @@ const AnchorLMS = () => {
     get(`/api/student/${userId}/mentor-calls`, setMentorCalls);
     get(`/api/student/${userId}/notifications`, setNotifications);
 
-    // Poll notifications + mentor data every 30s so student sees updates without refresh
+    // Poll notifications + mentor data every 15s so student sees updates without refresh
     const poll = setInterval(() => {
       get(`/api/student/${userId}/notifications`, setNotifications);
       get(`/api/student/${userId}/mentor-notes`, setMentorNotes);

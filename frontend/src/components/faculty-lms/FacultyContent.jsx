@@ -1,4 +1,4 @@
-import { useState, useEffect, Fragment } from 'react';
+import { useState, useEffect, useRef, Fragment } from 'react';
 import { useParams } from 'react-router-dom';
 
 const fmtTime = (iso) => new Date(iso).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
@@ -134,7 +134,7 @@ const pctColor = (p) => p >= 75 ? 'var(--green)' : p >= 60 ? 'var(--gold)' : p >
 const pctBar   = (p) => p >= 75 ? 'pb-green' : p >= 60 ? 'pb-gold' : p >= 45 ? 'pb-orange' : 'pb-red';
 const pctFlag  = (p) => p >= 75 ? ['On track', 'pp'] : p >= 60 ? ['Progressing', 'po'] : ['Needs support', 'pr'];
 
-const FacultyContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, sessions = [], doubts = [], students = [], resources = [], onDoubtAnswered, onSessionNoteUpdated, onResourceDeleted, weeklyReports = [], onReportCreated, onReportUpdated, onReportSubmitted, onReportDeleted, parentFeedback = [], mentorStudents = [], onMentorStudentUpdated, mentorDailyReports = [] }) => {
+const FacultyContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, sessions = [], doubts = [], students = [], resources = [], onDoubtAnswered, onSessionNoteUpdated, onResourceDeleted, onResourceAdded, weeklyReports = [], onReportCreated, onReportUpdated, onReportSubmitted, onReportDeleted, parentFeedback = [], mentorStudents = [], onMentorStudentUpdated, mentorDailyReports = [] }) => {
   const { id: userId } = useParams();
   const firstName = profile?.name?.split(' ').find(p => !p.startsWith('Dr')) || profile?.name?.split(' ')[0] || 'there';
   const [scheduleTab, setScheduleTab] = useState(0);
@@ -1126,6 +1126,7 @@ const MentorPanel = ({ userId, mentorStudents, onMentorStudentUpdated, onShowToa
   const [callDate, setCallDate] = useState('');
   const [callTime, setCallTime] = useState('18:00');
   const [callDuration, setCallDuration] = useState(45);
+  const [callMeetLink, setCallMeetLink] = useState('');
   const [callNotes, setCallNotes] = useState('');
   const [callSaving, setCallSaving] = useState(false);
   const [activeTab, setActiveTab] = useState('calls');
@@ -1133,8 +1134,12 @@ const MentorPanel = ({ userId, mentorStudents, onMentorStudentUpdated, onShowToa
   const token = () => localStorage.getItem('token');
   const api = import.meta.env.VITE_API_URL;
 
+  const hasAutoSelected = useRef(false);
   useEffect(() => {
-    if (mentorStudents.length > 0 && !selected) loadDetail(mentorStudents[0]);
+    if (mentorStudents.length > 0 && !hasAutoSelected.current) {
+      hasAutoSelected.current = true;
+      loadDetail(mentorStudents[0]);
+    }
   }, [mentorStudents]);
 
   const loadDetail = async (s) => {
@@ -1171,7 +1176,7 @@ const MentorPanel = ({ userId, mentorStudents, onMentorStudentUpdated, onShowToa
   };
 
   const submitCall = async () => {
-    if (!callDate || !selected) return;
+    if (!callDate || !selected || !callMeetLink.trim()) return;
     setCallSaving(true);
     try {
       // Build time as IST to avoid browser-timezone shifting the stored UTC value
@@ -1182,13 +1187,13 @@ const MentorPanel = ({ userId, mentorStudents, onMentorStudentUpdated, onShowToa
       const scheduledAt = new Date(localMs).toISOString();
       const r = await fetch(`${api}/api/faculty/${userId}/mentor-student/${selected.id}/call`, {
         method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token()}` },
-        body: JSON.stringify({ scheduledAt, durationMin: callDuration, notes: callNotes || null }),
+        body: JSON.stringify({ scheduledAt, durationMin: callDuration, meetLink: callMeetLink.trim() || null, notes: callNotes || null }),
       });
       if (r.ok) {
         const call = await r.json();
         setDetail(d => ({ ...d, mentorCalls: [call, ...(d?.mentorCalls || [])] }));
         onMentorStudentUpdated?.({ id: selected.id, nextCall: call });
-        setCallDate(''); setCallNotes('');
+        setCallDate(''); setCallMeetLink(''); setCallNotes('');
         onShowToast('Call scheduled and student notified ✓');
       } else { onShowToast('Failed to schedule call'); }
     } catch { onShowToast('Could not connect to server'); }
@@ -1370,8 +1375,12 @@ const MentorPanel = ({ userId, mentorStudents, onMentorStudentUpdated, onShowToa
                       <input type="text" className="mpac-input" value={callNotes} onChange={e => setCallNotes(e.target.value)} placeholder="e.g. Thermodynamics revision" />
                     </div>
                   </div>
+                  <div className="mpac-field">
+                    <label className="mpac-label">Google Meet Link</label>
+                    <input type="url" className="mpac-input" value={callMeetLink} onChange={e => setCallMeetLink(e.target.value)} placeholder="https://meet.google.com/xxx-xxxx-xxx" />
+                  </div>
                 </div>
-                <button className="mp-btn mp-btn-navy" onClick={submitCall} disabled={callSaving || !callDate} style={{ marginTop: 'auto' }}>
+                <button className="mp-btn mp-btn-navy" onClick={submitCall} disabled={callSaving || !callDate || !callMeetLink.trim()} style={{ marginTop: 'auto' }}>
                   {callSaving ? <><span className="mp-btn-spinner" />Scheduling…</> : 'Schedule & Notify →'}
                 </button>
               </div>

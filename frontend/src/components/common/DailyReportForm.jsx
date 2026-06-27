@@ -143,7 +143,7 @@ const HistoryPanel = ({ dailyReports }) => {
 };
 
 // ── MAIN FORM ──
-const DailyReportForm = ({ profile, mentorName = 'your mentor', todayReport, dailyReports = [], onComplete }) => {
+const DailyReportForm = ({ profile, mentorName = 'your mentor', todayReport, dailyReports = [], onComplete, onShowToast }) => {
   const { id: userId } = useParams();
   const [step, setStep] = useState(0);
   const [direction, setDirection] = useState('forward');
@@ -187,7 +187,7 @@ const DailyReportForm = ({ profile, mentorName = 'your mentor', todayReport, dai
       setSubmitted(true);
       onComplete?.(data);
     } catch (e) {
-      alert(e.message || 'Failed to submit. Try again.');
+      onShowToast?.(e.message || 'Failed to submit. Try again.');
     } finally {
       setSubmitting(false);
     }

@@ -414,13 +414,14 @@ router.post('/messages', requireAuth, async (req, res) => {
 
     if (studentId === 'all') {
       const VALID_PLANS = ['spark', 'forge', 'apex', null, undefined];
-      if (targetPlan !== undefined && targetPlan !== null && !['spark', 'forge', 'apex'].includes(targetPlan)) {
-        return res.status(400).json({ error: `Invalid targetPlan "${targetPlan}". Must be spark, forge, or apex.` });
+      if (targetPlan !== undefined && targetPlan !== null && !['spark', 'forge', 'apex', 'anchor'].includes(targetPlan)) {
+        return res.status(400).json({ error: `Invalid targetPlan "${targetPlan}". Must be spark, forge, apex, or anchor.` });
       }
       let planWhere = {};
-      if (targetPlan === 'spark') planWhere = { plan: 'spark' };
-      else if (targetPlan === 'forge') planWhere = { plan: { in: ['forge', 'apex'] } };
-      else if (targetPlan === 'apex') planWhere = { plan: 'apex' };
+      if (targetPlan === 'spark')  planWhere = { plan: 'spark' };
+      else if (targetPlan === 'forge')  planWhere = { plan: { in: ['forge', 'apex', 'anchor'] } };
+      else if (targetPlan === 'apex')   planWhere = { plan: 'apex' };
+      else if (targetPlan === 'anchor') planWhere = { plan: 'anchor' };
 
       const students = await prisma.studentProfile.findMany({ where: planWhere, select: { id: true } });
       if (students.length === 0) return res.json({ success: true, sent: 0, sentAt: sentAt.toISOString() });
