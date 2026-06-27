@@ -130,6 +130,7 @@ const AnchorLMS = () => {
             notifications={[]}
             onMarkNotifRead={() => {}}
             onMarkAllNotifRead={() => {}}
+            isAnchor={true}
           />
         ) : (
           <AnchorContent

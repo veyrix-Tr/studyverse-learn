@@ -139,7 +139,7 @@ const getGreeting = () => {
 
 
 
-const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, habitLogs = [], onHabitSaved, notifications = [], onMarkNotifRead, onMarkAllNotifRead }) => {
+const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, habitLogs = [], onHabitSaved, notifications = [], onMarkNotifRead, onMarkAllNotifRead, isAnchor = false }) => {
   const { id: userId } = useParams();
   const p = (name) => `page${activePage === name ? ' on' : ''}`;
   const firstName = profile?.name?.split(' ')[0] || 'there';
@@ -795,11 +795,16 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
             'biomolecule':{ jee:0,neet:6 }, 'reproduction':{ jee:0,neet:8 },
           };
 
-          const SUBJ_COLOR = {
-            Physics:     { bg:'rgba(51,82,138,0.09)',  color:'#33528A', border:'rgba(51,82,138,0.2)' },
-            Mathematics: { bg:'rgba(80,66,128,0.09)',  color:'#504280', border:'rgba(80,66,128,0.2)' },
+          const SUBJ_COLOR = isAnchor ? {
+            Physics:     { bg:'rgba(125,211,252,0.12)', color:'#7DD3FC', border:'rgba(125,211,252,0.22)' },
+            Mathematics: { bg:'rgba(196,181,253,0.12)', color:'#C4B5FD', border:'rgba(196,181,253,0.22)' },
+            Chemistry:   { bg:'rgba(251,191,36,0.12)',  color:'#FCD34D', border:'rgba(251,191,36,0.22)'  },
+            Biology:     { bg:'rgba(134,239,172,0.12)', color:'#86EFAC', border:'rgba(134,239,172,0.22)' },
+          } : {
+            Physics:     { bg:'rgba(51,82,138,0.09)',  color:'#33528A', border:'rgba(51,82,138,0.2)'   },
+            Mathematics: { bg:'rgba(80,66,128,0.09)',  color:'#504280', border:'rgba(80,66,128,0.2)'   },
             Chemistry:   { bg:'rgba(160,100,50,0.1)',  color:'#8A5033', border:'rgba(160,100,50,0.22)' },
-            Biology:     { bg:'rgba(51,120,80,0.09)',  color:'#337850', border:'rgba(51,120,80,0.2)' },
+            Biology:     { bg:'rgba(51,120,80,0.09)',  color:'#337850', border:'rgba(51,120,80,0.2)'   },
           };
 
           const getEstMarks = (name) => {

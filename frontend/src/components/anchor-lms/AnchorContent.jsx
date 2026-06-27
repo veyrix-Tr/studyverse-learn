@@ -214,7 +214,7 @@ const AnchorContent = ({
         <div style={{ marginBottom: '22px', display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
           <div>
             <div style={{ fontSize: '11px', color: 'var(--t3)', textTransform: 'uppercase', letterSpacing: '.1em', fontWeight: 600, marginBottom: '4px' }}>
-              {new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+              {new Date(Date.now() + 5.5 * 60 * 60 * 1000).toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
             </div>
             <div style={{ fontFamily: 'var(--fs)', fontSize: '24px', fontWeight: 700, color: 'var(--t1)' }}>
               {(() => { const h = new Date(Date.now() + 5.5 * 60 * 60 * 1000).getUTCHours(); return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening'; })()}, {profile?.name?.split(' ')[0] || 'there'}.
@@ -500,7 +500,7 @@ const AnchorContent = ({
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '16px' }}>
               <div>
                 <div style={{ fontFamily: 'var(--fs)', fontSize: '16px', fontWeight: 700, color: 'var(--t1)' }}>Today's Habits</div>
-                <div style={{ fontSize: '12px', color: 'var(--t3)' }}>{new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</div>
+                <div style={{ fontSize: '12px', color: 'var(--t3)' }}>{new Date(Date.now() + 5.5 * 60 * 60 * 1000).toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</div>
               </div>
               {streak > 0 && <span style={{ fontFamily: 'var(--fs)', fontSize: '20px', color: 'var(--amber)' }}>🔥 {streak}</span>}
             </div>
@@ -608,47 +608,6 @@ const AnchorContent = ({
             })}
           </>
         )}
-      </div>
-
-      {/* ══════════ TOPIC MAP ══════════ */}
-      <div className={pg('topics')}>
-        <div style={{ background: 'var(--bg3)', border: '1px solid var(--b)', borderRadius: 'var(--rl)', padding: '12px 16px', marginBottom: '18px', borderLeft: '3px solid var(--sage)', fontSize: '13px', color: 'var(--t2)' }}>
-          📊 From your diagnostic. Your mentor uses this to understand your starting point. Anchor doesn't teach subjects — but it informs how your mentor guides you.
-        </div>
-        {[
-          { key: 'subj-physics', icon: '⚡', name: 'Physics', pct: 41, barCls: 'pb-amber', color: 'var(--amber)', chapters: [{ name: 'Electrostatics', pct: 31, color: 'var(--red)', tag: 'weak-tag', label: 'Weak' }, { name: 'Mechanics', pct: 44, color: 'var(--amber)', tag: 'ok-tag', label: 'Avg' }, { name: 'Waves & Optics', pct: 72, color: 'var(--green)', tag: 'good-tag', label: 'Good' }] },
-          { key: 'subj-maths', icon: '📐', name: 'Mathematics', pct: 54, barCls: 'pb-amber', color: 'var(--amber)', chapters: [{ name: 'Integration', pct: 42, color: 'var(--red)', tag: 'weak-tag', label: 'Weak' }, { name: 'Trigonometry', pct: 74, color: 'var(--green)', tag: 'good-tag', label: 'Good' }] },
-        ].map(subj => (
-          <div key={subj.key} className="tm-subject">
-            <div className="tms-header" onClick={() => toggleSection(subj.key)}>
-              <div className="tms-icon">{subj.icon}</div>
-              <div className="tms-name">{subj.name}</div>
-              <div className="pbar" style={{ width: '110px', flexShrink: 0 }}><div className={`pbar-inner ${subj.barCls}`} style={{ width: `${subj.pct}%` }} /></div>
-              <div className="tms-score" style={{ color: subj.color, width: '38px', textAlign: 'right' }}>{subj.pct}%</div>
-              <svg className="tms-arrow" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ transform: openSections.has(subj.key) ? 'rotate(180deg)' : '' }}><path d="M6 9l6 6 6-6"/></svg>
-            </div>
-            {openSections.has(subj.key) && (
-              <div style={{ padding: '12px 16px' }}>
-                {subj.chapters.map((ch, i) => (
-                  <div key={i} className="cr-row">
-                    <div className="cr-name">{ch.name}</div>
-                    <div className="cr-bar"><div className="pbar"><div className="pbar-inner" style={{ width: `${ch.pct}%`, background: ch.color }} /></div></div>
-                    <div className="cr-pct" style={{ color: ch.color }}>{ch.pct}%</div>
-                    <div className={`cr-tag ${ch.tag}`}>{ch.label}</div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        ))}
-        <div style={{ background: 'linear-gradient(135deg,var(--bg3),var(--bg4))', border: '1px solid var(--gb)', borderRadius: 'var(--rl)', padding: '18px 20px', marginTop: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '14px', flexWrap: 'wrap' }}>
-          <div>
-            <div style={{ fontSize: '10px', color: 'var(--gold)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: '4px' }}>Want these gaps fixed?</div>
-            <div style={{ fontFamily: 'var(--fs)', fontSize: '15px', fontWeight: 700, color: 'var(--t1)', marginBottom: '3px' }}>Upgrade to Apex for 1-to-1 subject sessions</div>
-            <div style={{ fontSize: '12.5px', color: 'var(--t2)' }}>Anchor gives you a mentor. Apex adds a subject faculty who teaches specifically to your gaps.</div>
-          </div>
-          <button className="btn btn-gold btn-sm" onClick={() => onShowToast('Contacting Studyverse about Apex upgrade...')}>Enquire About Apex →</button>
-        </div>
       </div>
 
       {/* ══════════ RESOURCES ══════════ */}
