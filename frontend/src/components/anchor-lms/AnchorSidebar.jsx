@@ -1,4 +1,4 @@
-const AnchorSidebar = ({ activePage, onNav, profile, reportDoneToday = false }) => {
+const AnchorSidebar = ({ activePage, onNav, profile, reportDoneToday = false, unreadCount = 0 }) => {
   const ni = (page) => `ni${activePage === page ? ' on' : ''}`;
   const name = profile?.name || 'Student';
   const initial = name.charAt(0).toUpperCase();
@@ -30,16 +30,6 @@ const AnchorSidebar = ({ activePage, onNav, profile, reportDoneToday = false }) 
         <div className="tier-sub">Someone in your corner, every day</div>
       </div>
 
-      {/* Mentor card */}
-      <div className="sb-mentor">
-        <div className="sb-mentor-av">A</div>
-        <div>
-          <div className="sb-mentor-name">Ajay Sharma</div>
-          <div className="sb-mentor-role">Your Mentor · Next call: Fri 6PM</div>
-        </div>
-        <div className="online-dot"></div>
-      </div>
-
       {/* My Anchor nav */}
       <div className="nb">
         <div className="nl">My Anchor</div>
@@ -55,6 +45,10 @@ const AnchorSidebar = ({ activePage, onNav, profile, reportDoneToday = false }) 
         <div className={ni('calls')} onClick={() => onNav('calls')}>
           <svg className="nic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.39 2 2 0 0 1 3.6 1.21h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.38a16 16 0 0 0 6 6l.94-.94a2 2 0 0 1 2.25-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.73 16z"/></svg>
           Weekly Calls
+        </div>
+        <div className={ni('notes')} onClick={() => onNav('notes')}>
+          <svg className="nic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          Mentor Notes
         </div>
         <div className={ni('habits')} onClick={() => onNav('habits')}>
           <svg className="nic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
@@ -97,6 +91,11 @@ const AnchorSidebar = ({ activePage, onNav, profile, reportDoneToday = false }) 
         <div className={ni('parent')} onClick={() => onNav('parent')}>
           <svg className="nic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
           Parent View
+        </div>
+        <div className={ni('notif')} onClick={() => onNav('notif')}>
+          <svg className="nic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+          Notifications
+          {unreadCount > 0 && <span className="nbadge nb-gold">{unreadCount > 9 ? '9+' : unreadCount}</span>}
         </div>
       </div>
 

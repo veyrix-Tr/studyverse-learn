@@ -37,6 +37,7 @@ router.get('/students', requireAuth, async (req, res) => {
     const students = await prisma.studentProfile.findMany({
       include: {
         user: { select: { id: true, name: true } },
+        mentor: { include: { user: { select: { name: true } } } },
         weeklyScores: { orderBy: { weekNumber: 'asc' } },
         parentFeedback: {
           orderBy: { createdAt: 'desc' },
@@ -80,6 +81,9 @@ router.get('/students', requireAuth, async (req, res) => {
         diagnosticScore: s.diagnosticScore,
         diagnosticTakenAt: s.diagnosticTakenAt,
         facultyName,
+        mentorId: s.mentorId || null,
+        mentorName: s.mentor?.user?.name || null,
+        subjectFaculty: s.subjectFaculty || {},
         lastWeek, lastScore, lastTotalMarks,
         latestFeedback: s.parentFeedback[0] || null,
       };
@@ -99,14 +103,9 @@ router.get('/faculty', requireAuth, async (req, res) => {
     const faculty = await prisma.facultyProfile.findMany({
       include: {
         user: { select: { id: true, name: true, email: true } },
-        sessions: {
-          select: { id: true, subject: true, grade: true, scheduledAt: true },
-        },
-        weeklyReports: {
-          select: { overallRating: true },
-          orderBy: { createdAt: 'desc' },
-          take: 20,
-        },
+        sessions: { select: { id: true, subject: true, grade: true, scheduledAt: true } },
+        weeklyReports: { select: { overallRating: true }, orderBy: { createdAt: 'desc' }, take: 20 },
+        mentorStudents: { select: { id: true } },
       },
       orderBy: { user: { name: 'asc' } },
     });
@@ -132,6 +131,7 @@ router.get('/faculty', requireAuth, async (req, res) => {
         totalSessions: f.sessions.length,
         avgRating,
         reportCount: f.weeklyReports.length,
+        mentorStudentCount: f.mentorStudents.length,
       };
     });
 
@@ -194,6 +194,62 @@ router.post('/faculty', requireAuth, async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to create faculty' });
+  }
+});
+
+// PUT /api/admin/student/:studentUserId/mentor — assign or clear mentor
+router.put('/student/:studentUserId/mentor', requireAuth, async (req, res) => {
+  try {
+    const { mentorId } = req.body; // null to clear, facultyProfile.id to assign
+    const profile = await prisma.studentProfile.findUnique({
+      where: { userId: req.params.studentUserId },
+    });
+    if (!profile) return res.status(404).json({ error: 'Student not found' });
+
+    if (mentorId !== null && mentorId !== undefined) {
+      const faculty = await prisma.facultyProfile.findUnique({ where: { id: mentorId } });
+      if (!faculty) return res.status(404).json({ error: 'Faculty not found' });
+    }
+
+    const updated = await prisma.studentProfile.update({
+      where: { userId: req.params.studentUserId },
+      data: { mentorId: mentorId || null },
+      include: { mentor: { include: { user: { select: { name: true } } } } },
+    });
+
+    res.json({ mentorId: updated.mentorId, mentorName: updated.mentor?.user?.name || null });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to update mentor assignment' });
+  }
+});
+
+// PUT /api/admin/student/:studentUserId/subject-faculty — assign or clear a faculty for a subject
+router.put('/student/:studentUserId/subject-faculty', requireAuth, async (req, res) => {
+  try {
+    const { subject, facultyId } = req.body; // subject: "Physics"|"Chemistry"|..., facultyId: number or null
+    if (!subject) return res.status(400).json({ error: 'subject is required' });
+
+    const profile = await prisma.studentProfile.findUnique({ where: { userId: req.params.studentUserId } });
+    if (!profile) return res.status(404).json({ error: 'Student not found' });
+
+    const current = (profile.subjectFaculty || {});
+    const updated = { ...current };
+    if (facultyId) {
+      updated[subject] = parseInt(facultyId);
+    } else {
+      delete updated[subject];
+    }
+
+    const result = await prisma.studentProfile.update({
+      where: { userId: req.params.studentUserId },
+      data: { subjectFaculty: updated },
+    });
+
+    res.json({ subjectFaculty: result.subjectFaculty });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to update subject faculty' });
   }
 });
 

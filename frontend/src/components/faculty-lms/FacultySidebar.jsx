@@ -5,7 +5,7 @@ const isToday = (iso) => {
   return d.getFullYear() === n.getFullYear() && d.getMonth() === n.getMonth() && d.getDate() === n.getDate();
 };
 
-const FacultySidebar = ({ activePage, onNav, onShowToast, profile, sessions = [], doubts = [], students = [], weeklyReports = [] }) => {
+const FacultySidebar = ({ activePage, onNav, onShowToast, profile, sessions = [], doubts = [], students = [], weeklyReports = [], mentorStudents = [], mentorDailyReports = [] }) => {
   const name = profile?.name || 'Faculty';
   const initial = name.charAt(0).toUpperCase();
   const subject = profile?.facultyProfile?.subject || '';
@@ -64,7 +64,7 @@ const FacultySidebar = ({ activePage, onNav, onShowToast, profile, sessions = []
             <rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>
           </svg>
           Schedule
-          {todayCount > 0 && <span className="nbadge gold">{todayCount} Today</span>}
+          {todayCount > 0 && <span className="nbadge green">{todayCount} Now</span>}
         </div>
         <div className={`ni${activePage === 'students' ? ' on' : ''}`} onClick={() => onNav('students')}>
           <svg className="nic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -73,32 +73,64 @@ const FacultySidebar = ({ activePage, onNav, onShowToast, profile, sessions = []
             <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
           </svg>
           My Students
-          {students.length > 0 && <span className="nbadge dim">{students.length}</span>}
+          {students.length > 0 && <span className="nbadge circle">{students.length}</span>}
         </div>
       </div>
 
       <div className="nb">
-        <div className="nl">As Subject Faculty</div>
+        <div className="nl">Teaching</div>
         <div className={`ni${activePage === 'doubts' ? ' on' : ''}`} onClick={() => onNav('doubts')}>
           <svg className="nic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
           </svg>
           Doubt Queue
-          {pendingDoubts > 0 && <span className="nbadge red">{pendingDoubts}</span>}
+          {pendingDoubts > 0 && <span className="nbadge red">{pendingDoubts} Open</span>}
         </div>
         <div className={`ni${activePage === 'resources' ? ' on' : ''}`} onClick={() => onNav('resources')}>
           <svg className="nic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
             <polyline points="14 2 14 8 20 8"/>
           </svg>
-          Suggest Resources
+          Resources
         </div>
         <div className={`ni${activePage === 'tests' ? ' on' : ''}`} onClick={() => onNav('tests')}>
           <svg className="nic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
           </svg>
-          Suggest Tests
+          Test Suggestions
         </div>
+      </div>
+
+      <div className="nb">
+        <div className="nl">As Mentor</div>
+        <div className={`ni${activePage === 'mentor' ? ' on' : ''}`} onClick={() => onNav('mentor')}>
+          <svg className="nic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
+          </svg>
+          My Mentees
+          {mentorStudents.length > 0 && <span className="nbadge circle">{mentorStudents.length}</span>}
+        </div>
+        <div className={`ni${activePage === 'dailylogs' ? ' on' : ''}`} onClick={() => onNav('dailylogs')}>
+          <svg className="nic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+          </svg>
+          Daily Logs
+          {(() => {
+            const today = new Date(Date.now() + 5.5 * 60 * 60 * 1000).toISOString().slice(0, 10);
+            const todayCount = mentorStudents.filter(s => s.reportedToday).length;
+            return todayCount > 0
+              ? <span className="nbadge green">{todayCount} Today</span>
+              : mentorDailyReports.length > 0
+                ? <span className="nbadge circle">{mentorDailyReports.length}</span>
+                : null;
+          })()}
+        </div>
+      </div>
+
+      <div className="nb">
+        <div className="nl">Reports</div>
         <div className={`ni${activePage === 'reports' ? ' on' : ''}`} onClick={() => onNav('reports')}>
           <svg className="nic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M18 20V10M12 20V4M6 20v-6"/>
@@ -110,25 +142,10 @@ const FacultySidebar = ({ activePage, onNav, onShowToast, profile, sessions = []
           <svg className="nic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
           </svg>
-          Weekly Feedback
-        </div>
-      </div>
-
-      <div className="nb">
-        <div className="nl">As Mentor</div>
-        <div className="ni" onClick={() => onShowToast('Coming soon! This feature is under development.')}>
-          <svg className="nic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-          </svg>
-          Daily Logs
-          <span className="nbadge green">Soon</span>
-        </div>
-        <div className="ni" onClick={() => onShowToast('Coming soon! This feature is under development.')}>
-          <svg className="nic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.18 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.64a16 16 0 0 0 6 6l1.8-.9a2 2 0 0 1 2.11.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
-          </svg>
-          Mentor Calls
-          <span className="nbadge green">Soon</span>
+          Parent Feedback
+          {weeklyReports.filter(r => r.status === 'sent').length > 0 && (
+            <span className="nbadge blue">{weeklyReports.filter(r => r.status === 'sent').length}</span>
+          )}
         </div>
       </div>
 

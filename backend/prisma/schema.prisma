@@ -38,6 +38,10 @@ model StudentProfile {
   createdAt       DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
+  mentorId             Int?
+  mentor               FacultyProfile?        @relation("MentorAssignment", fields: [mentorId], references: [id])
+  subjectFaculty       Json?                  // { "Physics": facultyId, "Chemistry": facultyId, ... }
+
   user                 User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
   doubts               Doubt[]
   weeklyScores         WeeklyScore[]
@@ -48,6 +52,8 @@ model StudentProfile {
   dailyReports         DailyReport[]
   weeklyReports        WeeklyReport[]
   parentFeedback       ParentFeedback[]
+  mentorNotes          MentorNote[]
+  mentorCalls          MentorCall[]
 }
 
 model FacultyProfile {
@@ -65,6 +71,9 @@ model FacultyProfile {
   facultyNotifications FacultyNotification[]
   resources            Resource[]
   weeklyReports        WeeklyReport[]
+  mentorStudents       StudentProfile[]       @relation("MentorAssignment")
+  mentorNotes          MentorNote[]
+  mentorCalls          MentorCall[]
 }
 
 model AdminMessage {
@@ -273,6 +282,36 @@ model HabitLog {
   student   StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   @@unique([studentId, date])
+}
+
+model MentorNote {
+  id        Int      @id @default(autoincrement())
+  content   String
+  weekOf    String   // YYYY-MM-DD (Monday of the week)
+  createdAt DateTime @default(now())
+
+  studentId Int
+  student   StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  mentorId  Int
+  mentor    FacultyProfile @relation(fields: [mentorId], references: [id], onDelete: Cascade)
+
+  @@index([studentId])
+}
+
+model MentorCall {
+  id          Int      @id @default(autoincrement())
+  scheduledAt DateTime
+  durationMin Int      @default(45)
+  notes       String?
+  completed   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  studentId Int
+  student   StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  mentorId  Int
+  mentor    FacultyProfile @relation(fields: [mentorId], references: [id], onDelete: Cascade)
+
+  @@index([studentId])
 }
 
 model Otp {

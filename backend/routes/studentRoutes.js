@@ -17,13 +17,32 @@ router.get('/me', requireAuth, async (req, res) => {
             grade: true, planEndDate: true,
             diagnosticScore: true, diagnosticTakenAt: true,
             createdAt: true,
+            mentorId: true,
+            subjectFaculty: true,
+            mentor: { include: { user: { select: { name: true } } } },
           },
         },
       },
     });
     if (!user) return res.status(404).json({ error: 'User not found' });
-    res.json(user);
-    
+
+    // Resolve subjectFaculty IDs → names
+    const rawSF = user.studentProfile?.subjectFaculty;
+    let resolvedSubjectFaculty = null;
+    if (rawSF && typeof rawSF === 'object' && Object.keys(rawSF).length > 0) {
+      const ids = [...new Set(Object.values(rawSF).filter(Number.isInteger))];
+      const faculties = await prisma.facultyProfile.findMany({
+        where: { id: { in: ids } },
+        include: { user: { select: { name: true } } },
+      });
+      const nameMap = Object.fromEntries(faculties.map(f => [f.id, f.user.name]));
+      resolvedSubjectFaculty = Object.fromEntries(
+        Object.entries(rawSF).map(([subj, id]) => [subj, { id, name: nameMap[id] || null }])
+      );
+    }
+
+    res.json({ ...user, studentProfile: { ...user.studentProfile, subjectFaculty: resolvedSubjectFaculty } });
+
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Failed to fetch profile' });
@@ -339,15 +358,25 @@ router.get('/notifications', requireAuth, async (req, res) => {
     // FacultyNotification only relevant to Forge & Apex (they have assigned faculty)
     const hasFaculty = profile.plan === 'forge' || profile.plan === 'apex';
 
+    // Exclude system-generated activity messages (report submissions, diagnostic) — those are admin-only
+    const SYSTEM_CONTENT_PREFIXES = [' submitted their daily report', ' completed their diagnostic'];
+
     const [adminMsgs, facultyNotifs] = await Promise.all([
-      prisma.adminMessage.findMany({ where: { studentId: profile.id }, orderBy: { createdAt: 'desc' } }),
+      prisma.adminMessage.findMany({
+        where: { studentId: profile.id },
+        orderBy: { createdAt: 'desc' },
+      }),
       hasFaculty
         ? prisma.facultyNotification.findMany({ where: { studentId: profile.id }, orderBy: { createdAt: 'desc' } })
         : Promise.resolve([]),
     ]);
 
+    const studentAdminMsgs = adminMsgs.filter(m =>
+      !SYSTEM_CONTENT_PREFIXES.some(prefix => m.content.includes(prefix))
+    );
+
     const merged = [
-      ...adminMsgs.map(m => ({ id: `a-${m.id}`, content: m.content, type: m.type, readAt: m.readAt, createdAt: m.createdAt })),
+      ...studentAdminMsgs.map(m => ({ id: `a-${m.id}`, content: m.content, type: m.type, readAt: m.readAt, createdAt: m.createdAt })),
       ...facultyNotifs.map(n => ({ id: `f-${n.id}`, content: n.content, type: n.type, readAt: n.readAt, createdAt: n.createdAt })),
     ].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
@@ -617,7 +646,7 @@ router.post('/feedback', requireAuth, async (req, res) => {
   }
 });
 
-// GET /api/student/:userId/daily-reports — last 30 reports
+// GET /api/student/:userId/daily-reports — last 62 reports (2 months, covers full month grids)
 router.get('/daily-reports', requireAuth, validateUrlUser, async (req, res) => {
   try {
     const profile = await prisma.studentProfile.findUnique({ where: { userId: req.params.userId } });
@@ -625,7 +654,7 @@ router.get('/daily-reports', requireAuth, validateUrlUser, async (req, res) => {
     const reports = await prisma.dailyReport.findMany({
       where: { studentId: profile.id },
       orderBy: { date: 'desc' },
-      take: 30,
+      take: 62,
     });
     res.json(reports);
   } catch (err) {
@@ -693,6 +722,59 @@ router.post('/daily-reports', requireAuth, validateUrlUser, async (req, res) => 
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to submit daily report' });
+  }
+});
+
+// GET /api/student/:userId/mentor-notes — latest mentor notes for anchor student
+router.get('/mentor-notes', async (req, res) => {
+  try {
+    const profile = await prisma.studentProfile.findUnique({ where: { userId: req.params.userId } });
+    if (!profile) return res.json([]);
+
+    const notes = await prisma.mentorNote.findMany({
+      where: { studentId: profile.id },
+      orderBy: { createdAt: 'desc' },
+      take: 8,
+      include: { mentor: { include: { user: { select: { name: true } } } } },
+    });
+
+    res.json(notes.map(n => ({
+      id: n.id,
+      content: n.content,
+      weekOf: n.weekOf,
+      createdAt: n.createdAt,
+      mentorName: n.mentor?.user?.name || null,
+    })));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch mentor notes' });
+  }
+});
+
+// GET /api/student/:userId/mentor-calls — call history + upcoming for anchor student
+router.get('/mentor-calls', async (req, res) => {
+  try {
+    const profile = await prisma.studentProfile.findUnique({ where: { userId: req.params.userId } });
+    if (!profile) return res.json([]);
+
+    const calls = await prisma.mentorCall.findMany({
+      where: { studentId: profile.id },
+      orderBy: { scheduledAt: 'desc' },
+      take: 20,
+      include: { mentor: { include: { user: { select: { name: true } } } } },
+    });
+
+    res.json(calls.map(c => ({
+      id: c.id,
+      scheduledAt: c.scheduledAt,
+      durationMin: c.durationMin,
+      notes: c.notes,
+      completed: c.completed,
+      mentorName: c.mentor?.user?.name || null,
+    })));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch mentor calls' });
   }
 });
 

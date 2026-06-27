@@ -394,6 +394,8 @@ const AdminLMS = ({ expectedRole }) => {
           profile={profile}
           students={students}
           facultyList={facultyList}
+          onStudentMentorUpdated={(userId, mentorId, mentorName) => setStudents(prev => prev.map(s => s.userId === userId ? { ...s, mentorId, mentorName } : s))}
+          onStudentSubjectFacultyUpdated={(userId, subjectFaculty) => setStudents(prev => prev.map(s => s.userId === userId ? { ...s, subjectFaculty } : s))}
           onOpenMessage={openMessage}
           isSuperAdmin={isSuperAdmin}
           adminAccounts={adminAccounts}

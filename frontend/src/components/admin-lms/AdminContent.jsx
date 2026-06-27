@@ -209,11 +209,16 @@ const fmtWeekRange = (weekStartDate) => {
   return `${fmt(mon)} – ${fmt(sun)}`;
 };
 
-const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, students = [], facultyList = [], onOpenMessage, isSuperAdmin, adminAccounts = [], onDeactivateAdmin, onReactivateAdmin, resources = [], onApproveResource, onDeclineResource, sentMessages = [], onSendMessage, parentReports = [], onApproveReport, onRejectReport, onSendReports, onApproveAllReports }) => {
+const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, students = [], facultyList = [], onOpenMessage, isSuperAdmin, adminAccounts = [], onDeactivateAdmin, onReactivateAdmin, resources = [], onApproveResource, onDeclineResource, sentMessages = [], onSendMessage, parentReports = [], onApproveReport, onRejectReport, onSendReports, onApproveAllReports, onStudentMentorUpdated, onStudentSubjectFacultyUpdated }) => {
   const firstName = profile?.name?.split(' ')[0] || 'there';
   const [studentsTab, setStudentsTab] = useState(0);
-  const [diagModal, setDiagModal]   = useState(null); // { studentName, data }
+
+  const [diagModal, setDiagModal]   = useState(null);
   const [diagLoading, setDiagLoading] = useState(false);
+  const [assigningId, setAssigningId] = useState(null);
+  const [expandedStudent, setExpandedStudent] = useState(null);
+  const [pendingMentor, setPendingMentor] = useState({});
+  const [savingSubject, setSavingSubject] = useState(null); // "studentUserId:Subject"
 
   const openDiagModal = async (userId, name) => {
     setDiagLoading(true);
@@ -780,42 +785,345 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
         </div>
       </div>
 
-      {/* ══ ASSIGN FACULTY ══ */}
+      {/* ══ ASSIGN ══ */}
       <div className={pg('assign')} id="p-assign">
-        <div style={{ fontSize: '13px', color: 'var(--text2)', marginBottom: '20px', background: 'var(--cream)', border: '1px solid var(--b)', padding: '12px 16px', borderRadius: 'var(--r)', borderLeft: '3px solid var(--gold)' }}>
-          Each student has one dedicated faculty. Reassignment disrupts continuity — only reassign if necessary, and communicate the reason to the student and parent.
-        </div>
+        {(() => {
+          const isNEET = (t) => (t || '').toLowerCase().includes('neet');
+          const subjectList = (student) => isNEET(student.examTarget)
+            ? ['Physics', 'Chemistry', 'Biology']
+            : ['Physics', 'Chemistry', 'Mathematics'];
 
-        <div className="sh"><div className="sh-t">Current Assignments</div></div>
-        <div className="card mb" style={{ padding: '0', overflow: 'hidden' }}>
-          <table className="tbl">
-            <thead><tr><th>Student</th><th>Exam</th><th>Current Faculty</th><th>Since</th><th>Sessions</th><th>Change?</th></tr></thead>
-            <tbody>
-              <tr key="rahul"><td><div className="av-row"><div className="av">R</div>Rahul Mehta</div></td><td>JEE Mains</td><td><div className="av-row"><div className="av" style={{ color: 'var(--text2)', borderColor: 'var(--text3)', background: 'transparent', fontSize: '11px' }}>A</div>Ajay Sharma</div></td><td>Jan 28</td><td>47 sessions</td><td><button className="btn btn-ghost btn-sm" onClick={() => onOpenModal('assign-modal')}>Reassign</button></td></tr>
-              <tr key="sneha"><td><div className="av-row"><div className="av">S</div>Sneha Kapoor</div></td><td>JEE Mains</td><td><div className="av-row"><div className="av" style={{ color: 'var(--text2)', borderColor: 'var(--text3)', background: 'transparent', fontSize: '11px' }}>A</div>Ajay Sharma</div></td><td>Feb 2</td><td>52 sessions</td><td><button className="btn btn-ghost btn-sm" onClick={() => onOpenModal('assign-modal')}>Reassign</button></td></tr>
-              <tr key="priya"><td><div className="av-row"><div className="av">P</div>Priya Desai</div></td><td>NEET</td><td><div className="av-row"><div className="av" style={{ color: 'var(--text2)', borderColor: 'var(--text3)', background: 'transparent', fontSize: '11px' }}>A</div>Ajay Sharma</div></td><td>Feb 20</td><td>31 sessions</td><td><button className="btn btn-ghost btn-sm" onClick={() => onOpenModal('assign-modal')}>Reassign</button></td></tr>
-              <tr key="vanya" style={{ background: 'rgba(232,168,48,0.04)' }}><td><div className="av-row"><div className="av">V</div>Vanya Rao</div></td><td>JEE Mains</td><td><span style={{ fontSize: '12px', color: 'var(--orange)', fontWeight: '500' }}>⚠ Not assigned yet</span></td><td>Apr 10</td><td>0 sessions</td><td><button className="btn btn-gold btn-sm" onClick={() => onOpenModal('assign-modal')}>Assign Now →</button></td></tr>
-            </tbody>
-          </table>
-        </div>
+          const facultyForSubject = (student, subject) => {
+            const key = subject.toLowerCase();
+            return facultyList.filter(f => {
+              const subs = (f.subjects || [f.subject]).filter(Boolean).map(s => s.toLowerCase());
+              return subs.some(s => s.includes(key) || (key === 'mathematics' && (s.includes('math') || s.includes('maths'))));
+            });
+          };
 
-        <div className="sh"><div className="sh-t">Faculty Workload</div><span style={{ fontSize: '12px', color: 'var(--text3)' }}>Keep below 10 students per faculty for quality</span></div>
-        <div className="g2">
-          {[
-            { av: 'A', name: 'Ajay Sharma', role: 'JEE & NEET Faculty', pillClass: 'pg', pillLabel: '8 / 10', barClass: 'pb-gold', width: '80%', note: '80% capacity · 2 slots remaining before overload risk', avStyle: {} },
-            { av: 'N', name: 'Neha Gupta', role: 'Biology & Chemistry', pillClass: 'pp', pillLabel: '3 / 10', barClass: 'pb-green', width: '30%', note: '30% capacity · Has availability for 7 more students', avStyle: { color: 'var(--blue)', borderColor: 'var(--blue)', background: 'var(--bdim)' } }
-          ].map(({ av, name, role, pillClass, pillLabel, barClass, width, note, avStyle }) => (
-            <div key={name} className="card">
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
-                <div className="av av-lg" style={avStyle}>{av}</div>
-                <div><div style={{ fontWeight: '600', fontSize: '14px' }}>{name}</div><div style={{ fontSize: '11.5px', color: 'var(--text3)' }}>{role}</div></div>
-                <span className={`pill ${pillClass}`} style={{ marginLeft: 'auto' }}>{pillLabel}</span>
+          const saveSubjectFaculty = async (studentUserId, subject, facultyId) => {
+            const key = studentUserId + ':' + subject;
+            setSavingSubject(key);
+            try {
+              const token = localStorage.getItem('token');
+              const r = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/${profile?.id}/student/${studentUserId}/subject-faculty`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ subject, facultyId: facultyId || null }),
+              });
+              const data = await r.json();
+              if (!r.ok) throw new Error(data.error || 'Failed');
+              onStudentSubjectFacultyUpdated?.(studentUserId, data.subjectFaculty);
+              onShowToast(facultyId ? subject + ' faculty assigned ✓' : subject + ' faculty removed ✓');
+            } catch {
+              onShowToast('Failed to save');
+            } finally {
+              setSavingSubject(null);
+            }
+          };
+
+          const saveMentor = async (studentUserId, mentorFacultyId) => {
+            setAssigningId(studentUserId);
+            try {
+              const token = localStorage.getItem('token');
+              const r = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/${profile?.id}/student/${studentUserId}/mentor`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ mentorId: mentorFacultyId || null }),
+              });
+              const data = await r.json();
+              if (!r.ok) throw new Error(data.error || 'Failed');
+              onStudentMentorUpdated?.(studentUserId, data.mentorId, data.mentorName);
+              onShowToast(data.mentorName ? `Mentor: ${data.mentorName} ✓` : 'Mentor removed ✓');
+            } catch {
+              onShowToast('Failed to save');
+            } finally {
+              setAssigningId(null);
+            }
+          };
+
+          const PLAN_COLOR = { forge:'#6366F1', apex:'#E8A830', anchor:'#4ADE80', spark:'#94A3B8' };
+          const PLAN_BG   = { forge:'rgba(99,102,241,.1)', apex:'rgba(232,168,48,.1)', anchor:'rgba(74,222,128,.1)', spark:'rgba(148,163,184,.1)' };
+
+          const assignableStudents = students.filter(s => s.plan !== 'spark');
+          const sparkStudents = students.filter(s => s.plan === 'spark');
+          const noMentor = assignableStudents.filter(s => !s.mentorId).length;
+          const needsAssignment = s => !s.mentorId || (s.plan === 'apex' && subjectList(s).some(subj => !(s.subjectFaculty || {})[subj]));
+
+          const drawerStudent = assignableStudents.find(s => s.userId === expandedStudent) || null;
+          const curMentor = drawerStudent
+            ? (pendingMentor[drawerStudent.userId] !== undefined ? pendingMentor[drawerStudent.userId] : (drawerStudent.mentorId || ''))
+            : '';
+          const compatMentor = drawerStudent ? facultyList.filter(f => {
+            const subs = (f.subjects || [f.subject]).filter(Boolean).map(x => x.toLowerCase());
+            const allowed = isNEET(drawerStudent.examTarget)
+              ? ['physics','chemistry','biology','zoology','botany']
+              : ['physics','chemistry','mathematics','maths','math'];
+            return subs.some(x => allowed.some(a => x.includes(a)));
+          }) : [];
+
+          return (
+            <>
+              <style dangerouslySetInnerHTML={{ __html:
+                '@keyframes asgBackdrop{from{opacity:0}to{opacity:1}}' +
+                '@keyframes asgDrawer{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}' +
+                '@keyframes asgCard{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}' +
+                '.asg-row{transition:background .15s,box-shadow .15s;}' +
+                '.asg-row:hover{background:rgba(15,31,61,0.035)!important;box-shadow:inset 3px 0 0 var(--gold);}' +
+                '.asg-fcard{transition:all .15s;cursor:pointer;border:2px solid transparent;}' +
+                '.asg-fcard:hover{border-color:rgba(232,168,48,.35);background:rgba(232,168,48,.05)!important;}' +
+                '.asg-fcard.selected{border-color:var(--gold)!important;background:var(--gdim)!important;}'
+              }} />
+
+              {/* Summary bar */}
+              <div style={{ display:'flex', gap:'12px', marginBottom:'22px', flexWrap:'wrap' }}>
+                {[
+                  { label:'Need assignment', val: assignableStudents.filter(needsAssignment).length, color:'#F87171', bg:'rgba(248,113,113,.1)', border:'rgba(248,113,113,.25)', show: assignableStudents.some(needsAssignment) },
+                  { label:'Fully assigned', val: assignableStudents.filter(s => !needsAssignment(s)).length, color:'#22C55E', bg:'rgba(34,197,94,.1)', border:'rgba(34,197,94,.25)', show: true },
+                  { label:'Total eligible', val: assignableStudents.length, color:'var(--text2)', bg:'var(--cream2)', border:'var(--b)', show: true },
+                ].filter(s => s.show).map(s => (
+                  <div key={s.label} style={{ background:s.bg, border:`1px solid ${s.border}`, borderRadius:'10px', padding:'10px 16px', display:'flex', alignItems:'center', gap:'10px' }}>
+                    <div style={{ fontFamily:'var(--fs)', fontSize:'22px', fontWeight:700, color:s.color, lineHeight:1 }}>{s.val}</div>
+                    <div style={{ fontSize:'12px', color:'var(--text3)', fontWeight:500 }}>{s.label}</div>
+                  </div>
+                ))}
               </div>
-              <div className="pbar" style={{ height: '8px', marginBottom: '8px' }}><div className={`pbar-inner ${barClass}`} style={{ width }}></div></div>
-              <div style={{ fontSize: '11.5px', color: 'var(--text3)' }}>{note}</div>
-            </div>
-          ))}
-        </div>
+
+              {/* Student list */}
+              <div className="card" style={{ padding:0, overflow:'hidden', marginBottom:'20px' }}>
+                {assignableStudents.map((s, i) => {
+                  const hasMentor = !!s.mentorId;
+                  const planC = PLAN_COLOR[s.plan] || '#94A3B8';
+                  const planB = PLAN_BG[s.plan] || 'rgba(148,163,184,.1)';
+                  return (
+                    <div
+                      key={s.userId}
+                      className="asg-row"
+                      style={{ display:'flex', alignItems:'center', gap:'14px', padding:'14px 18px', borderBottom: i < assignableStudents.length - 1 ? '1px solid var(--b)' : 'none', cursor:'pointer', background: expandedStudent === s.userId ? 'rgba(232,168,48,.04)' : undefined }}
+                      onClick={() => setExpandedStudent(expandedStudent === s.userId ? null : s.userId)}
+                    >
+                      <div className="av" style={{ flexShrink:0 }}>{s.name?.[0]}</div>
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <div style={{ fontWeight:600, fontSize:'14px', color:'var(--text)' }}>{s.name}</div>
+                        <div style={{ fontSize:'11.5px', color:'var(--text3)', marginTop:'2px' }}>{s.examTarget || 'Exam not set'}{s.grade ? ` · Grade ${s.grade}` : ''}</div>
+                      </div>
+                      <span style={{ background:planB, color:planC, border:`1px solid ${planC}33`, fontSize:'10.5px', fontWeight:700, padding:'3px 10px', borderRadius:'99px', textTransform:'uppercase', letterSpacing:'.05em', flexShrink:0 }}>{s.plan}</span>
+                      <div style={{ flexShrink:0, textAlign:'right' }}>
+                        {hasMentor
+                          ? <div style={{ display:'flex', alignItems:'center', gap:'7px' }}>
+                              <div style={{ width:'26px', height:'26px', borderRadius:'50%', background:'var(--gdim)', border:'1.5px solid var(--gold)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'11px', fontWeight:700, color:'var(--gold)' }}>{s.mentorName?.[0]}</div>
+                              <span style={{ fontSize:'12.5px', color:'var(--text2)', fontWeight:500 }}>{s.mentorName}</span>
+                            </div>
+                          : <span style={{ fontSize:'12px', color:'#F87171', fontWeight:600, background:'rgba(248,113,113,.1)', padding:'3px 10px', borderRadius:'99px', border:'1px solid rgba(248,113,113,.2)' }}>No mentor</span>}
+                      </div>
+                      <button
+                        className="btn btn-gold btn-sm"
+                        style={{ flexShrink:0, minWidth:'80px' }}
+                        onClick={e => { e.stopPropagation(); setExpandedStudent(expandedStudent === s.userId ? null : s.userId); }}
+                      >
+                        {expandedStudent === s.userId ? 'Close' : 'Assign →'}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Spark info */}
+              {sparkStudents.length > 0 && (
+                <div style={{ fontSize:'12.5px', color:'var(--text3)', padding:'10px 14px', background:'var(--cream2)', borderRadius:'8px', border:'1px solid var(--b)' }}>
+                  {sparkStudents.length} Spark student{sparkStudents.length > 1 ? 's' : ''} ({sparkStudents.map(s => s.name).join(', ')}) — no assignments needed on the free plan.
+                </div>
+              )}
+
+              {/* Drawer */}
+              {drawerStudent && (
+                <div
+                  style={{ position:'fixed', inset:0, background:'rgba(15,31,61,0.55)', backdropFilter:'blur(4px)', zIndex:300, display:'flex', justifyContent:'flex-end', animation:'asgBackdrop .2s ease' }}
+                  onClick={() => setExpandedStudent(null)}
+                >
+                  <div
+                    style={{ width:'480px', maxWidth:'95vw', background:'var(--cream)', height:'100%', overflowY:'auto', boxShadow:'-8px 0 40px rgba(15,31,61,0.2)', display:'flex', flexDirection:'column', animation:'asgDrawer .28s cubic-bezier(0.4,0,0.2,1)' }}
+                    onClick={e => e.stopPropagation()}
+                  >
+                    {/* Drawer header */}
+                    <div style={{ background:'linear-gradient(135deg,#0F1F3D,#1C2E50)', padding:'22px 24px', flexShrink:0 }}>
+                      <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:'12px' }}>
+                        <div>
+                          <div style={{ fontSize:'10.5px', color:'rgba(253,248,240,.45)', textTransform:'uppercase', letterSpacing:'.1em', marginBottom:'4px' }}>Assignments</div>
+                          <div style={{ fontFamily:'var(--fs)', fontSize:'19px', fontWeight:700, color:'#FDF8F0' }}>{drawerStudent.name}</div>
+                          <div style={{ fontSize:'12px', color:'rgba(253,248,240,.55)', marginTop:'3px' }}>{drawerStudent.examTarget || 'Exam not set'} · {drawerStudent.plan?.charAt(0).toUpperCase() + drawerStudent.plan?.slice(1)}</div>
+                        </div>
+                        <button onClick={() => setExpandedStudent(null)} style={{ background:'rgba(255,255,255,.1)', border:'none', borderRadius:'8px', width:'32px', height:'32px', cursor:'pointer', fontSize:'16px', color:'rgba(253,248,240,.7)', flexShrink:0 }}>×</button>
+                      </div>
+                      {drawerStudent.mentorId && (
+                        <div style={{ display:'flex', alignItems:'center', gap:'8px', background:'rgba(232,168,48,.15)', border:'1px solid rgba(232,168,48,.3)', borderRadius:'8px', padding:'8px 12px' }}>
+                          <div style={{ width:'24px', height:'24px', borderRadius:'50%', background:'rgba(232,168,48,.2)', border:'1.5px solid #E8A830', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'11px', fontWeight:700, color:'#E8A830' }}>{drawerStudent.mentorName?.[0]}</div>
+                          <span style={{ fontSize:'12.5px', color:'#E8A830', fontWeight:600 }}>Mentor: {drawerStudent.mentorName}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Drawer body */}
+                    <div style={{ flex:1, padding:'22px 24px', display:'flex', flexDirection:'column', gap:'24px' }}>
+
+                      {/* Mentor section */}
+                      <div>
+                        <div style={{ fontSize:'11px', fontWeight:700, color:'var(--text3)', textTransform:'uppercase', letterSpacing:'.09em', marginBottom:'14px', display:'flex', alignItems:'center', gap:'8px' }}>
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                          Mentor
+                        </div>
+                        {compatMentor.length === 0
+                          ? <div style={{ fontSize:'13px', color:'var(--text3)', padding:'16px', background:'var(--cream2)', borderRadius:'10px', textAlign:'center' }}>No compatible faculty for {drawerStudent.examTarget || 'this exam'}</div>
+                          : (
+                            <div style={{ display:'flex', flexDirection:'column', gap:'8px' }}>
+                              {/* Remove option */}
+                              <div
+                                className={'asg-fcard' + (curMentor === '' ? ' selected' : '')}
+                                style={{ display:'flex', alignItems:'center', gap:'12px', padding:'11px 14px', borderRadius:'10px', background:'var(--cream2)' }}
+                                onClick={() => setPendingMentor(p => ({ ...p, [drawerStudent.userId]: '' }))}
+                              >
+                                <div style={{ width:'36px', height:'36px', borderRadius:'50%', background:'var(--b)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                                </div>
+                                <span style={{ fontSize:'13px', color:'var(--text3)', fontStyle:'italic' }}>No mentor</span>
+                                {curMentor === '' && <svg style={{ marginLeft:'auto' }} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}
+                              </div>
+                              {compatMentor.map((f, fi) => {
+                                const sel = String(curMentor) === String(f.id);
+                                const count = f.mentorStudentCount || 0;
+                                const pct = Math.min(count * 10, 100);
+                                return (
+                                  <div
+                                    key={f.id}
+                                    className={'asg-fcard' + (sel ? ' selected' : '')}
+                                    style={{ display:'flex', alignItems:'center', gap:'12px', padding:'12px 14px', borderRadius:'10px', background:'var(--cream2)', animation:`asgCard .2s ease ${fi * 0.04}s both` }}
+                                    onClick={() => setPendingMentor(p => ({ ...p, [drawerStudent.userId]: f.id }))}
+                                  >
+                                    <div style={{ width:'40px', height:'40px', borderRadius:'50%', background: sel ? 'var(--gdim)' : 'var(--cream3)', border: sel ? '2px solid var(--gold)' : '1.5px solid var(--b)', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:'var(--fs)', fontSize:'15px', fontWeight:700, color: sel ? 'var(--gold)' : 'var(--text2)', flexShrink:0, transition:'all .15s' }}>{f.name?.[0]}</div>
+                                    <div style={{ flex:1, minWidth:0 }}>
+                                      <div style={{ fontWeight:600, fontSize:'13.5px', color:'var(--text)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{f.name}</div>
+                                      <div style={{ fontSize:'11px', color:'var(--text3)', marginTop:'2px' }}>{(f.subjects || [f.subject]).filter(Boolean).join(' · ')}</div>
+                                      <div style={{ display:'flex', alignItems:'center', gap:'6px', marginTop:'5px' }}>
+                                        <div style={{ flex:1, height:'3px', background:'var(--b)', borderRadius:'2px', overflow:'hidden' }}>
+                                          <div style={{ height:'100%', width: pct + '%', background: pct >= 80 ? '#EF4444' : pct >= 50 ? '#F59E0B' : '#22C55E', borderRadius:'2px', transition:'width .3s ease' }} />
+                                        </div>
+                                        <span style={{ fontSize:'10px', color:'var(--text3)', flexShrink:0 }}>{count}/10</span>
+                                      </div>
+                                    </div>
+                                    {sel && <svg style={{ flexShrink:0 }} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                      </div>
+
+                      {/* Subject faculty — Apex only */}
+                      {drawerStudent.plan === 'apex' && (
+                        <div>
+                          <div style={{ fontSize:'11px', fontWeight:700, color:'var(--text3)', textTransform:'uppercase', letterSpacing:'.09em', marginBottom:'14px', display:'flex', alignItems:'center', gap:'8px' }}>
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+                            Subject Faculty
+                          </div>
+                          {subjectList(drawerStudent).map(subj => {
+                            const opts = facultyForSubject(drawerStudent, subj);
+                            const curFacId = (drawerStudent.subjectFaculty || {})[subj] || '';
+                            const key = drawerStudent.userId + ':' + subj;
+                            const isSaving = savingSubject === key;
+                            return (
+                              <div key={subj} style={{ display:'flex', alignItems:'center', gap:'14px', flexWrap:'wrap' }}>
+                                <div style={{ width:'110px', flexShrink:0, fontSize:'12.5px', fontWeight:600, color:'var(--text2)' }}>{subj}</div>
+                                {opts.length === 0
+                                  ? <div style={{ flex:1, fontSize:'12px', color:'var(--text3)', padding:'9px 12px', background:'var(--cream2)', borderRadius:'8px' }}>No {subj} faculty added yet</div>
+                                  : (
+                                    <select
+                                      style={{ flex:1, minWidth:'160px', fontSize:'13px', padding:'8px 12px', borderRadius:'8px', border:'1px solid var(--b)', background:'var(--cream)', color:'var(--text)', cursor:'pointer' }}
+                                      value={curFacId}
+                                      disabled={isSaving}
+                                      onChange={e => saveSubjectFaculty(drawerStudent.userId, subj, e.target.value ? parseInt(e.target.value) : null)}
+                                    >
+                                      <option value="">— Not assigned</option>
+                                      {opts.map(f => (
+                                        <option key={f.id} value={f.id}>{f.name} · {(f.subjects||[f.subject]).filter(Boolean).join(', ')}</option>
+                                      ))}
+                                    </select>
+                                  )}
+                                {isSaving && <span style={{ fontSize:'12px', color:'var(--text3)' }}>Saving…</span>}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Drawer footer */}
+                    <div style={{ padding:'16px 24px', borderTop:'1px solid var(--b)', display:'flex', gap:'10px', flexShrink:0, background:'var(--cream)' }}>
+                      <button
+                        className="btn btn-ghost"
+                        style={{ flex:1 }}
+                        onClick={() => setExpandedStudent(null)}
+                      >Cancel</button>
+                      <button
+                        className="btn btn-gold"
+                        style={{ flex:2 }}
+                        disabled={assigningId === drawerStudent.userId || String(curMentor) === String(drawerStudent.mentorId || '')}
+                        onClick={() => saveMentor(drawerStudent.userId, curMentor || null).then(() => setExpandedStudent(null))}
+                      >
+                        {assigningId === drawerStudent.userId ? 'Saving…' : 'Save Assignment →'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Faculty overview — always shown */}
+              <div style={{ marginTop:'28px' }}>
+                <div className="sh" style={{ marginBottom:'14px' }}>
+                  <div className="sh-t">Faculty Overview</div>
+                  <span style={{ fontSize:'12px', color:'var(--text3)' }}>Sessions taught · Anchor mentees · Suggested max 10 mentees</span>
+                </div>
+                <div className="g3">
+                  {facultyList.map(f => {
+                    const mentees = f.mentorStudentCount || 0;
+                    const assigned = students.filter(s => s.facultyName === f.name).length;
+                    const pct = Math.min(Math.round((mentees / 10) * 100), 100);
+                    const barColor = pct >= 80 ? '#EF4444' : pct >= 50 ? '#F59E0B' : '#22C55E';
+                    return (
+                      <div key={f.id} className="card" style={{ padding:'16px 18px' }}>
+                        <div style={{ display:'flex', alignItems:'center', gap:'10px', marginBottom:'12px' }}>
+                          <div className="av" style={{ flexShrink:0 }}>{f.name?.[0]}</div>
+                          <div style={{ flex:1, minWidth:0 }}>
+                            <div style={{ fontWeight:600, fontSize:'13.5px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{f.name}</div>
+                            <div style={{ fontSize:'11px', color:'var(--text3)', marginTop:'1px' }}>{(f.subjects || [f.subject]).filter(Boolean).join(' · ')}</div>
+                          </div>
+                        </div>
+                        <div style={{ display:'flex', gap:'8px', marginBottom:'12px' }}>
+                          <div style={{ flex:1, background:'var(--cream2)', borderRadius:'8px', padding:'8px 10px', textAlign:'center' }}>
+                            <div style={{ fontFamily:'var(--fs)', fontSize:'18px', fontWeight:700, color:'var(--text)' }}>{assigned}</div>
+                            <div style={{ fontSize:'10px', color:'var(--text3)', marginTop:'2px' }}>students</div>
+                          </div>
+                          <div style={{ flex:1, background: mentees > 0 ? 'var(--gdim)' : 'var(--cream2)', borderRadius:'8px', padding:'8px 10px', textAlign:'center', border: mentees > 0 ? '1px solid var(--gb)' : '1px solid transparent' }}>
+                            <div style={{ fontFamily:'var(--fs)', fontSize:'18px', fontWeight:700, color: mentees > 0 ? 'var(--gold)' : 'var(--text3)' }}>{mentees}</div>
+                            <div style={{ fontSize:'10px', color:'var(--text3)', marginTop:'2px' }}>mentees</div>
+                          </div>
+                        </div>
+                        <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
+                          <div style={{ flex:1, height:'4px', background:'var(--b)', borderRadius:'2px', overflow:'hidden' }}>
+                            <div style={{ height:'100%', width: pct + '%', background: barColor, borderRadius:'2px', transition:'width .4s ease' }} />
+                          </div>
+                          <span style={{ fontSize:'10.5px', color:'var(--text3)', flexShrink:0, minWidth:'30px', textAlign:'right' }}>{mentees}/10</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {facultyList.length === 0 && (
+                    <div style={{ gridColumn:'1/-1', fontSize:'13px', color:'var(--text3)', padding:'20px 0', textAlign:'center' }}>No faculty added yet.</div>
+                  )}
+                </div>
+              </div>
+            </>
+          );
+        })()}
       </div>
 
       {/* ══ APPROVALS ══ */}

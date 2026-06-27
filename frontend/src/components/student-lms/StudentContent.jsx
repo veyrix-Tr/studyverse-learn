@@ -207,13 +207,16 @@ const timeAgo = (iso) => {
 
 const TYPE_DOT = { 'Reminder': 'var(--gold)', 'Motivational Note': 'var(--green)', 'Schedule Update': 'var(--navy)', 'Announcement': 'var(--gold)', 'Session Note': 'var(--navy)', 'Doubt Answered': 'var(--green)', 'Weekly Report': 'var(--gold)' };
 
-const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, scores, sessions = [], doubts = [], notifications = [], onMarkNotificationsRead, onNotificationClick, resources = [], questionBank = [], parentReports = null }) => {
+const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, scores, sessions = [], doubts = [], notifications = [], onMarkNotificationsRead, onNotificationClick, resources = [], questionBank = [], parentReports = null, mentorNotes = [], mentorCalls = [] }) => {
   const { id: userId } = useParams();
   const firstName = profile?.name?.split(' ')[0] || 'there';
   const examTarget = profile?.studentProfile?.examTarget || 'your exam';
   const targetYear = profile?.studentProfile?.targetYear;
   const daysRemaining = getDaysRemaining(examTarget, targetYear);
 
+  const mentor = profile?.studentProfile?.mentor?.user?.name || null;
+  const subjectFaculty = profile?.studentProfile?.subjectFaculty || null;
+  const planLabel = { forge: 'Forge', apex: 'Apex', anchor: 'Anchor' }[profile?.studentProfile?.plan] || 'Premium';
   const weeks = scores ? [...scores].sort((a, b) => a.weekNumber - b.weekNumber) : [];
   const max = getExamMax(examTarget);
   const toM = (pct) => Math.round(pct * max / 100);
@@ -457,10 +460,10 @@ const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
                   "{firstName}, every session you show up for is a brick in something that cannot be bought or shortcut. Stay consistent — the results are already in motion."
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <div style={{ width: '36px', height: '36px', borderRadius: '50%', border: '2px solid var(--gold)', background: 'var(--gold-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-serif)', fontSize: '13px', fontWeight: 700, color: 'var(--gold)' }}>S</div>
+                  <div style={{ width: '36px', height: '36px', borderRadius: '50%', border: '2px solid var(--gold)', background: 'var(--gold-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-serif)', fontSize: '13px', fontWeight: 700, color: 'var(--gold)' }}>{mentor ? mentor[0] : 'S'}</div>
                   <div>
-                    <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text)' }}>Studyverse Admin</div>
-                    <div style={{ fontSize: '11px', color: 'var(--text3)' }}>Your team is with you</div>
+                    <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text)' }}>{mentor || 'Studyverse Admin'}</div>
+                    <div style={{ fontSize: '11px', color: 'var(--text3)' }}>{mentor ? 'Your Mentor' : 'Your team is with you'}</div>
                   </div>
                 </div>
               </div>
@@ -638,7 +641,7 @@ const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
             </div>
             <div className="card">
               <div style={{ fontFamily: 'var(--font-serif)', fontSize: '17px', fontWeight: 700, marginBottom: '4px' }}>Lecture 24: Quantum Numbers &amp; Orbitals</div>
-              <div style={{ fontSize: '12px', color: 'var(--text3)', marginBottom: '16px' }}>47 min • Physical Chemistry • Mentor: Ajay Sharma</div>
+              <div style={{ fontSize: '12px', color: 'var(--text3)', marginBottom: '16px' }}>47 min • Physical Chemistry{mentor ? ` • ${mentor}` : ''}</div>
               <div className="tabs">
                 {['Overview', 'Notes', 'Resources'].map((t, i) => (
                   <div key={t} className={`tab${videoTab === i ? ' on' : ''}`} onClick={() => setVideoTab(i)}>{t}</div>
@@ -799,52 +802,121 @@ const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
 
       {/* ══════════ MY MENTOR ══════════ */}
       <div className={p('mentor')}>
-        <div className="g2 mb">
-          <div className="card-dark" style={{ borderRadius: 'var(--r-lg)', padding: '28px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '20px' }}>
-              <div style={{ width: '64px', height: '64px', borderRadius: '50%', border: '3px solid var(--gold)', background: 'rgba(232,168,48,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-serif)', fontSize: '24px', fontWeight: 700, color: 'var(--gold)', flexShrink: 0 }}>A</div>
-              <div>
-                <div style={{ fontFamily: 'var(--font-serif)', fontSize: '20px', fontWeight: 700, color: 'var(--text-inv)' }}>Ajay Sharma</div>
-                <div style={{ fontSize: '13px', color: 'var(--gold)', fontWeight: 500, marginTop: '2px' }}>JEE &amp; NEET Senior Mentor</div>
-                <div style={{ fontSize: '12px', color: 'var(--text-inv3)', marginTop: '2px' }}>Your dedicated 1-to-1 mentor since Jan 2026</div>
-              </div>
-            </div>
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '20px' }}>
-              <span className="cred">JEE Mains &amp; Advanced</span>
-              <span className="cred">NEET UG</span>
-              <span className="cred">10+ Yrs Teaching</span>
-              <span className="cred">500+ Students Mentored</span>
-              <span className="cred">Physics &amp; Chemistry</span>
-            </div>
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <button className="btn btn-primary" style={{ flex: 1, justifyContent: 'center' }} onClick={() => onOpenModal('book-modal')}>Book Session</button>
-              <button className="btn" style={{ background: 'rgba(255,255,255,0.08)', color: 'var(--text-inv2)', flex: 1, justifyContent: 'center' }} onClick={() => onShowToast('Opening chat...')}>Send Message</button>
-            </div>
+        {!mentor && !subjectFaculty ? (
+          <div style={{ textAlign:'center', padding:'60px 0', color:'var(--text3)' }}>
+            <div style={{ fontSize:'36px', marginBottom:'14px', opacity:.4 }}>👤</div>
+            <div style={{ fontSize:'15px', fontWeight:600, marginBottom:'6px', color:'var(--text2)' }}>No mentor assigned yet</div>
+            <div style={{ fontSize:'13px' }}>Your admin will assign a mentor to your account. Check back soon.</div>
           </div>
-          <div>
-            <div className="card mb">
-              <div className="sh-title" style={{ marginBottom: '14px' }}>Your Progress Together</div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                {[
-                  { val: '47', color: 'var(--text)', label: 'Sessions Completed' },
-                  { val: '+92', color: 'var(--gold)', label: 'Marks Improved' },
-                  { val: '78', color: 'var(--text)', label: 'Days Together' },
-                  { val: '14', color: 'var(--green)', label: 'Streak Days' },
-                ].map((s, i) => (
-                  <div key={i} style={{ textAlign: 'center', padding: '14px', background: 'var(--cream2)', borderRadius: 'var(--r)' }}>
-                    <div style={{ fontFamily: 'var(--font-serif)', fontSize: '24px', fontWeight: 700, color: s.color }}>{s.val}</div>
-                    <div style={{ fontSize: '11px', color: 'var(--text3)', marginTop: '2px' }}>{s.label}</div>
+        ) : (() => {
+          const lastWeeks = weeks.length;
+          const marksImproved = weeks.length >= 2 ? Math.round(weeks[weeks.length-1].score - weeks[0].score) : null;
+
+          return (
+            <div>
+              <div className="g2 mb">
+                {/* Left — mentor profile */}
+                {mentor && (
+                  <div>
+                    <div className="card-dark" style={{ borderRadius:'var(--r-lg)', padding:'24px', marginBottom:'14px' }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:'16px', marginBottom:'20px' }}>
+                        <div style={{ width:'60px', height:'60px', borderRadius:'50%', border:'3px solid var(--gold)', background:'rgba(232,168,48,0.1)', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:'var(--font-serif)', fontSize:'22px', fontWeight:700, color:'var(--gold)', flexShrink:0 }}>{mentor[0]}</div>
+                        <div>
+                          <div style={{ fontFamily:'var(--font-serif)', fontSize:'19px', fontWeight:700, color:'var(--text-inv)' }}>{mentor}</div>
+                          <div style={{ fontSize:'12.5px', color:'var(--gold)', fontWeight:500, marginTop:'2px' }}>Your Mentor · {planLabel} Program</div>
+                        </div>
+                      </div>
+                      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'10px', marginBottom:'20px' }}>
+                        {[
+                          { val: sessions.length || 0, label:'Sessions' },
+                          { val: marksImproved !== null ? (marksImproved >= 0 ? '+' + marksImproved : marksImproved) : '—', label:'Marks Δ' },
+                          { val: lastWeeks || 0, label:'Weeks' },
+                        ].map(s => (
+                          <div key={s.label} style={{ textAlign:'center', padding:'12px 8px', background:'rgba(255,255,255,0.06)', borderRadius:'10px' }}>
+                            <div style={{ fontFamily:'var(--font-serif)', fontSize:'20px', fontWeight:700, color:'var(--gold)' }}>{s.val}</div>
+                            <div style={{ fontSize:'10px', color:'var(--text-inv3)', marginTop:'2px' }}>{s.label}</div>
+                          </div>
+                        ))}
+                      </div>
+                      <div style={{ display:'flex', gap:'10px' }}>
+                        <button className="btn btn-primary" style={{ flex:1, justifyContent:'center' }} onClick={() => onOpenModal('book-modal')}>Book Session</button>
+                        <button className="btn" style={{ background:'rgba(255,255,255,0.08)', color:'var(--text-inv2)', flex:1, justifyContent:'center' }} onClick={() => onShowToast('Opening chat...')}>Send Message</button>
+                      </div>
+                    </div>
+
+                    {/* Mentor calls */}
+                    <div className="card" style={{ padding:'14px 16px' }}>
+                      <div style={{ fontSize:'10px', fontWeight:700, color:'var(--text3)', textTransform:'uppercase', letterSpacing:'.08em', marginBottom:'10px' }}>Mentor Calls</div>
+                      {mentorCalls.length > 0 ? (
+                        <div style={{ display:'flex', flexDirection:'column', gap:'8px' }}>
+                          {mentorCalls.slice(0, 3).map(c => {
+                            const isPast = new Date(c.scheduledAt) < new Date();
+                            const statusColor = c.completed ? 'var(--green)' : isPast ? 'var(--red)' : 'var(--gold)';
+                            const statusLabel = c.completed ? 'Done' : isPast ? 'Overdue' : 'Upcoming';
+                            return (
+                              <div key={c.id} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'9px 11px', background:'var(--cream2)', borderRadius:'8px', borderLeft:`3px solid ${statusColor}` }}>
+                                <div>
+                                  <div style={{ fontSize:'13px', fontWeight:600, color:'var(--text)' }}>{new Date(c.scheduledAt).toLocaleDateString('en-IN', { weekday:'short', day:'numeric', month:'short' })} · {new Date(c.scheduledAt).toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit', hour12:true })}</div>
+                                  <div style={{ fontSize:'11px', color:'var(--text3)', marginTop:'2px' }}>{c.durationMin} min{c.notes ? ` · ${c.notes}` : ''}</div>
+                                </div>
+                                <span style={{ fontSize:'10px', fontWeight:700, color:statusColor }}>{statusLabel}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div style={{ fontSize:'13px', color:'var(--text3)', textAlign:'center', padding:'12px 0' }}>No calls scheduled yet. Your mentor will reach out to book one.</div>
+                      )}
+                    </div>
                   </div>
-                ))}
+                )}
+
+                {/* Right — subject faculty + note */}
+                <div>
+                  {/* Note from mentor */}
+                  <div className="card mb" style={{ borderTop:'3px solid var(--gold)' }}>
+                    <div style={{ fontSize:'10px', fontWeight:700, color:'var(--text3)', textTransform:'uppercase', letterSpacing:'.08em', marginBottom:'12px' }}>Note from {mentor || 'Mentor'}</div>
+                    {mentorNotes.length > 0 ? (
+                      <div>
+                        <div style={{ fontSize:'11px', color:'var(--text3)', marginBottom:'10px' }}>Week of {new Date(mentorNotes[0].weekOf || mentorNotes[0].createdAt).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' })}</div>
+                        <div style={{ fontFamily:'var(--font-serif)', fontSize:'14px', fontStyle:'italic', color:'var(--text2)', lineHeight:1.8, borderLeft:'3px solid var(--gold)', paddingLeft:'13px' }}>"{mentorNotes[0].content}"</div>
+                        {mentorNotes.length > 1 && <div style={{ fontSize:'11px', color:'var(--gold)', marginTop:'10px', cursor:'pointer' }} onClick={() => onNav('mentor')}>View all {mentorNotes.length} notes →</div>}
+                      </div>
+                    ) : (
+                      <div style={{ fontSize:'13px', color:'var(--text3)', fontStyle:'italic', padding:'10px 0' }}>No notes yet — your mentor will write one after reviewing your reports.</div>
+                    )}
+                  </div>
+
+                  {/* Subject faculty */}
+                  {subjectFaculty && Object.keys(subjectFaculty).length > 0 && (
+                    <div className="card">
+                      <div style={{ fontSize:'10px', fontWeight:700, color:'var(--text3)', textTransform:'uppercase', letterSpacing:'.08em', marginBottom:'14px' }}>Subject Faculty</div>
+                      <div style={{ display:'flex', flexDirection:'column', gap:'12px' }}>
+                        {Object.entries(subjectFaculty).map(([subj, fac]) => fac?.name ? (
+                          <div key={subj} style={{ display:'flex', alignItems:'center', gap:'12px', padding:'10px 12px', background:'var(--cream2)', borderRadius:'var(--r)' }}>
+                            <div style={{ width:'40px', height:'40px', borderRadius:'50%', border:'2px solid var(--border)', background:'var(--cream3)', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:'var(--font-serif)', fontSize:'15px', fontWeight:700, color:'var(--text)', flexShrink:0 }}>{fac.name[0]}</div>
+                            <div>
+                              <div style={{ fontSize:'13.5px', fontWeight:600, color:'var(--text)' }}>{fac.name}</div>
+                              <div style={{ fontSize:'11px', color:'var(--text3)', marginTop:'1px' }}>{subj}</div>
+                            </div>
+                          </div>
+                        ) : null)}
+                      </div>
+                    </div>
+                  )}
+
+                  {!mentor && (
+                    <div className="card" style={{ borderStyle:'dashed', opacity:.6 }}>
+                      <div style={{ fontSize:'14px', fontWeight:600, color:'var(--text)', marginBottom:'4px' }}>Mentor not assigned yet</div>
+                      <div style={{ fontSize:'12px', color:'var(--text3)' }}>Your admin will assign one soon</div>
+                    </div>
+                  )}
+                </div>
               </div>
+
             </div>
-            <div className="card">
-              <div className="sh-title" style={{ marginBottom: '12px' }}>This Week's Focus</div>
-              <div className="insight"><div className="insight-icon">🎯</div><div><div className="insight-title">Priority: Organic Chemistry</div><div className="insight-body">Reaction mechanisms are your current gap. 2 targeted sessions this week.</div></div></div>
-              <div className="insight" style={{ background: 'var(--green-dim)', borderColor: 'rgba(34,197,94,0.2)' }}><div className="insight-icon">✅</div><div><div className="insight-title">Integration is Unlocked</div><div className="insight-body">Accuracy stable at 68%+. Mentor moving you to applications now.</div></div></div>
-            </div>
-          </div>
-        </div>
+          );
+        })()}
       </div>
 
       {/* ══════════ STUDY MATERIALS ══════════ */}

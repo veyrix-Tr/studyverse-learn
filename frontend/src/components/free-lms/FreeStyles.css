@@ -108,13 +108,28 @@ body.free-mode .logout-btn:hover { color: var(--inv); background: rgba(255,255,2
 /* ── MAIN ── */
 body.free-mode .free-main { margin-left: var(--sw); flex: 1; display: flex; flex-direction: column; height: 100vh; overflow-y: auto; }
 
-/* ── TOPBAR ── */
+/* ── TOPBAR (legacy) ── */
 body.free-mode .topbar { height: var(--th); background: var(--cream); border-bottom: 1px solid var(--b); display: flex; align-items: center; padding: 0 30px; gap: 16px; position: sticky; top: 0; z-index: 50; box-shadow: 0 1px 4px rgba(15,31,61,0.04); }
 body.free-mode .ph { font-family: var(--fs); font-size: 17px; font-weight: 600; color: var(--text); }
 body.free-mode .tbr { display: flex; align-items: center; gap: 9px; margin-left: auto; }
 body.free-mode .tbb { width: 36px; height: 36px; border-radius: 8px; background: var(--cream2); border: 1px solid var(--b); display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text3); transition: all .15s; position: relative; }
 body.free-mode .tbb:hover { background: var(--cream3); color: var(--text); }
 body.free-mode .npip { position: absolute; top: 7px; right: 7px; width: 6px; height: 6px; border-radius: 50%; background: var(--gold); border: 1.5px solid var(--cream); }
+
+/* ── NEW SPARK TOPBAR ── */
+@keyframes frDotPulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(1.3)} }
+body.free-mode .fr-topbar { height:var(--th);min-height:var(--th);background:linear-gradient(135deg,#0B3D35 0%,#155247 100%);border-bottom:1px solid rgba(74,222,128,0.1);display:flex;align-items:center;padding:0 28px;gap:14px;position:sticky;top:0;z-index:50;isolation:isolate;box-shadow:0 4px 24px rgba(0,0,0,0.3) }
+body.free-mode .fr-tb-page { display:flex;align-items:center;gap:10px;flex-shrink:0 }
+body.free-mode .fr-tb-bar { width:3px;height:20px;border-radius:4px;flex-shrink:0;background:linear-gradient(180deg,var(--gold) 0%,rgba(232,168,48,0.2) 100%);box-shadow:0 0 8px rgba(232,168,48,0.35) }
+body.free-mode .fr-tb-title { font-family:var(--fs);font-size:17px;font-weight:700;color:#FDF8F0;letter-spacing:.01em }
+body.free-mode .fr-tb-spark { display:flex;align-items:center;gap:8px;border-radius:20px;padding:7px 16px 7px 11px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);position:absolute;left:50%;transform:translateX(-50%);white-space:nowrap;box-shadow:0 2px 12px rgba(0,0,0,0.2) }
+body.free-mode .fr-tb-spark-dot { width:7px;height:7px;border-radius:50%;flex-shrink:0;background:#94A3B8;animation:frDotPulse 2.4s ease-in-out infinite }
+body.free-mode .fr-tb-spark-label { font-size:11.5px;font-weight:700;color:#94A3B8;letter-spacing:.06em;text-transform:uppercase }
+body.free-mode .fr-tb-spark-sub { font-size:12px;color:rgba(253,248,240,0.4);font-weight:500;padding-left:9px;margin-left:3px;border-left:1px solid rgba(255,255,255,0.12) }
+body.free-mode .fr-tbr { display:flex;align-items:center;gap:10px;margin-left:auto;flex-shrink:0 }
+body.free-mode .fr-tb-bell { width:38px;height:38px;border-radius:9px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);display:flex;align-items:center;justify-content:center;cursor:pointer;color:rgba(253,248,240,0.6);transition:all .15s;position:relative }
+body.free-mode .fr-tb-bell:hover { background:rgba(255,255,255,0.14);color:#FDF8F0;border-color:rgba(255,255,255,0.2) }
+body.free-mode .fr-tb-badge { position:absolute;top:5px;right:5px;min-width:15px;height:15px;border-radius:99px;background:linear-gradient(135deg,var(--gold),var(--gold2));border:2px solid #0B3D35;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:800;color:#0B3D35;line-height:1;padding:0 3px;box-sizing:border-box }
 
 /* ── CONTENT ── */
 body.free-mode .content { padding: 30px; flex: 1; }

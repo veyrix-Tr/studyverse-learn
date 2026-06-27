@@ -13,21 +13,25 @@ const FacultyLMS = () => {
   const [selectedStudent] = useState(null);
   const [toast, setToast] = useState({ show: false, msg: '' });
   const [profile, setProfile] = useState(null);
+  const [mentorStudents, setMentorStudents] = useState([]);
+  const [mentorDailyReports, setMentorDailyReports] = useState([]);
   const [sessions, setSessions] = useState([]);
   const [doubts, setDoubts] = useState([]);
   const [students, setStudents] = useState([]);
   const [resources, setResources] = useState([]);
   const [weeklyReports, setWeeklyReports] = useState([]);
   const [parentFeedback, setParentFeedback] = useState([]);
-  const toastTimer        = useRef(null);
-  const doubtsRef         = useRef([]);
-  const reportsRef        = useRef([]);
-  const feedbackRef       = useRef([]);
-  const resourcesRef      = useRef([]);
-  useEffect(() => { doubtsRef.current    = doubts;         }, [doubts]);
-  useEffect(() => { reportsRef.current   = weeklyReports;  }, [weeklyReports]);
-  useEffect(() => { feedbackRef.current  = parentFeedback; }, [parentFeedback]);
-  useEffect(() => { resourcesRef.current = resources;      }, [resources]);
+  const toastTimer           = useRef(null);
+  const doubtsRef            = useRef([]);
+  const reportsRef           = useRef([]);
+  const feedbackRef          = useRef([]);
+  const resourcesRef         = useRef([]);
+  const mentorDailyReportsRef = useRef([]);
+  useEffect(() => { doubtsRef.current             = doubts;             }, [doubts]);
+  useEffect(() => { reportsRef.current            = weeklyReports;      }, [weeklyReports]);
+  useEffect(() => { feedbackRef.current           = parentFeedback;     }, [parentFeedback]);
+  useEffect(() => { resourcesRef.current          = resources;          }, [resources]);
+  useEffect(() => { mentorDailyReportsRef.current = mentorDailyReports; }, [mentorDailyReports]);
 
   useEffect(() => {
     document.documentElement.classList.add('faculty-mode');
@@ -91,6 +95,20 @@ const FacultyLMS = () => {
     })
       .then(r => r.ok ? r.json() : null)
       .then(data => { if (Array.isArray(data)) setParentFeedback(data); })
+      .catch(() => {});
+
+    fetch(`${import.meta.env.VITE_API_URL}/api/faculty/${userId}/mentor-students`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(r => r.ok ? r.json() : [])
+      .then(data => { if (Array.isArray(data)) setMentorStudents(data); })
+      .catch(() => {});
+
+    fetch(`${import.meta.env.VITE_API_URL}/api/faculty/${userId}/mentor-daily-reports`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(r => r.ok ? r.json() : [])
+      .then(data => { if (Array.isArray(data)) setMentorDailyReports(data); })
       .catch(() => {});
   }, []);
 
@@ -196,6 +214,33 @@ const FacultyLMS = () => {
     return () => clearInterval(id);
   }, [profile]);
 
+  // Poll mentor daily reports every 30s — toast when a mentee submits a new report
+  useEffect(() => {
+    if (!profile) return;
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    const id = setInterval(() => {
+      fetch(`${import.meta.env.VITE_API_URL}/api/faculty/${userId}/mentor-daily-reports`, { headers: { Authorization: `Bearer ${token}` } })
+        .then(r => r.ok ? r.json() : null)
+        .then(fresh => {
+          if (!Array.isArray(fresh)) return;
+          const prev = mentorDailyReportsRef.current;
+          fresh.forEach(fr => {
+            if (!prev.find(p => p.id === fr.id))
+              showToast(`${fr.studentName} submitted their daily report ✓`);
+          });
+          setMentorDailyReports(fresh);
+          // Also refresh mentorStudents summary so "reportedToday" badge stays accurate
+          fetch(`${import.meta.env.VITE_API_URL}/api/faculty/${userId}/mentor-students`, { headers: { Authorization: `Bearer ${token}` } })
+            .then(r => r.ok ? r.json() : null)
+            .then(data => { if (Array.isArray(data)) setMentorStudents(data); })
+            .catch(() => {});
+        })
+        .catch(() => {});
+    }, 30000);
+    return () => clearInterval(id);
+  }, [profile]);
+
   return (
     <div className="faculty-app">
       <FacultySidebar
@@ -207,6 +252,8 @@ const FacultyLMS = () => {
         doubts={doubts}
         students={students}
         weeklyReports={weeklyReports}
+        mentorStudents={mentorStudents}
+        mentorDailyReports={mentorDailyReports}
       />
       <div className="faculty-main">
         <FacultyTopbar
@@ -240,6 +287,9 @@ const FacultyLMS = () => {
           onReportSubmitted={(r) => setWeeklyReports(prev => prev.map(x => x.id === r.id ? { ...x, ...r } : x))}
           onReportDeleted={(id) => setWeeklyReports(prev => prev.filter(x => x.id !== id))}
           parentFeedback={parentFeedback}
+          mentorStudents={mentorStudents}
+          onMentorStudentUpdated={(updated) => setMentorStudents(prev => prev.map(s => s.id === updated.id ? { ...s, ...updated } : s))}
+          mentorDailyReports={mentorDailyReports}
         />
       </div>
       <FacultyModals

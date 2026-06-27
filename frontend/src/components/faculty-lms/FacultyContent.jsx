@@ -134,7 +134,7 @@ const pctColor = (p) => p >= 75 ? 'var(--green)' : p >= 60 ? 'var(--gold)' : p >
 const pctBar   = (p) => p >= 75 ? 'pb-green' : p >= 60 ? 'pb-gold' : p >= 45 ? 'pb-orange' : 'pb-red';
 const pctFlag  = (p) => p >= 75 ? ['On track', 'pp'] : p >= 60 ? ['Progressing', 'po'] : ['Needs support', 'pr'];
 
-const FacultyContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, sessions = [], doubts = [], students = [], resources = [], onDoubtAnswered, onSessionNoteUpdated, onResourceDeleted, weeklyReports = [], onReportCreated, onReportUpdated, onReportSubmitted, onReportDeleted, parentFeedback = [] }) => {
+const FacultyContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, sessions = [], doubts = [], students = [], resources = [], onDoubtAnswered, onSessionNoteUpdated, onResourceDeleted, weeklyReports = [], onReportCreated, onReportUpdated, onReportSubmitted, onReportDeleted, parentFeedback = [], mentorStudents = [], onMentorStudentUpdated, mentorDailyReports = [] }) => {
   const { id: userId } = useParams();
   const firstName = profile?.name?.split(' ').find(p => !p.startsWith('Dr')) || profile?.name?.split(' ')[0] || 'there';
   const [scheduleTab, setScheduleTab] = useState(0);
@@ -1094,6 +1094,488 @@ const FacultyContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
         ))}
       </div>
 
+      {/* ══════════ DAILY LOGS ══════════ */}
+      <div className={`page${activePage === 'dailylogs' ? ' on' : ''}`}>
+        <DailyLogsPage
+          mentorDailyReports={mentorDailyReports}
+          mentorStudents={mentorStudents}
+        />
+      </div>
+
+      {/* ══════════ ANCHOR MENTOR ══════════ */}
+      <div className={`page${activePage === 'mentor' ? ' on' : ''}`}>
+        <MentorPanel
+          userId={userId}
+          mentorStudents={mentorStudents}
+          onMentorStudentUpdated={onMentorStudentUpdated}
+          onShowToast={onShowToast}
+        />
+      </div>
+
+    </div>
+  );
+};
+
+// Sub-component so hooks work inside the mentor page
+const MentorPanel = ({ userId, mentorStudents, onMentorStudentUpdated, onShowToast }) => {
+  const [selected, setSelected] = useState(null);
+  const [detail, setDetail] = useState(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [noteContent, setNoteContent] = useState('');
+  const [noteSaving, setNoteSaving] = useState(false);
+  const [callDate, setCallDate] = useState('');
+  const [callTime, setCallTime] = useState('18:00');
+  const [callDuration, setCallDuration] = useState(45);
+  const [callNotes, setCallNotes] = useState('');
+  const [callSaving, setCallSaving] = useState(false);
+  const [activeTab, setActiveTab] = useState('calls');
+
+  const token = () => localStorage.getItem('token');
+  const api = import.meta.env.VITE_API_URL;
+
+  useEffect(() => {
+    if (mentorStudents.length > 0 && !selected) loadDetail(mentorStudents[0]);
+  }, [mentorStudents]);
+
+  const loadDetail = async (s) => {
+    setSelected(s);
+    setDetail(null);
+    setNoteContent('');
+    setCallDate('');
+    setCallNotes('');
+    setActiveTab('calls');
+    setDetailLoading(true);
+    try {
+      const r = await fetch(`${api}/api/faculty/${userId}/mentor-student/${s.id}`, { headers: { Authorization: `Bearer ${token()}` } });
+      if (r.ok) setDetail(await r.json());
+    } finally { setDetailLoading(false); }
+  };
+
+  const submitNote = async () => {
+    if (!noteContent.trim() || !selected) return;
+    setNoteSaving(true);
+    try {
+      const r = await fetch(`${api}/api/faculty/${userId}/mentor-student/${selected.id}/note`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token()}` },
+        body: JSON.stringify({ content: noteContent.trim() }),
+      });
+      if (r.ok) {
+        const note = await r.json();
+        setDetail(d => ({ ...d, mentorNotes: [note, ...(d?.mentorNotes || [])] }));
+        onMentorStudentUpdated?.({ id: selected.id, lastNote: note });
+        setNoteContent('');
+        onShowToast('Note sent to student ✓');
+      } else { onShowToast('Failed to send note'); }
+    } catch { onShowToast('Could not connect to server'); }
+    finally { setNoteSaving(false); }
+  };
+
+  const submitCall = async () => {
+    if (!callDate || !selected) return;
+    setCallSaving(true);
+    try {
+      // Build time as IST to avoid browser-timezone shifting the stored UTC value
+      const [h, m] = callTime.split(':').map(Number);
+      const [y, mo, d] = callDate.split('-').map(Number);
+      const istOffsetMs = 5.5 * 60 * 60 * 1000;
+      const localMs = Date.UTC(y, mo - 1, d, h, m) - istOffsetMs;
+      const scheduledAt = new Date(localMs).toISOString();
+      const r = await fetch(`${api}/api/faculty/${userId}/mentor-student/${selected.id}/call`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token()}` },
+        body: JSON.stringify({ scheduledAt, durationMin: callDuration, notes: callNotes || null }),
+      });
+      if (r.ok) {
+        const call = await r.json();
+        setDetail(d => ({ ...d, mentorCalls: [call, ...(d?.mentorCalls || [])] }));
+        onMentorStudentUpdated?.({ id: selected.id, nextCall: call });
+        setCallDate(''); setCallNotes('');
+        onShowToast('Call scheduled and student notified ✓');
+      } else { onShowToast('Failed to schedule call'); }
+    } catch { onShowToast('Could not connect to server'); }
+    finally { setCallSaving(false); }
+  };
+
+  const markCallDone = async (callId, existingNotes) => {
+    try {
+      const r = await fetch(`${api}/api/faculty/${userId}/mentor-call/${callId}`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token()}` },
+        body: JSON.stringify({ completed: true, notes: existingNotes }),
+      });
+      if (r.ok) {
+        setDetail(d => ({ ...d, mentorCalls: d.mentorCalls.map(c => c.id === callId ? { ...c, completed: true } : c) }));
+        onShowToast('Call marked as completed ✓');
+      } else { onShowToast('Failed to mark call done'); }
+    } catch { onShowToast('Could not connect to server'); }
+  };
+
+  const fmtD = (iso) => new Date(iso).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' });
+  const fmtT = (iso) => new Date(iso).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+  const moods = ['', '😩', '😐', '🙂', '💪', '🔥'];
+
+  if (mentorStudents.length === 0) {
+    return (
+      <div className="mp-empty">
+        <div className="mp-empty-icon">
+          <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
+          </svg>
+        </div>
+        <div className="mp-empty-title">No mentees yet</div>
+        <div className="mp-empty-sub">When admin assigns you as a mentor to Anchor students, they'll appear here with their reports and progress.</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mp-layout">
+
+      {/* ── Left: student list ── */}
+      <div className="mp-list">
+        <div className="mp-list-head">
+          <div>
+            <div className="mp-list-title">My Mentees</div>
+            <div className="mp-list-subtitle">{mentorStudents.length} student{mentorStudents.length !== 1 ? 's' : ''}</div>
+          </div>
+          <span className="mp-list-count">{mentorStudents.length}</span>
+        </div>
+        <div className="mp-list-items">
+          {mentorStudents.map(s => {
+            const isActive = selected?.id === s.id;
+            return (
+              <div key={s.id} className={`mp-student-card${isActive ? ' active' : ''}${s.reportedToday ? ' reported' : ''}`} onClick={() => loadDetail(s)}>
+                <div className="mpsc-av">{s.name?.[0]}</div>
+                <div className="mpsc-info">
+                  <div className="mpsc-name">{s.name}</div>
+                  <div className="mpsc-sub">{s.examTarget || 'Target not set'}</div>
+                  <div className="mpsc-tags">
+                    {s.reportedToday && <span className="mpsc-tag mpsc-tag-green">✓ Reported today</span>}
+                    {s.nextCall && <span className="mpsc-tag mpsc-tag-gold">📞 {fmtD(s.nextCall.scheduledAt)}</span>}
+                    {!s.reportedToday && !s.nextCall && <span className="mpsc-tag mpsc-tag-dim">{s.reportCount || 0} reports</span>}
+                  </div>
+                </div>
+                <svg className="mpsc-arrow" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M9 18l6-6-6-6"/></svg>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ── Right: detail pane ── */}
+      <div className="mp-detail">
+        {!selected ? (
+          <div className="mp-placeholder">
+            <div className="mp-placeholder-icon">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
+              </svg>
+            </div>
+            <div className="mp-placeholder-title">Select a student</div>
+            <div className="mp-placeholder-sub">Choose a mentee to view their progress and send notes or schedule calls.</div>
+          </div>
+        ) : detailLoading ? (
+          <div className="mp-loading">
+            <div className="mp-spinner" />
+            <span>Loading…</span>
+          </div>
+        ) : detail ? (
+          <div className="mp-detail-inner">
+
+            {/* ── Header banner ── */}
+            <div className="mp-header">
+              <div className="mp-header-glow" />
+              <div className="mph-left">
+                <div className="mph-av">{detail.name?.[0]}</div>
+                <div className="mph-info">
+                  <div className="mph-name">{detail.name}</div>
+                  <div className="mph-sub">{detail.examTarget || 'Exam target not set'}</div>
+                  <div className="mph-email">{detail.email}</div>
+                </div>
+              </div>
+              <div className="mph-stats">
+                {[
+                  { label: 'Notes Sent', value: detail.mentorNotes?.length || 0, color: 'gold' },
+                  { label: 'Calls Done', value: detail.mentorCalls?.filter(c => c.completed).length || 0, color: 'green' },
+                  { label: 'Calls Total', value: detail.mentorCalls?.length || 0, color: 'sage' },
+                ].map(s => (
+                  <div key={s.label} className="mph-stat">
+                    <div className={`mph-stat-v mph-stat-${s.color}`}>{s.value}</div>
+                    <div className="mph-stat-l">{s.label}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* ── Action cards ── */}
+            <div className="mp-actions-grid">
+
+              {/* Write note */}
+              <div className="mp-action-card">
+                <div className="mpac-head">
+                  <div className="mpac-icon mpac-icon-gold">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                  </div>
+                  <div className="mpac-head-text">
+                    <div className="mpac-title">Weekly Note</div>
+                    <div className="mpac-desc">Shown on {detail.name?.split(' ')[0]}'s dashboard</div>
+                  </div>
+                </div>
+                <textarea
+                  className="mpac-textarea"
+                  value={noteContent}
+                  onChange={e => setNoteContent(e.target.value)}
+                  placeholder={`Write your observations for ${detail.name?.split(' ')[0]} this week — honest and direct.`}
+                  rows={4}
+                />
+                <div className="mpac-footer">
+                  <span className={`mpac-count${noteContent.length > 480 ? ' warn' : ''}`}>{noteContent.length}/500</span>
+                  <button className="mp-btn mp-btn-gold" onClick={submitNote} disabled={noteSaving || !noteContent.trim() || noteContent.length > 500}>
+                    {noteSaving ? <><span className="mp-btn-spinner" />Sending…</> : 'Send Note →'}
+                  </button>
+                </div>
+              </div>
+
+              {/* Schedule call */}
+              <div className="mp-action-card">
+                <div className="mpac-head">
+                  <div className="mpac-icon mpac-icon-navy">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                  </div>
+                  <div className="mpac-head-text">
+                    <div className="mpac-title">Schedule Call</div>
+                    <div className="mpac-desc">Student notified automatically</div>
+                  </div>
+                </div>
+                <div className="mpac-fields">
+                  <div className="mpac-row">
+                    <div className="mpac-field">
+                      <label className="mpac-label">Date</label>
+                      <input type="date" className="mpac-input" value={callDate} onChange={e => setCallDate(e.target.value)} />
+                    </div>
+                    <div className="mpac-field">
+                      <label className="mpac-label">Time</label>
+                      <input type="time" className="mpac-input" value={callTime} onChange={e => setCallTime(e.target.value)} />
+                    </div>
+                  </div>
+                  <div className="mpac-row">
+                    <div className="mpac-field">
+                      <label className="mpac-label">Duration</label>
+                      <select className="mpac-input" value={callDuration} onChange={e => setCallDuration(Number(e.target.value))}>
+                        {[30, 45, 60, 90].map(d => <option key={d} value={d}>{d} min</option>)}
+                      </select>
+                    </div>
+                    <div className="mpac-field">
+                      <label className="mpac-label">Agenda <span className="mpac-opt">(optional)</span></label>
+                      <input type="text" className="mpac-input" value={callNotes} onChange={e => setCallNotes(e.target.value)} placeholder="e.g. Thermodynamics revision" />
+                    </div>
+                  </div>
+                </div>
+                <button className="mp-btn mp-btn-navy" onClick={submitCall} disabled={callSaving || !callDate} style={{ marginTop: 'auto' }}>
+                  {callSaving ? <><span className="mp-btn-spinner" />Scheduling…</> : 'Schedule & Notify →'}
+                </button>
+              </div>
+            </div>
+
+            {/* ── Tab bar ── */}
+            <div className="mp-tabs">
+              {[
+                { key: 'calls', label: 'Calls',      count: detail.mentorCalls?.length },
+                { key: 'notes', label: 'Notes Sent', count: detail.mentorNotes?.length },
+              ].map(t => (
+                <button key={t.key} className={`mp-tab${activeTab === t.key ? ' on' : ''}`} onClick={() => setActiveTab(t.key)}>
+                  {t.label}
+                  {t.count > 0 && <span className="mp-tab-badge">{t.count}</span>}
+                </button>
+              ))}
+            </div>
+
+            {/* ── Calls tab ── */}
+            {activeTab === 'calls' && (
+              <div className="mp-section">
+                {!detail.mentorCalls?.length ? (
+                  <div className="mp-empty-tab">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" opacity=".3"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                    No calls scheduled yet.
+                  </div>
+                ) : detail.mentorCalls.map(c => {
+                  const isPast = new Date(c.scheduledAt) < new Date();
+                  const canMarkDone = !c.completed && isPast;
+                  const status = c.completed ? 'done' : isPast ? 'overdue' : 'upcoming';
+                  return (
+                    <div key={c.id} className={`mp-call-card mp-call-card-${status}`}>
+                      <div className="mpcc-left">
+                        <div className={`mpcc-dot mpcc-dot-${status}`} />
+                      </div>
+                      <div className="mpcc-body">
+                        <div className="mpcc-row">
+                          <div className="mpcc-dt">{fmtD(c.scheduledAt)} · {fmtT(c.scheduledAt)}</div>
+                          <span className={`mpcc-badge mpcc-badge-${status}`}>
+                            {c.completed ? '✓ Done' : isPast ? 'Overdue' : 'Upcoming'}
+                          </span>
+                        </div>
+                        <div className="mpcc-meta">{c.durationMin} min{c.notes ? ` · ${c.notes}` : ''}</div>
+                        {canMarkDone && (
+                          <button className="mp-btn mp-btn-green mp-btn-sm" style={{ marginTop: '10px' }} onClick={() => markCallDone(c.id, c.notes || '')}>
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+                            Mark Complete
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* ── Notes tab ── */}
+            {activeTab === 'notes' && (
+              <div className="mp-section">
+                {!detail.mentorNotes?.length ? (
+                  <div className="mp-empty-tab">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" opacity=".3"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                    No notes sent yet.
+                  </div>
+                ) : detail.mentorNotes.map(n => (
+                  <div key={n.id} className="mp-note-card">
+                    <div className="mpnc-header">
+                      <span className="mpnc-week">Week of {fmtD(n.weekOf || n.createdAt)}</span>
+                      <span className="mpnc-sent">{new Date(n.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</span>
+                    </div>
+                    <div className="mpnc-body">{n.content}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+};
+
+// ── Daily Logs page component ────────────────────────────────────────────────
+const DailyLogsPage = ({ mentorDailyReports = [], mentorStudents = [] }) => {
+  const [studentFilter, setStudentFilter] = useState('all');
+  const [dateFilter, setDateFilter] = useState('all');
+
+  const today = new Date(Date.now() + 5.5 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const moods = ['', '😩', '😐', '🙂', '💪', '🔥'];
+  const FILLERS = /^(nothing|none|no|n\/a|na|-|nil|nope|not\s+much|idk)$/i;
+  const val = (v) => v && !FILLERS.test(v.trim()) ? v.trim() : null;
+
+  const filtered = mentorDailyReports.filter(r => {
+    if (studentFilter !== 'all' && r.studentId !== Number(studentFilter)) return false;
+    if (dateFilter === 'today' && r.date !== today) return false;
+    if (dateFilter === 'week') {
+      const cutoff = new Date(Date.now() + 5.5 * 60 * 60 * 1000 - 6 * 86400000).toISOString().slice(0, 10);
+      if (r.date < cutoff) return false;
+    }
+    return true;
+  });
+
+  const todayCount = mentorStudents.filter(s => s.reportedToday).length;
+  const notToday = mentorStudents.filter(s => !s.reportedToday).length;
+
+  if (mentorDailyReports.length === 0) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '80px 24px', gap: '14px', textAlign: 'center', color: 'var(--text3)' }}>
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.3" opacity=".3"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        <div style={{ fontFamily: 'var(--fs)', fontSize: '18px', fontWeight: 700, color: 'var(--text)' }}>No daily logs yet</div>
+        <div style={{ fontSize: '13px', maxWidth: '300px', lineHeight: 1.7 }}>When your mentees submit their daily reports, they'll all appear here.</div>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      {/* Summary strip */}
+      <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
+        <div className="stat sa-green" style={{ flex: 1, minWidth: '120px', padding: '14px 16px' }}>
+          <div className="stat-l">Reported Today</div>
+          <div className="stat-v" style={{ fontSize: '24px' }}>{todayCount}</div>
+          <div className="stat-n up">of {mentorStudents.length} mentees</div>
+        </div>
+        <div className="stat sa-red" style={{ flex: 1, minWidth: '120px', padding: '14px 16px' }}>
+          <div className="stat-l">Not Yet Today</div>
+          <div className="stat-v" style={{ fontSize: '24px' }}>{notToday}</div>
+          <div className="stat-n bad">{notToday > 0 ? 'pending today' : 'all clear!'}</div>
+        </div>
+        <div className="stat sa-gold" style={{ flex: 1, minWidth: '120px', padding: '14px 16px' }}>
+          <div className="stat-l">Total Logs</div>
+          <div className="stat-v" style={{ fontSize: '24px' }}>{mentorDailyReports.length}</div>
+          <div className="stat-n neu">across all mentees</div>
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div style={{ display: 'flex', gap: '10px', marginBottom: '18px', flexWrap: 'wrap', alignItems: 'center' }}>
+        <div className="tabs" style={{ marginBottom: 0 }}>
+          {[['all', 'All Time'], ['today', 'Today'], ['week', 'This Week']].map(([k, label]) => (
+            <div key={k} className={`tab${dateFilter === k ? ' on' : ''}`} onClick={() => setDateFilter(k)}>{label}</div>
+          ))}
+        </div>
+        <select
+          value={studentFilter}
+          onChange={e => setStudentFilter(e.target.value)}
+          style={{ padding: '7px 12px', borderRadius: '8px', border: '1px solid var(--b)', background: 'var(--cream)', color: 'var(--text)', fontSize: '13px', fontFamily: 'var(--fb)', cursor: 'pointer' }}
+        >
+          <option value="all">All mentees</option>
+          {mentorStudents.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+        </select>
+        <span style={{ fontSize: '12px', color: 'var(--text3)', marginLeft: 'auto' }}>{filtered.length} report{filtered.length !== 1 ? 's' : ''}</span>
+      </div>
+
+      {/* Report cards */}
+      {filtered.length === 0 ? (
+        <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text3)', fontSize: '13px' }}>No reports match this filter.</div>
+      ) : (
+        <div className="mp-reports-grid">
+          <div className="mprr-legend">
+            <span><span className="mprr-tag-up">↑</span> What went well</span>
+            <span><span className="mprr-tag-dn">↓</span> What was hard</span>
+            <span style={{ borderLeft: '3px solid var(--gold)', paddingLeft: '7px', fontStyle: 'italic' }}>Note for mentor</span>
+          </div>
+          {filtered.map(r => {
+            const hrs = ((r.hrsPhysics || 0) + (r.hrsChemistry || 0) + (r.hrsThird || 0)).toFixed(1);
+            const fq = parseInt(r.focusQuality) || 0;
+            const fqPct = Math.round((fq / 5) * 100);
+            const well = val(r.wentWell); const hard = val(r.wentHard); const note = val(r.noteForMentor);
+            const fqColor = fq >= 4 ? 'var(--green)' : fq >= 3 ? 'var(--gold)' : 'var(--red)';
+            const isToday = r.date === today;
+            return (
+              <div key={r.id} className="mprr-card" style={isToday ? { borderColor: 'rgba(34,197,94,0.3)' } : {}}>
+                <div className="mprr-card-top">
+                  <div className="mprr-card-left">
+                    <span className="mprr-card-mood">{moods[parseInt(r.mood)] || '📋'}</span>
+                    <div>
+                      {/* Student name above date */}
+                      <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--gold)', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: '1px' }}>{r.studentName}</div>
+                      <div className="mprr-card-date">{r.date}{isToday && <span style={{ marginLeft: '6px', fontSize: '10px', background: 'rgba(34,197,94,0.12)', color: 'var(--green)', padding: '1px 6px', borderRadius: '4px', fontWeight: 700 }}>Today</span>}</div>
+                      <div className="mprr-card-hrs">{hrs}h studied{r.questionsSolved ? ` · ${r.questionsSolved} problems` : ''}</div>
+                    </div>
+                  </div>
+                  <div className="mprr-card-focus">
+                    <div className="mprr-focus-label">Focus</div>
+                    <div className="mprr-focus-bar">
+                      <div className="mprr-focus-fill" style={{ width: `${fqPct}%`, background: fqColor }} />
+                    </div>
+                    <div className="mprr-focus-val" style={{ color: fqColor }}>{fq}/5</div>
+                  </div>
+                </div>
+                {(well || hard || note) && (
+                  <div className="mprr-card-body">
+                    {well && <div className="mprr-card-well"><span className="mprr-tag-up">↑</span>{well}</div>}
+                    {hard && <div className="mprr-card-hard"><span className="mprr-tag-dn">↓</span>{hard}</div>}
+                    {note && <div className="mprr-card-note">"{note}"</div>}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 };

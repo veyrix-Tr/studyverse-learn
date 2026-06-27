@@ -691,4 +691,203 @@ router.get('/feedback', requireAuth, async (req, res) => {
   }
 });
 
+// ── ANCHOR MENTOR TOOLS (faculty-side) ────────────────────────────────────
+
+// GET /api/faculty/:userId/mentor-daily-reports — all daily reports from all mentees, newest first
+router.get('/mentor-daily-reports', requireAuth, async (req, res) => {
+  try {
+    const fp = await prisma.facultyProfile.findUnique({ where: { userId: req.params.userId } });
+    if (!fp) return res.json([]);
+
+    const students = await prisma.studentProfile.findMany({
+      where: { mentorId: fp.id },
+      include: {
+        user:         { select: { name: true } },
+        dailyReports: { orderBy: { date: 'desc' }, take: 62 },
+      },
+    });
+
+    const reports = students.flatMap(s =>
+      s.dailyReports.map(r => ({
+        id: r.id, date: r.date, mood: r.mood, showedUp: r.showedUp,
+        hrsPhysics: r.hrsPhysics, hrsChemistry: r.hrsChemistry, hrsThird: r.hrsThird,
+        focusQuality: r.focusQuality, topicsDone: r.topicsDone, questionsSolved: r.questionsSolved,
+        wentWell: r.wentWell, wentHard: r.wentHard, tomorrowOne: r.tomorrowOne,
+        noteForMentor: r.noteForMentor, createdAt: r.createdAt,
+        studentId: s.id, studentName: s.user.name, examTarget: s.examTarget,
+      }))
+    ).sort((a, b) => b.date.localeCompare(a.date));
+
+    res.json(reports);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch mentor daily reports' });
+  }
+});
+
+// GET /api/faculty/:userId/mentor-students — anchor students assigned to this faculty as mentor
+router.get('/mentor-students', requireAuth, async (req, res) => {
+  try {
+    const fp = await prisma.facultyProfile.findUnique({ where: { userId: req.params.userId } });
+    if (!fp) return res.status(403).json({ error: 'Not a faculty' });
+
+    const students = await prisma.studentProfile.findMany({
+      where: { mentorId: fp.id },
+      include: {
+        user:        { select: { name: true, email: true } },
+        dailyReports:{ orderBy: { date: 'desc' }, take: 1 },
+        habitLogs:   { orderBy: { date: 'desc' }, take: 14 },
+        mentorNotes: { orderBy: { createdAt: 'desc' }, take: 1 },
+        mentorCalls: { orderBy: { scheduledAt: 'desc' }, take: 5 },
+        _count:      { select: { dailyReports: true } },
+      },
+    });
+
+    const today = new Date(Date.now() + 5.5 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    res.json(students.map(s => ({
+      id: s.id,
+      name: s.user.name,
+      email: s.user.email,
+      examTarget: s.examTarget,
+      reportCount: s._count.dailyReports,
+      reportedToday: s.dailyReports[0]?.date === today,
+      lastReportDate: s.dailyReports[0]?.date || null,
+      lastNote: s.mentorNotes[0] ? { id: s.mentorNotes[0].id, content: s.mentorNotes[0].content, weekOf: s.mentorNotes[0].weekOf, createdAt: s.mentorNotes[0].createdAt } : null,
+      nextCall: s.mentorCalls.find(c => !c.completed && new Date(c.scheduledAt) >= new Date()) || null,
+    })));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch mentor students' });
+  }
+});
+
+// GET /api/faculty/:userId/mentor-student/:studentId — full detail for one anchor student
+router.get('/mentor-student/:studentId', requireAuth, async (req, res) => {
+  try {
+    const fp = await prisma.facultyProfile.findUnique({ where: { userId: req.params.userId } });
+    if (!fp) return res.status(403).json({ error: 'Not a faculty' });
+
+    const sid = parseInt(req.params.studentId);
+    const s = await prisma.studentProfile.findUnique({
+      where: { id: sid },
+      include: {
+        user:        { select: { name: true, email: true } },
+        dailyReports:{ orderBy: { date: 'desc' }, take: 30 },
+        habitLogs:   { orderBy: { date: 'desc' }, take: 14 },
+        mentorNotes: { orderBy: { createdAt: 'desc' }, take: 10, include: { mentor: { include: { user: { select: { name: true } } } } } },
+        mentorCalls: { orderBy: { scheduledAt: 'desc' }, take: 20, include: { mentor: { include: { user: { select: { name: true } } } } } },
+      },
+    });
+    if (!s || s.mentorId !== fp.id) return res.status(403).json({ error: 'Not your mentee' });
+
+    res.json({
+      id: s.id,
+      name: s.user.name,
+      email: s.user.email,
+      examTarget: s.examTarget,
+      dailyReports: s.dailyReports,
+      habitLogs: s.habitLogs,
+      mentorNotes: s.mentorNotes.map(n => ({ id: n.id, content: n.content, weekOf: n.weekOf, createdAt: n.createdAt, mentorName: n.mentor?.user?.name || null })),
+      mentorCalls: s.mentorCalls.map(c => ({ id: c.id, scheduledAt: c.scheduledAt, durationMin: c.durationMin, notes: c.notes, completed: c.completed, mentorName: c.mentor?.user?.name || null })),
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch student' });
+  }
+});
+
+// POST /api/faculty/:userId/mentor-student/:studentId/note — write a mentor note
+router.post('/mentor-student/:studentId/note', requireAuth, async (req, res) => {
+  try {
+    const fp = await prisma.facultyProfile.findUnique({ where: { userId: req.params.userId }, include: { user: { select: { name: true } } } });
+    if (!fp) return res.status(403).json({ error: 'Not a faculty' });
+
+    const sid = parseInt(req.params.studentId);
+    const { content, weekOf } = req.body;
+    if (!content?.trim()) return res.status(400).json({ error: 'Note content required' });
+
+    const s = await prisma.studentProfile.findUnique({ where: { id: sid } });
+    if (!s || s.mentorId !== fp.id) return res.status(403).json({ error: 'Not your mentee' });
+
+    const wof = weekOf || (() => {
+      const d = new Date(Date.now() + 5.5 * 60 * 60 * 1000);
+      d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+      return d.toISOString().slice(0, 10);
+    })();
+
+    const note = await prisma.mentorNote.create({
+      data: { studentId: sid, mentorId: fp.id, content: content.trim(), weekOf: wof },
+    });
+
+    const admin = await prisma.adminProfile.findFirst({ select: { id: true } });
+    if (admin) {
+      await prisma.adminMessage.create({
+        data: { content: `${fp.user.name} left you a weekly note. Check your dashboard.`, type: 'Motivational Note', studentId: sid, adminId: admin.id },
+      });
+    }
+
+    res.json({ id: note.id, content: note.content, weekOf: note.weekOf, createdAt: note.createdAt, mentorName: fp.user.name });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to save note' });
+  }
+});
+
+// POST /api/faculty/:userId/mentor-student/:studentId/call — schedule or log a call
+router.post('/mentor-student/:studentId/call', requireAuth, async (req, res) => {
+  try {
+    const fp = await prisma.facultyProfile.findUnique({ where: { userId: req.params.userId }, include: { user: { select: { name: true } } } });
+    if (!fp) return res.status(403).json({ error: 'Not a faculty' });
+
+    const sid = parseInt(req.params.studentId);
+    const { scheduledAt, durationMin, notes, completed } = req.body;
+    if (!scheduledAt) return res.status(400).json({ error: 'scheduledAt required' });
+
+    const s = await prisma.studentProfile.findUnique({ where: { id: sid } });
+    if (!s || s.mentorId !== fp.id) return res.status(403).json({ error: 'Not your mentee' });
+
+    const call = await prisma.mentorCall.create({
+      data: { studentId: sid, mentorId: fp.id, scheduledAt: new Date(scheduledAt), durationMin: durationMin || 45, notes: notes?.trim() || null, completed: completed ?? false },
+    });
+
+    if (!completed) {
+      const admin = await prisma.adminProfile.findFirst({ select: { id: true } });
+      if (admin) {
+        const callDate = new Date(scheduledAt);
+        const label = callDate.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' });
+        const time = callDate.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+        await prisma.adminMessage.create({
+          data: { content: `Weekly mentor call scheduled — ${label} at ${time}. Duration: ${durationMin || 45} min.`, type: 'Reminder', studentId: sid, adminId: admin.id },
+        });
+      }
+    }
+
+    res.json({ id: call.id, scheduledAt: call.scheduledAt, durationMin: call.durationMin, notes: call.notes, completed: call.completed, mentorName: fp.user.name });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to save call' });
+  }
+});
+
+// PUT /api/faculty/:userId/mentor-call/:callId — mark call complete + add notes
+router.put('/mentor-call/:callId', requireAuth, async (req, res) => {
+  try {
+    const fp = await prisma.facultyProfile.findUnique({ where: { userId: req.params.userId } });
+    if (!fp) return res.status(403).json({ error: 'Not a faculty' });
+
+    const { notes, completed } = req.body;
+    const existing = await prisma.mentorCall.findUnique({ where: { id: parseInt(req.params.callId) } });
+    if (!existing || existing.mentorId !== fp.id) return res.status(403).json({ error: 'Not your call' });
+
+    const call = await prisma.mentorCall.update({
+      where: { id: existing.id },
+      data: { notes: notes?.trim() || null, completed: completed ?? true },
+    });
+    res.json({ id: call.id, notes: call.notes, completed: call.completed });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to update call' });
+  }
+});
+
 module.exports = router;

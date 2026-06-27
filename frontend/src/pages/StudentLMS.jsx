@@ -30,6 +30,8 @@ const StudentLMS = () => {
   const [resources, setResources] = useState([]);
   const [questionBank, setQuestionBank] = useState([]);
   const [parentReports, setParentReports] = useState(null);
+  const [mentorNotes, setMentorNotes] = useState([]);
+  const [mentorCalls, setMentorCalls] = useState([]);
   const toastTimer        = useRef(null);
   const doubtsRef         = useRef([]);
   const notificationsRef  = useRef([]);
@@ -105,6 +107,20 @@ const StudentLMS = () => {
     })
       .then(r => r.ok ? r.json() : null)
       .then(data => { if (data && (data.subjects || data.reports)) setParentReports(data); })
+      .catch(() => {});
+
+    fetch(`${import.meta.env.VITE_API_URL}/api/student/${userId}/mentor-notes`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(r => r.ok ? r.json() : [])
+      .then(data => { if (Array.isArray(data)) setMentorNotes(data); })
+      .catch(() => {});
+
+    fetch(`${import.meta.env.VITE_API_URL}/api/student/${userId}/mentor-calls`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(r => r.ok ? r.json() : [])
+      .then(data => { if (Array.isArray(data)) setMentorCalls(data); })
       .catch(() => {});
   }, []);
 
@@ -233,6 +249,7 @@ const StudentLMS = () => {
           onOpenModal={setOpenModal}
           onNav={setActivePage}
           unreadCount={notifications.filter(n => !n.readAt).length}
+          profile={profile}
         />
         <StudentContent
           activePage={activePage}
@@ -249,6 +266,8 @@ const StudentLMS = () => {
           resources={resources}
           questionBank={questionBank}
           parentReports={parentReports}
+          mentorNotes={mentorNotes}
+          mentorCalls={mentorCalls}
         />
       </div>
       <StudentModals
