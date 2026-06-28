@@ -299,6 +299,34 @@ const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
 
   const p = (name) => `page${activePage === name ? ' active' : ''}`;
 
+  // ── Plan expiry gate ─────────────────────────────────────────────────────
+  const planEndDate = profile?.studentProfile?.planEndDate;
+  const planName    = profile?.studentProfile?.plan;
+  if (planEndDate && ['forge', 'apex', 'anchor'].includes(planName)) {
+    const daysLeft = Math.ceil((new Date(planEndDate) - new Date()) / (1000 * 60 * 60 * 24));
+    if (daysLeft <= 0) {
+      return (
+        <div className="content" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '70vh' }}>
+          <div style={{ maxWidth: '440px', textAlign: 'center', padding: '40px 32px' }}>
+            <div style={{ fontSize: '48px', marginBottom: '20px' }}>🔒</div>
+            <div style={{ fontFamily: 'var(--font-serif)', fontSize: '22px', fontWeight: 700, color: 'var(--text)', marginBottom: '10px' }}>
+              Your plan has expired
+            </div>
+            <div style={{ fontSize: '14px', color: 'var(--text2)', lineHeight: 1.7, marginBottom: '24px' }}>
+              Your <strong>{planName?.charAt(0).toUpperCase() + planName?.slice(1)}</strong> plan ended on{' '}
+              {new Date(planEndDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}.
+              Contact your admin to renew and restore access to sessions, doubts, and reports.
+            </div>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'var(--gold-dim)', border: '1px solid var(--gold-b)', borderRadius: 'var(--r)', padding: '12px 20px', fontSize: '13px', color: 'var(--gold)', fontWeight: 600 }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.39 2 2 0 0 1 3.6 1.21h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.38a16 16 0 0 0 6 6l.94-.94a2 2 0 0 1 2.25-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.73 16z"/></svg>
+              Contact admin to renew
+            </div>
+          </div>
+        </div>
+      );
+    }
+  }
+
   return (
     <div className="content">
 
@@ -732,7 +760,7 @@ const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
                                   style={!s.note ? { opacity: 0.4, cursor: 'default' } : {}}
                                   onClick={() => s.note && setOpenSessionNote(noteOpen ? null : s.id)}
                                 >
-                                  {noteOpen ? 'Hide Note' : 'See Note'}
+                                  {noteOpen ? 'Hide Note' : s.note ? 'See Note' : 'No note yet'}
                                 </button>
                               )}
                             </div>

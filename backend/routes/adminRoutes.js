@@ -1,7 +1,7 @@
 const express  = require('express');
 const router   = express.Router({ mergeParams: true });
 const prisma   = require('../lib/prisma');
-const { requireAuth } = require('../middleware/auth');
+const { requireAuth, requireAdmin } = require('../middleware/auth');
 
 const EXAM_SUBJECTS = {
   'JEE Mains':    ['Physics', 'Chemistry', 'Maths'],
@@ -12,7 +12,7 @@ const EXAM_SUBJECTS = {
 const QUESTION_BANK_TYPES = ['MCQ Bank', 'Previous Year Papers', 'Practice Set'];
 
 // GET /api/admin/me
-router.get('/me', requireAuth, async (req, res) => {
+router.get('/me', requireAuth, requireAdmin, async (req, res) => {
   try {
     const user = await prisma.user.findUnique({
       where: { id: req.params.userId },
@@ -32,7 +32,7 @@ router.get('/me', requireAuth, async (req, res) => {
 });
 
 // GET /api/admin/students — list all students with scores and faculty
-router.get('/students', requireAuth, async (req, res) => {
+router.get('/students', requireAuth, requireAdmin, async (req, res) => {
   try {
     const students = await prisma.studentProfile.findMany({
       include: {
@@ -97,7 +97,7 @@ router.get('/students', requireAuth, async (req, res) => {
 });
 
 // GET /api/admin/faculty — list all faculty with session stats and ratings
-router.get('/faculty', requireAuth, async (req, res) => {
+router.get('/faculty', requireAuth, requireAdmin, async (req, res) => {
   try {
     const fourWeeksAgo = new Date(Date.now() - 28 * 86400000);
     const faculty = await prisma.facultyProfile.findMany({
@@ -143,7 +143,7 @@ router.get('/faculty', requireAuth, async (req, res) => {
 });
 
 // POST /api/admin/faculty — create a new faculty member
-router.post('/faculty', requireAuth, async (req, res) => {
+router.post('/faculty', requireAuth, requireAdmin, async (req, res) => {
   try {
     const { name, subject, qualification, department } = req.body;
     if (!name || !subject) return res.status(400).json({ error: 'name and subject required' });
@@ -198,7 +198,7 @@ router.post('/faculty', requireAuth, async (req, res) => {
 });
 
 // PUT /api/admin/student/:studentUserId/mentor — assign or clear mentor
-router.put('/student/:studentUserId/mentor', requireAuth, async (req, res) => {
+router.put('/student/:studentUserId/mentor', requireAuth, requireAdmin, async (req, res) => {
   try {
     const ap = await prisma.adminProfile.findUnique({ where: { userId: req.params.userId } });
     if (!ap) return res.status(403).json({ error: 'Not an admin' });
@@ -228,7 +228,7 @@ router.put('/student/:studentUserId/mentor', requireAuth, async (req, res) => {
 });
 
 // PUT /api/admin/student/:studentUserId/subject-faculty — assign or clear a faculty for a subject
-router.put('/student/:studentUserId/subject-faculty', requireAuth, async (req, res) => {
+router.put('/student/:studentUserId/subject-faculty', requireAuth, requireAdmin, async (req, res) => {
   try {
     const ap = await prisma.adminProfile.findUnique({ where: { userId: req.params.userId } });
     if (!ap) return res.status(403).json({ error: 'Not an admin' });
@@ -260,7 +260,7 @@ router.put('/student/:studentUserId/subject-faculty', requireAuth, async (req, r
 });
 
 // DELETE /api/admin/student/:studentUserId/diagnostic — reset diagnostic lock (admin only)
-router.delete('/student/:studentUserId/diagnostic', requireAuth, async (req, res) => {
+router.delete('/student/:studentUserId/diagnostic', requireAuth, requireAdmin, async (req, res) => {
   try {
     const profile = await prisma.studentProfile.findUnique({ where: { userId: req.params.studentUserId } });
     if (!profile) return res.status(404).json({ error: 'Student not found' });
@@ -276,7 +276,7 @@ router.delete('/student/:studentUserId/diagnostic', requireAuth, async (req, res
 });
 
 // GET /api/admin/student/:studentUserId/diagnostic — diagnostic digest for a student
-router.get('/student/:studentUserId/diagnostic', requireAuth, async (req, res) => {
+router.get('/student/:studentUserId/diagnostic', requireAuth, requireAdmin, async (req, res) => {
   try {
     const { generateStudyPlan } = require('../lib/studyPlanAlgorithm');
     const profile = await prisma.studentProfile.findUnique({
@@ -347,7 +347,7 @@ router.get('/student/:studentUserId/diagnostic', requireAuth, async (req, res) =
 });
 
 // GET /api/admin/admins — list all admin accounts (superadmin only)
-router.get('/admins', requireAuth, async (req, res) => {
+router.get('/admins', requireAuth, requireAdmin, async (req, res) => {
   try {
     if (req.user.role !== 'superadmin') return res.status(403).json({ error: 'Superadmin only' });
     const admins = await prisma.user.findMany({
@@ -366,7 +366,7 @@ router.get('/admins', requireAuth, async (req, res) => {
 });
 
 // PUT /api/admin/admins/:id/deactivate — deactivate an admin account (superadmin only)
-router.put('/admins/:id/deactivate', requireAuth, async (req, res) => {
+router.put('/admins/:id/deactivate', requireAuth, requireAdmin, async (req, res) => {
   try {
     if (req.user.role !== 'superadmin') return res.status(403).json({ error: 'Superadmin only' });
     const userId = req.params.id;
@@ -380,7 +380,7 @@ router.put('/admins/:id/deactivate', requireAuth, async (req, res) => {
 });
 
 // PUT /api/admin/admins/:id/reactivate — reactivate an admin account (superadmin only)
-router.put('/admins/:id/reactivate', requireAuth, async (req, res) => {
+router.put('/admins/:id/reactivate', requireAuth, requireAdmin, async (req, res) => {
   try {
     if (req.user.role !== 'superadmin') return res.status(403).json({ error: 'Superadmin only' });
     const userId = req.params.id;
@@ -394,7 +394,7 @@ router.put('/admins/:id/reactivate', requireAuth, async (req, res) => {
 });
 
 // POST /api/admin/messages — send message to one or all students, with optional plan targeting
-router.post('/messages', requireAuth, async (req, res) => {
+router.post('/messages', requireAuth, requireAdmin, async (req, res) => {
   try {
     const { studentId, content, type, targetPlan } = req.body;
     if (!content || !content.trim()) return res.status(400).json({ error: 'Message content is required' });
@@ -451,7 +451,7 @@ router.post('/messages', requireAuth, async (req, res) => {
 });
 
 // GET /api/admin/messages — sent messages (deduplicated broadcasts)
-router.get('/messages', requireAuth, async (req, res) => {
+router.get('/messages', requireAuth, requireAdmin, async (req, res) => {
   try {
     const ap = await prisma.adminProfile.findUnique({ where: { userId: req.params.userId } });
     if (!ap) return res.status(403).json({ error: 'Not an admin' });
@@ -506,7 +506,7 @@ router.get('/messages', requireAuth, async (req, res) => {
 });
 
 // GET /api/admin/resources — all resources pending/approved/declined
-router.get('/resources', requireAuth, async (req, res) => {
+router.get('/resources', requireAuth, requireAdmin, async (req, res) => {
   try {
     const ap = await prisma.adminProfile.findUnique({ where: { userId: req.params.userId } });
     if (!ap) return res.status(403).json({ error: 'Not an admin' });
@@ -530,7 +530,7 @@ router.get('/resources', requireAuth, async (req, res) => {
 });
 
 // PUT /api/admin/resources/:id/approve
-router.put('/resources/:id/approve', requireAuth, async (req, res) => {
+router.put('/resources/:id/approve', requireAuth, requireAdmin, async (req, res) => {
   try {
     const ap = await prisma.adminProfile.findUnique({ where: { userId: req.params.userId } });
     if (!ap) return res.status(403).json({ error: 'Not an admin' });
@@ -583,7 +583,7 @@ router.put('/resources/:id/approve', requireAuth, async (req, res) => {
 });
 
 // PUT /api/admin/resources/:id/decline
-router.put('/resources/:id/decline', requireAuth, async (req, res) => {
+router.put('/resources/:id/decline', requireAuth, requireAdmin, async (req, res) => {
   try {
     const { reason } = req.body;
     const ap = await prisma.adminProfile.findUnique({ where: { userId: req.params.userId } });
@@ -612,7 +612,7 @@ router.put('/resources/:id/decline', requireAuth, async (req, res) => {
 // ── Weekly Parent Reports ────────────────────────────────────────────────────
 
 // GET /api/admin/reports — all submitted/approved/rejected/sent reports
-router.get('/reports', requireAuth, async (req, res) => {
+router.get('/reports', requireAuth, requireAdmin, async (req, res) => {
   try {
     const ap = await prisma.adminProfile.findUnique({ where: { userId: req.params.userId } });
     if (!ap) return res.status(403).json({ error: 'Not an admin' });
@@ -655,7 +655,7 @@ router.get('/reports', requireAuth, async (req, res) => {
 });
 
 // PUT /api/admin/reports/:id/approve
-router.put('/reports/:id/approve', requireAuth, async (req, res) => {
+router.put('/reports/:id/approve', requireAuth, requireAdmin, async (req, res) => {
   try {
     const ap = await prisma.adminProfile.findUnique({ where: { userId: req.params.userId } });
     if (!ap) return res.status(403).json({ error: 'Not an admin' });
@@ -680,7 +680,7 @@ router.put('/reports/:id/approve', requireAuth, async (req, res) => {
 });
 
 // PUT /api/admin/reports/:id/reject
-router.put('/reports/:id/reject', requireAuth, async (req, res) => {
+router.put('/reports/:id/reject', requireAuth, requireAdmin, async (req, res) => {
   try {
     const { reason } = req.body;
     const ap = await prisma.adminProfile.findUnique({ where: { userId: req.params.userId } });
@@ -706,7 +706,7 @@ router.put('/reports/:id/reject', requireAuth, async (req, res) => {
 });
 
 // POST /api/admin/reports/approve-all — approve all submitted reports for this admin
-router.post('/reports/approve-all', requireAuth, async (req, res) => {
+router.post('/reports/approve-all', requireAuth, requireAdmin, async (req, res) => {
   try {
     const ap = await prisma.adminProfile.findUnique({ where: { userId: req.params.userId } });
     if (!ap) return res.status(403).json({ error: 'Not an admin' });
@@ -724,7 +724,7 @@ router.post('/reports/approve-all', requireAuth, async (req, res) => {
 });
 
 // POST /api/admin/reports/send — mark approved reports as sent (called by cron or manually)
-router.post('/reports/send', requireAuth, async (req, res) => {
+router.post('/reports/send', requireAuth, requireAdmin, async (req, res) => {
   try {
     const ap = await prisma.adminProfile.findUnique({ where: { userId: req.params.userId } });
     if (!ap) return res.status(403).json({ error: 'Not an admin' });

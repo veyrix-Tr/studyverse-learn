@@ -14,17 +14,24 @@ const PAGE_TITLES = {
   feedback:   'Weekly Feedback',
 };
 
-const FreeTopbar = ({ activePage, onNav, unreadCount = 0 }) => (
+const PLAN_LABEL = {
+  forge: { label: 'FORGE', sub: 'Premium Plan', color: '#818CF8' },
+  spark: { label: 'SPARK', sub: 'Free Plan',    color: '#94A3B8' },
+};
+
+const FreeTopbar = ({ activePage, onNav, unreadCount = 0, plan = 'spark' }) => {
+  const cfg = PLAN_LABEL[plan] || PLAN_LABEL.spark;
+  return (
   <header className="fr-topbar">
     <div className="fr-tb-page">
       <div className="fr-tb-bar" />
       <span className="fr-tb-title">{PAGE_TITLES[activePage] || 'Dashboard'}</span>
     </div>
 
-    <div className="fr-tb-spark">
+    <div className="fr-tb-spark" style={{ '--plan-dot': cfg.color }}>
       <span className="fr-tb-spark-dot" />
-      <span className="fr-tb-spark-label">SPARK</span>
-      <span className="fr-tb-spark-sub">Free Plan</span>
+      <span className="fr-tb-spark-label">{cfg.label}</span>
+      <span className="fr-tb-spark-sub">{cfg.sub}</span>
     </div>
 
     <div className="fr-tbr">
@@ -40,6 +47,7 @@ const FreeTopbar = ({ activePage, onNav, unreadCount = 0 }) => (
       </div>
     </div>
   </header>
-);
+  );
+};
 
 export default FreeTopbar;

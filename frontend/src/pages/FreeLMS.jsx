@@ -86,7 +86,7 @@ const FreeLMS = () => {
     <div className="free-app">
       <FreeSidebar activePage={activePage} onNav={setActivePage} profile={profile} onOpenModal={setOpenModal} />
       <div className="free-main">
-        <FreeTopbar activePage={activePage} onNav={setActivePage} unreadCount={notifications.filter(n => !n.readAt).length} />
+        <FreeTopbar activePage={activePage} onNav={setActivePage} unreadCount={notifications.filter(n => !n.readAt).length} plan={profile?.studentProfile?.plan || 'spark'} />
         <FreeContent
           activePage={activePage}
           onNav={setActivePage}
