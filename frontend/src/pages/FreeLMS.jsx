@@ -13,7 +13,12 @@ const FreeLMS = () => {
   const [profile, setProfile] = useState(null);
   const [habitLogs, setHabitLogs] = useState([]);
   const [notifications, setNotifications] = useState([]);
-  const toastTimer = useRef(null);
+  const [sessionRequests, setSessionRequests] = useState([]);
+  const toastTimer      = useRef(null);
+  const sessionReqRef   = useRef([]);
+  const notifRef        = useRef([]);
+  React.useEffect(() => { sessionReqRef.current = sessionRequests; }, [sessionRequests]);
+  React.useEffect(() => { notifRef.current      = notifications;   }, [notifications]);
 
   useEffect(() => {
     document.documentElement.classList.add('free-mode');
@@ -54,6 +59,48 @@ const FreeLMS = () => {
       .then(r => r.ok ? r.json() : [])
       .then(data => { if (Array.isArray(data)) setNotifications(data); })
       .catch(() => {});
+
+    fetch(`${import.meta.env.VITE_API_URL}/api/student/${userId}/session-requests`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(r => r.ok ? r.json() : [])
+      .then(data => { if (Array.isArray(data)) setSessionRequests(data); })
+      .catch(() => {});
+
+    // Poll every 20s — update session status + notifications without manual refresh
+    const poll = setInterval(() => {
+      fetch(`${import.meta.env.VITE_API_URL}/api/student/${userId}/session-requests`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+        .then(r => r.ok ? r.json() : null)
+        .then(fresh => {
+          if (!Array.isArray(fresh)) return;
+          const prev = sessionReqRef.current;
+          fresh.forEach(f => {
+            const old = prev.find(p => p.id === f.id);
+            if (old && old.status !== f.status) {
+              if (f.status === 'assigned')
+                showToast(`Session confirmed! ${f.facultyName ? f.facultyName + ' · ' : ''}Check Sessions page for details.`);
+              if (f.status === 'cancelled')
+                showToast('Your session request was cancelled. You can submit a new one.');
+            }
+          });
+          setSessionRequests(fresh);
+        })
+        .catch(() => {});
+
+      fetch(`${import.meta.env.VITE_API_URL}/api/student/${userId}/notifications`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+        .then(r => r.ok ? r.json() : null)
+        .then(fresh => {
+          if (!Array.isArray(fresh)) return;
+          setNotifications(fresh);
+        })
+        .catch(() => {});
+    }, 20000);
+
+    return () => clearInterval(poll);
   }, [userId]);
 
   const markNotifRead = async (id) => {
@@ -102,6 +149,8 @@ const FreeLMS = () => {
             if (exists >= 0) { const next = [...prev]; next[exists] = log; return next; }
             return [log, ...prev].slice(0, 14);
           })}
+          sessionRequests={sessionRequests}
+          onSessionRequestSubmitted={(req) => setSessionRequests(prev => [req, ...prev])}
         />
       </div>
       <FreeModals

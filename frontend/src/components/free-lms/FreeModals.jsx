@@ -11,7 +11,7 @@ const FreeModals = ({ openModal, onClose, onShowToast, toast }) => {
           <div className="mt">Unlock Full Access</div>
           <div className="ms">Get the question bank, premium resources, and full diagnostic report.</div>
           <div style={{ background: 'var(--gold-dim)', border: '1px solid var(--gold-b)', borderRadius: 'var(--rl)', padding: '16px 18px', marginBottom: '18px' }}>
-            <div style={{ fontFamily: 'var(--fs)', fontSize: '22px', fontWeight: 700, color: 'var(--text)', marginBottom: '2px' }}>₹ 499 <span style={{ fontSize: '13px', fontWeight: 400, color: 'var(--text3)' }}>/ month</span></div>
+            <div style={{ fontFamily: 'var(--fs)', fontSize: '22px', fontWeight: 700, color: 'var(--text)', marginBottom: '2px' }}>₹ 999 <span style={{ fontSize: '13px', fontWeight: 400, color: 'var(--text3)' }}>/ month</span></div>
             <div style={{ fontSize: '12px', color: 'var(--text2)' }}>Questions matched to your weak topics • PYQ papers • HC Verma • Formula sheets</div>
           </div>
           <div className="fg"><label>Your Name</label><input className="fi" type="text" placeholder="Full name" /></div>
@@ -36,8 +36,8 @@ const FreeModals = ({ openModal, onClose, onShowToast, toast }) => {
       {/* Book Session Modal */}
       <div className={`overlay${isOpen('book-modal')}`} onClick={e => e.target.classList.contains('overlay') && onClose()}>
         <div className="modal">
-          <div className="mt">Book a Session with Ajay Sharma</div>
-          <div className="ms">Tell us your topic and preferred time. Ajay will confirm within 24 hours.</div>
+          <div className="mt">Request a 1-on-1 Session</div>
+          <div className="ms">Tell us your topic and preferred time. Our team will confirm within 24 hours.</div>
           <div className="fg"><label>Your Name</label><input className="fi" type="text" placeholder="Full name" /></div>
           <div className="fg"><label>Phone Number</label><input className="fi" type="tel" placeholder="+91 XXXXX XXXXX" /></div>
           <div className="fg"><label>Topic / Subject</label><input className="fi" type="text" placeholder="e.g. Electrostatics — Gauss's Law" /></div>
@@ -55,7 +55,7 @@ const FreeModals = ({ openModal, onClose, onShowToast, toast }) => {
           </div>
           <div className="ma">
             <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
-            <button className="btn btn-gold" onClick={() => { onClose(); onShowToast('Session request sent! Ajay will confirm within 24h. 🎉'); }}>Send Request →</button>
+            <button className="btn btn-gold" onClick={() => { onClose(); onShowToast('Session request sent! Our team will reach out within 24h ✓'); }}>Send Request →</button>
           </div>
         </div>
       </div>

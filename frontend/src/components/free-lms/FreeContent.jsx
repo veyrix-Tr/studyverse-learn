@@ -139,13 +139,40 @@ const getGreeting = () => {
 
 
 
-const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, habitLogs = [], onHabitSaved, notifications = [], onMarkNotifRead, onMarkAllNotifRead, isAnchor = false }) => {
+const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, habitLogs = [], onHabitSaved, notifications = [], onMarkNotifRead, onMarkAllNotifRead, isAnchor = false, sessionRequests = [], onSessionRequestSubmitted }) => {
   const { id: userId } = useParams();
   const p = (name) => `page${activePage === name ? ' on' : ''}`;
   const firstName = profile?.name?.split(' ')[0] || 'there';
   const examTarget = profile?.studentProfile?.examTarget || 'your exam';
   const plan = profile?.studentProfile?.plan || 'spark';
   const isForge = plan === 'forge';
+
+  // Session request form state
+  const [sessName, setSessName] = useState('');
+  const [sessPhone, setSessPhone] = useState('');
+  const [sessTopic, setSessTopic] = useState('');
+  const [sessTime, setSessTime] = useState('');
+  const [sessSending, setSessSending] = useState(false);
+  const [sessDone, setSessDone] = useState(false);
+
+  const submitSessionRequest = async () => {
+    if (!sessTopic.trim()) { onShowToast('Please describe the topic you need help with'); return; }
+    setSessSending(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/student/${userId}/session-request`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ topic: sessTopic.trim(), phone: sessPhone.trim() || null, preferredTime: sessTime.trim() || null }),
+      });
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      onSessionRequestSubmitted?.({ id: data.id, topic: sessTopic.trim(), phone: sessPhone.trim() || null, preferredTime: sessTime.trim() || null, status: 'pending', createdAt: new Date().toISOString() });
+      setSessDone(true);
+      onShowToast('Request sent! Our team will reach out within 24h ✓');
+    } catch { onShowToast('Failed to send request. Try again.'); }
+    finally { setSessSending(false); }
+  };
 
   // Question bank + resources + scores (forge only)
   const [questionBank, setQuestionBank] = useState([]);
@@ -343,6 +370,183 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
 
       {/* ══════════ HOME ══════════ */}
       <div className={p('home')}>
+        {isForge ? (() => {
+          // ── FORGE DASHBOARD ──────────────────────────────────────────────
+          const examTarget = profile?.studentProfile?.examTarget || 'your exam';
+          const targetYear = parseInt(profile?.studentProfile?.targetYear) || null;
+          const daysLeft = targetYear ? Math.max(0, Math.ceil((new Date(targetYear, 3, 1) - new Date()) / 86400000)) : null;
+          const sortedWeeks = [...scores].sort((a, b) => a.weekNumber - b.weekNumber);
+          const latestWeek  = sortedWeeks[sortedWeeks.length - 1] || null;
+          const firstWeek   = sortedWeeks[0] || null;
+          const latestPct   = latestWeek?.avgPct ?? null;
+          const firstPct    = firstWeek?.avgPct  ?? null;
+          const improvement = latestPct !== null && firstPct !== null ? Math.round(latestPct - firstPct) : null;
+          const latestSubjects = latestWeek?.subjects || [];
+          const subjectColor = (pct) => pct >= 70 ? '#22c55e' : pct >= 50 ? 'var(--gold)' : '#ef4444';
+
+          return (
+            <>
+              {/* Hero */}
+              <div className="fr-hero">
+                <div className="fr-hero-ring fr-hero-ring-1" />
+                <div className="fr-hero-ring fr-hero-ring-2" />
+                <div className="fr-hero-top">
+                  <div>
+                    <div className="fr-hero-badge" style={{ display:'flex',alignItems:'center',gap:'5px' }}>
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                      Forge Plan
+                    </div>
+                    <div style={{ fontSize: '11px', color: 'rgba(253,248,240,.35)', textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: '7px' }}>
+                      {new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                    </div>
+                    <div className="fr-hero-name">{getGreeting()}, {firstName}.</div>
+                    <div className="fr-hero-sub">
+                      {latestWeek
+                        ? <><strong>{latestPct}%</strong> last test · {sortedWeeks.length} week{sortedWeeks.length !== 1 ? 's' : ''} tracked</>
+                        : <>Personalised {examTarget} prep — question bank, resources &amp; score tracking.</>}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexShrink: 0 }}>
+                    <button className="btn btn-ghost-inv btn-sm" onClick={() => onNav(diagDone ? 'guidance' : 'diagnostic')}>
+                      {diagDone ? 'Study Plan →' : 'Start Diagnostic →'}
+                    </button>
+                    {daysLeft !== null && (
+                      <div className="fr-countdown">
+                        <div className="fr-countdown-num">{daysLeft}</div>
+                        <div className="fr-countdown-lbl">Days to {examTarget}</div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="fr-stats">
+                  {[
+                    { l: 'Latest Score',   v: latestPct !== null ? latestPct + '%' : '—', gold: true,  click: 'progress' },
+                    { l: 'Improvement',    v: improvement !== null ? (improvement >= 0 ? '+' : '') + improvement + '%' : '—', gold: false, click: 'progress' },
+                    { l: 'Habit Streak',   v: streak > 0 ? streak + ' days' : alreadyCheckedIn ? habitCount + '/5' : '—', gold: false, click: 'habits' },
+                    { l: 'Resources',      v: resources.length || '—', gold: false, click: 'resources' },
+                  ].map((s, i) => (
+                    <div key={s.l} className={`fr-stat${s.gold ? ' fr-stat-gold' : ''}`}
+                      style={{ animationDelay: `${0.08 + i * 0.07}s` }} onClick={() => onNav(s.click)}>
+                      <div className="fr-stat-v">{s.v}</div>
+                      <div className="fr-stat-l">{s.l}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Score breakdown or CTA */}
+              {latestSubjects.length > 0 ? (
+                <div className="fr-score-card">
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+                    <div>
+                      <div style={{ fontFamily: 'var(--fs)', fontSize: '16px', fontWeight: 700, color: 'var(--text)' }}>
+                        Latest Test — Week {latestWeek.weekNumber}
+                      </div>
+                      <div style={{ fontSize: '12px', color: 'var(--text3)', marginTop: '2px' }}>
+                        {new Date(latestWeek.testDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        {improvement !== null && (
+                          <span style={{ marginLeft: '10px', color: improvement >= 0 ? '#22c55e' : '#ef4444', fontWeight: 600 }}>
+                            {improvement >= 0 ? '+' : ''}{improvement}% vs Week 1
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <button className="btn btn-ghost btn-sm" onClick={() => onNav('progress')}>Full Journey →</button>
+                  </div>
+                  {latestSubjects.map((s, i) => {
+                    const pct = s.totalMarks > 0 ? Math.round(s.score / s.totalMarks * 100) : 0;
+                    const col = subjectColor(pct);
+                    return (
+                      <div key={s.subject} className="fr-score-subject" style={{ animationDelay: `${0.15 + i * 0.07}s` }}>
+                        <div style={{ width: '80px', fontSize: '13px', fontWeight: 500, color: 'var(--text)', flexShrink: 0 }}>{s.subject}</div>
+                        <div className="fr-score-bar">
+                          <div style={{ background: 'var(--cream2)', borderRadius: '4px', height: '6px', overflow: 'hidden' }}>
+                            <div className="fr-score-bar-fill" style={{ '--fw': pct + '%', background: col, animationDelay: `${0.3 + i * 0.07}s` }} />
+                          </div>
+                        </div>
+                        <div style={{ width: '42px', textAlign: 'right', fontSize: '13px', fontWeight: 700, color: col, flexShrink: 0 }}>{pct}%</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div style={{ background: 'linear-gradient(135deg,var(--navy) 0%,var(--navy3) 100%)', borderRadius: 'var(--rl)', padding: '22px 26px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '22px', border: '1px solid var(--gold-b)', animation: 'frSlideUp .4s .08s both' }}>
+                  <div style={{ width: '48px', height: '48px', borderRadius: '14px', background: diagDone ? 'rgba(34,197,94,.15)' : 'rgba(232,168,48,.14)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    {diagDone
+                      ? <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                      : <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/><line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/></svg>}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontFamily: 'var(--fs)', fontSize: '17px', fontWeight: 700, color: 'var(--inv)', marginBottom: '5px' }}>
+                      {diagDone ? 'Your study plan is active' : 'Start with your diagnostic'}
+                    </div>
+                    <div style={{ fontSize: '13px', color: 'var(--inv2)', lineHeight: 1.7 }}>
+                      {diagDone
+                        ? 'Topic map, priority order, and weekly plan ready. Your weekly test scores will appear here once logged by admin.'
+                        : 'Rate yourself on each topic, confirm with MCQs — get a precise weak area map before touching the question bank.'}
+                    </div>
+                  </div>
+                  <button className="btn btn-gold" style={{ flexShrink: 0 }} onClick={() => onNav(diagDone ? 'guidance' : 'diagnostic')}>
+                    {diagDone ? 'Open Plan →' : 'Begin Now →'}
+                  </button>
+                </div>
+              )}
+
+              {/* Forge feature quick-access */}
+              <div className="sh"><div className="sh-t">Your Forge Features</div></div>
+              <div className="g3 mb">
+                {[
+                  { svg: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>, label: 'Question Bank', meta: questionBank.length > 0 ? `${questionBank.length} questions available` : 'Questions matched to your weak topics', count: questionBank.length || null, nav: 'questions', bg: 'var(--gold-dim)', color: 'var(--gold)', delay: .2 },
+                  { svg: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>, label: 'Resources', meta: resources.length > 0 ? `${resources.length} items from faculty` : 'Study materials and formula sheets', count: resources.length || null, nav: 'resources', bg: 'rgba(34,197,94,.1)', color: '#22c55e', delay: .27 },
+                  { svg: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>, label: 'Score Journey', meta: sortedWeeks.length > 0 ? `${sortedWeeks.length} weeks tracked` : 'Weekly test scores and progress', count: sortedWeeks.length || null, nav: 'progress', bg: 'rgba(99,102,241,.1)', color: '#818cf8', delay: .34 },
+                  { svg: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>, label: 'Diagnostic', meta: diagDone ? 'Completed — study plan active' : 'Take the diagnostic to unlock your plan', count: null, nav: 'diagnostic', bg: diagDone ? 'rgba(34,197,94,.1)' : 'rgba(239,68,68,.08)', color: diagDone ? '#22c55e' : '#ef4444', delay: .41 },
+                  { svg: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>, label: 'Habit Tracker', meta: streak > 0 ? `${streak}-day streak` : alreadyCheckedIn ? 'Checked in today' : 'Check in daily', count: null, nav: 'habits', bg: 'rgba(232,168,48,.08)', color: 'var(--gold)', delay: .48 },
+                  { svg: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z"/></svg>, label: 'Topic Map', meta: diagDone ? 'See your weak chapters' : 'Complete diagnostic first', count: null, nav: 'topics', bg: 'var(--navy)', color: 'var(--inv2)', delay: .55 },
+                ].map(f => (
+                  <div key={f.label} className="fr-feature-card" style={{ animationDelay: `${f.delay}s` }} onClick={() => onNav(f.nav)}>
+                    <div className="fr-feature-icon" style={{ background: f.bg, color: f.color }}>{f.svg}</div>
+                    <div className="fr-feature-name">{f.label}</div>
+                    <div className="fr-feature-meta">{f.meta}</div>
+                    {f.count !== null && f.count > 0 && <div className="fr-feature-count">{f.count} available</div>}
+                  </div>
+                ))}
+              </div>
+
+              {/* Request a Session */}
+              {(() => {
+                const active = sessionRequests.find(r => r.status === 'pending' || r.status === 'assigned');
+                const fmtDt = iso => new Date(iso).toLocaleString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' });
+                return (
+                  <div style={{ background: 'var(--navy)', borderRadius: 'var(--rl)', padding: '18px 22px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '16px', border: '1px solid rgba(255,255,255,.08)' }}>
+                    <div style={{ width: '42px', height: '42px', borderRadius: '11px', background: active?.status === 'assigned' ? 'rgba(232,168,48,.14)' : 'rgba(255,255,255,.07)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      {active?.status === 'assigned'
+                        ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+                        : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(253,248,240,.5)" strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontFamily: 'var(--fs)', fontSize: '15px', fontWeight: 700, color: '#FDF8F0', marginBottom: '2px' }}>
+                        {active ? (active.status === 'assigned' ? 'Session confirmed' : 'Request in review') : 'Book a 1-on-1 Session'}
+                      </div>
+                      <div style={{ fontSize: '12px', color: 'rgba(253,248,240,.45)', lineHeight: 1.5 }}>
+                        {active?.status === 'assigned'
+                          ? `${active.facultyName ? active.facultyName + ' · ' : ''}${fmtDt(active.scheduledAt)} · ${active.durationMin} min`
+                          : active?.status === 'pending'
+                          ? `Topic: ${active.topic.length > 55 ? active.topic.slice(0, 55) + '...' : active.topic}`
+                          : '60 min with one of our faculty. Pick your topic, we confirm the time.'}
+                      </div>
+                    </div>
+                    <button className="btn btn-sm" style={{ background: active ? 'rgba(255,255,255,.07)' : 'var(--gold)', color: active ? 'rgba(253,248,240,.6)' : 'var(--navy)', flexShrink: 0 }} onClick={() => onNav('sessions')}>
+                      {active ? 'View →' : 'Request →'}
+                    </button>
+                  </div>
+                );
+              })()}
+            </>
+          );
+        })() : (
+          // ── SPARK HOME (unchanged) ──────────────────────────────────────
+          <>
         <div style={{ marginBottom: '22px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' }}>
           <div>
             <div style={{ fontSize: '11px', color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '.1em', fontWeight: 500, marginBottom: '5px' }}>{new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</div>
@@ -355,7 +559,11 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
         </div>
 
         <div style={{ background: 'linear-gradient(135deg,var(--navy) 0%,var(--navy3) 100%)', borderRadius: 'var(--rxl)', padding: '26px 28px', marginBottom: '22px', display: 'flex', alignItems: 'center', gap: '24px', border: '1px solid var(--gold-b)' }}>
-          <div style={{ fontSize: '44px', flexShrink: 0 }}>{diagDone ? '📋' : '🎯'}</div>
+          <div style={{ width: '52px', height: '52px', borderRadius: '14px', background: diagDone ? 'rgba(34,197,94,.15)' : 'rgba(232,168,48,.14)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            {diagDone
+              ? <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+              : <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/><line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/></svg>}
+          </div>
           <div style={{ flex: 1 }}>
             <div style={{ fontFamily: 'var(--fs)', fontSize: '19px', fontWeight: 700, color: 'var(--inv)', marginBottom: '5px' }}>
               {diagDone ? 'Your study plan is ready' : 'Take your free diagnostic first'}
@@ -382,7 +590,7 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
           </div>
           <div className="stat sa-green">
             <div className="stat-l">Habit Streak</div>
-            <div className="stat-v">{streak > 0 ? `🔥 ${streak}` : alreadyCheckedIn ? `${habitCount}/5` : '0/5'}</div>
+            <div className="stat-v">{streak > 0 ? streak : alreadyCheckedIn ? `${habitCount}/5` : '0/5'}</div>
             <div className="stat-n up" style={{ cursor: 'pointer' }} onClick={() => onNav('habits')}>{streak > 0 ? `${streak}-day streak` : alreadyCheckedIn ? 'Done today ✓' : 'Check in today'}</div>
           </div>
           <div className="stat sa-navy">
@@ -397,38 +605,49 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
           </div>
         </div>
 
+        {/* Book a session CTA */}
+        <div style={{ background: 'var(--navy)', borderRadius: 'var(--rl)', padding: '18px 22px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '18px', border: '1px solid rgba(232,168,48,.18)' }}>
+          <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: 'rgba(232,168,48,.14)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.39 2 2 0 0 1 3.6 1.21h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 8.38a16 16 0 0 0 6 6l.94-.94a2 2 0 0 1 2.25-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontFamily: 'var(--fs)', fontSize: '16px', fontWeight: 700, color: '#FDF8F0', marginBottom: '3px' }}>Book a 1-to-1 Session</div>
+            <div style={{ fontSize: '12.5px', color: 'rgba(253,248,240,.5)', lineHeight: 1.5 }}>60 minutes with a subject faculty — focused on your exact weak areas. Confirm within 24h.</div>
+          </div>
+          <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
+            <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--gold)', background: 'rgba(232,168,48,.12)', borderRadius: '20px', padding: '4px 12px' }}>₹99 / session</span>
+            <button className="btn btn-gold btn-sm" onClick={() => onNav('sessions')}>Book Now →</button>
+          </div>
+        </div>
+
         <div className="sh"><div className="sh-t">What's free on Studyverse</div></div>
         <div className="g3 mb">
           <div className="card" style={{ borderTop: '3px solid var(--green)' }}>
-            <div style={{ fontSize: '28px', marginBottom: '10px' }}>🩺</div>
+            <div style={{ width:'36px',height:'36px',borderRadius:'9px',background:'rgba(34,197,94,.1)',display:'flex',alignItems:'center',justifyContent:'center',marginBottom:'12px' }}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2" strokeLinecap="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></div>
             <div style={{ fontFamily: 'var(--fs)', fontSize: '15px', fontWeight: 600, color: 'var(--text)', marginBottom: '6px' }}>Personalised Diagnostic</div>
-            <div style={{ fontSize: '12.5px', color: 'var(--text2)', lineHeight: 1.7 }}>Self-rate each topic → confirm with MCQs → get a precise weakness map. No guesswork.</div>
+            <div style={{ fontSize: '12.5px', color: 'var(--text2)', lineHeight: 1.7 }}>Self-rate each topic, confirm with MCQs, get a precise weakness map.</div>
             <div style={{ marginTop: '12px' }}><span className="pill pp">Free forever</span></div>
           </div>
           <div className="card" style={{ borderTop: '3px solid var(--gold)' }}>
-            <div style={{ fontSize: '28px', marginBottom: '10px' }}>🗺️</div>
+            <div style={{ width:'36px',height:'36px',borderRadius:'9px',background:'var(--gold-dim)',display:'flex',alignItems:'center',justifyContent:'center',marginBottom:'12px' }}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="2" strokeLinecap="round"><path d="M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z"/></svg></div>
             <div style={{ fontFamily: 'var(--fs)', fontSize: '15px', fontWeight: 600, color: 'var(--text)', marginBottom: '6px' }}>Topic Weakness Map</div>
-            <div style={{ fontSize: '12.5px', color: 'var(--text2)', lineHeight: 1.7 }}>
-              {profile?.examTarget === 'NEET'
-                ? 'See your exact weak chapters across Physics, Chemistry, and Biology — prioritised by NEET weight.'
-                : 'See your exact weak chapters across Physics, Chemistry, and Maths — prioritised by JEE weight.'}
-            </div>
+            <div style={{ fontSize: '12.5px', color: 'var(--text2)', lineHeight: 1.7 }}>Your exact weak chapters ranked by exam weight.</div>
             <div style={{ marginTop: '12px' }}><span className="pill pp">Free forever</span></div>
           </div>
           <div className="card" style={{ borderTop: '3px solid var(--navy3)' }}>
-            <div style={{ fontSize: '28px', marginBottom: '10px' }}>📋</div>
+            <div style={{ width:'36px',height:'36px',borderRadius:'9px',background:'rgba(15,31,61,.07)',display:'flex',alignItems:'center',justifyContent:'center',marginBottom:'12px' }}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--navy3)" strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></div>
             <div style={{ fontFamily: 'var(--fs)', fontSize: '15px', fontWeight: 600, color: 'var(--text)', marginBottom: '6px' }}>Study Guidance</div>
-            <div style={{ fontSize: '12.5px', color: 'var(--text2)', lineHeight: 1.7 }}>Exactly which topics to study, in which order, and how much time to give each — based on your diagnostic.</div>
+            <div style={{ fontSize: '12.5px', color: 'var(--text2)', lineHeight: 1.7 }}>Which topics, in which order, how much time — built from your diagnostic.</div>
             <div style={{ marginTop: '12px' }}><span className="pill pp">Free forever</span></div>
           </div>
           <div className="card" style={{ borderTop: '3px solid var(--green)' }}>
-            <div style={{ fontSize: '28px', marginBottom: '10px' }}>✅</div>
+            <div style={{ width:'36px',height:'36px',borderRadius:'9px',background:'rgba(34,197,94,.1)',display:'flex',alignItems:'center',justifyContent:'center',marginBottom:'12px' }}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2" strokeLinecap="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></div>
             <div style={{ fontFamily: 'var(--fs)', fontSize: '15px', fontWeight: 600, color: 'var(--text)', marginBottom: '6px' }}>Daily Habit Tracker</div>
             <div style={{ fontSize: '12.5px', color: 'var(--text2)', lineHeight: 1.7 }}>5 habits every serious aspirant needs. Check in daily. Build the discipline that separates rankers.</div>
             <div style={{ marginTop: '12px' }}><span className="pill pp">Free forever</span></div>
           </div>
           <div className="card" style={{ borderTop: '3px solid var(--gold)', opacity: .7 }}>
-            <div style={{ fontSize: '28px', marginBottom: '10px' }}>📝</div>
+            <div style={{ width:'36px',height:'36px',borderRadius:'9px',background:'var(--gold-dim)',display:'flex',alignItems:'center',justifyContent:'center',marginBottom:'12px' }}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="2" strokeLinecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></div>
             <div style={{ fontFamily: 'var(--fs)', fontSize: '15px', fontWeight: 600, color: 'var(--text)', marginBottom: '6px' }}>Custom Question Bank</div>
             <div style={{ fontSize: '12.5px', color: 'var(--text2)', lineHeight: 1.7 }}>Questions matched to your weak topics, difficulty level, and exam pattern.</div>
             <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -436,16 +655,18 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
               <button className="btn btn-sm btn-gold" onClick={() => onNav('plans')}>Get Access</button>
             </div>
           </div>
-          <div className="card" style={{ borderTop: '3px solid var(--navy3)', opacity: .7 }}>
-            <div style={{ fontSize: '28px', marginBottom: '10px' }}>👨‍🏫</div>
+          <div className="card" style={{ borderTop: '3px solid var(--navy3)' }}>
+            <div style={{ width:'36px',height:'36px',borderRadius:'9px',background:'rgba(15,31,61,.07)',display:'flex',alignItems:'center',justifyContent:'center',marginBottom:'12px' }}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--navy3)" strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
             <div style={{ fontFamily: 'var(--fs)', fontSize: '15px', fontWeight: 600, color: 'var(--text)', marginBottom: '6px' }}>1-to-1 Faculty Session</div>
-            <div style={{ fontSize: '12.5px', color: 'var(--text2)', lineHeight: 1.7 }}>Book a single session with Ajay Sharma. Get your doubts resolved, weak topics explained.</div>
+            <div style={{ fontSize: '12.5px', color: 'var(--text2)', lineHeight: 1.7 }}>Book a single session with our faculty. Get your doubts resolved, weak topics explained.</div>
             <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <span className="pill po">Pay per session</span>
               <button className="btn btn-sm btn-navy" onClick={() => onNav('sessions')}>Book Now</button>
             </div>
           </div>
         </div>
+          </>
+        )}
       </div>
 
       {/* ══════════ DIAGNOSTIC ══════════ */}
@@ -1489,7 +1710,7 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
                 <div className="ub-text">
                   <div className="ub-label">Next Level</div>
                   <div className="ub-title">Get your plan reviewed by a mentor</div>
-                  <div className="ub-sub">1 session. Your specific weak topics. Explained live. Ajay builds on this plan with you.</div>
+                  <div className="ub-sub">1 session. Your specific weak topics. Explained live by one of our faculty — built on your diagnostic results.</div>
                 </div>
                 <div className="ub-actions">
                   <button className="btn btn-gold" onClick={() => onNav('sessions')}>Book a Session</button>
@@ -1766,67 +1987,184 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
 
       {/* ══════════ BOOK SESSION ══════════ */}
       <div className={p('sessions')}>
-        <div style={{ fontFamily: 'var(--fs)', fontSize: '18px', fontWeight: 700, color: 'var(--text)', marginBottom: '4px' }}>Book a Session with Ajay Sharma</div>
-        <div style={{ fontSize: '13px', color: 'var(--text3)', marginBottom: '22px' }}>Pay only for the session you need. No subscription required.</div>
+        {/* Confirmed / upcoming sessions */}
+        {(() => {
+          const confirmed = sessionRequests.filter(r => r.status === 'assigned' || r.status === 'done');
+          if (!confirmed.length) return null;
+          const fmtDt = iso => new Date(iso).toLocaleString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' });
+          return (
+            <div style={{ marginBottom: '28px' }}>
+              <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: '10px' }}>Your Sessions</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {confirmed.map(r => (
+                  <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '13px 16px', background: r.status === 'assigned' ? 'var(--cream)' : 'var(--cream2)', border: '1px solid var(--b)', borderLeft: `3px solid ${r.status === 'assigned' ? 'var(--gold)' : '#22C55E'}`, borderRadius: 'var(--r)', boxShadow: 'var(--sh)' }}>
+                    <div style={{ width: '36px', height: '36px', borderRadius: '9px', background: r.status === 'assigned' ? 'var(--gold-dim)' : 'rgba(34,197,94,.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      {r.status === 'assigned'
+                        ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+                        : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22C55E" strokeWidth="2" strokeLinecap="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: '13.5px', fontWeight: 600, color: 'var(--text)', marginBottom: '2px' }}>
+                        {r.status === 'assigned' ? 'Upcoming Session' : 'Completed Session'}
+                        {r.facultyName && <span style={{ fontWeight: 400, color: 'var(--text3)', marginLeft: '6px' }}>with {r.facultyName}</span>}
+                      </div>
+                      <div style={{ fontSize: '12px', color: 'var(--text3)' }}>
+                        {r.scheduledAt ? fmtDt(r.scheduledAt) + (r.durationMin ? ` · ${r.durationMin} min` : '') : 'Time TBD'}
+                        {r.topic && <span style={{ marginLeft: '8px' }}>· {r.topic.length > 60 ? r.topic.slice(0, 60) + '…' : r.topic}</span>}
+                      </div>
+                      {r.adminNote && <div style={{ fontSize: '12px', color: 'var(--navy3)', marginTop: '4px', fontStyle: 'italic' }}>"{r.adminNote}"</div>}
+                    </div>
+                    <span style={{ fontSize: '10px', fontWeight: 700, padding: '3px 9px', borderRadius: '20px', background: r.status === 'assigned' ? 'rgba(232,168,48,.12)' : 'rgba(34,197,94,.1)', color: r.status === 'assigned' ? 'var(--gold)' : '#16a34a', textTransform: 'capitalize' }}>{r.status}</span>
+                  </div>
+                ))}
+              </div>
+              <div style={{ height: '1px', background: 'var(--b)', margin: '24px 0' }} />
+            </div>
+          );
+        })()}
 
-        <div className="g2 mb">
-          <div className="session-teaser">
-            <div className="st-faculty">
-              <div className="st-av">A</div>
-              <div>
-                <div className="st-name">Ajay Sharma</div>
-                <div className="st-creds">JEE Mains &amp; Advanced • NEET UG • 10+ Years • 500+ Students</div>
+        {/* Header */}
+        <div style={{ marginBottom: '28px' }}>
+          <div style={{ fontFamily: 'var(--fs)', fontSize: '22px', fontWeight: 700, color: 'var(--text)', marginBottom: '6px' }}>Request a 1-on-1 Session</div>
+          <div style={{ fontSize: '13.5px', color: 'var(--text2)', lineHeight: 1.7 }}>
+            Pick your topic, leave your number, and we'll confirm a time with you directly.
+          </div>
+        </div>
+
+        {/* Block form if there's already an active request */}
+        {(() => {
+          const active = sessionRequests.find(r => r.status === 'pending' || r.status === 'assigned');
+          if (active) {
+            return (
+              <div className="card mb" style={{ borderTop: `3px solid ${active.status === 'assigned' ? 'var(--gold)' : 'var(--text3)'}`, textAlign: 'center', padding: '32px 24px' }}>
+                <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: active.status === 'assigned' ? 'var(--gold-dim)' : 'var(--cream2)', border: `1px solid ${active.status === 'assigned' ? 'var(--gold-b)' : 'var(--b)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+                  {active.status === 'assigned'
+                    ? <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+                    : <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>}
+                </div>
+                <div style={{ fontFamily: 'var(--fs)', fontSize: '17px', fontWeight: 700, color: 'var(--text)', marginBottom: '8px' }}>
+                  {active.status === 'assigned' ? 'Session scheduled' : 'Request sent'}
+                </div>
+                <div style={{ fontSize: '13px', color: 'var(--text2)', lineHeight: 1.7, maxWidth: '340px', margin: '0 auto 12px' }}>
+                  {active.status === 'assigned'
+                    ? 'Check the section above for the date, time, and faculty details.'
+                    : 'We will call or WhatsApp you to set the time. You can request another once this one is done.'}
+                </div>
+                <div style={{ fontSize: '12px', color: 'var(--text3)', padding: '8px 12px', background: 'var(--cream2)', borderRadius: '6px', display: 'inline-block' }}>
+                  {active.topic.length > 80 ? active.topic.slice(0, 80) + '...' : active.topic}
+                </div>
               </div>
-            </div>
-            <div style={{ fontSize: '12.5px', color: 'var(--text2)', lineHeight: 1.7, marginBottom: '14px' }}>
-              A focused 60-minute session on exactly what you need. Come with your doubts from the diagnostic. Ajay will build your understanding from where you actually are — not from a standard slide deck.
-            </div>
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '14px' }}>
-              {['Electrostatics', 'Mechanics', 'Integration', 'Organic Chem', 'Any topic'].map(t => (
-                <span key={t} className="pill pn">{t}</span>
-              ))}
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '12px', borderTop: '1px solid var(--b)' }}>
-              <div>
-                <div style={{ fontFamily: 'var(--fs)', fontSize: '22px', fontWeight: 700, color: 'var(--text)' }}>₹ 99</div>
-                <div style={{ fontSize: '11px', color: 'var(--text3)' }}>per 60-minute session</div>
+            );
+          }
+          return null;
+        })()}
+
+        <div className="g2 mb" style={{ alignItems: 'start', display: sessionRequests.find(r => r.status === 'pending' || r.status === 'assigned') ? 'none' : 'grid' }}>
+          {/* Request form */}
+          <div className="card" style={{ borderTop: '3px solid var(--gold)' }}>
+            {sessDone ? (
+              <div style={{ textAlign: 'center', padding: '32px 16px' }}>
+                <div style={{ fontSize: '40px', marginBottom: '14px' }}>✅</div>
+                <div style={{ fontFamily: 'var(--fs)', fontSize: '18px', fontWeight: 700, color: 'var(--text)', marginBottom: '8px' }}>Request received!</div>
+                <div style={{ fontSize: '13px', color: 'var(--text2)', lineHeight: 1.7, marginBottom: '20px' }}>Our team will reach out within 24 hours to confirm your session.</div>
               </div>
-              <button className="btn btn-gold" onClick={() => onNav('plans')}>Book Now →</button>
-            </div>
-            <div className="st-price-badge">Pay per session</div>
+            ) : (
+              <>
+                <div style={{ fontFamily: 'var(--fs)', fontSize: '16px', fontWeight: 700, color: 'var(--text)', marginBottom: '18px' }}>Tell us what you need</div>
+
+                <div style={{ marginBottom: '14px' }}>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--text2)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '.06em' }}>What topic do you need help with? *</label>
+                  <textarea
+                    rows={3}
+                    placeholder="e.g. Electrostatics — I understand the theory but keep losing marks on Gauss's Law problems. Need someone to walk me through the approach."
+                    value={sessTopic}
+                    onChange={e => setSessTopic(e.target.value)}
+                    style={{ width: '100%', padding: '10px 12px', border: '1.5px solid var(--b)', borderRadius: 'var(--r)', fontSize: '13px', color: 'var(--text)', fontFamily: 'var(--fb)', resize: 'vertical', outline: 'none', background: 'var(--cream2)', lineHeight: 1.6, transition: 'border-color .2s' }}
+                    onFocus={e => e.target.style.borderColor = 'var(--gold)'}
+                    onBlur={e => e.target.style.borderColor = 'var(--b)'}
+                  />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '14px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--text2)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '.06em' }}>Your phone number</label>
+                    <input
+                      type="tel"
+                      placeholder="+91 98765 43210"
+                      value={sessPhone}
+                      onChange={e => setSessPhone(e.target.value)}
+                      style={{ width: '100%', padding: '9px 12px', border: '1.5px solid var(--b)', borderRadius: 'var(--r)', fontSize: '13px', color: 'var(--text)', fontFamily: 'var(--fb)', outline: 'none', background: 'var(--cream2)', transition: 'border-color .2s' }}
+                      onFocus={e => e.target.style.borderColor = 'var(--gold)'}
+                      onBlur={e => e.target.style.borderColor = 'var(--b)'}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--text2)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '.06em' }}>Preferred time <span style={{ fontWeight: 400, color: 'var(--text3)' }}>(optional)</span></label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Weekday evenings after 6pm"
+                      value={sessTime}
+                      onChange={e => setSessTime(e.target.value)}
+                      style={{ width: '100%', padding: '9px 12px', border: '1.5px solid var(--b)', borderRadius: 'var(--r)', fontSize: '13px', color: 'var(--text)', fontFamily: 'var(--fb)', outline: 'none', background: 'var(--cream2)', transition: 'border-color .2s' }}
+                      onFocus={e => e.target.style.borderColor = 'var(--gold)'}
+                      onBlur={e => e.target.style.borderColor = 'var(--b)'}
+                    />
+                  </div>
+                </div>
+
+                <button
+                  className="btn btn-gold btn-full"
+                  onClick={submitSessionRequest}
+                  disabled={sessSending || !sessTopic.trim()}
+                >
+                  {sessSending ? 'Sending…' : 'Send Request →'}
+                </button>
+                <div style={{ fontSize: '11.5px', color: 'var(--text3)', marginTop: '10px', textAlign: 'center' }}>
+                  We'll contact you within 24 hours to confirm the session.
+                </div>
+              </>
+            )}
           </div>
 
+          {/* What to expect */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             <div className="card">
-              <div style={{ fontFamily: 'var(--fs)', fontSize: '15px', fontWeight: 600, marginBottom: '12px' }}>What happens in a session</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div style={{ fontFamily: 'var(--fs)', fontSize: '15px', fontWeight: 600, marginBottom: '14px' }}>What happens next</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 {[
-                  'Ajay reviews your diagnostic results before the call',
-                  '60 minutes on your chosen topic — your pace, your doubts',
-                  'You leave with a clear next-step plan for that topic',
-                  'Optional: continue with the full program if it\'s the right fit',
-                ].map((step, i) => (
-                  <div key={i} style={{ display: 'flex', gap: '10px' }}>
-                    <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: 'var(--navy)', color: 'var(--gold)', fontSize: '11px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{i + 1}</div>
-                    <div style={{ fontSize: '12.5px', color: 'var(--text2)' }}>{step}</div>
+                  { n: '1', t: 'We review your request', d: 'Our team looks at your topic and matches you to the right faculty.' },
+                  { n: '2', t: 'We reach out within 24h', d: 'You get a call or WhatsApp to confirm the time and share the meeting link.' },
+                  { n: '3', t: '60-minute focused session', d: 'Just you and the faculty — on exactly the topic you mentioned.' },
+                  { n: '4', t: 'You leave with clarity', d: 'A clear next-step plan for that topic, from someone who knows where you are.' },
+                ].map(step => (
+                  <div key={step.n} style={{ display: 'flex', gap: '12px' }}>
+                    <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: 'var(--navy)', color: 'var(--gold)', fontSize: '11px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: '1px' }}>{step.n}</div>
+                    <div>
+                      <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text)', marginBottom: '2px' }}>{step.t}</div>
+                      <div style={{ fontSize: '12px', color: 'var(--text3)', lineHeight: 1.6 }}>{step.d}</div>
+                    </div>
                   </div>
                 ))}
               </div>
             </div>
+
             <div className="card" style={{ background: 'var(--navy)', borderColor: 'var(--bi)' }}>
-              <div style={{ fontSize: '12.5px', color: 'var(--inv2)', lineHeight: 1.75, fontStyle: 'italic' }}>"If a single session makes you feel like you finally understand the topic — that's the entire point. We don't need to sell you anything. You'll know."</div>
+              <div style={{ fontSize: '12.5px', color: 'var(--inv2)', lineHeight: 1.75, fontStyle: 'italic' }}>
+                "If a single session makes you feel like you finally understand the topic — that's the entire point."
+              </div>
               <div style={{ fontSize: '11px', color: 'var(--inv3)', marginTop: '10px' }}>— Studyverse</div>
             </div>
           </div>
         </div>
 
+        {/* Enrollment CTA */}
         <div style={{ background: 'linear-gradient(135deg,var(--navy) 0%,#1a2f5e 100%)', border: '1px solid var(--gold-b)', borderRadius: 'var(--rxl)', padding: '28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '20px', flexWrap: 'wrap' }}>
           <div>
             <div style={{ fontSize: '10px', color: 'var(--gold)', textTransform: 'uppercase', letterSpacing: '.1em', fontWeight: 600, marginBottom: '6px' }}>Full Program</div>
-            <div style={{ fontFamily: 'var(--fs)', fontSize: '20px', fontWeight: 700, color: 'var(--inv)', marginBottom: '6px' }}>Enroll in the complete personalised program</div>
-            <div style={{ fontSize: '13px', color: 'var(--inv2)', maxWidth: '500px' }}>Dedicated mentor, weekly sessions, parent reports, full journey tracking — everything built around you personally. For students serious about cracking JEE Mains 2026.</div>
+            <div style={{ fontFamily: 'var(--fs)', fontSize: '20px', fontWeight: 700, color: 'var(--inv)', marginBottom: '6px' }}>Want a dedicated mentor, not just a session?</div>
+            <div style={{ fontSize: '13px', color: 'var(--inv2)', maxWidth: '500px' }}>Weekly 1-on-1 calls, daily check-ins, parent reports — everything built around your preparation. For students who want consistent mentorship, not just one-off help.</div>
             <div style={{ display: 'flex', gap: '16px', marginTop: '14px' }}>
-              {[{ val: '1-to-1', lbl: 'Dedicated Mentor' }, { val: 'Weekly', lbl: 'Parent Reports' }, { val: '100%', lbl: 'Personalised' }].map((s, i) => (
+              {[{ val: '1-on-1', lbl: 'Weekly Calls' }, { val: 'Daily', lbl: 'Check-ins' }, { val: '100%', lbl: 'Personalised' }].map((s, i) => (
                 <div key={i} style={{ textAlign: 'center' }}>
                   <div style={{ fontFamily: 'var(--fs)', fontSize: '20px', fontWeight: 700, color: 'var(--gold)' }}>{s.val}</div>
                   <div style={{ fontSize: '10px', color: 'var(--inv3)' }}>{s.lbl}</div>
@@ -1834,7 +2172,7 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
               ))}
             </div>
           </div>
-          <button className="btn btn-gold" style={{ fontSize: '14px', padding: '13px 26px', flexShrink: 0 }} onClick={() => onNav('plans')}>Talk to Us About Enrollment →</button>
+          <button className="btn btn-gold" style={{ fontSize: '14px', padding: '13px 26px', flexShrink: 0 }} onClick={() => onNav('plans')}>Learn About Anchor →</button>
         </div>
       </div>
 
@@ -2035,7 +2373,7 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
         </div>
         <div style={{ background: 'var(--cream)', border: '1px solid var(--gold-b)', borderRadius: 'var(--rl)', padding: '18px 22px', textAlign: 'center', boxShadow: 'var(--sh)', marginTop: '16px' }}>
           <div style={{ fontFamily: 'var(--fs)', fontSize: '15px', fontWeight: 600, marginBottom: '4px' }}>Not ready to commit? That's fine.</div>
-          <div style={{ fontSize: '13px', color: 'var(--text2)', marginBottom: '14px' }}>Book a single session with Ajay for <strong>₹ 99</strong>. No plan needed. Pay only for what you need.</div>
+          <div style={{ fontSize: '13px', color: 'var(--text2)', marginBottom: '14px' }}>Request a single session with one of our faculty. No subscription needed — we'll confirm details over call.</div>
           <button className="btn btn-gold" onClick={() => onNav('sessions')}>Book a Single Session →</button>
         </div>
       </div>

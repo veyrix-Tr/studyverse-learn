@@ -209,7 +209,7 @@ const fmtWeekRange = (weekStartDate) => {
   return `${fmt(mon)} – ${fmt(sun)}`;
 };
 
-const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, students = [], facultyList = [], onOpenMessage, isSuperAdmin, adminAccounts = [], onDeactivateAdmin, onReactivateAdmin, resources = [], onApproveResource, onDeclineResource, sentMessages = [], onSendMessage, parentReports = [], onApproveReport, onRejectReport, onSendReports, onApproveAllReports, onStudentMentorUpdated, onStudentSubjectFacultyUpdated }) => {
+const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, students = [], facultyList = [], onOpenMessage, isSuperAdmin, adminAccounts = [], onDeactivateAdmin, onReactivateAdmin, resources = [], onApproveResource, onDeclineResource, sentMessages = [], onSendMessage, parentReports = [], onApproveReport, onRejectReport, onSendReports, onApproveAllReports, onStudentMentorUpdated, onStudentSubjectFacultyUpdated, sessionRequests = [], onSessionRequestsUpdated }) => {
   const firstName = profile?.name?.split(' ')[0] || 'there';
   const [studentsTab, setStudentsTab] = useState(0);
 
@@ -1214,7 +1214,7 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
         }} />
 
         {(() => {
-          const TYPE_DOT = { Announcement:'#0F1F3D', Reminder:'#F97316', 'Motivational Note':'#7C3AED', 'Schedule Update':'#2563EB' };
+          const TYPE_DOT = { Announcement:'#0F1F3D', Reminder:'#F97316', 'Motivational Note':'#7C3AED', 'Schedule Update':'#2563EB', 'Session Request':'#22C55E' };
           const recipientCount = msgMode === 'select' ? msgSelectedIds.size
             : students.filter(s => {
                 if (msgPlan === 'spark')  return s.plan === 'spark';
@@ -1402,6 +1402,7 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
                           <span style={{ fontSize: '11.5px', fontWeight: 600, color: 'var(--text3)' }}>Type</span>
                           <select className="fi" value={histTypeFilter} onChange={e => setHistTypeFilter(e.target.value)} style={{ padding: '5px 10px', fontSize: '12.5px', width: 'auto', margin: 0 }}>
                             <option value="all">All</option>
+                            <option>Session Request</option>
                             <option>Announcement</option>
                             <option>Reminder</option>
                             <option>Motivational Note</option>
@@ -1714,9 +1715,227 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
           if (r.ok) { setDiagModal(null); onShowToast?.('Diagnostic reset. Student can retake now.'); }
         }}
       />
+
+      {/* ══════════ SESSION REQUESTS ══════════ */}
+      {activePage === 'session-requests' && (
+        <SessionRequestsPage
+          requests={sessionRequests}
+          facultyList={facultyList}
+          userId={profile?.id}
+          onShowToast={onShowToast}
+          onUpdated={onSessionRequestsUpdated}
+        />
+      )}
     </div>
     </>
   )
+};
+
+// ── Session Requests Page ────────────────────────────────────────────────────
+const SessionRequestsPage = ({ requests, facultyList, userId, onShowToast, onUpdated }) => {
+  const [assigningId, setAssigningId] = useState(null);
+  const [faculty, setFaculty] = useState('');
+  const [date, setDate] = useState('');
+  const [time, setTime] = useState('10:00');
+  const [duration, setDuration] = useState(60);
+  const [note, setNote] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [statusFilter, setStatusFilter] = useState('pending');
+
+  const adminUserId = userId;
+
+  const openAssign = (id) => {
+    setAssigningId(id); setFaculty(''); setDate(''); setTime('10:00'); setDuration(60); setNote('');
+  };
+
+  const assign = async (req) => {
+    if (!faculty || !date) { onShowToast('Pick a faculty and date first'); return; }
+    setSaving(true);
+    const token = localStorage.getItem('token');
+    try {
+      // Build scheduledAt as IST
+      const [h, m] = time.split(':').map(Number);
+      const [y, mo, d] = date.split('-').map(Number);
+      const istMs = Date.UTC(y, mo - 1, d, h, m) - 5.5 * 3600000;
+      const scheduledAt = new Date(istMs).toISOString();
+
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/${adminUserId}/session-requests/${req.id}/assign`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ facultyId: parseInt(faculty), scheduledAt, durationMin: duration, adminNote: note }),
+      });
+      const data = await res.json();
+
+      if (res.status === 409 && data.conflicts) {
+        onShowToast(`⚠️ Conflict: ${data.conflicts[0]}`);
+        return;
+      }
+      if (!res.ok) throw new Error(data.error || 'Failed');
+
+      onUpdated(prev => prev.map(r => r.id === req.id
+        ? { ...r, status: 'assigned', facultyId: parseInt(faculty), facultyName: facultyList.find(f => f.id === parseInt(faculty))?.name, scheduledAt, durationMin: duration, adminNote: note, assignedAt: new Date().toISOString() }
+        : r
+      ));
+      setAssigningId(null);
+      onShowToast(`Session assigned & student notified ✓`);
+    } catch (err) {
+      onShowToast(`Failed: ${err.message}`);
+    } finally { setSaving(false); }
+  };
+
+  const updateStatus = async (id, status) => {
+    const token = localStorage.getItem('token');
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/${adminUserId}/session-requests/${id}/status`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ status }),
+      });
+      if (!res.ok) throw new Error();
+      onUpdated(prev => prev.map(r => r.id === id ? { ...r, status } : r));
+      onShowToast(`Marked as ${status}`);
+    } catch { onShowToast('Failed to update status'); }
+  };
+
+  const fmtDt = (iso) => iso ? new Date(iso).toLocaleString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' }) : '—';
+  const timeAgo = (iso) => { const s = Math.floor((Date.now() - new Date(iso)) / 1000); if (s < 3600) return Math.floor(s/60) + 'm ago'; if (s < 86400) return Math.floor(s/3600) + 'h ago'; return Math.floor(s/86400) + 'd ago'; };
+
+  const STATUS_COLOR = { pending: '#F97316', assigned: '#3B82F6', done: '#22C55E', cancelled: '#94A3B8' };
+  const STATUS_BG    = { pending: 'rgba(249,115,22,.1)', assigned: 'rgba(59,130,246,.1)', done: 'rgba(34,197,94,.1)', cancelled: 'rgba(148,163,184,.1)' };
+
+  const filtered = requests.filter(r => statusFilter === 'all' || r.status === statusFilter);
+  const pendingCount = requests.filter(r => r.status === 'pending').length;
+
+  return (
+    <div style={{ padding: '0' }}>
+      {/* Header */}
+      <div style={{ marginBottom: '22px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+        <div>
+          <div style={{ fontFamily: 'var(--fs)', fontSize: '22px', fontWeight: 700, color: 'var(--text)', marginBottom: '4px' }}>Session Requests</div>
+          <div style={{ fontSize: '13px', color: 'var(--text3)' }}>
+            {pendingCount > 0 ? <span style={{ color: '#F97316', fontWeight: 600 }}>{pendingCount} pending</span> : 'All caught up'} · {requests.length} total
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: '6px' }}>
+          {['pending', 'assigned', 'done', 'all'].map(s => (
+            <button key={s} onClick={() => setStatusFilter(s)} style={{ padding: '6px 14px', borderRadius: '20px', border: `1px solid ${statusFilter === s ? STATUS_COLOR[s] || 'var(--navy)' : 'var(--b)'}`, background: statusFilter === s ? STATUS_BG[s] || 'rgba(15,31,61,.08)' : 'transparent', color: statusFilter === s ? STATUS_COLOR[s] || 'var(--text)' : 'var(--text3)', fontSize: '12px', fontWeight: 600, cursor: 'pointer', textTransform: 'capitalize' }}>
+              {s}{s !== 'all' && <span style={{ marginLeft: '5px', opacity: .7 }}>{requests.filter(r => r.status === s).length}</span>}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Empty state */}
+      {filtered.length === 0 && (
+        <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--text3)' }}>
+          <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'var(--cream2)', border: '1px solid var(--b)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px', opacity: .5 }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          </div>
+          <div style={{ fontWeight: 600, marginBottom: '4px', color: 'var(--text2)' }}>No {statusFilter !== 'all' ? statusFilter : ''} requests</div>
+          <div style={{ fontSize: '12.5px' }}>Student session requests will show up here.</div>
+        </div>
+      )}
+
+      {/* Request cards */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        {filtered.map(req => (
+          <div key={req.id} style={{ background: 'var(--cream)', border: '1px solid var(--b)', borderRadius: 'var(--rl)', overflow: 'hidden', boxShadow: 'var(--sh)' }}>
+            {/* Card header */}
+            <div style={{ padding: '16px 20px', display: 'flex', alignItems: 'flex-start', gap: '14px' }}>
+              <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'var(--navy)', color: 'var(--gold)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--fs)', fontSize: '15px', fontWeight: 700, flexShrink: 0 }}>{req.studentName?.[0]}</div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '4px' }}>
+                  <span style={{ fontWeight: 600, color: 'var(--text)', fontSize: '14px' }}>{req.studentName}</span>
+                  <span style={{ fontSize: '10px', fontWeight: 700, padding: '2px 7px', borderRadius: '20px', background: 'rgba(99,102,241,.1)', color: '#6366F1', textTransform: 'uppercase' }}>{req.studentPlan}</span>
+                  <span style={{ fontSize: '10px', fontWeight: 700, padding: '2px 8px', borderRadius: '20px', background: STATUS_BG[req.status], color: STATUS_COLOR[req.status], textTransform: 'capitalize' }}>{req.status}</span>
+                  <span style={{ fontSize: '11px', color: 'var(--text3)', marginLeft: 'auto' }}>{timeAgo(req.createdAt)}</span>
+                </div>
+                <div style={{ fontSize: '13.5px', color: 'var(--text2)', lineHeight: 1.6, marginBottom: '6px' }}>
+                  <strong style={{ color: 'var(--text)' }}>Topic:</strong> {req.topic}
+                </div>
+                <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', fontSize: '12px', color: 'var(--text3)', alignItems: 'center' }}>
+                  {req.phone && (
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.39 2 2 0 0 1 3.6 1.21h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.38a16 16 0 0 0 6 6l.94-.94a2 2 0 0 1 2.25-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.73 16z"/></svg>
+                      {req.phone}
+                    </span>
+                  )}
+                  {req.preferredTime && (
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                      {req.preferredTime}
+                    </span>
+                  )}
+                  {req.status === 'assigned' && req.scheduledAt && (
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '5px', color: '#3B82F6', fontWeight: 600 }}>
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+                      {fmtDt(req.scheduledAt)} · {req.durationMin}min · {req.facultyName}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
+                {req.status === 'pending' && (
+                  <button className="btn btn-gold btn-sm" onClick={() => openAssign(req.id)}>Assign →</button>
+                )}
+                {req.status === 'assigned' && (
+                  <button className="btn btn-ghost btn-sm" onClick={() => updateStatus(req.id, 'done')} style={{ color: '#22C55E', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                    Mark Done</button>
+                )}
+                {(req.status === 'pending' || req.status === 'assigned') && (
+                  <button className="btn btn-ghost btn-sm" onClick={() => updateStatus(req.id, 'cancelled')} style={{ color: 'var(--red)', fontSize: '11px' }}>Cancel</button>
+                )}
+              </div>
+            </div>
+
+            {/* Assign form — inline expand */}
+            {assigningId === req.id && (
+              <div style={{ borderTop: '1px solid var(--b)', background: 'var(--cream2)', padding: '18px 20px' }}>
+                <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: '14px' }}>Assign Session</div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: 'var(--text2)', marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '.05em' }}>Faculty *</label>
+                    <select className="finput" value={faculty} onChange={e => setFaculty(e.target.value)} style={{ fontSize: '13px' }}>
+                      <option value="">— Select faculty —</option>
+                      {facultyList.map(f => <option key={f.id} value={f.id}>{f.name} {f.subject ? `· ${f.subject}` : ''}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: 'var(--text2)', marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '.05em' }}>Duration</label>
+                    <select className="finput" value={duration} onChange={e => setDuration(Number(e.target.value))} style={{ fontSize: '13px' }}>
+                      {[30,45,60,90].map(d => <option key={d} value={d}>{d} minutes</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: 'var(--text2)', marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '.05em' }}>Date *</label>
+                    <input type="date" className="finput" value={date} onChange={e => setDate(e.target.value)} style={{ fontSize: '13px' }} />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: 'var(--text2)', marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '.05em' }}>Time (IST)</label>
+                    <input type="time" className="finput" value={time} onChange={e => setTime(e.target.value)} style={{ fontSize: '13px' }} />
+                  </div>
+                </div>
+                <div style={{ marginBottom: '14px' }}>
+                  <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: 'var(--text2)', marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '.05em' }}>Note for student <span style={{ fontWeight: 400, opacity: .6 }}>(optional)</span></label>
+                  <input type="text" className="finput" placeholder="e.g. Join via Google Meet — link will be sent on WhatsApp" value={note} onChange={e => setNote(e.target.value)} style={{ fontSize: '13px' }} />
+                </div>
+                <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                  <button className="btn btn-ghost btn-sm" onClick={() => setAssigningId(null)}>Cancel</button>
+                  <button className="btn btn-gold btn-sm" disabled={saving || !faculty || !date} onClick={() => assign(req)}>
+                    {saving ? 'Checking & Assigning…' : 'Check & Assign →'}
+                  </button>
+                </div>
+                <div style={{ fontSize: '11px', color: 'var(--text3)', marginTop: '8px', textAlign: 'right' }}>
+                  If faculty has an existing session or call at this time, you'll see a warning before it saves.
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 };
 
 export default AdminContent;

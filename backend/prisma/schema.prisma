@@ -54,6 +54,7 @@ model StudentProfile {
   parentFeedback       ParentFeedback[]
   mentorNotes          MentorNote[]
   mentorCalls          MentorCall[]
+  sessionRequests      SessionRequest[]
 }
 
 model FacultyProfile {
@@ -75,6 +76,7 @@ model FacultyProfile {
   mentorNotes          MentorNote[]
   mentorCalls          MentorCall[]
   facultyAlerts        FacultyAlert[]
+  assignedSessions     SessionRequest[]
 }
 
 model AdminMessage {
@@ -335,4 +337,28 @@ model Otp {
   otp       String
   expiresAt DateTime
   createdAt DateTime @default(now())
+}
+
+model SessionRequest {
+  id            Int       @id @default(autoincrement())
+  topic         String
+  phone         String?
+  preferredTime String?
+  status        String    @default("pending") // pending | assigned | done | cancelled
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  studentId     Int
+  student       StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  // Populated when admin assigns
+  facultyId     Int?
+  faculty       FacultyProfile? @relation(fields: [facultyId], references: [id])
+  scheduledAt   DateTime?
+  durationMin   Int?
+  adminNote     String?
+  assignedAt    DateTime?
+
+  @@index([studentId])
+  @@index([status])
 }

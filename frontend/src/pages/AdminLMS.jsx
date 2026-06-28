@@ -21,12 +21,15 @@ const AdminLMS = ({ expectedRole }) => {
   const [resources, setResources] = useState([]);
   const [sentMessages, setSentMessages] = useState([]);
   const [parentReports, setParentReports] = useState([]);
+  const [sessionRequests, setSessionRequests] = useState([]);
   const [deactivated, setDeactivated] = useState(false);
-  const toastTimer   = useRef(null);
-  const reportsRef   = useRef([]);
-  const resourcesRef = useRef([]);
-  useEffect(() => { reportsRef.current   = parentReports; }, [parentReports]);
-  useEffect(() => { resourcesRef.current = resources;     }, [resources]);
+  const toastTimer        = useRef(null);
+  const reportsRef        = useRef([]);
+  const resourcesRef      = useRef([]);
+  const sessionReqRef     = useRef([]);
+  useEffect(() => { reportsRef.current    = parentReports;    }, [parentReports]);
+  useEffect(() => { resourcesRef.current  = resources;        }, [resources]);
+  useEffect(() => { sessionReqRef.current = sessionRequests;  }, [sessionRequests]);
 
   useEffect(() => {
     document.documentElement.classList.add('admin-mode');
@@ -82,6 +85,11 @@ const AdminLMS = ({ expectedRole }) => {
       .then(r => r.ok ? r.json() : [])
       .then(data => { if (Array.isArray(data)) setParentReports(data); })
       .catch(() => {});
+
+    fetch(`${import.meta.env.VITE_API_URL}/api/admin/${userId}/session-requests`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : [])
+      .then(data => { if (Array.isArray(data)) setSessionRequests(data); })
+      .catch(() => {});
   }, []);
 
   // Poll reports every 20s — show toast when new submissions arrive
@@ -119,6 +127,26 @@ const AdminLMS = ({ expectedRole }) => {
           const newPending = fresh.filter(r => r.status === 'pending' && !prev.some(p => p.id === r.id));
           if (newPending.length > 0) showToast(`${newPending.length} new resource${newPending.length > 1 ? 's' : ''} submitted for review`);
           setResources(fresh);
+        })
+        .catch(() => {});
+    }, 20000);
+    return () => clearInterval(id);
+  }, [profile]);
+
+  // Poll session requests every 20s — toast when a new one arrives
+  useEffect(() => {
+    if (!profile) return;
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    const id = setInterval(() => {
+      fetch(`${import.meta.env.VITE_API_URL}/api/admin/${userId}/session-requests`, { headers: { Authorization: `Bearer ${token}` } })
+        .then(r => r.ok ? r.json() : null)
+        .then(fresh => {
+          if (!Array.isArray(fresh)) return;
+          const prev = sessionReqRef.current;
+          const newReqs = fresh.filter(f => !prev.find(p => p.id === f.id));
+          newReqs.forEach(r => showToast(`📚 New session request from ${r.studentName} — "${r.topic.slice(0, 50)}…"`));
+          setSessionRequests(fresh);
         })
         .catch(() => {});
     }, 20000);
@@ -378,6 +406,7 @@ const AdminLMS = ({ expectedRole }) => {
         facultyCount={facultyList.length}
         pendingApprovalsCount={resources.filter(r => r.status === 'pending').length}
         pendingReportsCount={parentReports.filter(r => r.status === 'submitted').length}
+        pendingSessionRequests={sessionRequests.filter(r => r.status === 'pending').length}
       />
       <div className="admin-main">
         <AdminTopbar
@@ -411,6 +440,8 @@ const AdminLMS = ({ expectedRole }) => {
           onRejectReport={rejectReport}
           onApproveAllReports={approveAllReports}
           onSendReports={sendApprovedReports}
+          sessionRequests={sessionRequests}
+          onSessionRequestsUpdated={setSessionRequests}
         />
       </div>
       <AdminModals

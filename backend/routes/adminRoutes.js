@@ -759,4 +759,136 @@ router.post('/reports/send', requireAuth, requireAdmin, async (req, res) => {
   }
 });
 
+// ── SESSION REQUESTS ──────────────────────────────────────────────────────
+
+// GET /api/admin/:userId/session-requests — list all requests with student + faculty info
+router.get('/session-requests', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const requests = await prisma.sessionRequest.findMany({
+      orderBy: { createdAt: 'desc' },
+      include: {
+        student: { include: { user: { select: { name: true, email: true } } } },
+        faculty:  { include: { user: { select: { name: true } } } },
+      },
+    });
+
+    res.json(requests.map(r => ({
+      id: r.id, topic: r.topic, phone: r.phone, preferredTime: r.preferredTime,
+      status: r.status, createdAt: r.createdAt,
+      scheduledAt: r.scheduledAt, durationMin: r.durationMin,
+      adminNote: r.adminNote, assignedAt: r.assignedAt,
+      studentName: r.student.user.name, studentEmail: r.student.user.email,
+      studentId: r.student.id, studentPlan: r.student.plan,
+      facultyName: r.faculty?.user?.name || null, facultyId: r.facultyId,
+    })));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch session requests' });
+  }
+});
+
+// PUT /api/admin/:userId/session-requests/:id/assign — assign faculty + time, check conflicts
+router.put('/session-requests/:id/assign', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const { facultyId, scheduledAt, durationMin, adminNote } = req.body;
+    if (!facultyId || !scheduledAt || !durationMin)
+      return res.status(400).json({ error: 'facultyId, scheduledAt, durationMin required' });
+
+    const request = await prisma.sessionRequest.findUnique({
+      where: { id: parseInt(req.params.id) },
+      include: { student: { include: { user: { select: { name: true } } } } },
+    });
+    if (!request) return res.status(404).json({ error: 'Request not found' });
+
+    const start = new Date(scheduledAt);
+    const end   = new Date(start.getTime() + durationMin * 60000);
+
+    // ── Conflict check: Sessions (batch) ──
+    const sessionConflicts = await prisma.session.findMany({
+      where: {
+        facultyId: parseInt(facultyId),
+        scheduledAt: { gte: start, lt: end },
+      },
+      select: { title: true, scheduledAt: true, duration: true },
+    });
+
+    // ── Conflict check: MentorCalls (Anchor 1-on-1) ──
+    const callConflicts = await prisma.mentorCall.findMany({
+      where: {
+        mentorId: parseInt(facultyId),
+        completed: false,
+        scheduledAt: { gte: new Date(start.getTime() - 90 * 60000), lt: end },
+      },
+      select: { scheduledAt: true, durationMin: true },
+    });
+
+    // Filter mentorCalls that actually overlap
+    const overlappingCalls = callConflicts.filter(c => {
+      const cs = new Date(c.scheduledAt);
+      const ce = new Date(cs.getTime() + c.durationMin * 60000);
+      return cs < end && ce > start;
+    });
+
+    const conflicts = [
+      ...sessionConflicts.map(s => `Batch session "${s.title}" at ${new Date(s.scheduledAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}`),
+      ...overlappingCalls.map(c => `Mentor call at ${new Date(c.scheduledAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}`),
+    ];
+
+    if (conflicts.length > 0) {
+      return res.status(409).json({ error: 'Faculty has conflicts', conflicts });
+    }
+
+    // ── Assign ──
+    const faculty = await prisma.facultyProfile.findUnique({
+      where: { id: parseInt(facultyId) },
+      include: { user: { select: { name: true } } },
+    });
+
+    const updated = await prisma.sessionRequest.update({
+      where: { id: request.id },
+      data: {
+        status: 'assigned', facultyId: parseInt(facultyId),
+        scheduledAt: start, durationMin: parseInt(durationMin),
+        adminNote: adminNote?.trim() || null, assignedAt: new Date(),
+      },
+    });
+
+    // Notify student
+    const admins = await prisma.adminProfile.findMany({ where: { isActive: true }, select: { id: true } });
+    if (admins.length) {
+      const dateStr = start.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' });
+      const timeStr = start.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+      await prisma.adminMessage.createMany({
+        data: admins.map(a => ({
+          content: `Your session has been confirmed! ${faculty.user.name} will meet you on ${dateStr} at ${timeStr} for ${durationMin} minutes. Topic: ${request.topic}`,
+          type: 'Reminder',
+          studentId: request.studentId,
+          adminId: a.id,
+        })),
+      });
+    }
+
+    res.json({ success: true, request: updated, conflicts: [] });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to assign session' });
+  }
+});
+
+// PUT /api/admin/:userId/session-requests/:id/status — mark done/cancelled
+router.put('/session-requests/:id/status', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const { status } = req.body;
+    if (!['done', 'cancelled', 'pending'].includes(status))
+      return res.status(400).json({ error: 'Invalid status' });
+    const updated = await prisma.sessionRequest.update({
+      where: { id: parseInt(req.params.id) },
+      data: { status },
+    });
+    res.json({ success: true, status: updated.status });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to update status' });
+  }
+});
+
 module.exports = router;

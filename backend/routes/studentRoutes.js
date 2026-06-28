@@ -269,6 +269,7 @@ router.post('/doubts', requireAuth, async (req, res) => {
       include: { user: { select: { name: true } } },
     });
     if (!profile) return res.status(403).json({ error: 'Student not found' });
+    if (!['apex'].includes(profile.plan)) return res.status(403).json({ error: 'Doubt desk is available on the Apex plan only' });
 
     const validSubjects = EXAM_SUBJECTS[profile.examTarget] || [];
     if (!validSubjects.includes(subject)) return res.status(400).json({ error: 'Invalid subject for your exam' });
@@ -370,12 +371,14 @@ router.get('/notifications', requireAuth, async (req, res) => {
     // FacultyNotification relevant to all paid plans (Forge, Apex, Anchor have assigned faculty)
     const hasFaculty = ['forge', 'apex', 'anchor'].includes(profile.plan);
 
-    // Exclude system-generated activity messages (report submissions, diagnostic) — those are admin-only
+    // Types that are admin-only — never shown in student notification feed
+    const ADMIN_ONLY_TYPES = ['Session Request'];
+    // Content prefixes for system-generated messages that are also admin-only
     const SYSTEM_CONTENT_PREFIXES = [' submitted their daily report', ' completed their diagnostic'];
 
     const [adminMsgs, facultyNotifs] = await Promise.all([
       prisma.adminMessage.findMany({
-        where: { studentId: profile.id },
+        where: { studentId: profile.id, type: { notIn: ADMIN_ONLY_TYPES } },
         orderBy: { createdAt: 'desc' },
       }),
       hasFaculty
@@ -655,6 +658,56 @@ router.post('/feedback', requireAuth, async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to submit feedback' });
+  }
+});
+
+// POST /api/student/:userId/session-request — student requests a 1-on-1 session
+router.post('/session-request', requireAuth, validateUrlUser, async (req, res) => {
+  try {
+    const { topic, phone, preferredTime } = req.body;
+    if (!topic?.trim()) return res.status(400).json({ error: 'Topic is required' });
+
+    const profile = await prisma.studentProfile.findUnique({ where: { userId: req.params.userId } });
+    if (!profile) return res.status(404).json({ error: 'Profile not found' });
+
+    const request = await prisma.sessionRequest.create({
+      data: {
+        studentId:    profile.id,
+        topic:        topic.trim(),
+        phone:        phone?.trim() || null,
+        preferredTime: preferredTime?.trim() || null,
+      },
+    });
+
+    res.json({ success: true, id: request.id });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to submit session request' });
+  }
+});
+
+// GET /api/student/:userId/session-requests — student sees their own requests
+router.get('/session-requests', requireAuth, validateUrlUser, async (req, res) => {
+  try {
+    const profile = await prisma.studentProfile.findUnique({ where: { userId: req.params.userId } });
+    if (!profile) return res.json([]);
+
+    const requests = await prisma.sessionRequest.findMany({
+      where: { studentId: profile.id },
+      orderBy: { createdAt: 'desc' },
+      include: { faculty: { include: { user: { select: { name: true } } } } },
+    });
+
+    res.json(requests.map(r => ({
+      id: r.id, topic: r.topic, phone: r.phone, preferredTime: r.preferredTime,
+      status: r.status, createdAt: r.createdAt,
+      scheduledAt: r.scheduledAt, durationMin: r.durationMin,
+      adminNote: r.adminNote, assignedAt: r.assignedAt,
+      facultyName: r.faculty?.user?.name || null,
+    })));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch session requests' });
   }
 });
 
