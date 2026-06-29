@@ -1,10 +1,14 @@
 import { useState, useRef, useEffect } from 'react';
 import { useActivePage } from '../hooks/useActivePage';
 import '../components/student-lms/StudentStyles.css';
+import '../components/free-lms/FreeStyles.css';
 import StudentSidebar from '../components/student-lms/StudentSidebar';
 import StudentTopbar from '../components/student-lms/StudentTopbar';
 import StudentContent from '../components/student-lms/StudentContent';
 import StudentModals from '../components/student-lms/StudentModals';
+import FreeContent from '../components/free-lms/FreeContent';
+
+const STUDY_PAGES = ['diagnostic', 'topics', 'guidance'];
 
 const NOTIF_NAV = {
   'Session Note':      'sessions',
@@ -32,6 +36,7 @@ const StudentLMS = () => {
   const [parentReports, setParentReports] = useState(null);
   const [mentorNotes, setMentorNotes] = useState([]);
   const [mentorCalls, setMentorCalls] = useState([]);
+  const [habitLogs, setHabitLogs] = useState([]);
   const toastTimer        = useRef(null);
   const doubtsRef         = useRef([]);
   const notificationsRef  = useRef([]);
@@ -42,10 +47,20 @@ const StudentLMS = () => {
     document.documentElement.classList.add('student-mode');
     document.body.classList.add('student-mode');
     return () => {
-      document.documentElement.classList.remove('student-mode');
-      document.body.classList.remove('student-mode');
+      document.documentElement.classList.remove('student-mode', 'free-mode');
+      document.body.classList.remove('student-mode', 'free-mode');
     };
   }, []);
+
+  useEffect(() => {
+    if (STUDY_PAGES.includes(activePage)) {
+      document.documentElement.classList.add('free-mode');
+      document.body.classList.add('free-mode');
+    } else {
+      document.documentElement.classList.remove('free-mode');
+      document.body.classList.remove('free-mode');
+    }
+  }, [activePage]);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -121,6 +136,13 @@ const StudentLMS = () => {
     })
       .then(r => r.ok ? r.json() : [])
       .then(data => { if (Array.isArray(data)) setMentorCalls(data); })
+      .catch(() => {});
+
+    fetch(`${import.meta.env.VITE_API_URL}/api/student/${userId}/habits`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(r => r.ok ? r.json() : [])
+      .then(data => { if (Array.isArray(data)) setHabitLogs(data); })
       .catch(() => {});
   }, []);
 
@@ -251,24 +273,43 @@ const StudentLMS = () => {
           unreadCount={notifications.filter(n => !n.readAt).length}
           profile={profile}
         />
-        <StudentContent
-          activePage={activePage}
-          onOpenModal={setOpenModal}
-          onNav={setActivePage}
-          onShowToast={showToast}
-          profile={profile}
-          scores={scores}
-          sessions={sessions}
-          doubts={doubts}
-          notifications={notifications}
-          onMarkNotificationsRead={markAllNotificationsRead}
-          onNotificationClick={handleNotificationClick}
-          resources={resources}
-          questionBank={questionBank}
-          parentReports={parentReports}
-          mentorNotes={mentorNotes}
-          mentorCalls={mentorCalls}
-        />
+        {STUDY_PAGES.includes(activePage) ? (
+          <FreeContent
+            activePage={activePage}
+            onNav={setActivePage}
+            onOpenModal={() => {}}
+            onShowToast={showToast}
+            profile={profile}
+            habitLogs={habitLogs}
+            onHabitSaved={(log) => setHabitLogs(prev => {
+              const i = prev.findIndex(l => l.date === log.date);
+              if (i >= 0) { const n = [...prev]; n[i] = log; return n; }
+              return [log, ...prev].slice(0, 14);
+            })}
+            notifications={[]}
+            onMarkNotifRead={() => {}}
+            onMarkAllNotifRead={() => {}}
+          />
+        ) : (
+          <StudentContent
+            activePage={activePage}
+            onOpenModal={setOpenModal}
+            onNav={setActivePage}
+            onShowToast={showToast}
+            profile={profile}
+            scores={scores}
+            sessions={sessions}
+            doubts={doubts}
+            notifications={notifications}
+            onMarkNotificationsRead={markAllNotificationsRead}
+            onNotificationClick={handleNotificationClick}
+            resources={resources}
+            questionBank={questionBank}
+            parentReports={parentReports}
+            mentorNotes={mentorNotes}
+            mentorCalls={mentorCalls}
+          />
+        )}
       </div>
       <StudentModals
         openModal={openModal}
