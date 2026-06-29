@@ -46,7 +46,10 @@ body.faculty-mode #root {
   border-right: 1px solid var(--bi);
   overflow-y: auto;
 }
-.sidebar::-webkit-scrollbar { width: 0; }
+.sidebar::-webkit-scrollbar { width: 7px; }
+.sidebar::-webkit-scrollbar-track { background: rgba(255,255,255,.05); border-radius: 4px; }
+.sidebar::-webkit-scrollbar-thumb { background: rgba(232,168,48,.45); border-radius: 4px; }
+.sidebar::-webkit-scrollbar-thumb:hover { background: rgba(232,168,48,.7); }
 
 .sb-logo { padding: 20px 20px 16px; border-bottom: 1px solid var(--bi); display: flex; align-items: center; gap: 11px; flex-shrink: 0; }
 .sb-mark { width: 34px; height: 34px; flex-shrink: 0; }

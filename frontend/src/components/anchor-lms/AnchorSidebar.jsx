@@ -24,13 +24,15 @@ const AnchorSidebar = ({ activePage, onNav, profile, reportDoneToday = false, un
         </div>
       </div>
 
-      {/* Anchor tier */}
+      {/* My Anchor nav */}
+      <div className="anchor-sb-scroll">
+
+      {/* Anchor tier — scrolls with nav */}
       <div className="tier-strip">
         <div className="tier-plan">⚓ ANCHOR</div>
         <div className="tier-sub">Someone in your corner, every day</div>
       </div>
 
-      {/* My Anchor nav */}
       <div className="nb">
         <div className="nl">My Anchor</div>
         <div className={ni('dashboard')} onClick={() => onNav('dashboard')}>
@@ -93,6 +95,8 @@ const AnchorSidebar = ({ activePage, onNav, profile, reportDoneToday = false, un
           Parent View
         </div>
       </div>
+
+      </div>{/* end anchor-sb-scroll */}
 
       {/* Bottom */}
       <div className="sb-bottom">

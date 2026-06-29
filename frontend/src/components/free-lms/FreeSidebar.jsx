@@ -25,6 +25,8 @@ const FreeSidebar = ({ activePage, onNav, profile, onOpenModal }) => {
         </div>
       </div>
 
+      <div className="free-sb-scroll">
+
       {isForge ? (
         <div style={{ margin: '10px 14px', borderRadius: '10px', padding: '12px 14px', background: 'linear-gradient(135deg, rgba(232,168,48,0.18) 0%, rgba(232,168,48,0.06) 100%)', border: '1px solid rgba(232,168,48,0.35)' }}>
           <div style={{ fontSize: '9.5px', color: 'rgba(253,248,240,0.45)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '5px' }}>Current Plan</div>
@@ -120,7 +122,7 @@ const FreeSidebar = ({ activePage, onNav, profile, onOpenModal }) => {
           See All Plans
         </div>
       </div>
-
+      </div>{/* end free-sb-scroll */}
 
       <div className="sb-bottom">
         <div className="sb-user">

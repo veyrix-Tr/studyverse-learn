@@ -45,6 +45,10 @@ body.admin-mode #root {
 
 /* ── SIDEBAR ── */
 .sidebar{width:var(--sw);background:var(--navy);position:fixed;top:0;left:0;bottom:0;z-index:100;display:flex;flex-direction:column;border-right:1px solid var(--bi);overflow-y:auto}
+.sidebar::-webkit-scrollbar { width: 7px; }
+.sidebar::-webkit-scrollbar-track { background: rgba(255,255,255,.05); border-radius: 4px; }
+.sidebar::-webkit-scrollbar-thumb { background: rgba(232,168,48,.45); border-radius: 4px; }
+.sidebar::-webkit-scrollbar-thumb:hover { background: rgba(232,168,48,.7); }
 .sb-logo{padding:20px 20px 16px;border-bottom:1px solid var(--bi);display:flex;align-items:center;gap:10px;flex-shrink:0}
 .sb-mark{width:33px;height:33px;flex-shrink:0}
 .sb-w1{font-family:var(--fb);font-weight:700;font-size:14.5px;letter-spacing:.06em;color:var(--inv)}
