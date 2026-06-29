@@ -11,7 +11,6 @@ const PAGE_TITLES = {
   notif:      'Notifications',
   progress:   'My Progress',
   tests:      'Weekly Tests',
-  feedback:   'Weekly Feedback',
 };
 
 const PLAN_LABEL = {

@@ -1892,7 +1892,15 @@ const SessionRequestsPage = ({ requests, facultyList, userId, onShowToast, onUpd
             {/* Assign form — inline expand */}
             {assigningId === req.id && (
               <div style={{ borderTop: '1px solid var(--b)', background: 'var(--cream2)', padding: '18px 20px' }}>
-                <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: '14px' }}>Assign Session</div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+                  <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '.07em' }}>Assign Session</div>
+                  {req.preferredTime && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--gold)', background: 'var(--gold-dim)', border: '1px solid var(--gold-b)', borderRadius: '20px', padding: '3px 10px', fontWeight: 600 }}>
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                      Student prefers: {req.preferredTime}
+                    </div>
+                  )}
+                </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
                   <div>
                     <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: 'var(--text2)', marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '.05em' }}>Faculty *</label>
@@ -1913,6 +1921,14 @@ const SessionRequestsPage = ({ requests, facultyList, userId, onShowToast, onUpd
                   </div>
                   <div>
                     <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: 'var(--text2)', marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '.05em' }}>Time (IST)</label>
+                    {/* Quick time chips */}
+                    <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap', marginBottom: '7px' }}>
+                      {[['9:00','9 AM'],['10:00','10 AM'],['11:00','11 AM'],['14:00','2 PM'],['16:00','4 PM'],['18:00','6 PM'],['19:00','7 PM'],['20:00','8 PM']].map(([val, label]) => (
+                        <button key={val} type="button" onClick={() => setTime(val)} style={{ padding: '3px 9px', borderRadius: '20px', fontSize: '11px', fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--fb)', background: time === val ? 'var(--navy)' : 'var(--cream3)', color: time === val ? 'var(--gold)' : 'var(--text3)', border: time === val ? '1px solid var(--navy)' : '1px solid var(--b)', transition: 'all .12s' }}>
+                          {label}
+                        </button>
+                      ))}
+                    </div>
                     <input type="time" className="finput" value={time} onChange={e => setTime(e.target.value)} style={{ fontSize: '13px' }} />
                   </div>
                 </div>

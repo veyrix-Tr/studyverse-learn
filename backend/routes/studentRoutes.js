@@ -483,13 +483,21 @@ const QUESTION_BANK_TYPES = ['MCQ Bank', 'Previous Year Papers', 'Practice Set']
 router.get('/resources', requireAuth, async (req, res) => {
   try {
     const profile = await prisma.studentProfile.findUnique({ where: { userId: req.params.userId } });
-    if (!profile || !['forge', 'apex', 'anchor'].includes(profile.plan)) return res.json([]);
+    if (!profile) return res.json([]);
 
     const subjects = EXAM_SUBJECTS[profile.examTarget] || [];
     if (!subjects.length) return res.json([]);
 
+    // Grade filter: Dropper sees both 11 and 12, others see only their grade
+    const allowedGrades = profile.grade === 'Dropper' ? ['11', '12'] : [profile.grade].filter(Boolean);
+
     const resources = await prisma.resource.findMany({
-      where: { status: 'approved', subject: { in: subjects }, type: { in: RESOURCE_TYPES } },
+      where: {
+        status: 'approved',
+        subject: { in: subjects },
+        type: { in: RESOURCE_TYPES },
+        ...(allowedGrades.length ? { grade: { in: allowedGrades } } : {}),
+      },
       include: { faculty: { include: { user: { select: { name: true } } } } },
       orderBy: { approvedAt: 'desc' },
     });

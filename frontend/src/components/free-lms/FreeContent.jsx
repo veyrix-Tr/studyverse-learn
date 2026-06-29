@@ -183,27 +183,29 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
   const [openWR, setOpenWR] = useState(new Set([0]));
   const toggleWR = (i) => setOpenWR(prev => { const n = new Set(prev); n.has(i) ? n.delete(i) : n.add(i); return n; });
   useEffect(() => {
-    if (!isForge || !userId) return;
+    if (!userId) return;
     const token = localStorage.getItem('token');
-    fetch(`${import.meta.env.VITE_API_URL}/api/student/${userId}/question-bank`, { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => r.ok ? r.json() : []).then(d => { if (Array.isArray(d)) setQuestionBank(d); }).catch(() => {});
+    // Resources available for all plans now
     fetch(`${import.meta.env.VITE_API_URL}/api/student/${userId}/resources`, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.ok ? r.json() : []).then(d => { if (Array.isArray(d)) setResources(d); }).catch(() => {});
-    fetch(`${import.meta.env.VITE_API_URL}/api/student/${userId}/scores`, { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => r.ok ? r.json() : { weeks: [] }).then(d => { if (Array.isArray(d?.weeks)) setScores(d.weeks); }).catch(() => {});
-  }, [isForge, userId]);
+    if (isForge) {
+      fetch(`${import.meta.env.VITE_API_URL}/api/student/${userId}/question-bank`, { headers: { Authorization: `Bearer ${token}` } })
+        .then(r => r.ok ? r.json() : []).then(d => { if (Array.isArray(d)) setQuestionBank(d); }).catch(() => {});
+      fetch(`${import.meta.env.VITE_API_URL}/api/student/${userId}/scores`, { headers: { Authorization: `Bearer ${token}` } })
+        .then(r => r.ok ? r.json() : { weeks: [] }).then(d => { if (Array.isArray(d?.weeks)) setScores(d.weeks); }).catch(() => {});
+    }
+  }, [userId]);
 
   // Diagnostic done state (from DB)
   const [diagDone, setDiagDone]         = useState(false);
   const [studyPlan, setStudyPlan]           = useState(null);
   const [studyPlanError, setStudyPlanError] = useState(false);
   const [studyPlanRetry, setStudyPlanRetry] = useState(0);
+  const [studyPlanRetrying, setStudyPlanRetrying] = useState(false);
 
   useEffect(() => {
     const sp = profile?.studentProfile;
-    if (sp?.diagnosticScore !== null && sp?.diagnosticScore !== undefined) {
-      setDiagDone(true);
-    }
+    setDiagDone(sp?.diagnosticScore !== null && sp?.diagnosticScore !== undefined);
   }, [profile]);
 
   // Fetch study plan when diagnostic is done
@@ -273,16 +275,36 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
         completedThisWeek: prev.completedThisWeek.filter(t => t !== topicName),
       }));
     }
-    await fetch(`${import.meta.env.VITE_API_URL}/api/student/${userId}/topics/complete`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ topicName, subject, weekNumber }),
-    }).catch(() => {});
-    if (isNowDone) {
-      onShowToast(`${topicName} marked as done ✓`);
-    } else {
-      onShowToast(`${topicName} moved back to your list`);
-      setStudyPlanRetry(r => r + 1);
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/student/${userId}/topics/complete`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ topicName, subject, weekNumber }),
+      });
+      if (!res.ok) throw new Error();
+      if (isNowDone) {
+        onShowToast(`${topicName} marked as done ✓`);
+      } else {
+        onShowToast(`${topicName} moved back to your list`);
+        setStudyPlanRetry(r => r + 1);
+      }
+    } catch {
+      // Revert the optimistic update on failure
+      if (isNowDone) {
+        setStudyPlan(prev => ({
+          ...prev,
+          completedThisWeek: prev.completedThisWeek.filter(t => t !== topicName),
+          thisWeek: prev.thisWeek.some(t => t.topic === topicName)
+            ? prev.thisWeek
+            : [...prev.thisWeek, { topic: topicName, subject }],
+        }));
+      } else {
+        setStudyPlan(prev => ({
+          ...prev,
+          completedThisWeek: [...prev.completedThisWeek, topicName],
+        }));
+      }
+      onShowToast('Failed to save. Try again.');
     }
   };
 
@@ -517,155 +539,334 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
               {(() => {
                 const active = sessionRequests.find(r => r.status === 'pending' || r.status === 'assigned');
                 const fmtDt = iso => new Date(iso).toLocaleString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' });
+
+                const isAssigned = active?.status === 'assigned';
+                const isPending  = active?.status === 'pending';
+
+                const blue   = { bg: 'linear-gradient(135deg,var(--navy) 0%,var(--navy3) 100%)', border: 'var(--gold-b)', title: '#FDF8F0', sub: 'rgba(253,248,240,.55)', accent: 'var(--gold)', iconBg: 'rgba(232,168,48,.14)', iconBorder: 'rgba(232,168,48,.35)' };
+                const amber  = { bg: 'linear-gradient(135deg,#fef9ec 0%,#fdf6e3 100%)', border: 'rgba(232,168,48,.35)',   title: '#78350f', sub: '#92400e', accent: '#d97706', iconBg: 'rgba(232,168,48,.18)', iconBorder: 'rgba(232,168,48,.35)' };
+                const green  = { bg: 'linear-gradient(135deg,#d1fae5 0%,#ecfdf5 100%)', border: 'rgba(34,197,94,.3)',    title: '#14532d', sub: '#166534', accent: '#16a34a', iconBg: 'rgba(34,197,94,.15)',  iconBorder: 'rgba(34,197,94,.3)'  };
+                const c = isAssigned ? green : isPending ? amber : blue;
+
                 return (
-                  <div style={{ background: 'var(--navy)', borderRadius: 'var(--rl)', padding: '18px 22px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '16px', border: '1px solid rgba(255,255,255,.08)' }}>
-                    <div style={{ width: '42px', height: '42px', borderRadius: '11px', background: active?.status === 'assigned' ? 'rgba(232,168,48,.14)' : 'rgba(255,255,255,.07)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      {active?.status === 'assigned'
-                        ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
-                        : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(253,248,240,.5)" strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>}
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontFamily: 'var(--fs)', fontSize: '15px', fontWeight: 700, color: '#FDF8F0', marginBottom: '2px' }}>
-                        {active ? (active.status === 'assigned' ? 'Session confirmed' : 'Request in review') : 'Book a 1-on-1 Session'}
+                  <div style={{ background: c.bg, borderRadius: 'var(--rl)', padding: '22px 24px', marginBottom: '20px', border: `1px solid ${c.border}`, boxShadow: '0 2px 12px rgba(59,130,246,.07)' }}>
+
+                    {/* Top row */}
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '14px', marginBottom: isAssigned || isPending ? '0' : '16px' }}>
+                      <div style={{ width: '46px', height: '46px', borderRadius: '13px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: c.iconBg, border: `1.5px solid ${c.iconBorder}` }}>
+                        {isAssigned
+                          ? <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={c.accent} strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+                          : isPending
+                          ? <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={c.accent} strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                          : <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={c.accent} strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>}
                       </div>
-                      <div style={{ fontSize: '12px', color: 'rgba(253,248,240,.45)', lineHeight: 1.5 }}>
-                        {active?.status === 'assigned'
-                          ? `${active.facultyName ? active.facultyName + ' · ' : ''}${fmtDt(active.scheduledAt)} · ${active.durationMin} min`
-                          : active?.status === 'pending'
-                          ? `Topic: ${active.topic.length > 55 ? active.topic.slice(0, 55) + '...' : active.topic}`
-                          : '60 min with one of our faculty. Pick your topic, we confirm the time.'}
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontFamily: 'var(--fs)', fontSize: '16px', fontWeight: 700, color: c.title, marginBottom: '3px' }}>
+                          {isAssigned ? 'Session scheduled' : isPending ? 'Request in review' : 'Book a 1-on-1 Session'}
+                        </div>
+                        <div style={{ fontSize: '12.5px', color: c.sub, lineHeight: 1.55 }}>
+                          {isAssigned
+                            ? `${active.facultyName ? active.facultyName + ' · ' : ''}${fmtDt(active.scheduledAt)} · ${active.durationMin} min`
+                            : isPending
+                            ? (active.topic.length > 70 ? active.topic.slice(0, 70) + '...' : active.topic)
+                            : '60 minutes with one of our faculty, focused on exactly what you need.'}
+                        </div>
                       </div>
+                      <button className="btn btn-sm" onClick={() => onNav('sessions')} style={{ background: c.accent, color: '#fff', border: 'none', fontWeight: 600, flexShrink: 0 }}>
+                        {active ? 'View' : 'Request'}
+                      </button>
                     </div>
-                    <button className="btn btn-sm" style={{ background: active ? 'rgba(255,255,255,.07)' : 'var(--gold)', color: active ? 'rgba(253,248,240,.6)' : 'var(--navy)', flexShrink: 0 }} onClick={() => onNav('sessions')}>
-                      {active ? 'View →' : 'Request →'}
-                    </button>
+
+                    {/* Extra details — only for default state */}
+                    {!active && (
+                      <>
+                        <div style={{ height: '1px', background: 'rgba(255,255,255,.1)', margin: '14px 0' }} />
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
+                          {[
+                            { icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.accent} strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>, text: '60 min session' },
+                            { icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.accent} strokeWidth="2" strokeLinecap="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>, text: 'Your topic, your pace' },
+                            { icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.accent} strokeWidth="2" strokeLinecap="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.39 2 2 0 0 1 3.6 1.21h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.38a16 16 0 0 0 6 6l.94-.94a2 2 0 0 1 2.25-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.73 16z"/></svg>, text: 'We confirm the time' },
+                          ].map((item, i) => (
+                            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '7px', fontSize: '12px', color: c.sub, fontWeight: 500 }}>
+                              {item.icon}{item.text}
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    )}
                   </div>
                 );
               })()}
             </>
           );
         })() : (
-          // ── SPARK HOME (unchanged) ──────────────────────────────────────
-          <>
-        <div style={{ marginBottom: '22px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' }}>
-          <div>
-            <div style={{ fontSize: '11px', color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '.1em', fontWeight: 500, marginBottom: '5px' }}>{new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</div>
-            <div style={{ fontFamily: 'var(--fs)', fontSize: '24px', fontWeight: 700, color: 'var(--text)' }}>{getGreeting()}, {firstName}.</div>
-            <div style={{ fontSize: '13.5px', color: 'var(--text2)', marginTop: '4px' }}>You're on the <strong style={{ color: 'var(--text)' }}>Free Plan</strong>. Your personalised <strong style={{ color: 'var(--text)' }}>{examTarget}</strong> guidance is ready.</div>
-          </div>
-          <button className="btn btn-gold" style={{ flexShrink: 0 }} onClick={() => onNav(diagDone ? 'guidance' : 'diagnostic')}>
-            {diagDone ? 'View Study Plan →' : 'Start Diagnostic →'}
-          </button>
-        </div>
+          // ── SPARK HOME ─────────────────────────────────────────────────────
+          (() => {
+            const spExam     = profile?.studentProfile?.examTarget || 'your exam';
+            const spYear     = parseInt(profile?.studentProfile?.targetYear) || null;
+            const spDaysLeft = spYear ? Math.max(0, Math.ceil((new Date(spYear, 3, 1) - new Date()) / 86400000)) : null;
+            const topicsTotal  = studyPlan ? Object.values(studyPlan.subjectTopics || {}).flat().length : 0;
+            const topicsUrgent = studyPlan ? Object.values(studyPlan.subjectTopics || {}).flat().filter(t => t.label === 'Urgent' || t.label === 'High').length : 0;
+            const priorityTopics = studyPlan
+              ? Object.values(studyPlan.subjectTopics || {}).flat().filter(t => t.label === 'Urgent' || t.label === 'High').slice(0, 4)
+              : [];
+            const active     = sessionRequests.find(r => r.status === 'pending' || r.status === 'assigned');
+            const fmtDt      = iso => new Date(iso).toLocaleString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' });
+            const isAssigned = active?.status === 'assigned';
+            const isPending  = active?.status === 'pending';
 
-        <div style={{ background: 'linear-gradient(135deg,var(--navy) 0%,var(--navy3) 100%)', borderRadius: 'var(--rxl)', padding: '26px 28px', marginBottom: '22px', display: 'flex', alignItems: 'center', gap: '24px', border: '1px solid var(--gold-b)' }}>
-          <div style={{ width: '52px', height: '52px', borderRadius: '14px', background: diagDone ? 'rgba(34,197,94,.15)' : 'rgba(232,168,48,.14)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            {diagDone
-              ? <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-              : <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/><line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/></svg>}
-          </div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontFamily: 'var(--fs)', fontSize: '19px', fontWeight: 700, color: 'var(--inv)', marginBottom: '5px' }}>
-              {diagDone ? 'Your study plan is ready' : 'Take your free diagnostic first'}
-            </div>
-            <div style={{ fontSize: '13px', color: 'var(--inv2)', lineHeight: 1.7 }}>
-              {diagDone
-                ? 'Priorities, weekly roadmap, daily structure — all built from your diagnostic answers and latest test scores.'
-                : 'Rate yourself on each topic, confirm with a quick MCQ round — and we\'ll map exactly where you stand and what to fix first.'}
-            </div>
-          </div>
-          <div style={{ flexShrink: 0 }}>
-            <button className="btn btn-gold" onClick={() => onNav(diagDone ? 'guidance' : 'diagnostic')}>
-              {diagDone ? 'Open Plan →' : 'Begin Now →'}
-            </button>
-            {!diagDone && <div style={{ fontSize: '10.5px', color: 'var(--inv3)', textAlign: 'center', marginTop: '6px' }}>~10 minutes</div>}
-          </div>
-        </div>
+            return (
+              <>
+                {/* ── HERO ── */}
+                <div className="sp-hero">
+                  <div className="sp-hero-ring sp-hero-ring-1" />
+                  <div className="sp-hero-ring sp-hero-ring-2" />
+                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px' }}>
+                    <div style={{ flex: 1 }}>
+                      <div className="sp-hero-badge">⚡ Spark Plan</div>
+                      <div style={{ fontSize: '11px', color: 'rgba(253,248,240,.32)', textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: '8px' }}>
+                        {new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                      </div>
+                      <div style={{ fontFamily: 'var(--fs)', fontSize: '26px', fontWeight: 700, color: '#FDF8F0', lineHeight: 1.2, marginBottom: '8px' }}>
+                        {getGreeting()}, {firstName}.
+                      </div>
+                      <div style={{ fontSize: '13.5px', color: 'rgba(253,248,240,.52)', lineHeight: 1.55 }}>
+                        {diagDone
+                          ? <>{spExam} prep · {topicsUrgent > 0 ? <><strong style={{ color: '#fca5a5' }}>{topicsUrgent} topics</strong> need focus</>  : <strong style={{ color: '#86efac' }}>Plan is active</strong>}</>
+                          : <>Start your free diagnostic to get your personalised {spExam} plan.</>}
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'flex-end', flexShrink: 0 }}>
+                      {spDaysLeft !== null && (
+                        <div style={{ textAlign: 'center', background: 'rgba(232,168,48,.12)', border: '1px solid rgba(232,168,48,.28)', borderRadius: 'var(--r)', padding: '10px 16px', animation: 'spPulseGold 3s ease infinite' }}>
+                          <div style={{ fontFamily: 'var(--fs)', fontSize: '32px', fontWeight: 800, color: 'var(--gold)', lineHeight: 1 }}>{spDaysLeft}</div>
+                          <div style={{ fontSize: '9.5px', color: 'rgba(253,248,240,.4)', textTransform: 'uppercase', letterSpacing: '.09em', marginTop: '3px' }}>Days to {spExam}</div>
+                        </div>
+                      )}
+                      <button className="btn btn-gold" onClick={() => onNav(diagDone ? 'guidance' : 'diagnostic')} style={{ whiteSpace: 'nowrap' }}>
+                        {diagDone ? 'Study Plan →' : 'Start Diagnostic →'}
+                      </button>
+                    </div>
+                  </div>
 
-        <div className="g4 mb">
-          <div className="stat sa-gold">
-            <div className="stat-l">Diagnostic</div>
-            <div className="stat-v" style={{ fontSize: '20px', color: diagDone ? 'var(--green)' : 'var(--text3)' }}>{diagDone ? 'Done ✓' : 'Not done'}</div>
-            <div className="stat-n warn" style={diagDone ? { color: 'var(--green)', cursor: 'pointer' } : {}} onClick={() => onNav('diagnostic')}>{diagDone ? 'View results →' : '→ Start now'}</div>
-          </div>
-          <div className="stat sa-green">
-            <div className="stat-l">Habit Streak</div>
-            <div className="stat-v">{streak > 0 ? streak : alreadyCheckedIn ? `${habitCount}/5` : '0/5'}</div>
-            <div className="stat-n up" style={{ cursor: 'pointer' }} onClick={() => onNav('habits')}>{streak > 0 ? `${streak}-day streak` : alreadyCheckedIn ? 'Done today ✓' : 'Check in today'}</div>
-          </div>
-          <div className="stat sa-navy">
-            <div className="stat-l">Topics Prioritised</div>
-            <div className="stat-v">{studyPlan ? Object.values(studyPlan.subjectTopics || {}).flat().length : diagDone ? '...' : 0}</div>
-            <div className="stat-n neu" style={{ cursor: diagDone ? 'pointer' : 'default' }} onClick={() => diagDone && onNav('topics')}>{diagDone ? 'in your topic map →' : 'After diagnostic'}</div>
-          </div>
-          <div className="stat sa-red">
-            <div className="stat-l">Need Focus</div>
-            <div className="stat-v">{studyPlan ? Object.values(studyPlan.subjectTopics || {}).flat().filter(t => t.label === 'Urgent' || t.label === 'High').length : diagDone ? '...' : 0}</div>
-            <div className="stat-n neu" style={{ cursor: diagDone ? 'pointer' : 'default' }} onClick={() => diagDone && onNav('topics')}>{diagDone ? 'urgent + high priority' : 'After diagnostic'}</div>
-          </div>
-        </div>
+                  {/* Stat tiles */}
+                  <div className="sp-stat-row">
+                    {[
+                      { l: 'Diagnostic', v: diagDone ? 'Done ✓' : 'Pending', cls: diagDone ? 'done' : '', nav: 'diagnostic' },
+                      { l: 'Habit Streak', v: streak > 0 ? `🔥 ${streak}` : alreadyCheckedIn ? `${habitCount}/5` : '—', cls: streak > 0 ? 'done' : '', nav: 'habits' },
+                      { l: 'Topics Mapped', v: diagDone ? topicsTotal || '...' : '—', cls: '', nav: 'topics' },
+                      { l: 'Need Focus', v: diagDone ? topicsUrgent || '0' : '—', cls: topicsUrgent > 0 ? 'urgent' : '', nav: 'topics' },
+                    ].map((s, i) => (
+                      <div key={s.l} className={`sp-stat-tile${s.cls ? ' ' + s.cls : ''}`} style={{ animationDelay: `${0.08 + i * 0.07}s` }} onClick={() => onNav(s.nav)}>
+                        <div className="sp-stat-v">{s.v}</div>
+                        <div className="sp-stat-l">{s.l}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
 
-        {/* Book a session CTA */}
-        <div style={{ background: 'var(--navy)', borderRadius: 'var(--rl)', padding: '18px 22px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '18px', border: '1px solid rgba(232,168,48,.18)' }}>
-          <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: 'rgba(232,168,48,.14)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.39 2 2 0 0 1 3.6 1.21h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 8.38a16 16 0 0 0 6 6l.94-.94a2 2 0 0 1 2.25-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-          </div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontFamily: 'var(--fs)', fontSize: '16px', fontWeight: 700, color: '#FDF8F0', marginBottom: '3px' }}>Book a 1-to-1 Session</div>
-            <div style={{ fontSize: '12.5px', color: 'rgba(253,248,240,.5)', lineHeight: 1.5 }}>60 minutes with a subject faculty — focused on your exact weak areas. Confirm within 24h.</div>
-          </div>
-          <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
-            <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--gold)', background: 'rgba(232,168,48,.12)', borderRadius: '20px', padding: '4px 12px' }}>₹99 / session</span>
-            <button className="btn btn-gold btn-sm" onClick={() => onNav('sessions')}>Book Now →</button>
-          </div>
-        </div>
+                {/* ── MAIN GRID ── */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: '16px', marginBottom: '16px' }}>
 
-        <div className="sh"><div className="sh-t">What's free on Studyverse</div></div>
-        <div className="g3 mb">
-          <div className="card" style={{ borderTop: '3px solid var(--green)' }}>
-            <div style={{ width:'36px',height:'36px',borderRadius:'9px',background:'rgba(34,197,94,.1)',display:'flex',alignItems:'center',justifyContent:'center',marginBottom:'12px' }}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2" strokeLinecap="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></div>
-            <div style={{ fontFamily: 'var(--fs)', fontSize: '15px', fontWeight: 600, color: 'var(--text)', marginBottom: '6px' }}>Personalised Diagnostic</div>
-            <div style={{ fontSize: '12.5px', color: 'var(--text2)', lineHeight: 1.7 }}>Self-rate each topic, confirm with MCQs, get a precise weakness map.</div>
-            <div style={{ marginTop: '12px' }}><span className="pill pp">Free forever</span></div>
-          </div>
-          <div className="card" style={{ borderTop: '3px solid var(--gold)' }}>
-            <div style={{ width:'36px',height:'36px',borderRadius:'9px',background:'var(--gold-dim)',display:'flex',alignItems:'center',justifyContent:'center',marginBottom:'12px' }}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="2" strokeLinecap="round"><path d="M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z"/></svg></div>
-            <div style={{ fontFamily: 'var(--fs)', fontSize: '15px', fontWeight: 600, color: 'var(--text)', marginBottom: '6px' }}>Topic Weakness Map</div>
-            <div style={{ fontSize: '12.5px', color: 'var(--text2)', lineHeight: 1.7 }}>Your exact weak chapters ranked by exam weight.</div>
-            <div style={{ marginTop: '12px' }}><span className="pill pp">Free forever</span></div>
-          </div>
-          <div className="card" style={{ borderTop: '3px solid var(--navy3)' }}>
-            <div style={{ width:'36px',height:'36px',borderRadius:'9px',background:'rgba(15,31,61,.07)',display:'flex',alignItems:'center',justifyContent:'center',marginBottom:'12px' }}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--navy3)" strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></div>
-            <div style={{ fontFamily: 'var(--fs)', fontSize: '15px', fontWeight: 600, color: 'var(--text)', marginBottom: '6px' }}>Study Guidance</div>
-            <div style={{ fontSize: '12.5px', color: 'var(--text2)', lineHeight: 1.7 }}>Which topics, in which order, how much time — built from your diagnostic.</div>
-            <div style={{ marginTop: '12px' }}><span className="pill pp">Free forever</span></div>
-          </div>
-          <div className="card" style={{ borderTop: '3px solid var(--green)' }}>
-            <div style={{ width:'36px',height:'36px',borderRadius:'9px',background:'rgba(34,197,94,.1)',display:'flex',alignItems:'center',justifyContent:'center',marginBottom:'12px' }}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2" strokeLinecap="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></div>
-            <div style={{ fontFamily: 'var(--fs)', fontSize: '15px', fontWeight: 600, color: 'var(--text)', marginBottom: '6px' }}>Daily Habit Tracker</div>
-            <div style={{ fontSize: '12.5px', color: 'var(--text2)', lineHeight: 1.7 }}>5 habits every serious aspirant needs. Check in daily. Build the discipline that separates rankers.</div>
-            <div style={{ marginTop: '12px' }}><span className="pill pp">Free forever</span></div>
-          </div>
-          <div className="card" style={{ borderTop: '3px solid var(--gold)', opacity: .7 }}>
-            <div style={{ width:'36px',height:'36px',borderRadius:'9px',background:'var(--gold-dim)',display:'flex',alignItems:'center',justifyContent:'center',marginBottom:'12px' }}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="2" strokeLinecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></div>
-            <div style={{ fontFamily: 'var(--fs)', fontSize: '15px', fontWeight: 600, color: 'var(--text)', marginBottom: '6px' }}>Custom Question Bank</div>
-            <div style={{ fontSize: '12.5px', color: 'var(--text2)', lineHeight: 1.7 }}>Questions matched to your weak topics, difficulty level, and exam pattern.</div>
-            <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span className="pill po">Unlock</span>
-              <button className="btn btn-sm btn-gold" onClick={() => onNav('plans')}>Get Access</button>
-            </div>
-          </div>
-          <div className="card" style={{ borderTop: '3px solid var(--navy3)' }}>
-            <div style={{ width:'36px',height:'36px',borderRadius:'9px',background:'rgba(15,31,61,.07)',display:'flex',alignItems:'center',justifyContent:'center',marginBottom:'12px' }}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--navy3)" strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
-            <div style={{ fontFamily: 'var(--fs)', fontSize: '15px', fontWeight: 600, color: 'var(--text)', marginBottom: '6px' }}>1-to-1 Faculty Session</div>
-            <div style={{ fontSize: '12.5px', color: 'var(--text2)', lineHeight: 1.7 }}>Book a single session with our faculty. Get your doubts resolved, weak topics explained.</div>
-            <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span className="pill po">Pay per session</span>
-              <button className="btn btn-sm btn-navy" onClick={() => onNav('sessions')}>Book Now</button>
-            </div>
-          </div>
-        </div>
-          </>
+                  {/* LEFT — diagnostic CTA or priority topics */}
+                  <div className="sp-action-card">
+                    <div className="sp-ac-top">
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                        <div style={{ width: '48px', height: '48px', borderRadius: '13px', background: diagDone ? 'rgba(22,163,74,.15)' : 'rgba(217,119,6,.15)', border: `1.5px solid ${diagDone ? 'rgba(22,163,74,.3)' : 'rgba(217,119,6,.35)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          {diagDone
+                            ? <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.2" strokeLinecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                            : <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2.2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/><line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/></svg>}
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontFamily: 'var(--fs)', fontSize: '17px', fontWeight: 700, color: diagDone ? '#14532d' : '#78350f', marginBottom: '4px' }}>
+                            {diagDone ? 'Your study plan is active' : 'Take the diagnostic first'}
+                          </div>
+                          <div style={{ fontSize: '12.5px', color: diagDone ? '#166534' : '#92400e', lineHeight: 1.55 }}>
+                            {diagDone
+                              ? 'Priorities, roadmap, and daily structure — built from your answers.'
+                              : 'Rate yourself on each topic → MCQ confirmation → get your exact weak-area map.'}
+                          </div>
+                        </div>
+                        <button className="btn btn-sm" onClick={() => onNav(diagDone ? 'guidance' : 'diagnostic')} style={{ flexShrink: 0, background: diagDone ? '#16a34a' : '#d97706', color: '#fff', border: 'none', fontWeight: 700 }}>
+                          {diagDone ? 'Open →' : 'Begin →'}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Priority topics or empty nudge */}
+                    <div style={{ padding: '16px 20px' }}>
+                      {priorityTopics.length > 0 ? (
+                        <>
+                          <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: '12px' }}>This week's focus</div>
+                          {priorityTopics.map((t, i) => (
+                            <div key={t.name} onClick={() => onNav('guidance')} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '9px 0', borderBottom: i < priorityTopics.length - 1 ? '1px solid var(--b)' : 'none', cursor: 'pointer' }}>
+                              <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: t.label === 'Urgent' ? '#ef4444' : 'var(--gold)', flexShrink: 0 }} />
+                              <div style={{ flex: 1, fontSize: '13px', fontWeight: 500, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.name}</div>
+                              <div style={{ fontSize: '11px', color: 'var(--text3)', flexShrink: 0 }}>{t.subject}</div>
+                              <span style={{ fontSize: '10px', fontWeight: 700, color: t.label === 'Urgent' ? '#ef4444' : 'var(--gold)', background: t.label === 'Urgent' ? 'rgba(239,68,68,.1)' : 'var(--gold-dim)', borderRadius: '20px', padding: '2px 7px', flexShrink: 0 }}>{t.label}</span>
+                            </div>
+                          ))}
+                        </>
+                      ) : diagDone ? (
+                        <div style={{ textAlign: 'center', padding: '12px 0', color: 'var(--text3)', fontSize: '13px' }}>
+                          All topics are in good shape. Keep up the consistency.
+                        </div>
+                      ) : (
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
+                          {[
+                            { icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>, title: '~10 minutes', desc: 'Quick and precise. No long tests.' },
+                            { icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="2" strokeLinecap="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>, title: 'Self-rate + MCQs', desc: 'Your input confirmed by real questions.' },
+                            { icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="2" strokeLinecap="round"><path d="M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z"/></svg>, title: 'Instant map', desc: 'Weak areas ranked by exam weight.' },
+                          ].map((f, i) => (
+                            <div key={i} style={{ background: 'var(--cream2)', border: '1px solid var(--b)', borderRadius: 'var(--r)', padding: '14px 14px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                              <div style={{ width: '34px', height: '34px', borderRadius: '9px', background: 'var(--gold-dim)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{f.icon}</div>
+                              <div style={{ fontFamily: 'var(--fs)', fontSize: '13px', fontWeight: 700, color: 'var(--text)' }}>{f.title}</div>
+                              <div style={{ fontSize: '11.5px', color: 'var(--text3)', lineHeight: 1.6 }}>{f.desc}</div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* RIGHT — habit */}
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+
+                    {/* Habit card — full height */}
+                    <div className="card" onClick={() => onNav('habits')} style={{ cursor: 'pointer', animation: 'spSlideUp .4s ease .14s both', transition: 'transform .18s, box-shadow .18s', flex: 1, display: 'flex', flexDirection: 'column' }}
+                      onMouseOver={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(15,31,61,.1)'; }}
+                      onMouseOut={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = ''; }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+                        <div style={{ fontFamily: 'var(--fs)', fontSize: '14px', fontWeight: 700, color: 'var(--text)' }}>Habits Today</div>
+                        {streak > 0
+                          ? <span style={{ fontSize: '12.5px', fontWeight: 700, color: 'var(--gold)', background: 'var(--gold-dim)', border: '1px solid var(--gold-b)', borderRadius: '20px', padding: '3px 10px' }}>🔥 {streak} days</span>
+                          : alreadyCheckedIn
+                            ? <span style={{ fontSize: '12px', color: 'var(--green)', fontWeight: 600 }}>All done ✓</span>
+                            : <span style={{ fontSize: '11px', color: 'var(--text3)' }}>Tap to check in</span>}
+                      </div>
+                      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <div style={{ textAlign: 'center' }}>
+                          <div style={{ fontSize: '64px', lineHeight: 1, marginBottom: '10px', display: 'inline-block', animation: alreadyCheckedIn ? 'spFlicker 1.6s ease-in-out infinite' : 'spSnowSpin 5s linear infinite', transformOrigin: alreadyCheckedIn ? 'bottom center' : 'center' }}>
+                            {alreadyCheckedIn ? '🔥' : '❄️'}
+                          </div>
+                          <div style={{ fontSize: '13px', fontWeight: 600, color: alreadyCheckedIn ? 'var(--gold)' : 'var(--text3)', marginBottom: '14px' }}>
+                            {alreadyCheckedIn ? `${habitCount} of 5 done today` : 'Not checked in yet'}
+                          </div>
+                          {/* Per-habit checkboxes with SVG icons */}
+                          <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                            {[
+                              { key: 'sleep',    icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg> },
+                              { key: 'study',    icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg> },
+                              { key: 'revision', icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg> },
+                              { key: 'phone',    icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="1" y1="1" x2="23" y2="23"/><path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"/><path d="M5 5a10.94 10.94 0 0 0 5.17 2.39"/><path d="M10.71 5.05A16 16 0 0 1 22.56 9"/><path d="M1.42 9a15.91 15.91 0 0 0 4.7 5.13"/><path d="M21.06 13.31A16 16 0 0 1 12.56 21"/><path d="M9 16.45a11 11 0 0 0 3.17 2.5"/><path d="M12.34 16.64A10.08 10.08 0 0 0 14 21"/></svg> },
+                              { key: 'problems', icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg> },
+                            ].map(h => {
+                              const done = alreadyCheckedIn ? (todayLog?.[h.key] ?? false) : false;
+                              return (
+                                <div key={h.key} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px' }}>
+                                  <div style={{ width: '28px', height: '28px', borderRadius: '7px', border: `2px solid ${done ? 'var(--green)' : 'var(--b)'}`, background: done ? 'rgba(34,197,94,.1)' : 'var(--cream2)', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all .25s' }}>
+                                    {done
+                                      ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--green)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                      : <span style={{ color: 'var(--text3)' }}>{h.icon}</span>}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                  </div>
+                </div>
+
+                {/* ── SESSION BOOKING — full-width ── */}
+                {(() => {
+                  const sBg     = isAssigned ? 'linear-gradient(135deg,#d1fae5 0%,#ecfdf5 100%)' : isPending ? 'linear-gradient(135deg,#fef9ec 0%,#fdf6e3 100%)' : 'linear-gradient(135deg,#dce6f4 0%,#edf2fb 100%)';
+                  const sBorder = isAssigned ? 'rgba(34,197,94,.3)' : isPending ? 'rgba(232,168,48,.35)' : 'rgba(15,31,61,.18)';
+                  const sTitle  = isAssigned ? '#14532d' : isPending ? '#78350f' : 'var(--navy)';
+                  const sSub    = isAssigned ? '#166534' : isPending ? '#92400e' : 'rgba(15,31,61,.6)';
+                  const sAccent = isAssigned ? '#16a34a' : isPending ? '#d97706' : 'var(--navy)';
+                  const sDim    = isAssigned ? 'rgba(34,197,94,.15)' : isPending ? 'rgba(232,168,48,.18)' : 'rgba(15,31,61,.1)';
+                  return (
+                    <div onClick={() => onNav('sessions')} style={{ background: sBg, border: `1px solid ${sBorder}`, borderRadius: 'var(--rl)', padding: '22px 26px', marginBottom: '16px', cursor: 'pointer', animation: 'spSlideUp .4s ease .22s both', transition: 'transform .18s, box-shadow .18s', position: 'relative', overflow: 'hidden' }}
+                      onMouseOver={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 28px rgba(15,31,61,.15)'; }}
+                      onMouseOut={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = ''; }}>
+                      {!active && <div style={{ position: 'absolute', top: -40, right: -40, width: 140, height: 140, borderRadius: '50%', background: 'rgba(232,168,48,.06)', pointerEvents: 'none' }} />}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+                        <div style={{ width: '52px', height: '52px', borderRadius: '14px', background: sDim, border: `1.5px solid ${isAssigned ? 'rgba(34,197,94,.3)' : isPending ? 'rgba(232,168,48,.3)' : 'rgba(232,168,48,.28)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          {isAssigned
+                            ? <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={sAccent} strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+                            : isPending
+                            ? <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={sAccent} strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                            : <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={sAccent} strokeWidth="2" strokeLinecap="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.39 2 2 0 0 1 3.6 1.21h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.38a16 16 0 0 0 6 6l.94-.94a2 2 0 0 1 2.25-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>}
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontFamily: 'var(--fs)', fontSize: '18px', fontWeight: 700, color: sTitle, marginBottom: '5px' }}>
+                            {isAssigned ? 'Session scheduled' : isPending ? 'Request under review' : 'Book a 1-on-1 Session'}
+                          </div>
+                          <div style={{ fontSize: '13px', color: sSub, lineHeight: 1.6 }}>
+                            {isAssigned
+                              ? `${active.facultyName ? active.facultyName + ' · ' : ''}${fmtDt(active.scheduledAt)} · ${active.durationMin} min`
+                              : isPending
+                              ? `Your topic: "${active.topic.length > 60 ? active.topic.slice(0, 60) + '…' : active.topic}" — we'll confirm the time soon.`
+                              : '60 minutes with a subject faculty, focused on your exact weak areas. We match you and confirm within 24 hours.'}
+                          </div>
+                        </div>
+                        {!active
+                          ? <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'flex-end' }}>
+                              <button className="btn btn-navy" style={{ whiteSpace: 'nowrap' }} onClick={e => { e.stopPropagation(); onNav('sessions'); }}>Request Session →</button>
+                              <span style={{ fontSize: '11px', color: 'rgba(15,31,61,.4)' }}>₹99 per session</span>
+                            </div>
+                          : <button className="btn btn-sm" onClick={e => { e.stopPropagation(); onNav('sessions'); }} style={{ background: sAccent, color: '#fff', border: 'none', fontWeight: 600, flexShrink: 0 }}>View →</button>}
+                      </div>
+                      {!active && (
+                        <div style={{ display: 'flex', gap: '28px', marginTop: '16px', paddingTop: '16px', borderTop: `1px solid ${sBorder}` }}>
+                          {['Your topic, your pace', 'Matched to the right faculty', 'Confirmed within 24 hours', 'No plan needed — pay per session'].map((f, i) => (
+                            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: sSub, fontWeight: 500 }}>
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={sAccent} strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                              {f}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+
+                {/* ── FREE FEATURE GRID ── */}
+                <div className="sp-feature-grid mb">
+                  {[
+                    { icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2" strokeLinecap="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>, iconBg: 'rgba(34,197,94,.1)', title: 'Personalised Diagnostic', desc: 'Self-rate each topic, confirm with MCQs, get your exact weakness map across every chapter.', badge: 'Free', badgeCls: 'pill pp', nav: 'diagnostic', delay: .2 },
+                    { icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="2" strokeLinecap="round"><path d="M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z"/></svg>, iconBg: 'var(--gold-dim)', title: 'Topic Weakness Map', desc: 'All your topics ranked by urgency and exam weightage — so you know exactly where to spend time.', badge: 'Free', badgeCls: 'pill pp', nav: 'topics', delay: .27 },
+                    { icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--navy)" strokeWidth="2" strokeLinecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>, iconBg: 'rgba(15,31,61,.07)', title: 'Study Guidance', desc: 'Week-by-week study plan with daily hour targets, topic order, and revision schedule.', badge: 'Free', badgeCls: 'pill pp', nav: 'guidance', delay: .34 },
+                    { icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2" strokeLinecap="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>, iconBg: 'rgba(34,197,94,.1)', title: 'Habit Tracker', desc: '5 daily habits tracked with a 14-day history grid. Build the consistency that separates rankers.', badge: 'Free', badgeCls: 'pill pp', nav: 'habits', delay: .41 },
+                  ].map(f => (
+                    <div key={f.title} className="sp-feat" style={{ animationDelay: `${f.delay}s` }} onClick={() => onNav(f.nav)}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div className="sp-feat-icon" style={{ background: f.iconBg }}>{f.icon}</div>
+                        <div className="sp-feat-title">{f.title}</div>
+                        <span className={f.badgeCls} style={{ marginLeft: 'auto', flexShrink: 0, fontSize: '10px' }}>{f.badge}</span>
+                      </div>
+                      <div className="sp-feat-desc">{f.desc}</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: 'var(--gold)', fontWeight: 600, marginTop: '2px' }}>
+                        Open <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M9 18l6-6-6-6"/></svg>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Upgrade strip */}
+                <div style={{ background: 'linear-gradient(135deg,#dce6f4 0%,#edf2fb 100%)', borderRadius: 'var(--rl)', padding: '18px 22px', display: 'flex', alignItems: 'center', gap: '18px', border: '1px solid rgba(15,31,61,.18)', animation: 'spSlideUp .4s ease .44s both' }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontFamily: 'var(--fs)', fontSize: '15px', fontWeight: 700, color: 'var(--navy)', marginBottom: '3px' }}>Ready for more?</div>
+                    <div style={{ fontSize: '12.5px', color: 'rgba(15,31,61,.6)' }}>Unlock question bank, score tracking, resources &amp; mentorship on paid plans.</div>
+                  </div>
+                  <button className="btn btn-navy" onClick={() => onNav('plans')} style={{ flexShrink: 0 }}>See Plans →</button>
+                </div>
+              </>
+            );
+          })()
         )}
       </div>
 
@@ -1307,7 +1508,13 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
             <div style={{ fontSize:'28px', marginBottom:'12px' }}>⚠️</div>
             <div style={{ fontFamily:'var(--fs)', fontSize:'16px', fontWeight:700, color:'var(--text)', marginBottom:'8px' }}>Couldn't load your study plan</div>
             <div style={{ fontSize:'13px', color:'var(--text2)', marginBottom:'20px' }}>Your diagnostic is saved — this is a temporary issue. Try refreshing.</div>
-            <button className="btn btn-gold" onClick={() => { setStudyPlanError(false); setStudyPlan(null); setStudyPlanRetry(r => r + 1); }}>Retry</button>
+            <button className="btn btn-gold" disabled={studyPlanRetrying} onClick={() => {
+              setStudyPlanRetrying(true);
+              setStudyPlanError(false);
+              setStudyPlan(null);
+              setStudyPlanRetry(r => r + 1);
+              setTimeout(() => setStudyPlanRetrying(false), 3000);
+            }}>{studyPlanRetrying ? 'Retrying…' : 'Retry'}</button>
           </div>
         )}
         {studyPlan ? (() => {
@@ -2099,10 +2306,31 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
                     />
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--text2)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '.06em' }}>Preferred time <span style={{ fontWeight: 400, color: 'var(--text3)' }}>(optional)</span></label>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--text2)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '.06em' }}>
+                      Preferred time <span style={{ fontWeight: 400, color: 'var(--text3)' }}>(optional)</span>
+                    </label>
+                    {/* Quick-select chips */}
+                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '8px' }}>
+                      {['Morning (9–12 AM)', 'Afternoon (12–4 PM)', 'Evening (4–7 PM)', 'Night (7–10 PM)', 'Weekends only', 'Any time'].map(slot => (
+                        <button
+                          key={slot}
+                          type="button"
+                          onClick={() => setSessTime(prev => prev === slot ? '' : slot)}
+                          style={{
+                            padding: '5px 11px', borderRadius: '20px', fontSize: '11.5px', fontWeight: 600,
+                            cursor: 'pointer', transition: 'all .15s', fontFamily: 'var(--fb)',
+                            background: sessTime === slot ? 'var(--gold)' : 'var(--cream2)',
+                            color:      sessTime === slot ? 'var(--navy)' : 'var(--text3)',
+                            border:     sessTime === slot ? '1.5px solid var(--gold)' : '1.5px solid var(--b)',
+                          }}
+                        >
+                          {slot}
+                        </button>
+                      ))}
+                    </div>
                     <input
                       type="text"
-                      placeholder="e.g. Weekday evenings after 6pm"
+                      placeholder="Or type a specific time..."
                       value={sessTime}
                       onChange={e => setSessTime(e.target.value)}
                       style={{ width: '100%', padding: '9px 12px', border: '1.5px solid var(--b)', borderRadius: 'var(--r)', fontSize: '13px', color: 'var(--text)', fontFamily: 'var(--fb)', outline: 'none', background: 'var(--cream2)', transition: 'border-color .2s' }}
@@ -2189,24 +2417,51 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
               const typeMap = [null, 'Study Material', 'Formula Sheet', 'Session Notes'];
               const filtered = resTab === 0 ? resources : resources.filter(r => r.type === typeMap[resTab]);
               if (filtered.length === 0) return (
-                <div style={{ fontSize: '13px', color: 'var(--text3)', padding: '32px 0', textAlign: 'center' }}>
-                  No study materials available{resTab > 0 ? ` for ${typeMap[resTab]}` : ''}.
+                <div>
+                  {resTab === 0 && (
+                    <>
+                      <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '.09em', marginBottom: '10px' }}>Free Resources</div>
+                      {[
+                        { name: 'NCERT Chemistry Class XI',  meta: 'PDF · 18.4 MB', url: 'https://ncert.nic.in/textbook.php?kech1=0-14' },
+                        { name: 'NCERT Mathematics Class XII', meta: 'PDF · 22.1 MB', url: 'https://ncert.nic.in/textbook.php?lemh1=0-13' },
+                      ].map((r, i) => (
+                        <div key={i} className="res-item" style={{ cursor: 'pointer', marginBottom: '8px' }} onClick={() => window.open(r.url, '_blank', 'noreferrer')} onMouseOver={e => e.currentTarget.style.borderColor = 'var(--gold-b)'} onMouseOut={e => e.currentTarget.style.borderColor = ''}>
+                          <div className="res-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="1.8" strokeLinecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
+                          <div><div className="res-name">{r.name}</div><div className="res-meta">{r.meta}</div></div>
+                          <button className="btn btn-sm btn-ghost" style={{ marginLeft: 'auto', flexShrink: 0 }} onClick={e => { e.stopPropagation(); window.open(r.url, '_blank', 'noreferrer'); }}>↓ Download</button>
+                        </div>
+                      ))}
+                      <div style={{ fontSize: '12px', color: 'var(--text3)', textAlign: 'center', paddingTop: '8px', fontStyle: 'italic' }}>
+                        Faculty resources will appear here once approved by admin.
+                      </div>
+                    </>
+                  )}
+                  {resTab > 0 && (
+                    <div style={{ fontSize: '13px', color: 'var(--text3)', padding: '32px 0', textAlign: 'center' }}>
+                      No {typeMap[resTab]} available yet.
+                    </div>
+                  )}
                 </div>
               );
-              return filtered.map(r => (
-                <div key={r.id} className="res-item">
-                  <div className="res-icon">📄</div>
-                  <div>
-                    <div className="res-name">{r.title}</div>
-                    <div className="res-meta">{r.subject} · Grade {r.grade} · {r.type} · By {r.facultyName}</div>
-                    {r.description && <div style={{ fontSize: '12px', color: 'var(--text3)', marginTop: '3px' }}>{r.description}</div>}
+              return filtered.map(r => {
+                const isCloudinary = r.cloudinaryUrl?.includes('res.cloudinary.com');
+                const viewUrl     = isCloudinary ? `${import.meta.env.VITE_API_URL}/api/files/proxy?url=${encodeURIComponent(r.cloudinaryUrl)}` : r.cloudinaryUrl;
+                const downloadUrl = isCloudinary ? `${import.meta.env.VITE_API_URL}/api/files/proxy?url=${encodeURIComponent(r.cloudinaryUrl)}&download=1` : r.cloudinaryUrl;
+                return (
+                  <div key={r.id} className="res-item">
+                    <div className="res-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="1.8" strokeLinecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
+                    <div>
+                      <div className="res-name">{r.title}</div>
+                      <div className="res-meta">{r.subject} · Class {r.grade} · {r.type}</div>
+                      {r.description && <div style={{ fontSize: '12px', color: 'var(--text3)', marginTop: '3px' }}>{r.description}</div>}
+                    </div>
+                    <div style={{ marginLeft: 'auto', display: 'flex', gap: '6px' }}>
+                      <a href={viewUrl} target="_blank" rel="noreferrer" className="btn btn-ghost btn-sm" style={{ textDecoration: 'none' }}>↗ View</a>
+                      <a href={downloadUrl} target="_blank" rel="noreferrer" className="btn btn-ghost btn-sm" style={{ textDecoration: 'none' }}>↓ Download</a>
+                    </div>
                   </div>
-                  <div style={{ marginLeft: 'auto', display: 'flex', gap: '6px' }}>
-                    <a href={`${import.meta.env.VITE_API_URL}/api/files/proxy?url=${encodeURIComponent(r.cloudinaryUrl)}`} target="_blank" rel="noreferrer" className="btn btn-ghost btn-sm" style={{ textDecoration: 'none' }}>↗ View</a>
-                    <a href={`${import.meta.env.VITE_API_URL}/api/files/proxy?url=${encodeURIComponent(r.cloudinaryUrl)}&download=1`} target="_blank" rel="noreferrer" className="btn btn-ghost btn-sm" style={{ textDecoration: 'none' }}>↓ Download</a>
-                  </div>
-                </div>
-              ));
+                );
+              });
             })()}
           </>
         ) : (
@@ -2216,22 +2471,29 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
               <span style={{ fontFamily: 'var(--fs)', fontSize: '14px', fontWeight: 600, color: 'var(--text)' }}>Free Resources</span>
               <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--green)', background: 'var(--green-dim)', borderRadius: '20px', padding: '2px 9px', border: '1px solid rgba(34,197,94,.2)' }}>Always free</span>
             </div>
-            {/* Free NCERT rows */}
-            {[
-              { name: 'NCERT Chemistry Class XI', meta: 'PDF • 18.4 MB', url: 'https://ncert.nic.in/textbook.php?kech1=0-14' },
-              { name: 'NCERT Mathematics Class XII', meta: 'PDF • 22.1 MB', url: 'https://ncert.nic.in/textbook.php?lemh1=0-13' },
-            ].map((r, i, arr) => (
-              <div key={i} className="res-row" style={{ cursor: 'pointer', borderBottom: i < arr.length - 1 ? '1px solid var(--b)' : 'none', borderRadius: 0, margin: 0 }} onClick={() => window.open(r.url, '_blank', 'noreferrer')}>
-                <div className="rr-icon">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            {/* Resources from DB — falls back to hardcoded NCERT if empty */}
+            {(resources.length > 0 ? resources : [
+              { id: 'n1', title: 'NCERT Chemistry Class XI',  description: 'Class 11 · Study Material', cloudinaryUrl: 'https://ncert.nic.in/textbook.php?kech1=0-14' },
+              { id: 'n2', title: 'NCERT Mathematics Class XII', description: 'Class 12 · Study Material', cloudinaryUrl: 'https://ncert.nic.in/textbook.php?lemh1=0-13' },
+            ]).map((r, i, arr) => {
+              const isCloudinary = r.cloudinaryUrl?.includes('res.cloudinary.com');
+              const openUrl = isCloudinary ? `${import.meta.env.VITE_API_URL}/api/files/proxy?url=${encodeURIComponent(r.cloudinaryUrl)}` : r.cloudinaryUrl;
+              return (
+                <div key={r.id} className="res-row" style={{ cursor: 'pointer', borderBottom: i < arr.length - 1 ? '1px solid var(--b)' : 'none', borderRadius: 0, margin: 0 }} onClick={() => window.open(openUrl, '_blank', 'noreferrer')}>
+                  <div className="rr-icon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                  </div>
+                  <div>
+                    <div className="rr-name">{r.title}</div>
+                    <div className="rr-meta">{r.description || (r.subject ? `${r.subject} · Class ${r.grade}` : 'Study Material')}</div>
+                  </div>
+                  <button className="btn btn-sm btn-ghost" style={{ marginLeft: 'auto', flexShrink: 0 }} onClick={e => { e.stopPropagation(); window.open(openUrl, '_blank', 'noreferrer'); }}>
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    Download
+                  </button>
                 </div>
-                <div><div className="rr-name">{r.name}</div><div className="rr-meta">{r.meta}</div></div>
-                <button className="btn btn-sm btn-ghost" style={{ marginLeft: 'auto', flexShrink: 0 }} onClick={e => { e.stopPropagation(); window.open(r.url, '_blank', 'noreferrer'); }}>
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                  Download
-                </button>
-              </div>
-            ))}
+              );
+            })}
             {/* Premium section divider */}
             <div style={{ padding: '14px 20px 10px', borderTop: '1px solid var(--b)', borderBottom: '1px solid var(--b)', background: 'var(--cream2)', display: 'flex', alignItems: 'center', gap: '10px' }}>
               <span style={{ fontFamily: 'var(--fs)', fontSize: '14px', fontWeight: 600, color: 'var(--text)' }}>Premium Resources</span>
@@ -2306,7 +2568,7 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
               <div className="pc-feat">Basic NCERT resources</div>
               <div className="pc-feat no">Custom question bank</div>
               <div className="pc-feat no">Faculty sessions</div>
-              <div className="pc-feat no">Mentorship &amp; accountability</div>4. createdAt missing from /me endpoint — reverted, breaks enrollment-date logic
+              <div className="pc-feat no">Mentorship &amp; accountability</div>
 
 
             </div>
@@ -2519,9 +2781,81 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
         })()}
       </div>
 
-      {/* ══════════ MY PROGRESS (forge) ══════════ */}
+      {/* ══════════ MY PROGRESS (forge) / MENTORSHIP (spark) ══════════ */}
       <div className={p('progress')}>
-        {(() => {
+        {!isForge ? (
+          <div style={{ position: 'relative', borderRadius: '16px', overflow: 'hidden', minHeight: 'calc(100vh - 130px)', background: 'var(--cream2)' }}>
+            {/* Skeleton preview */}
+            <div style={{ padding: '32px 24px 24px', display: 'flex', flexDirection: 'column', gap: '14px', pointerEvents: 'none', userSelect: 'none', filter: 'blur(2.5px)' }}>
+              {/* Mentor card skeleton */}
+              <div style={{ background: 'var(--cream)', border: '1px solid var(--b)', borderRadius: '12px', padding: '18px', borderLeft: '4px solid var(--gold)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
+                  <div className="sk" style={{ width: 40, height: 40, borderRadius: '50%', flexShrink: 0 }} />
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <div className="sk" style={{ height: 13, width: '40%' }} />
+                    <div className="sk" style={{ height: 10, width: '55%' }} />
+                  </div>
+                </div>
+                <div className="sk" style={{ height: 10, width: '100%', marginBottom: 6 }} />
+                <div className="sk" style={{ height: 10, width: '85%', marginBottom: 6 }} />
+                <div className="sk" style={{ height: 10, width: '70%' }} />
+              </div>
+              {/* Stats row skeleton */}
+              <div style={{ display: 'flex', gap: '14px' }}>
+                {[1, 2, 3].map(i => (
+                  <div key={i} style={{ flex: 1, background: 'var(--cream)', border: '1px solid var(--b)', borderRadius: '12px', padding: '18px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                    <div className="sk" style={{ height: 28, width: '50%' }} />
+                    <div className="sk" style={{ height: 10, width: '70%' }} />
+                  </div>
+                ))}
+              </div>
+              {/* Call card skeleton */}
+              <div style={{ background: 'var(--cream)', border: '1px solid var(--b)', borderRadius: '12px', padding: '18px', display: 'flex', gap: '14px', alignItems: 'center' }}>
+                <div className="sk" style={{ width: 44, height: 44, borderRadius: '12px', flexShrink: 0 }} />
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '7px' }}>
+                  <div className="sk" style={{ height: 14, width: '45%' }} />
+                  <div className="sk" style={{ height: 10, width: '60%' }} />
+                </div>
+              </div>
+              {/* Daily report skeleton */}
+              <div style={{ background: 'var(--cream)', border: '1px solid var(--b)', borderRadius: '12px', padding: '18px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div className="sk" style={{ height: 13, width: '30%' }} />
+                {[1, 2, 3].map(i => (
+                  <div key={i} style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                    <div className="sk" style={{ width: 28, height: 28, borderRadius: '50%', flexShrink: 0 }} />
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                      <div className="sk" style={{ height: 11, width: '60%' }} />
+                      <div className="sk" style={{ height: 9, width: '40%' }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            {/* Lock card */}
+            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+              <div style={{ background: 'linear-gradient(135deg,#0F1F3D 0%,#1C2E50 100%)', borderRadius: '20px', padding: '36px 30px', textAlign: 'center', boxShadow: '0 24px 64px rgba(15,31,61,.3)', maxWidth: '360px', width: '100%', border: '1px solid rgba(232,168,48,.2)', position: 'relative', overflow: 'hidden' }}>
+                <div style={{ position: 'absolute', top: -40, right: -40, width: 140, height: 140, borderRadius: '50%', background: 'rgba(232,168,48,.06)', pointerEvents: 'none' }} />
+                <div style={{ width: '58px', height: '58px', borderRadius: '16px', background: 'rgba(232,168,48,.15)', border: '1.5px solid rgba(232,168,48,.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 18px' }}>
+                  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#E8A830" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                </div>
+                <div style={{ fontFamily: 'var(--fs)', fontSize: '19px', fontWeight: 700, color: '#FDF8F0', marginBottom: '10px', lineHeight: 1.3 }}>Someone in your corner, every day</div>
+                <div style={{ fontSize: '13px', color: 'rgba(253,248,240,.55)', lineHeight: 1.75, marginBottom: '20px' }}>A dedicated mentor reads your daily reports, notices your patterns, and guides your next week — every single week.</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '20px', textAlign: 'left' }}>
+                  {['Daily report reviewed by your mentor', 'Weekly 1-on-1 strategy call', 'Personalised weekly notes on your dashboard', 'Habit & consistency tracking by mentor'].map((f, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12.5px', color: 'rgba(253,248,240,.65)' }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22C55E" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                      {f}
+                    </div>
+                  ))}
+                </div>
+                <button className="btn btn-gold btn-full" onClick={() => onNav('plans')} style={{ width: '100%', justifyContent: 'center', padding: '12px 0', fontSize: '14px' }}>
+                  Unlock Mentorship →
+                </button>
+                <div style={{ fontSize: '11.5px', color: 'rgba(253,248,240,.35)', marginTop: '10px' }}>Available on Anchor &amp; Apex plans</div>
+              </div>
+            </div>
+          </div>
+        ) : (() => {
           const weeks = [...scores].sort((a, b) => a.weekNumber - b.weekNumber);
           const max = getExamMax(examTarget);
           const toM = (pct) => Math.round(pct * max / 100);
@@ -2592,6 +2926,54 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
 
       {/* ══════════ WEEKLY TESTS (forge) ══════════ */}
       <div className={p('tests')}>
+        {!isForge ? (
+          <div style={{ position: 'relative', borderRadius: '16px', overflow: 'hidden', minHeight: 'calc(100vh - 130px)', background: 'var(--cream2)' }}>
+            {/* Skeleton preview */}
+            <div style={{ padding: '32px 24px 24px', display: 'flex', flexDirection: 'column', gap: '14px', pointerEvents: 'none', userSelect: 'none', filter: 'blur(2.5px)' }}>
+              {/* Week cards skeleton */}
+              {[1, 2, 3].map(i => (
+                <div key={i} style={{ background: 'var(--cream)', border: '1px solid var(--b)', borderRadius: '12px', padding: '18px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '14px' }}>
+                    <div className="sk" style={{ height: 14, width: '35%' }} />
+                    <div className="sk" style={{ height: 12, width: '20%' }} />
+                  </div>
+                  {[1, 2, 3].map(j => (
+                    <div key={j} style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '10px' }}>
+                      <div className="sk" style={{ height: 10, width: 70, flexShrink: 0 }} />
+                      <div className="sk" style={{ height: 8, flex: 1, borderRadius: '99px' }} />
+                      <div className="sk" style={{ height: 10, width: 36, flexShrink: 0 }} />
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+            {/* Lock card */}
+            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+              <div style={{ background: 'linear-gradient(135deg,#0F1F3D 0%,#1C2E50 100%)', borderRadius: '20px', padding: '36px 30px', textAlign: 'center', boxShadow: '0 24px 64px rgba(15,31,61,.3)', maxWidth: '360px', width: '100%', border: '1px solid rgba(232,168,48,.2)', position: 'relative', overflow: 'hidden' }}>
+                <div style={{ position: 'absolute', top: -40, right: -40, width: 140, height: 140, borderRadius: '50%', background: 'rgba(232,168,48,.06)', pointerEvents: 'none' }} />
+                <div style={{ width: '58px', height: '58px', borderRadius: '16px', background: 'rgba(232,168,48,.15)', border: '1.5px solid rgba(232,168,48,.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 18px' }}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#E8A830" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                </div>
+                <div style={{ fontFamily: 'var(--fs)', fontSize: '19px', fontWeight: 700, color: '#FDF8F0', marginBottom: '10px', lineHeight: 1.3 }}>Weekly Tests &amp; Score Tracking</div>
+                <div style={{ fontSize: '13px', color: 'rgba(253,248,240,.55)', lineHeight: 1.75, marginBottom: '20px' }}>Chapter-wise and full-length tests matched to your weak areas. Every result updates your study plan automatically.</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '20px', textAlign: 'left' }}>
+                  {['Tests matched to your diagnostic weak areas', 'Results feed directly into your study plan', 'Score Journey arc from Day 1 to target', 'Per-subject breakdown every week'].map((f, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12.5px', color: 'rgba(253,248,240,.65)' }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22C55E" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                      {f}
+                    </div>
+                  ))}
+                </div>
+                <button className="btn btn-gold btn-full" onClick={() => onNav('plans')} style={{ width: '100%', justifyContent: 'center', padding: '12px 0', fontSize: '14px' }}>
+                  Unlock Weekly Tests →
+                </button>
+                <div style={{ fontSize: '11.5px', color: 'rgba(253,248,240,.35)', marginTop: '10px' }}>Upgrade to Forge · ₹999/month</div>
+              </div>
+            </div>
+          </div>
+        ) : null}
+        {isForge && (
+        <>
         {/* Coming Soon banner */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px', background: 'var(--gold-dim)', border: '1px solid var(--gold-b)', borderRadius: 'var(--r)', padding: '16px 20px', marginBottom: '28px' }}>
           <div style={{ width: '42px', height: '42px', borderRadius: '12px', background: 'rgba(232,168,48,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -2638,6 +3020,8 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
             );
           });
         })()}
+        </>
+        )}
       </div>
 
     </div>
