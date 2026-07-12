@@ -70,6 +70,17 @@ const login = async (req, res) => {
       return res.status(403).json({ error: 'Your account has been deactivated. Please contact your superadmin.' });
     }
 
+    // Block deprecated plans (forge, apex)
+    const plan = user.studentProfile?.plan;
+    if (plan === 'forge' || plan === 'apex') {
+      return res.status(403).json({
+        error: 'Plan deprecated',
+        message: `The ${plan.charAt(0).toUpperCase() + plan.slice(1)} plan is no longer available. Please contact support to upgrade to Spark or Anchor.`,
+        deprecatedPlan: plan,
+        availablePlans: ['spark', 'anchor']
+      });
+    }
+
     // Create a JWT token with user id, role, and plan inside
     const token = jwt.sign(
       { id: user.id, role: user.role, plan: user.studentProfile?.plan || null },

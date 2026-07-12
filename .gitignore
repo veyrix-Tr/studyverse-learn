@@ -6,3 +6,4 @@ PENDING_FEATURES.md
 CHANGES_REPORT.md
 FEATURES.md
 frontend/.env.test
+deprecated-plans-block.patch
