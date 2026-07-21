@@ -62,9 +62,25 @@ const LoginForm = ({ onSwitchToRegister }) => {
   return (
     <>
       <div className="login-header">
-        <div className="login-eyebrow">Welcome back</div>
+        <div className="login-eyebrow">Welcome to Studyverse</div>
         <div className="login-title">Sign in to your account</div>
         <div className="login-sub">Access your personalised JEE preparation dashboard</div>
+      </div>
+
+      <div className="free-trial-card">
+        <svg className="free-trial-icon" width="22" height="22" viewBox="0 0 24 24" fill="none">
+          <rect x="2" y="4" width="20" height="16" rx="3" fill="#64748b" stroke="#64748b" strokeWidth="1"/>
+          <rect x="2" y="9" width="20" height="5" fill="#f59e0b"/>
+          <line x1="6" y1="16" x2="12" y2="16" stroke="#fff" strokeWidth="1.5" strokeLinecap="round"/>
+          <line x1="14" y1="16" x2="18" y2="16" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" opacity="0.5"/>
+        </svg>
+        <div className="free-trial-text">
+          <div className="free-trial-title">Start your <span className="free-highlight">free</span> trial</div>
+          <div className="free-trial-sub">No credit card required</div>
+        </div>
+        <svg className="free-trial-arrow" width="24" height="24" viewBox="0 0 24 24" fill="none">
+          <path d="M5 12h14M13 5l7 7-7 7" stroke="#d97706" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
       </div>
 
       <form onSubmit={handleLogin}>
