@@ -68,11 +68,13 @@ const LoginForm = ({ onSwitchToRegister }) => {
       </div>
 
       <div className="free-trial-card">
-        <svg className="free-trial-icon" width="22" height="22" viewBox="0 0 24 24" fill="none">
-          <rect x="2" y="4" width="20" height="16" rx="3" fill="#64748b" stroke="#64748b" strokeWidth="1"/>
-          <rect x="2" y="9" width="20" height="5" fill="#f59e0b"/>
-          <line x1="6" y1="16" x2="12" y2="16" stroke="#fff" strokeWidth="1.5" strokeLinecap="round"/>
-          <line x1="14" y1="16" x2="18" y2="16" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" opacity="0.5"/>
+        <svg className="free-trial-icon" width="28" height="22" viewBox="0 0 30 24" fill="none">
+          <rect x="1" y="4" width="28" height="16" rx="3" fill="#64748b" stroke="#64748b" strokeWidth="1"/>
+          <rect x="1" y="9" width="28" height="5" fill="#f59e0b"/>
+          <text x="7" y="12.8" textAnchor="middle" fill="#000" fontSize="3.2" fontFamily="monospace" fontWeight="bold">1234</text>
+          <text x="16" y="12.8" textAnchor="middle" fill="#000" fontSize="3.2" fontFamily="monospace" fontWeight="bold">5678</text>
+          <text x="25" y="12.8" textAnchor="middle" fill="#000" fontSize="3.2" fontFamily="monospace" fontWeight="bold">9012</text>
+          <path d="M1 23L29 1" stroke="#000" strokeWidth="1.2" strokeLinecap="round"/>
         </svg>
         <div className="free-trial-text">
           <div className="free-trial-title">Start your <span className="free-highlight">free</span> trial</div>

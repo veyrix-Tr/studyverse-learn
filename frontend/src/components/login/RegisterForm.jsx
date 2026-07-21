@@ -216,7 +216,14 @@ const RegisterForm = ({ onSwitchToLogin, googleName = '', googleEmail = '', isGo
   return (
     <>
       <div className="login-header" style={{ marginBottom: '20px' }}>
-        <div className="plan-badge"><span className="plan-badge-dot" />Free Plan — No credit card required</div>
+        <div className="plan-badge"><span className="plan-badge-dot" /><svg width="18" height="14" viewBox="0 0 30 24" fill="none" style={{ marginRight: '6px', verticalAlign: 'middle' }}>
+  <rect x="1" y="4" width="28" height="16" rx="2" stroke="#64748b" strokeWidth="1.5"/>
+  <line x1="1" y1="10" x2="29" y2="10" stroke="#64748b" strokeWidth="1.5"/>
+  <text x="7" y="12.8" textAnchor="middle" fill="#000" fontSize="3.2" fontFamily="monospace" fontWeight="bold">1234</text>
+  <text x="16" y="12.8" textAnchor="middle" fill="#000" fontSize="3.2" fontFamily="monospace" fontWeight="bold">5678</text>
+  <text x="25" y="12.8" textAnchor="middle" fill="#000" fontSize="3.2" fontFamily="monospace" fontWeight="bold">9012</text>
+  <path d="M1 23L29 1" stroke="#000" strokeWidth="1.2" strokeLinecap="round"/>
+</svg>Free Plan — No credit card required</div>
         <div className="login-title">Create your account</div>
       </div>
 
