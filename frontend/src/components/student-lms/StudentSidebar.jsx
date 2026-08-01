@@ -1,5 +1,5 @@
 
-const StudentSidebar = ({ activePage, onNav, profile, upcomingSessionsCount = 0, openDoubtsCount = 0 }) => {
+const StudentSidebar = ({ activePage, onNav, profile, upcomingSessionsCount = 0, openDoubtsCount = 0, isOpen = false, onClose }) => {
   const ni = (page, extra) => `nav-item${(activePage === page || (extra && activePage === extra)) ? ' active' : ''}`;
   const name = profile?.name || 'Student';
   const initial = name.charAt(0).toUpperCase();
@@ -13,7 +13,7 @@ const StudentSidebar = ({ activePage, onNav, profile, upcomingSessionsCount = 0,
   const planEndFmt = planEndDate ? new Date(planEndDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : null;
 
   return (
-    <aside className="sidebar">
+    <aside className={`sidebar${isOpen ? ' open' : ''}`}>
       <div className="sidebar-logo">
         <svg className="logo-mark" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path d="M50 5L90 28V72L50 95L10 72V28L50 5Z" stroke="#E8A830" strokeWidth="6" strokeLinejoin="round"/>
@@ -23,6 +23,9 @@ const StudentSidebar = ({ activePage, onNav, profile, upcomingSessionsCount = 0,
           <div className="l1">STUDY<span style={{ color: 'var(--gold)' }}>VERSE</span></div>
           <div className="l2">JEE &amp; NEET</div>
         </div>
+        <button className="sb-close" onClick={onClose} aria-label="Close menu">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>
       </div>
 
       <div className="sidebar-nav-scroll">

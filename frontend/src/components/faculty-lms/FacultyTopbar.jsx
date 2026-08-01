@@ -25,6 +25,7 @@ const FacultyTopbar = ({
   sessions = [],
   mentorStudents = [],
   alerts = [],
+  onMenuClick,
 }) => {
   const title = PAGE_TITLES[activePage] || 'Dashboard';
   const icon  = PAGE_ICONS[activePage] || null;
@@ -65,6 +66,9 @@ const FacultyTopbar = ({
 
   return (
     <header className="fac-topbar">
+      <button className="fac-tb-hamburger" onClick={onMenuClick} aria-label="Open menu">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
       <div className="fac-tb-page">
         <div className="fac-tb-bar" />
         {icon && <span className="fac-tb-icon">{icon}</span>}
@@ -75,7 +79,7 @@ const FacultyTopbar = ({
         {pendingDoubts > 0 && (
           <div className="fac-tb-doubts" onClick={() => onNav('doubts')}>
             <span className="fac-tb-doubts-dot" />
-            {pendingDoubts} doubt{pendingDoubts !== 1 ? 's' : ''} pending
+            <span className="fac-tb-doubts-label">{pendingDoubts} doubt{pendingDoubts !== 1 ? 's' : ''} pending</span>
           </div>
         )}
 
@@ -87,7 +91,7 @@ const FacultyTopbar = ({
         >
           {(liveSession || liveMentorCall) && <span className="fac-tb-live-ring" />}
           <span className="fac-tb-live-dot" />
-          {joinLabel}
+          <span className="fac-tb-live-label">{joinLabel}</span>
         </button>
 
         <div className="fac-tbb" onClick={() => onOpenModal('quick-note-modal')} title="Quick note">

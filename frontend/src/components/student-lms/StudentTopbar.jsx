@@ -37,7 +37,7 @@ const PLAN_CONFIG = {
   anchor:{ label: 'Anchor', color: '#22C55E', bg: 'rgba(34,197,94,0.1)',   border: 'rgba(34,197,94,0.25)',   dot: '#4ADE80' },
 };
 
-const StudentTopbar = ({ activePage, onOpenModal, onNav, unreadCount = 0, profile }) => {
+const StudentTopbar = ({ activePage, onOpenModal, onNav, unreadCount = 0, profile, onMenuClick }) => {
   const plan     = profile?.studentProfile?.plan || null;
   const planCfg  = plan ? PLAN_CONFIG[plan] : null;
   const pageIcon = PAGE_ICONS[activePage] || null;
@@ -45,6 +45,11 @@ const StudentTopbar = ({ activePage, onOpenModal, onNav, unreadCount = 0, profil
 
   return (
     <header className="st-topbar">
+
+      {/* Mobile menu toggle */}
+      <button className="st-tb-hamburger" onClick={onMenuClick} aria-label="Open menu">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
 
       {/* Left — page title */}
       <div className="st-tb-page">
@@ -68,7 +73,7 @@ const StudentTopbar = ({ activePage, onOpenModal, onNav, unreadCount = 0, profil
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
             <rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>
           </svg>
-          Book Session
+          <span className="st-tb-book-text">Book Session</span>
         </button>
 
         <div className="st-tb-bell" onClick={() => onNav('notif')} title="Notifications">

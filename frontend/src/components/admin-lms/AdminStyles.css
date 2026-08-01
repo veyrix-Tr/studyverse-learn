@@ -50,6 +50,18 @@ body.admin-mode #root {
 .sidebar::-webkit-scrollbar-thumb { background: rgba(232,168,48,.45); border-radius: 4px; }
 .sidebar::-webkit-scrollbar-thumb:hover { background: rgba(232,168,48,.7); }
 .sb-logo{padding:20px 20px 16px;border-bottom:1px solid var(--bi);display:flex;align-items:center;gap:10px;flex-shrink:0}
+
+/* Mobile drawer close button — hidden on desktop, shown <=1024px */
+.sb-close{display:none;margin-left:auto;width:30px;height:30px;border-radius:8px;background:rgba(255,255,255,0.06);border:none;color:var(--inv3);align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:all .15s}
+.sb-close:hover{background:rgba(255,255,255,0.12);color:var(--inv)}
+
+/* Dim backdrop behind the mobile drawer */
+.sidebar-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);backdrop-filter:blur(2px);z-index:250;animation:admBackdropIn .2s ease}
+@keyframes admBackdropIn{from{opacity:0}to{opacity:1}}
+
+/* Mobile menu toggle in the topbar — hidden on desktop, shown <=1024px */
+.tb-hamburger,.adm-tb-hamburger{display:none;width:38px;height:38px;border-radius:9px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);align-items:center;justify-content:center;cursor:pointer;color:rgba(253,248,240,0.6);flex-shrink:0;transition:all .15s}
+.tb-hamburger:hover,.adm-tb-hamburger:hover{background:rgba(255,255,255,0.14);color:#FDF8F0}
 .sb-mark{width:33px;height:33px;flex-shrink:0}
 .sb-w1{font-family:var(--fb);font-weight:700;font-size:14.5px;letter-spacing:.06em;color:var(--inv)}
 .sb-w1 span{color:var(--gold)}
@@ -285,6 +297,49 @@ body.admin-mode #root {
 
 ::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:var(--cream2)}::-webkit-scrollbar-thumb{background:var(--cream3);border-radius:10px}
 @media(max-width:1200px){.pipeline{grid-template-columns:repeat(3,1fr)}.g4{grid-template-columns:1fr 1fr}}
+
+/* ══════════ RESPONSIVE ══════════ */
+@media (max-width: 1024px) {
+  .sidebar{transform:translateX(-100%);transition:transform .25s cubic-bezier(.4,0,.2,1);z-index:300}
+  .sidebar.open{transform:translateX(0);box-shadow:12px 0 48px rgba(0,0,0,0.5)}
+  .sb-close,.tb-hamburger,.adm-tb-hamburger{display:flex}
+  .sidebar-backdrop{display:block}
+  .admin-main{margin-left:0}
+}
+
+@media (max-width: 860px) {
+  /* A 5-column kanban can't collapse to a single column without losing
+     its meaning — let it scroll horizontally instead, like any kanban. */
+  .pipeline{grid-template-columns:repeat(5,minmax(220px,1fr));overflow-x:auto;padding-bottom:6px;-webkit-overflow-scrolling:touch}
+}
+
+@media (max-width: 720px) {
+  .adm-topbar,.topbar{padding:0 16px;gap:10px}
+  .adm-tb-title{font-size:15px}
+  .content{padding:18px 16px}
+
+  /* "Enroll Student" carries a long label that competes with the
+     hamburger + icon buttons for space — collapse to icon-only. */
+  .adm-tb-enroll-label{display:none}
+  .adm-tb-enroll{padding:9px 12px}
+  .adm-tb-super{padding:5px 9px}
+
+  .g2,.g3,.g4{grid-template-columns:1fr}
+
+  .fc-top,.ai-top,.ac-header{flex-wrap:wrap}
+  .modal{padding:22px 20px}
+}
+
+@media (max-width: 480px) {
+  .adm-topbar,.topbar{height:60px;min-height:60px;padding:0 12px;gap:8px}
+  .content{padding:14px 12px}
+  .stat{padding:14px 16px}
+  .stat-v{font-size:22px}
+  .card,.card-dark{padding:16px}
+  .btn{padding:8px 14px;font-size:12.5px}
+  .modal{padding:18px 16px}
+  .pipeline{grid-template-columns:repeat(5,minmax(180px,1fr))}
+}
 
 .dm-body::-webkit-scrollbar { width: 6px; }
 .dm-body::-webkit-scrollbar-track { background: rgba(15,31,61,0.05); border-radius: 99px; }

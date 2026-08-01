@@ -91,7 +91,15 @@ body.student-mode .sidebar-logo {
   display: flex;
   align-items: center;
   gap: 12px;
+  flex-shrink: 0;
 }
+
+/* Mobile drawer close button + backdrop — hidden on desktop, shown <=1024px */
+body.student-mode .sb-close { display: none; margin-left: auto; width: 30px; height: 30px; border-radius: 8px; background: rgba(255,255,255,0.08); border: none; color: var(--text-inv3); align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; transition: all .15s; }
+body.student-mode .sb-close:hover { background: rgba(255,255,255,0.14); color: var(--text-inv); }
+body.student-mode .sidebar-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.55); backdrop-filter: blur(2px); z-index: 250; }
+body.student-mode .st-tb-hamburger { display: none; width: 38px; height: 38px; border-radius: 9px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12); align-items: center; justify-content: center; cursor: pointer; color: rgba(253,248,240,0.6); flex-shrink: 0; transition: all .15s; }
+body.student-mode .st-tb-hamburger:hover { background: rgba(255,255,255,0.14); color: #FDF8F0; }
 
 body.student-mode .logo-mark { width: 38px; height: 38px; flex-shrink: 0; }
 body.student-mode .logo-wordmark { line-height: 1.1; }
@@ -412,7 +420,7 @@ body.student-mode .toast-pip { width: 7px; height: 7px; border-radius: 50%; back
 
 /* ── TABS ── */
 body.student-mode .tabs { display: flex; gap: 2px; background: var(--cream2); border: 1px solid var(--border); padding: 4px; border-radius: 9px; width: fit-content; margin-bottom: 22px; }
-body.student-mode .tab { padding: 7px 18px; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; color: var(--text3); transition: all 0.15s; }
+body.student-mode .tab { padding: 7px 18px; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; color: var(--text3); transition: all 0.15s; white-space: nowrap; flex-shrink: 0; }
 body.student-mode .tab.on { background: var(--cream); color: var(--text); box-shadow: 0 1px 4px rgba(15,31,61,0.07); }
 body.student-mode .tab:first-child { background: rgba(15,31,61,0.04); }
 body.student-mode .tab:first-child.on { background: rgba(34,197,94,0.18); color: #15803d; box-shadow: 0 1px 4px rgba(34,197,94,0.15); }
@@ -571,5 +579,57 @@ body.student-mode .student-main::-webkit-scrollbar-thumb { background: var(--cre
 @media (max-width: 1100px) {
   body.student-mode .g4 { grid-template-columns: 1fr 1fr; }
   body.student-mode .g3 { grid-template-columns: 1fr 1fr; }
+}
+
+/* Sidebar becomes an off-canvas drawer */
+@media (max-width: 1024px) {
+  body.student-mode .sidebar { transform: translateX(-100%); transition: transform .25s cubic-bezier(.4,0,.2,1); z-index: 300; }
+  body.student-mode .sidebar.open { transform: translateX(0); box-shadow: 12px 0 48px rgba(0,0,0,0.5); }
+  body.student-mode .sb-close,
+  body.student-mode .st-tb-hamburger { display: flex; }
+  body.student-mode .sidebar-backdrop { display: block; }
+  body.student-mode .student-main { margin-left: 0; }
+  body.student-mode .st-tb-plan { display: none; }
+}
+
+@media (max-width: 720px) {
+  body.student-mode .st-topbar { padding: 0 16px; gap: 10px; }
+  body.student-mode .st-tb-title { font-size: 15px; }
+  body.student-mode .content { padding: 18px 16px; }
+  body.student-mode .st-tb-book { padding: 9px; }
+  body.student-mode .st-tb-book-text { display: none; }
+
+  body.student-mode .g2,
+  body.student-mode .g3,
+  body.student-mode .g4,
+  body.student-mode .score-deltas { grid-template-columns: 1fr; }
+
+  body.student-mode .journey-header { flex-wrap: wrap; gap: 12px; }
+  body.student-mode .journey-exam { text-align: left; }
+  body.student-mode .journey-container { padding: 22px 18px; }
+  body.student-mode .sess-item,
+  body.student-mode .mentor-stats-row,
+  body.student-mode .test-meta { flex-wrap: wrap; row-gap: 8px; }
+  body.student-mode .subj-name { width: auto; }
+
+  body.student-mode .modal { padding: 22px 20px; }
+
+  /* Pill-tab strips scroll instead of overflowing */
+  body.student-mode .tabs { max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+  body.student-mode .tabs::-webkit-scrollbar { display: none; }
+}
+
+@media (max-width: 480px) {
+  body.student-mode .st-topbar { height: 64px; min-height: 64px; padding: 0 12px; gap: 8px; }
+  body.student-mode .content { padding: 14px 12px; }
+  body.student-mode .g4 { grid-template-columns: 1fr 1fr; gap: 10px; }
+  body.student-mode .stat { padding: 14px 16px; }
+  body.student-mode .stat-val { font-size: 22px; }
+  body.student-mode .card,
+  body.student-mode .card-dark { padding: 16px; }
+  body.student-mode .btn { padding: 8px 14px; font-size: 12.5px; }
+  body.student-mode .modal { padding: 18px 16px; }
+  body.student-mode .arc-track { height: 100px; }
+  body.student-mode .arc-node-label { max-width: 56px; }
 }
 

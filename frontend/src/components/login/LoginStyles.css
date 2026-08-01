@@ -1013,6 +1013,10 @@
   .step-nav    { flex-wrap: wrap; }
   .btn-back    { flex: 1; }
 
+  /* Email input + "Send OTP" button: give the button less padding so the
+     input doesn't get squeezed down to a sliver on narrow screens. */
+  .input-action-btn { padding: 0 10px; font-size: 11px; }
+
   /* Toast full-width at bottom, safe-area aware */
   .toast {
     left: 16px;
@@ -1032,4 +1036,10 @@
   .free-trial-arrow { display: none; }
   .tab-btn .tab-icon { display: none; }
   .signup-row { font-size: 12px; }
+
+  /* Email + Send OTP row: stack so the input keeps full width and the
+     button never clips the placeholder text. */
+  .input-wrap--btn { flex-direction: column; }
+  .input-action-btn { align-self: stretch; padding: 10px 0; font-size: 12.5px; }
+  .input-valid-check { right: 14px; }
 }

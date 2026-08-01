@@ -19,13 +19,19 @@ const DiagnosticModal = ({ modal, loading, onClose, onReset }) => {
   const maxMock    = d?.plan?.mockTrend ? Math.max(...d.plan.mockTrend.scores) : 1;
 
   return (
-    <div onClick={e => { if (e.target === e.currentTarget) onClose(); }}
+    <div className="dm-overlay" onClick={e => { if (e.target === e.currentTarget) onClose(); }}
       style={{ position:'fixed', inset:0, background:'rgba(15,31,61,0.6)', display:'flex', alignItems:'center', justifyContent:'center', padding:'36px 40px', zIndex:300, backdropFilter:'blur(6px)', animation:'dmFadeIn .2s ease' }}>
       <style dangerouslySetInnerHTML={{ __html:
         '@keyframes dmFadeIn{from{opacity:0}to{opacity:1}}' +
         '@keyframes dmSlideUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}' +
         '@keyframes dmIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}' +
-        '.dm-card{animation:dmIn .35s cubic-bezier(0.4,0,0.2,1) both}'
+        '.dm-card{animation:dmIn .35s cubic-bezier(0.4,0,0.2,1) both}' +
+        '@media (max-width:720px){' +
+          '.dm-overlay{padding:16px !important}' +
+          '.dm-2col{grid-template-columns:1fr !important}' +
+          '.dm-details-grid{grid-template-columns:1fr !important}' +
+          '.dm-subj-grid{grid-template-columns:repeat(auto-fit,minmax(110px,1fr)) !important}' +
+        '}'
       }} />
 
       <div style={{ background:'#FDF8F0', borderRadius:'22px', width:'1060px', maxWidth:'100%', maxHeight:'100%', display:'flex', flexDirection:'column', boxShadow:'0 28px 70px rgba(15,31,61,0.28)', animation:'dmSlideUp .28s cubic-bezier(0.4,0,0.2,1)' }}>
@@ -78,13 +84,13 @@ const DiagnosticModal = ({ modal, loading, onClose, onReset }) => {
           {loading && <div style={{ textAlign:'center', padding:'40px', color:'#8896B3' }}>Loading...</div>}
           {!loading && !d && <div style={{ textAlign:'center', padding:'40px', color:'#8896B3' }}>No diagnostic data.</div>}
           {!loading && d && (
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1.3fr', gap:'20px' }}>
+            <div className="dm-2col" style={{ display:'grid', gridTemplateColumns:'1fr 1.3fr', gap:'20px' }}>
 
               {/* LEFT COLUMN */}
               <div>
                 {/* Key details grid */}
                 <div style={{ fontSize:'11px', fontWeight:700, color:'#8896B3', textTransform:'uppercase', letterSpacing:'.07em', marginBottom:'8px' }}>Student Details</div>
-                <div className="dm-card" style={{ animationDelay:'.05s', display:'grid', gridTemplateColumns:'1fr 1fr', background:'#fff', borderRadius:'14px', border:'1px solid rgba(15,31,61,0.08)', marginBottom:'14px', overflow:'hidden' }}>
+                <div className="dm-card dm-details-grid" style={{ animationDelay:'.05s', display:'grid', gridTemplateColumns:'1fr 1fr', background:'#fff', borderRadius:'14px', border:'1px solid rgba(15,31,61,0.08)', marginBottom:'14px', overflow:'hidden' }}>
                   {[['Target score', d.digest.target_score],
                     ['Target rank',  d.digest.target_rank],
                     ['Has coaching', d.digest.has_coaching],
@@ -134,7 +140,7 @@ const DiagnosticModal = ({ modal, loading, onClose, onReset }) => {
               <div>
                 {/* Subject priority cards */}
                 <div style={{ fontSize:'11px', fontWeight:700, color:'#8896B3', textTransform:'uppercase', letterSpacing:'.07em', marginBottom:'8px' }}>Subject Priority</div>
-                <div className="dm-card" style={{ animationDelay:'.08s', display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'8px', marginBottom:'14px' }}>
+                <div className="dm-card dm-subj-grid" style={{ animationDelay:'.08s', display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'8px', marginBottom:'14px' }}>
                   {d.plan.subjectFocus.map((s, i) => (
                     <div key={i} style={{ background:'#fff', border:'1px solid rgba(15,31,61,0.08)', borderRadius:'13px', padding:'13px 10px', textAlign:'center', borderTop:`3px solid ${UC[s.urgencyColor]||UC.gray}` }}>
                       <div style={{ fontSize:'19px', fontWeight:800, color:'#0F1F3D', lineHeight:1, marginBottom:'4px' }}>{s.scorePct !== null ? s.scorePct+'%' : 'N/A'}</div>
@@ -755,7 +761,7 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
                   {f.subjects.map(s => <span key={s} className={`pill ${subjectPill(s)}`}>{s}</span>)}
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', marginBottom: '12px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(84px, 1fr))', gap: '8px', marginBottom: '12px' }}>
                   {[
                     { val: f.sessionsPerWeek || 0, lbl: 'Sessions/wk' },
                     { val: f.reportCount, lbl: 'Reports' },
@@ -1639,7 +1645,7 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
                     {isExpanded && (
                       <div style={{ marginTop: '14px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                         {(r.strengths || r.improvements) && (
-                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }}>
                             {r.strengths && (
                               <div>
                                 <div style={{ fontSize: '11px', color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '.06em', fontWeight: 600, marginBottom: '4px' }}>Strengths</div>
@@ -1901,7 +1907,7 @@ const SessionRequestsPage = ({ requests, facultyList, userId, onShowToast, onUpd
                     </div>
                   )}
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px', marginBottom: '12px' }}>
                   <div>
                     <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: 'var(--text2)', marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '.05em' }}>Faculty *</label>
                     <select className="finput" value={faculty} onChange={e => setFaculty(e.target.value)} style={{ fontSize: '13px' }}>

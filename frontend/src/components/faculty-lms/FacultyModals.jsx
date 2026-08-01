@@ -171,7 +171,7 @@ const FacultyModals = ({ openModal, onClose, onShowToast, toast, detailOpen, sel
           <div className="fg"><label>Subject</label>
             <select className="finput"><option>Chemistry</option><option>Mathematics</option><option>Physics</option><option>Biology</option></select>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
             <div className="fg"><label>Date</label><input className="finput" type="date" /></div>
             <div className="fg"><label>Time</label><input className="finput" type="time" /></div>
           </div>
@@ -254,7 +254,7 @@ const FacultyModals = ({ openModal, onClose, onShowToast, toast, detailOpen, sel
           <div className="fg"><label>Description <span style={{ fontWeight: 400, color: 'var(--text3)' }}>(optional)</span></label>
             <input className="finput" type="text" placeholder="Brief note about what this covers" value={resDescription} onChange={e => setResDescription(e.target.value)} />
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
             <div className="fg"><label>Subject</label>
               <select className="finput" value={resSubject} onChange={e => setResSubject(e.target.value)}>
                 <option>Physics</option><option>Chemistry</option><option>Maths</option><option>Biology</option>
@@ -304,7 +304,7 @@ const FacultyModals = ({ openModal, onClose, onShowToast, toast, detailOpen, sel
           <div className="fg"><label>Why is this test needed now?</label>
             <textarea className="finput" rows="3" placeholder="Admin needs your reasoning — what gap does this test address?"></textarea>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
             <div className="fg"><label>No. of Questions</label><input className="finput" type="number" placeholder="e.g. 25" /></div>
             <div className="fg"><label>Suggested Deadline</label><input className="finput" type="date" /></div>
           </div>

@@ -25,6 +25,7 @@ const NOTIF_NAV = {
 const StudentLMS = () => {
   const [activePage, setActivePage, userId] = useActivePage('/student-v2', 'dashboard');
   const [openModal, setOpenModal] = useState(null);
+  const [navOpen, setNavOpen] = useState(false);
   const [toast, setToast] = useState({ show: false, msg: '' });
   const [profile, setProfile] = useState(null);
   const [scores, setScores] = useState(null);
@@ -256,22 +257,28 @@ const StudentLMS = () => {
     setActivePage(page);
   };
 
+  const navigate = (page) => { setActivePage(page); setNavOpen(false); };
+
   return (
     <div className="student-app">
       <StudentSidebar
         activePage={activePage}
-        onNav={setActivePage}
+        onNav={navigate}
         profile={profile}
         upcomingSessionsCount={sessions.filter(s => new Date(s.scheduledAt) > new Date()).length}
         openDoubtsCount={doubts.filter(d => !d.answeredAt).length}
+        isOpen={navOpen}
+        onClose={() => setNavOpen(false)}
       />
+      {navOpen && <div className="sidebar-backdrop" onClick={() => setNavOpen(false)} />}
       <div className="student-main">
         <StudentTopbar
           activePage={activePage}
           onOpenModal={setOpenModal}
-          onNav={setActivePage}
+          onNav={navigate}
           unreadCount={notifications.filter(n => !n.readAt).length}
           profile={profile}
+          onMenuClick={() => setNavOpen(true)}
         />
         {STUDY_PAGES.includes(activePage) ? (
           <FreeContent

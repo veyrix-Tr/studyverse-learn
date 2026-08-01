@@ -8,6 +8,7 @@ import FacultyModals from '../components/faculty-lms/FacultyModals';
 
 const FacultyLMS = () => {
   const [activePage, setActivePage, userId] = useActivePage('/faculty', 'dashboard');
+  const [navOpen, setNavOpen] = useState(false);
   const [openModal, setOpenModal] = useState(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [selectedStudent] = useState(null);
@@ -351,11 +352,16 @@ const FacultyLMS = () => {
     return () => clearInterval(id);
   }, [profile]);
 
+  const navigate = (page) => {
+    setActivePage(page);
+    setNavOpen(false);
+  };
+
   return (
     <div className="faculty-app">
       <FacultySidebar
         activePage={activePage}
-        onNav={setActivePage}
+        onNav={navigate}
         onShowToast={showToast}
         profile={profile}
         sessions={sessions}
@@ -365,17 +371,21 @@ const FacultyLMS = () => {
         mentorStudents={mentorStudents}
         mentorDailyReports={mentorDailyReports}
         unreadAlerts={alerts.filter(a => !a.readAt).length}
+        isOpen={navOpen}
+        onClose={() => setNavOpen(false)}
       />
+      {navOpen && <div className="sidebar-backdrop" onClick={() => setNavOpen(false)} />}
       <div className="faculty-main">
         <FacultyTopbar
           activePage={activePage}
           onOpenModal={setOpenModal}
-          onNav={setActivePage}
+          onNav={navigate}
           onShowToast={showToast}
           sessions={sessions}
           mentorStudents={mentorStudents}
           notifications={notifications}
           alerts={alerts}
+          onMenuClick={() => setNavOpen(true)}
           onMarkAlertRead={async (id) => {
             const token = localStorage.getItem('token');
             await fetch(`${import.meta.env.VITE_API_URL}/api/faculty/${userId}/alerts/${id}/read`, { method: 'PUT', headers: { Authorization: `Bearer ${token}` } }).catch(() => {});

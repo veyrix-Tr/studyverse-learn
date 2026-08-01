@@ -74,15 +74,15 @@ const AdminModals = ({ openModal, onClose, onShowToast, toast, students = [], me
         <div className="modal">
           <div className="mt">Enroll a New Student</div>
           <div className="ms">This creates their profile and moves them into the Enrolled stage.</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
             <div className="fg"><label>Student Name</label><input className="fi" type="text" placeholder="Full name" /></div>
             <div className="fg"><label>Parent Name</label><input className="fi" type="text" placeholder="Parent's name" /></div>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
             <div className="fg"><label>Parent Mobile</label><input className="fi" type="tel" placeholder="+91 XXXXX XXXXX" /></div>
             <div className="fg"><label>City</label><input className="fi" type="text" placeholder="City" /></div>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
             <div className="fg"><label>Target Exam</label>
               <select className="fi"><option>JEE Mains 2026</option><option>JEE Advanced 2026</option><option>NEET 2026</option><option>JEE 2027</option><option>NEET 2027</option></select>
             </div>
@@ -90,7 +90,7 @@ const AdminModals = ({ openModal, onClose, onShowToast, toast, students = [], me
               <select className="fi"><option>Full Program</option><option>Unlock Plan</option><option>Single Sessions</option></select>
             </div>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
             <div className="fg"><label>Assign Faculty</label>
               <select className="fi"><option>Ajay Sharma</option><option>Neha Gupta</option><option>Assign later</option></select>
             </div>
@@ -162,7 +162,7 @@ const AdminModals = ({ openModal, onClose, onShowToast, toast, students = [], me
         <div className="modal">
           <div className="mt">Create Admin Account</div>
           <div className="ms">Set their permissions carefully. They can only do what you allow.</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
             <div className="fg"><label>Full Name</label><input className="fi" type="text" placeholder="Admin's name" /></div>
             <div className="fg"><label>Email</label><input className="fi" type="email" placeholder="admin@studyverse.in" /></div>
           </div>
@@ -243,7 +243,7 @@ const AdminModals = ({ openModal, onClose, onShowToast, toast, students = [], me
             <>
               <div className="mt">Add Faculty Member</div>
               <div className="ms">A faculty account will be created. Login credentials will be generated for you to share.</div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
                 <div className="fg"><label>Full Name *</label><input className="fi" type="text" placeholder="Dr. Ananya Singh" value={newFaculty.name} onChange={e => setNewFaculty(p => ({ ...p, name: e.target.value }))} /></div>
                 <div className="fg"><label>Subject *</label>
                   <select className="fi" value={newFaculty.subject} onChange={e => setNewFaculty(p => ({ ...p, subject: e.target.value }))}>
@@ -252,7 +252,7 @@ const AdminModals = ({ openModal, onClose, onShowToast, toast, students = [], me
                   </select>
                 </div>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
                 <div className="fg"><label>Qualification</label><input className="fi" type="text" placeholder="Ph.D, M.Sc..." value={newFaculty.qualification} onChange={e => setNewFaculty(p => ({ ...p, qualification: e.target.value }))} /></div>
                 <div className="fg"><label>Department</label><input className="fi" type="text" placeholder="Science" value={newFaculty.department} onChange={e => setNewFaculty(p => ({ ...p, department: e.target.value }))} /></div>
               </div>

@@ -11,6 +11,7 @@ const AdminLMS = ({ expectedRole }) => {
   const basePath = expectedRole === 'superadmin' ? '/superadmin' : '/admin';
   const [activePage, setActivePage, userId] = useActivePage(basePath, 'dashboard');
   const navigate = useNavigate();
+  const [navOpen, setNavOpen] = useState(false);
   const [openModal, setOpenModal] = useState(null);
   const [messageStudentId, setMessageStudentId] = useState(null);
   const [toast, setToast] = useState({ show: false, msg: '' });
@@ -399,7 +400,7 @@ const AdminLMS = ({ expectedRole }) => {
       <AdminSidebar
         activePage={activePage}
         isSuperAdmin={isSuperAdmin}
-        onNav={setActivePage}
+        onNav={(page) => { setActivePage(page); setNavOpen(false); }}
         onShowToast={showToast}
         profile={profile}
         studentsCount={students.length}
@@ -407,13 +408,17 @@ const AdminLMS = ({ expectedRole }) => {
         pendingApprovalsCount={resources.filter(r => r.status === 'pending').length}
         pendingReportsCount={parentReports.filter(r => r.status === 'submitted').length}
         pendingSessionRequests={sessionRequests.filter(r => r.status === 'pending').length}
+        isOpen={navOpen}
+        onClose={() => setNavOpen(false)}
       />
+      {navOpen && <div className="sidebar-backdrop" onClick={() => setNavOpen(false)} />}
       <div className="admin-main">
         <AdminTopbar
           activePage={activePage}
           isSuperAdmin={isSuperAdmin}
           onOpenModal={setOpenModal}
-          onNav={setActivePage}
+          onNav={(page) => { setActivePage(page); setNavOpen(false); }}
+          onMenuClick={() => setNavOpen(true)}
         />
         <AdminContent
           activePage={activePage}
