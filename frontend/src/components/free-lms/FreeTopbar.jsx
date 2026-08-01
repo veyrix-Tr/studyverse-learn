@@ -18,10 +18,14 @@ const PLAN_LABEL = {
   spark: { label: 'SPARK', sub: 'Free Plan',    color: '#94A3B8' },
 };
 
-const FreeTopbar = ({ activePage, onNav, unreadCount = 0, plan = 'spark' }) => {
+const FreeTopbar = ({ activePage, onNav, unreadCount = 0, plan = 'spark', onMenuClick }) => {
   const cfg = PLAN_LABEL[plan] || PLAN_LABEL.spark;
   return (
   <header className="fr-topbar">
+    <button className="fr-tb-hamburger" onClick={onMenuClick} aria-label="Open menu">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+
     <div className="fr-tb-page">
       <div className="fr-tb-bar" />
       <span className="fr-tb-title">{PAGE_TITLES[activePage] || 'Dashboard'}</span>

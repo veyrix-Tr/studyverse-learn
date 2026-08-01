@@ -1,4 +1,4 @@
-const FreeSidebar = ({ activePage, onNav, profile, onOpenModal }) => {
+const FreeSidebar = ({ activePage, onNav, profile, onOpenModal, isOpen = false, onClose }) => {
   const ni = (page) => `ni${activePage === page ? ' on' : ''}`;
   const name = profile?.name || 'Student';
   const initial = name.charAt(0).toUpperCase();
@@ -13,7 +13,7 @@ const FreeSidebar = ({ activePage, onNav, profile, onOpenModal }) => {
   };
 
   return (
-    <aside className="sidebar">
+    <aside className={`sidebar${isOpen ? ' open' : ''}`}>
       <div className="sb-logo">
         <svg className="sb-mark" viewBox="0 0 100 100" fill="none">
           <path d="M50 5L90 28V72L50 95L10 72V28L50 5Z" stroke="#E8A830" strokeWidth="6" strokeLinejoin="round"/>
@@ -23,6 +23,9 @@ const FreeSidebar = ({ activePage, onNav, profile, onOpenModal }) => {
           <div className="w1">STUDY<span>VERSE</span></div>
           <div className="w2">JEE &amp; NEET</div>
         </div>
+        <button className="sb-close" onClick={onClose} aria-label="Close menu">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>
       </div>
 
       <div className="free-sb-scroll">

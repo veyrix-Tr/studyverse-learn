@@ -8,6 +8,7 @@ import FreeModals from '../components/free-lms/FreeModals';
 
 const FreeLMS = () => {
   const [activePage, setActivePage, userId] = useActivePage('/student', 'home');
+  const [navOpen, setNavOpen] = useState(false);
   const [openModal, setOpenModal] = useState(null);
   const [toast, setToast] = useState({ show: false, msg: '' });
   const [profile, setProfile] = useState(null);
@@ -129,11 +130,17 @@ const FreeLMS = () => {
     toastTimer.current = setTimeout(() => setToast(t => ({ ...t, show: false })), 3200);
   };
 
+  const navigate = (page) => {
+    setActivePage(page);
+    setNavOpen(false);
+  };
+
   return (
     <div className="free-app">
-      <FreeSidebar activePage={activePage} onNav={setActivePage} profile={profile} onOpenModal={setOpenModal} />
+      <FreeSidebar activePage={activePage} onNav={navigate} profile={profile} onOpenModal={setOpenModal} isOpen={navOpen} onClose={() => setNavOpen(false)} />
+      {navOpen && <div className="sidebar-backdrop" onClick={() => setNavOpen(false)} />}
       <div className="free-main">
-        <FreeTopbar activePage={activePage} onNav={setActivePage} unreadCount={notifications.filter(n => !n.readAt).length} plan={profile?.studentProfile?.plan || 'spark'} />
+        <FreeTopbar activePage={activePage} onNav={navigate} unreadCount={notifications.filter(n => !n.readAt).length} plan={profile?.studentProfile?.plan || 'spark'} onMenuClick={() => setNavOpen(true)} />
         <FreeContent
           activePage={activePage}
           onNav={setActivePage}

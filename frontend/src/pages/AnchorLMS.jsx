@@ -11,6 +11,7 @@ const STUDY_PAGES = ['diagnostic', 'topics', 'guidance'];
 
 const AnchorLMS = () => {
   const [activePage, setActivePage, userId] = useActivePage('/anchor', 'dashboard');
+  const [navOpen, setNavOpen] = useState(false);
   const [toast, setToast] = useState({ show: false, msg: '' });
   const [profile, setProfile] = useState(null);
   const [habitLogs, setHabitLogs] = useState([]);
@@ -97,21 +98,30 @@ const AnchorLMS = () => {
   const isStudyPage = STUDY_PAGES.includes(activePage);
   const today = new Date(Date.now() + 5.5 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
+  const navigate = (page) => {
+    setActivePage(page);
+    setNavOpen(false);
+  };
+
   return (
     <div className="anchor-app">
       <AnchorSidebar
         activePage={activePage}
-        onNav={setActivePage}
+        onNav={navigate}
         profile={profile}
         reportDoneToday={dailyReports.some(r => r.date === today)}
         unreadCount={notifications.filter(n => !n.readAt).length}
+        isOpen={navOpen}
+        onClose={() => setNavOpen(false)}
       />
+      {navOpen && <div className="sidebar-backdrop" onClick={() => setNavOpen(false)} />}
       <div className="anchor-main">
         <AnchorTopbar
           activePage={activePage}
-          onNav={setActivePage}
+          onNav={navigate}
           unreadCount={notifications.filter(n => !n.readAt).length}
           profile={profile}
+          onMenuClick={() => setNavOpen(true)}
         />
 
         {isStudyPage ? (

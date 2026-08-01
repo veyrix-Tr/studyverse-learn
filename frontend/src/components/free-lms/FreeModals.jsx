@@ -41,7 +41,7 @@ const FreeModals = ({ openModal, onClose, onShowToast, toast }) => {
           <div className="fg"><label>Your Name</label><input className="fi" type="text" placeholder="Full name" /></div>
           <div className="fg"><label>Phone Number</label><input className="fi" type="tel" placeholder="+91 XXXXX XXXXX" /></div>
           <div className="fg"><label>Topic / Subject</label><input className="fi" type="text" placeholder="e.g. Electrostatics — Gauss's Law" /></div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '12px' }}>
             <div className="fg"><label>Preferred Date</label><input className="fi" type="date" /></div>
             <div className="fg">
               <label>Preferred Time</label>

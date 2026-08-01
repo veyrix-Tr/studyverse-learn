@@ -70,7 +70,21 @@ body.free-mode .free-app { display: flex; height: 100vh; }
 
 /* ── SIDEBAR ── */
 body.free-mode .sidebar { width: var(--sw); background: var(--navy); position: fixed; top: 0; left: 0; bottom: 0; z-index: 100; display: flex; flex-direction: column; border-right: 1px solid var(--bi); }
-body.free-mode .sb-logo { padding: 22px 22px 18px; border-bottom: 1px solid var(--bi); display: flex; align-items: center; gap: 11px; }
+body.free-mode .sb-logo { padding: 22px 22px 18px; border-bottom: 1px solid var(--bi); display: flex; align-items: center; gap: 11px; flex-shrink: 0; }
+
+/* Mobile drawer close button on the sidebar — hidden on desktop, shown <=1024px */
+body.free-mode .sb-close { display: none; margin-left: auto; width: 30px; height: 30px; border-radius: 8px; background: rgba(255,255,255,0.06); border: none; color: var(--inv3); align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; transition: all .15s; }
+body.free-mode .sb-close:hover { background: rgba(255,255,255,0.12); color: var(--inv); }
+
+/* Dim backdrop behind the mobile drawer */
+body.free-mode .sidebar-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.55); backdrop-filter: blur(2px); z-index: 250; animation: frBackdropIn .2s ease; }
+@keyframes frBackdropIn { from { opacity: 0; } to { opacity: 1; } }
+
+/* Mobile menu toggle in the topbar — hidden on desktop, shown <=1024px */
+body.free-mode .tb-hamburger,
+body.free-mode .fr-tb-hamburger { display: none; width: 38px; height: 38px; border-radius: 9px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12); align-items: center; justify-content: center; cursor: pointer; color: rgba(253,248,240,0.6); flex-shrink: 0; transition: all .15s; }
+body.free-mode .tb-hamburger:hover,
+body.free-mode .fr-tb-hamburger:hover { background: rgba(255,255,255,0.14); color: #FDF8F0; }
 body.free-mode .sb-mark { width: 36px; height: 36px; flex-shrink: 0; }
 body.free-mode .sb-words .w1 { font-family: var(--fb); font-weight: 700; font-size: 15px; letter-spacing: .06em; color: var(--inv); }
 body.free-mode .sb-words .w1 span { color: var(--gold); }
@@ -403,7 +417,7 @@ body.free-mode .ma { display: flex; gap: 9px; margin-top: 20px; justify-content:
 body.free-mode .pricing-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 14px; margin-bottom: 22px; }
 body.free-mode .price-card { background: var(--cream); border: 1px solid var(--b); border-radius: var(--rxl); padding: 24px; text-align: center; position: relative; box-shadow: var(--sh); transition: all .2s; }
 body.free-mode .price-card:hover { transform: translateY(-2px); box-shadow: var(--shm); }
-body.free-mode .price-card.featured { border: 2px solid var(--gold); background: var(--navy); }
+body.free-mode .price-card.featured { border: 2px solid var(--gold); background: var(--navy); padding-top: 46px; }
 body.free-mode .price-card.featured .pc-name,
 body.free-mode .price-card.featured .pc-price,
 body.free-mode .price-card.featured .pc-feat { color: var(--inv); }
@@ -426,7 +440,7 @@ body.free-mode .tpip { width: 7px; height: 7px; border-radius: 50%; background: 
 
 /* ── TABS ── */
 body.free-mode .tabs { display: flex; gap: 2px; background: var(--cream2); border: 1px solid var(--b); padding: 4px; border-radius: 9px; width: fit-content; margin-bottom: 20px; }
-body.free-mode .tab { padding: 7px 17px; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; color: var(--text3); transition: all .15s; }
+body.free-mode .tab { padding: 7px 17px; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; color: var(--text3); transition: all .15s; white-space: nowrap; flex-shrink: 0; }
 body.free-mode .tab.on { background: var(--cream); color: var(--text); box-shadow: 0 1px 4px rgba(15,31,61,0.06); }
 body.free-mode .tab:hover:not(.on) { color: var(--text); }
 
@@ -664,6 +678,14 @@ body.free-mode .sp-stat-l { font-size:9.5px; color:rgba(253,248,240,.4); text-tr
 body.free-mode .sp-stat-tile.done .sp-stat-v   { color:#86efac; }
 body.free-mode .sp-stat-tile.urgent .sp-stat-v { color:#fca5a5; }
 
+/* Dashboard's main content + 300px habit-card sidebar. A fixed 300px
+   column can't shrink, so it must switch to a single column before the
+   left side runs out of room (see the 860px responsive block below). */
+body.free-mode .sp-main-grid { display: grid; grid-template-columns: 1fr 300px; }
+
+/* Study-guidance "2-column body" — habits/topics list next to subject cards. */
+body.free-mode .ds-2col-body { display: grid; grid-template-columns: 1fr 1.2fr; }
+
 body.free-mode .sp-action-card {
   background:var(--cream); border:1.5px solid var(--b); border-radius:var(--rl);
   overflow:hidden; transition:box-shadow .2s;
@@ -797,4 +819,119 @@ body.free-mode .fr-feature-count {
   display:inline-block; background:var(--gold-dim); color:var(--gold);
   border-radius:20px; padding:2px 9px; font-size:11px; font-weight:700;
   margin-top:4px; width:fit-content;
+}
+
+/* ══════════ RESPONSIVE — Spark / Forge dashboard ══════════
+   The whole dashboard was desktop-only: a fixed 268px sidebar with no
+   way to collapse it, and a dozen multi-column grids with no fallback.
+   Below 1024px the sidebar becomes an off-canvas drawer (same pattern
+   as Anchor's), and progressively fewer columns + tighter spacing kick
+   in as the viewport narrows. ── */
+
+/* ── TABLET / small laptop: sidebar becomes an off-canvas drawer ── */
+@media (max-width: 1024px) {
+  body.free-mode .sidebar {
+    transform: translateX(-100%);
+    transition: transform .25s cubic-bezier(.4,0,.2,1);
+    z-index: 300;
+  }
+  body.free-mode .sidebar.open { transform: translateX(0); box-shadow: 12px 0 48px rgba(0,0,0,0.5); }
+  body.free-mode .sb-close,
+  body.free-mode .tb-hamburger,
+  body.free-mode .fr-tb-hamburger { display: flex; }
+  body.free-mode .sidebar-backdrop { display: block; }
+
+  body.free-mode .free-main { margin-left: 0; }
+
+  /* No room for the centred plan chip once the hamburger takes its place */
+  body.free-mode .fr-tb-spark-sub { display: none; }
+}
+
+/* ── MOBILE: collapse every multi-column layout, tighten spacing ── */
+@media (max-width: 860px) {
+  body.free-mode .g3,
+  body.free-mode .sp-subj-grid,
+  body.free-mode .tm2-subj-row { grid-template-columns: 1fr 1fr; }
+
+  /* The fixed 300px sidebar column and the 1.2fr habits column can't
+     shrink gracefully — stack them before they start squeezing the
+     main column into an unreadably narrow strip. */
+  body.free-mode .sp-main-grid,
+  body.free-mode .ds-2col-body { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 720px) {
+  body.free-mode .topbar { padding: 0 16px; gap: 10px; }
+  body.free-mode .ph { font-size: 15px; }
+  body.free-mode .fr-topbar { padding: 0 16px; gap: 10px; }
+  body.free-mode .fr-tb-title { font-size: 15px; }
+  body.free-mode .fr-tb-spark { position: static; transform: none; padding: 5px 11px 5px 9px; }
+  body.free-mode .content { padding: 18px 16px; }
+
+  body.free-mode .g2,
+  body.free-mode .g3,
+  body.free-mode .g4,
+  body.free-mode .sp-stat-row,
+  body.free-mode .fr-stats,
+  body.free-mode .sp-feature-grid,
+  body.free-mode .sp-subj-grid,
+  body.free-mode .tm2-grid,
+  body.free-mode .tm2-subj-row,
+  body.free-mode .score-deltas { grid-template-columns: 1fr; }
+
+  body.free-mode .rating-row { grid-template-columns: repeat(auto-fit, minmax(58px, 1fr)); }
+
+  body.free-mode .upgrade-banner,
+  body.free-mode .journey-header,
+  body.free-mode .fr-hero-top { flex-wrap: wrap; }
+  body.free-mode .journey-exam { text-align: left; }
+  body.free-mode .habit-row,
+  body.free-mode .session-teaser .st-faculty { flex-wrap: wrap; row-gap: 8px; }
+
+  body.free-mode .sp-hero,
+  body.free-mode .fr-hero { padding: 20px 20px 16px; }
+  body.free-mode .journey-container { padding: 22px 18px; }
+
+  body.free-mode .modal { padding: 22px 20px; }
+  body.free-mode .price-card { padding: 18px; }
+
+  /* Long resource-tab / week-filter strips scroll instead of overflowing */
+  body.free-mode .tm2-filters,
+  body.free-mode .tabs { max-width: 100%; overflow-x: auto; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+  body.free-mode .tm2-filters::-webkit-scrollbar,
+  body.free-mode .tabs::-webkit-scrollbar { display: none; }
+}
+
+/* ── SMALL PHONES ── */
+@media (max-width: 480px) {
+  body.free-mode .topbar,
+  body.free-mode .fr-topbar { height: 60px; min-height: 60px; padding: 0 12px; gap: 8px; }
+  body.free-mode .content { padding: 14px 12px; }
+
+  body.free-mode .fr-tb-spark-label { display: none; }
+  body.free-mode .fr-tb-spark { padding: 6px; }
+  body.free-mode .fr-tb-spark-dot { margin: 0; }
+
+  /* g4's tiles are simple number+label stat boxes — fine at 2 columns even
+     on tiny phones. g3 / sp-subj-grid / tm2-subj-row hold denser cards
+     (rings, badges, multi-line text) and stay at the single column the
+     720px breakpoint already set — widening them back to 2 here would
+     cramp them exactly on the narrowest screens. */
+  body.free-mode .g4 { grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  body.free-mode .stat { padding: 14px 16px; }
+  body.free-mode .stat-v { font-size: 22px; }
+  body.free-mode .card,
+  body.free-mode .card-dark { padding: 16px; }
+
+  body.free-mode .sp-hero-badge,
+  body.free-mode .fr-hero-badge { font-size: 10px; }
+  body.free-mode .fr-hero-name { font-size: 20px; }
+  body.free-mode .fr-countdown-num { font-size: 28px; }
+  body.free-mode .arc-track { height: 100px; }
+  body.free-mode .arc-node-label { max-width: 56px; }
+
+  body.free-mode .btn { padding: 8px 14px; font-size: 12.5px; }
+  body.free-mode .modal { padding: 18px 16px; }
+  body.free-mode .pricing-grid { gap: 10px; }
 }

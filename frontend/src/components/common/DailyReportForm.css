@@ -367,6 +367,25 @@
 .drp-recent-info { font-size: 12px; color: rgba(234,244,236,.55); flex: 1; line-height: 1.4; }
 
 @media (max-width: 900px) {
-  .drform-layout { grid-template-columns: 1fr; }
+  .drform-layout { grid-template-columns: 1fr; min-height: 0; }
   .drform-right { position: static; }
+}
+
+@media (max-width: 480px) {
+  .drform .dr-header { padding: 18px 18px 16px; }
+  .drform .dr-hdr-title { font-size: 1.2rem; }
+  .drform .dr-prog { padding: 0 18px; }
+  .drform .dr-body { padding: 18px 18px 22px; }
+  .drform .dr-done-card { margin: 0 18px 20px; padding: 16px 18px; }
+
+  .drform .dr-subj-grid { gap: 6px; }
+  .drform .dr-subj-input { font-size: 18px; }
+  .drform .dr-scale-group { gap: 4px; }
+  .drform .dr-scale-label { padding: 10px 4px; font-size: 15px; }
+
+  .drform .dr-field-row { flex-direction: column; gap: 2px; }
+  .drform .dr-field-lbl { width: auto; }
+
+  .drform .dr-nav { flex-wrap: wrap; }
+  .drform .dr-btn-back { flex: 1; }
 }

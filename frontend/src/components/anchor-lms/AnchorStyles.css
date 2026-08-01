@@ -75,6 +75,29 @@ body.anchor-mode .anchor-sb-scroll::-webkit-scrollbar-thumb { background: rgba(1
 body.anchor-mode .anchor-sb-scroll::-webkit-scrollbar-thumb:hover { background: rgba(134,239,172,.7); }
 body.anchor-mode .sb-bottom { border-top: 2px solid rgba(98,80,45,.35) !important; flex-shrink: 0; background: #060E09; }
 
+/* Mobile drawer close button — hidden on desktop, shown <=1024px */
+body.anchor-mode .sb-close {
+  display: none;
+  margin-left: auto;
+  width: 30px; height: 30px; border-radius: 8px;
+  background: rgba(234,244,236,0.06);
+  border: none; color: var(--t3);
+  align-items: center; justify-content: center;
+  cursor: pointer; flex-shrink: 0; transition: all .15s;
+}
+body.anchor-mode .sb-close:hover { background: rgba(234,244,236,0.12); color: var(--t1); }
+
+/* Backdrop behind the mobile drawer */
+body.anchor-mode .sidebar-backdrop {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.55);
+  backdrop-filter: blur(2px);
+  z-index: 250;
+  animation: aBackdropIn .2s ease;
+}
+@keyframes aBackdropIn { from { opacity: 0; } to { opacity: 1; } }
+
 /* Logo */
 body.anchor-mode .sb-logo { padding: 20px 20px 16px; border-bottom: 1px solid rgba(234,244,236,0.07); display: flex; align-items: center; gap: 11px; flex-shrink: 0; }
 body.anchor-mode .sb-words .w1 { font-family: var(--fb); font-weight: 700; font-size: 15px; letter-spacing: .07em; color: var(--t1); }
@@ -155,8 +178,21 @@ body.anchor-mode .topbar::after {
   pointer-events: none;
 }
 
+/* Mobile menu toggle — hidden on desktop, shown <=1024px */
+body.anchor-mode .tb-hamburger {
+  display: none;
+  width: 38px; height: 38px; border-radius: 10px;
+  background: rgba(234,244,236,0.05);
+  border: 1px solid rgba(234,244,236,0.1);
+  align-items: center; justify-content: center;
+  cursor: pointer; color: var(--t2); flex-shrink: 0;
+  transition: all .15s;
+}
+body.anchor-mode .tb-hamburger:hover { background: rgba(234,244,236,0.09); color: var(--t1); }
+
 /* Page title group */
-body.anchor-mode .tb-page { display: flex; align-items: center; gap: 10px; position: relative; z-index: 1; }
+body.anchor-mode .tb-page { display: flex; align-items: center; gap: 10px; position: relative; z-index: 1; min-width: 0; }
+body.anchor-mode .ph { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 body.anchor-mode .tb-page-bar {
   width: 3px; height: 20px;
   background: linear-gradient(180deg, var(--sage) 0%, rgba(74,222,128,0.2) 100%);
@@ -556,7 +592,90 @@ body.anchor-mode ::-webkit-scrollbar { width: 5px; }
 body.anchor-mode ::-webkit-scrollbar-track { background: var(--bg); }
 body.anchor-mode ::-webkit-scrollbar-thumb { background: var(--bg4); border-radius: 10px; }
 
-@media(max-width:1100px) { body.anchor-mode .g4 { grid-template-columns: 1fr 1fr; } body.anchor-mode .g3 { grid-template-columns: 1fr 1fr; } }
+/* ══════════════════════════════════════════════════════════════════════
+   RESPONSIVE — every Anchor page, tablet down to small phones
+   ══════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 1100px) {
+  body.anchor-mode .g4 { grid-template-columns: 1fr 1fr; }
+  body.anchor-mode .g3 { grid-template-columns: 1fr 1fr; }
+}
+
+/* ── TABLET / small laptop: sidebar becomes an off-canvas drawer ── */
+@media (max-width: 1024px) {
+  body.anchor-mode .sidebar {
+    transform: translateX(-100%);
+    transition: transform .25s cubic-bezier(.4,0,.2,1);
+    z-index: 300;
+  }
+  body.anchor-mode .sidebar.open { transform: translateX(0); box-shadow: 12px 0 48px rgba(0,0,0,0.5); }
+  body.anchor-mode .sb-close,
+  body.anchor-mode .tb-hamburger { display: flex; }
+  body.anchor-mode .sidebar-backdrop { display: block; }
+
+  body.anchor-mode .anchor-main { margin-left: 0; }
+
+  /* No room for the centred mentor chip once the hamburger takes its place */
+  body.anchor-mode .tb-mentor-chip { display: none; }
+}
+
+/* ── MOBILE: tighten every page's layout ── */
+@media (max-width: 720px) {
+  body.anchor-mode .topbar { padding: 0 16px; gap: 10px; }
+  body.anchor-mode .ph { font-size: 15px; }
+  body.anchor-mode .content { padding: 18px 16px; }
+
+  /* Submit Report collapses to an icon-only pill */
+  body.anchor-mode .tb-report-btn { padding: 9px; }
+  body.anchor-mode .tb-report-btn-text { display: none; }
+
+  body.anchor-mode .g2 { grid-template-columns: 1fr; }
+  body.anchor-mode .g4 { grid-template-columns: 1fr 1fr; }
+  body.anchor-mode .g3 { grid-template-columns: 1fr 1fr; }
+
+  body.anchor-mode .call-card { flex-wrap: wrap; }
+  body.anchor-mode .habit-row { flex-wrap: wrap; row-gap: 8px; }
+
+  body.anchor-mode .modal { padding: 22px 20px; }
+
+  /* Resource rows wrap instead of overflowing; the pill-tab strip scrolls */
+  body.anchor-mode .ac-res-tabs { max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+  body.anchor-mode .ac-res-tabs::-webkit-scrollbar { display: none; }
+  body.anchor-mode .ac-res-row { flex-wrap: wrap; }
+  body.anchor-mode .ac-res-info { flex: 1 1 160px; min-width: 0; }
+  body.anchor-mode .ac-res-actions { margin-left: auto; }
+
+  /* Study Tools pages (diagnostic / topic map / study plan) — shared with other tiers,
+     these grids have no mobile handling upstream, so collapse them here for Anchor. */
+  body.anchor-mode .sp-subj-grid,
+  body.anchor-mode .tm2-subj-row,
+  body.anchor-mode .tm2-grid,
+  body.anchor-mode .score-deltas,
+  body.anchor-mode .sp-feature-grid { grid-template-columns: 1fr; }
+  body.anchor-mode .sp-stat-row { grid-template-columns: 1fr 1fr; }
+}
+
+/* ── SMALL PHONES ── */
+@media (max-width: 480px) {
+  body.anchor-mode .topbar { height: 68px; min-height: 68px; padding: 0 12px; gap: 8px; }
+  body.anchor-mode .content { padding: 14px 12px; }
+
+  body.anchor-mode .g4 { grid-template-columns: 1fr 1fr; gap: 10px; }
+  body.anchor-mode .g3 { grid-template-columns: 1fr; }
+  body.anchor-mode .stat { padding: 14px 16px; }
+  body.anchor-mode .stat-v { font-size: 22px; }
+
+  body.anchor-mode .card { padding: 16px; }
+  body.anchor-mode .mcv2-stat-v { font-size: 17px; }
+
+  body.anchor-mode .parent-stats-grid { grid-template-columns: 1fr 1fr; }
+
+  body.anchor-mode .ri-field { flex-direction: column; gap: 3px; }
+  body.anchor-mode .ri-field-label { width: auto; }
+
+  body.anchor-mode .btn { padding: 8px 14px; font-size: 12.5px; }
+  body.anchor-mode .modal { padding: 18px 16px; }
+}
 
 /* ── STUDY GUIDANCE lock background — anchor theme ──
    --sp-lock-bg is undefined in free-mode → falls back to var(--cream2).
@@ -797,3 +916,6 @@ body.anchor-mode .ac-empty-card {
 body.anchor-mode .ac-empty-icon  { font-size: 32px; opacity: .4; margin-bottom: 12px; }
 body.anchor-mode .ac-empty-title { font-family: var(--fs); font-size: 16px; font-weight: 600; color: var(--t1); margin-bottom: 6px; }
 body.anchor-mode .ac-empty-sub   { font-size: 13px; color: var(--t3); line-height: 1.6; max-width: 320px; margin: 0 auto; }
+
+/* ── FREE RESOURCES fallback row — download button pinned right ── */
+body.anchor-mode .ac-res-btn { margin-left: auto; flex-shrink: 0; }

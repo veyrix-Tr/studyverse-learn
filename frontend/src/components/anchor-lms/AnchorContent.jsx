@@ -669,9 +669,9 @@ const AnchorContent = ({
 
       {/* ══════════ RESOURCES ══════════ */}
       <div className={pg('resources')}>
-        <div style={{ display: 'flex', gap: '2px', background: 'var(--bg3)', border: '1px solid var(--b)', padding: '4px', borderRadius: '9px', width: 'fit-content', marginBottom: '20px' }}>
+        <div className="ac-res-tabs" style={{ display: 'flex', gap: '2px', background: 'var(--bg3)', border: '1px solid var(--b)', padding: '4px', borderRadius: '9px', width: 'fit-content', marginBottom: '20px' }}>
           {['All', 'Study Material', 'Formula Sheet', 'Session Notes'].map((t, i) => (
-            <div key={t} onClick={() => setResTab(i)} style={{ padding: '7px 17px', borderRadius: '6px', fontSize: '13px', fontWeight: resTab === i ? 600 : 500, cursor: 'pointer', transition: 'all .15s', background: resTab === i ? 'var(--bg4)' : 'transparent', color: resTab === i ? 'var(--t1)' : 'var(--t3)', boxShadow: resTab === i ? '0 1px 4px rgba(0,0,0,0.3)' : 'none' }}>{t}</div>
+            <div key={t} onClick={() => setResTab(i)} style={{ padding: '7px 17px', borderRadius: '6px', fontSize: '13px', fontWeight: resTab === i ? 600 : 500, cursor: 'pointer', transition: 'all .15s', background: resTab === i ? 'var(--bg4)' : 'transparent', color: resTab === i ? 'var(--t1)' : 'var(--t3)', boxShadow: resTab === i ? '0 1px 4px rgba(0,0,0,0.3)' : 'none', whiteSpace: 'nowrap', flexShrink: 0 }}>{t}</div>
           ))}
         </div>
         {(() => {
@@ -682,10 +682,10 @@ const AnchorContent = ({
               <>
                 <div style={{ fontSize: '10.5px', color: 'var(--t3)', textTransform: 'uppercase', letterSpacing: '.09em', fontWeight: 600, marginBottom: '10px' }}>Free Resources</div>
                 {[{ name: 'NCERT Chemistry Class XI', meta: 'PDF • 18.4 MB', url: 'https://ncert.nic.in/textbook.php?kech1=0-14' }, { name: 'NCERT Mathematics Class XII', meta: 'PDF • 22.1 MB', url: 'https://ncert.nic.in/textbook.php?lemh1=0-13' }].map((r, i) => (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '13px 16px', borderRadius: 'var(--r)', background: 'var(--bg2)', border: '1px solid var(--b)', marginBottom: '8px', cursor: 'pointer', transition: 'all .15s' }} onClick={() => window.open(r.url, '_blank', 'noreferrer')} onMouseOver={e => e.currentTarget.style.borderColor = 'var(--gb)'} onMouseOut={e => e.currentTarget.style.borderColor = 'var(--b)'}>
+                  <div key={i} className="ac-res-row" style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '13px 16px', borderRadius: 'var(--r)', background: 'var(--bg2)', border: '1px solid var(--b)', marginBottom: '8px', cursor: 'pointer', transition: 'all .15s' }} onClick={() => window.open(r.url, '_blank', 'noreferrer')} onMouseOver={e => e.currentTarget.style.borderColor = 'var(--gb)'} onMouseOut={e => e.currentTarget.style.borderColor = 'var(--b)'}>
                     <div style={{ width: '38px', height: '38px', borderRadius: '9px', background: 'var(--gd)', border: '1px solid var(--gb)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
-                    <div><div style={{ fontSize: '13px', fontWeight: 500, color: 'var(--t1)' }}>{r.name}</div><div style={{ fontSize: '11.5px', color: 'var(--t3)', marginTop: '2px' }}>{r.meta}</div></div>
-                    <button className="btn btn-sm btn-ghost" style={{ marginLeft: 'auto', flexShrink: 0 }} onClick={e => { e.stopPropagation(); window.open(r.url, '_blank', 'noreferrer'); }}>↓ Download</button>
+                    <div className="ac-res-info"><div style={{ fontSize: '13px', fontWeight: 500, color: 'var(--t1)' }}>{r.name}</div><div style={{ fontSize: '11.5px', color: 'var(--t3)', marginTop: '2px' }}>{r.meta}</div></div>
+                    <button className="btn btn-sm btn-ghost ac-res-btn" onClick={e => { e.stopPropagation(); window.open(r.url, '_blank', 'noreferrer'); }}>↓ Download</button>
                   </div>
                 ))}
               </>
@@ -693,14 +693,14 @@ const AnchorContent = ({
           }
           if (filtered.length === 0) return <div style={{ fontSize: '13px', color: 'var(--t3)', padding: '32px 0', textAlign: 'center' }}>No {TYPE_MAP[resTab] || 'materials'} available yet.</div>;
           return filtered.map(r => (
-            <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '14px 16px', borderRadius: 'var(--rl)', background: 'var(--bg2)', border: '1px solid var(--b)', marginBottom: '10px', transition: 'all .15s', cursor: 'pointer' }} onMouseOver={e => { e.currentTarget.style.borderColor = 'var(--b2)'; e.currentTarget.style.background = 'var(--bg3)'; }} onMouseOut={e => { e.currentTarget.style.borderColor = 'var(--b)'; e.currentTarget.style.background = 'var(--bg2)'; }}>
+            <div key={r.id} className="ac-res-row" style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '14px 16px', borderRadius: 'var(--rl)', background: 'var(--bg2)', border: '1px solid var(--b)', marginBottom: '10px', transition: 'all .15s', cursor: 'pointer' }} onMouseOver={e => { e.currentTarget.style.borderColor = 'var(--b2)'; e.currentTarget.style.background = 'var(--bg3)'; }} onMouseOut={e => { e.currentTarget.style.borderColor = 'var(--b)'; e.currentTarget.style.background = 'var(--bg2)'; }}>
               <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'var(--gd)', border: '1px solid var(--gb)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
-              <div style={{ flex: 1, minWidth: 0 }}>
+              <div className="ac-res-info" style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: '13.5px', fontWeight: 600, color: 'var(--t1)', marginBottom: '2px' }}>{r.title}</div>
                 <div style={{ fontSize: '12px', color: 'var(--t3)' }}>{r.subject} · {r.type} · By {r.facultyName}</div>
                 {r.description && <div style={{ fontSize: '11.5px', color: 'var(--t3)', marginTop: '3px', fontStyle: 'italic' }}>{r.description}</div>}
               </div>
-              <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
+              <div className="ac-res-actions" style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
                 <a href={`${import.meta.env.VITE_API_URL}/api/files/proxy?url=${encodeURIComponent(r.cloudinaryUrl)}`} target="_blank" rel="noreferrer" className="btn btn-sm btn-ghost" style={{ textDecoration: 'none' }}>↗ View</a>
                 <a href={`${import.meta.env.VITE_API_URL}/api/files/proxy?url=${encodeURIComponent(r.cloudinaryUrl)}&download=1`} target="_blank" rel="noreferrer" className="btn btn-sm btn-green" style={{ textDecoration: 'none' }}>↓ Download</a>
               </div>
@@ -718,7 +718,7 @@ const AnchorContent = ({
               <div style={{ fontSize: '13px', color: 'var(--t2)' }}>Your child's progress — updated each time they submit a daily report.</div>
             </div>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '12px' }}>
+          <div className="parent-stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '12px' }}>
             {[
               { v: dailyReports.length > 0 ? String(dailyReports.length) : '—', l: 'Reports (last 30d)', c: 'var(--sage)' },
               { v: drStreak > 0 ? String(drStreak) : '—', l: 'Day Streak', c: 'var(--amber)' },
@@ -785,7 +785,7 @@ const AnchorContent = ({
       {/* ══════════ NOTIFICATIONS ══════════ */}
       <div className={pg('notif')}>
         {/* Header */}
-        <div style={{ background: 'linear-gradient(135deg,var(--bg3) 0%,var(--bg4) 100%)', borderRadius: 'var(--rl)', padding: '20px 22px', marginBottom: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}>
+        <div style={{ background: 'linear-gradient(135deg,var(--bg3) 0%,var(--bg4) 100%)', borderRadius: 'var(--rl)', padding: '20px 22px', marginBottom: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' }}>
           <div>
             <div style={{ fontFamily: 'var(--fs)', fontSize: '18px', fontWeight: 700, color: 'var(--t1)', marginBottom: '3px' }}>Notifications</div>
             <div style={{ fontSize: '12.5px', color: 'var(--t3)' }}>

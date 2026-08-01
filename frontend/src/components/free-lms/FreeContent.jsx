@@ -552,7 +552,7 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
                   <div style={{ background: c.bg, borderRadius: 'var(--rl)', padding: '22px 24px', marginBottom: '20px', border: `1px solid ${c.border}`, boxShadow: '0 2px 12px rgba(59,130,246,.07)' }}>
 
                     {/* Top row */}
-                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '14px', marginBottom: isAssigned || isPending ? '0' : '16px' }}>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', gap: '14px', marginBottom: isAssigned || isPending ? '0' : '16px' }}>
                       <div style={{ width: '46px', height: '46px', borderRadius: '13px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: c.iconBg, border: `1.5px solid ${c.iconBorder}` }}>
                         {isAssigned
                           ? <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={c.accent} strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
@@ -560,7 +560,7 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
                           ? <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={c.accent} strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                           : <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={c.accent} strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>}
                       </div>
-                      <div style={{ flex: 1 }}>
+                      <div style={{ flex: '1 1 140px', minWidth: '140px' }}>
                         <div style={{ fontFamily: 'var(--fs)', fontSize: '16px', fontWeight: 700, color: c.title, marginBottom: '3px' }}>
                           {isAssigned ? 'Session scheduled' : isPending ? 'Request in review' : 'Book a 1-on-1 Session'}
                         </div>
@@ -572,7 +572,7 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
                             : '60 minutes with one of our faculty, focused on exactly what you need.'}
                         </div>
                       </div>
-                      <button className="btn btn-sm" onClick={() => onNav('sessions')} style={{ background: c.accent, color: '#fff', border: 'none', fontWeight: 600, flexShrink: 0 }}>
+                      <button className="btn btn-sm" onClick={() => onNav('sessions')} style={{ background: c.accent, color: '#fff', border: 'none', fontWeight: 600, flexShrink: 0, marginLeft: 'auto' }}>
                         {active ? 'View' : 'Request'}
                       </button>
                     </div>
@@ -581,7 +581,7 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
                     {!active && (
                       <>
                         <div style={{ height: '1px', background: 'rgba(255,255,255,.1)', margin: '14px 0' }} />
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '10px' }}>
                           {[
                             { icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.accent} strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>, text: '60 min session' },
                             { icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.accent} strokeWidth="2" strokeLinecap="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>, text: 'Your topic, your pace' },
@@ -666,7 +666,7 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
                 </div>
 
                 {/* ── MAIN GRID ── */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: '16px', marginBottom: '16px' }}>
+                <div className="sp-main-grid" style={{ gap: '16px', marginBottom: '16px' }}>
 
                   {/* LEFT — diagnostic CTA or priority topics */}
                   <div className="sp-action-card">
@@ -712,7 +712,7 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
                           All topics are in good shape. Keep up the consistency.
                         </div>
                       ) : (
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '10px' }}>
                           {[
                             { icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>, title: '~10 minutes', desc: 'Quick and precise. No long tests.' },
                             { icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="2" strokeLinecap="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>, title: 'Self-rate + MCQs', desc: 'Your input confirmed by real questions.' },
@@ -793,7 +793,7 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
                       onMouseOver={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 28px rgba(15,31,61,.15)'; }}
                       onMouseOut={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = ''; }}>
                       {!active && <div style={{ position: 'absolute', top: -40, right: -40, width: 140, height: 140, borderRadius: '50%', background: 'rgba(232,168,48,.06)', pointerEvents: 'none' }} />}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '20px' }}>
                         <div style={{ width: '52px', height: '52px', borderRadius: '14px', background: sDim, border: `1.5px solid ${isAssigned ? 'rgba(34,197,94,.3)' : isPending ? 'rgba(232,168,48,.3)' : 'rgba(232,168,48,.28)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                           {isAssigned
                             ? <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={sAccent} strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
@@ -801,7 +801,7 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
                             ? <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={sAccent} strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                             : <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={sAccent} strokeWidth="2" strokeLinecap="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.39 2 2 0 0 1 3.6 1.21h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.38a16 16 0 0 0 6 6l.94-.94a2 2 0 0 1 2.25-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>}
                         </div>
-                        <div style={{ flex: 1 }}>
+                        <div style={{ flex: '1 1 180px', minWidth: '180px' }}>
                           <div style={{ fontFamily: 'var(--fs)', fontSize: '18px', fontWeight: 700, color: sTitle, marginBottom: '5px' }}>
                             {isAssigned ? 'Session scheduled' : isPending ? 'Request under review' : 'Book a 1-on-1 Session'}
                           </div>
@@ -814,14 +814,14 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
                           </div>
                         </div>
                         {!active
-                          ? <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'flex-end' }}>
+                          ? <div style={{ flexShrink: 0, marginLeft: 'auto', display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'flex-end' }}>
                               <button className="btn btn-navy" style={{ whiteSpace: 'nowrap' }} onClick={e => { e.stopPropagation(); onNav('sessions'); }}>Request Session →</button>
                               <span style={{ fontSize: '11px', color: 'rgba(15,31,61,.4)' }}>₹99 per session</span>
                             </div>
                           : <button className="btn btn-sm" onClick={e => { e.stopPropagation(); onNav('sessions'); }} style={{ background: sAccent, color: '#fff', border: 'none', fontWeight: 600, flexShrink: 0 }}>View →</button>}
                       </div>
                       {!active && (
-                        <div style={{ display: 'flex', gap: '28px', marginTop: '16px', paddingTop: '16px', borderTop: `1px solid ${sBorder}` }}>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', rowGap: '10px', columnGap: '28px', marginTop: '16px', paddingTop: '16px', borderTop: `1px solid ${sBorder}` }}>
                           {['Your topic, your pace', 'Matched to the right faculty', 'Confirmed within 24 hours', 'No plan needed — pay per session'].map((f, i) => (
                             <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: sSub, fontWeight: 500 }}>
                               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={sAccent} strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
@@ -999,7 +999,7 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
                   </div>
 
                   {/* 2-column body */}
-                  <div style={{ padding:'16px 20px', display:'grid', gridTemplateColumns:'1fr 1.2fr', gap:'18px' }}>
+                  <div className="ds-2col-body" style={{ padding:'16px 20px', gap:'18px' }}>
 
                     {/* LEFT — habits + maintain */}
                     <div style={{ animation:'dsLeft .45s cubic-bezier(0.4,0,0.2,1) .2s both' }}>
@@ -1036,7 +1036,7 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
                     {/* RIGHT — subject cards + this week */}
                     <div style={{ animation:'dsRight .45s cubic-bezier(0.4,0,0.2,1) .25s both' }}>
                       <div style={{ fontSize:'10px', fontWeight:700, color:'#8896B3', textTransform:'uppercase', letterSpacing:'.07em', marginBottom:'8px' }}>Subject Priority</div>
-                      <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'8px', marginBottom:'14px' }}>
+                      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(84px, 1fr))', gap:'8px', marginBottom:'14px' }}>
                         {studyPlan.subjectFocus.map((s, i) => (
                           <div key={i} style={{ background:'#fff', border:'1px solid rgba(15,31,61,0.08)', borderRadius:'13px', padding:'12px 8px', textAlign:'center', borderTop:`3px solid ${CLR[s.urgencyColor]||CLR.gray}`, animation:`dsSubj .45s cubic-bezier(0.34,1.4,0.64,1) ${0.3+i*0.08}s both` }}>
                             <div style={{ fontSize:'18px', fontWeight:800, color:'#0F1F3D', lineHeight:1, marginBottom:'4px' }}>{s.scorePct !== null ? s.scorePct+'%' : 'N/A'}</div>
@@ -1099,7 +1099,7 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
           <div className="tm2-locked">
             <div className="tm2-lock-blur">
               <div style={{ padding:'0 0 20px' }}>
-                <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'10px', marginBottom:'14px' }}>
+                <div className="tm2-subj-row" style={{ marginBottom:'14px' }}>
                   {['Physics','Mathematics','Chemistry'].map(s => (
                     <div key={s} style={{ background:'var(--cream)', border:'1px solid var(--b)', borderRadius:'16px', padding:'14px 12px', display:'flex', alignItems:'center', gap:'10px' }}>
                       <div style={{ width:'68px', height:'68px', borderRadius:'50%', background:'var(--cream2)', flexShrink:0 }} />
@@ -1118,7 +1118,7 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
                   <div className="sk" style={{ height:10, width:'8%' }} />
                   <div style={{ flex:1, height:1, background:'var(--b)' }} />
                 </div>
-                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px' }}>
+                <div className="tm2-grid">
                   {[1,2,3,4].map(i => (
                     <div key={i} style={{ background:'var(--cream)', border:'1px solid var(--b)', borderRadius:'14px', padding:'14px 14px 12px 18px', display:'flex', flexDirection:'column', gap:'8px' }}>
                       <div style={{ display:'flex', gap:'10px', alignItems:'flex-start' }}>
@@ -1141,7 +1141,7 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
                   <div className="sk" style={{ height:10, width:'9%' }} />
                   <div style={{ flex:1, height:1, background:'var(--b)' }} />
                 </div>
-                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px' }}>
+                <div className="tm2-grid">
                   {[1,2,3,4].map(i => (
                     <div key={i} style={{ background:'var(--cream)', border:'1px solid var(--b)', borderRadius:'14px', padding:'14px 14px 12px 18px', display:'flex', flexDirection:'column', gap:'8px' }}>
                       <div style={{ display:'flex', gap:'10px', alignItems:'flex-start' }}>
@@ -2292,7 +2292,7 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
                   />
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '14px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '12px', marginBottom: '14px' }}>
                   <div>
                     <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--text2)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '.06em' }}>Your phone number</label>
                     <input
@@ -2553,7 +2553,7 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
           <div style={{ fontFamily: 'var(--fs)', fontSize: '26px', fontWeight: 700, color: 'var(--text)', marginBottom: '6px' }}>Four plans. One mission.</div>
           <div style={{ fontSize: '13.5px', color: 'var(--text2)' }}>Start free with Spark. Upgrade when it makes sense.</div>
         </div>
-        <div className="pricing-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', gap: '14px' }}>
+        <div className="pricing-grid">
           {/* ── Spark ── */}
           <div className="price-card">
             <div className="pc-name">Spark</div>
