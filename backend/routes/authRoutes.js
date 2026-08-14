@@ -27,9 +27,9 @@ router.get('/google/callback',
 
       // ── Existing user → login directly ──────────────────
       if (existingUser && existingUser.password !== '') {
-        // Block deprecated plans (forge, apex)
+        // Block deprecated plans (apex only)
         let plan = existingUser.studentProfile?.plan;
-        if (plan === 'forge' || plan === 'apex') {
+        if (plan === 'apex') {
           return res.redirect(`${process.env.CLIENT_URL}/login?error=plan-deprecated&plan=${plan}`);
         }
 
