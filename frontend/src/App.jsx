@@ -6,6 +6,7 @@ import StudentLMS from './pages/StudentLMS'
 import FreeLMS from './pages/FreeLMS'
 import AnchorLMS from './pages/AnchorLMS'
 import GoogleCallback from './pages/GoogleCallback'
+import LiveClassRoom from './components/live/LiveClassRoom'
 
 export const getTokenPayload = () => {
   const token = localStorage.getItem('token');
@@ -92,6 +93,7 @@ function App() {
       {/* Student — premium */}
       <Route path="/student-v2/:id"       element={<AuthGuard expectedRole="student" requirePlan="premium"><StudentLMS /></AuthGuard>} />
       <Route path="/student-v2/:id/:page" element={<AuthGuard expectedRole="student" requirePlan="premium"><StudentLMS /></AuthGuard>} />
+      <Route path="/student-v2/:id/live/:sessionId" element={<AuthGuard expectedRole="student" requirePlan="premium"><LiveClassRoom role="student" /></AuthGuard>} />
 
       {/* Student — Anchor */}
       <Route path="/anchor/:id"       element={<AuthGuard expectedRole="student" requirePlan="anchor"><AnchorLMS /></AuthGuard>} />
@@ -104,6 +106,7 @@ function App() {
       {/* Faculty */}
       <Route path="/faculty/:id"       element={<AuthGuard expectedRole="faculty"><FacultyLMS /></AuthGuard>} />
       <Route path="/faculty/:id/:page" element={<AuthGuard expectedRole="faculty"><FacultyLMS /></AuthGuard>} />
+      <Route path="/faculty/:id/live/:sessionId" element={<AuthGuard expectedRole="faculty"><LiveClassRoom role="faculty" /></AuthGuard>} />
 
       {/* Admin */}
       <Route path="/admin/:id"       element={<AuthGuard expectedRole="admin"><AdminLMS expectedRole="admin" /></AuthGuard>} />

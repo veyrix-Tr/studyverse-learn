@@ -117,6 +117,11 @@ model Session {
   note        String?
   createdAt   DateTime @default(now())
 
+  zoomMeetingId String?
+  joinUrl       String?
+  startUrl      String?
+  zoomPassword  String?
+
   facultyId Int
   faculty   FacultyProfile @relation(fields: [facultyId], references: [id], onDelete: Cascade)
 }

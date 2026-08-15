@@ -4,12 +4,58 @@ import { useParams } from 'react-router-dom';
 const CLOUD_NAME    = 'dnotkgppz';
 const UPLOAD_PRESET = 'faculty_resources';
 
-const FacultyModals = ({ openModal, onClose, onShowToast, toast, detailOpen, selectedStudent, onCloseDetail, onOpenModal, onNav, onResourceAdded }) => {
+const FacultyModals = ({ openModal, onClose, onShowToast, toast, detailOpen, selectedStudent, onCloseDetail, onOpenModal, onNav, onResourceAdded, onSessionCreated }) => {
   const { id: userId } = useParams();
   const isOpen = (id) => openModal === id ? ' open' : '';
   const s = selectedStudent || {};
   const [broadcastText, setBroadcastText] = useState('');
   const [broadcasting, setBroadcasting] = useState(false);
+
+  // Schedule Session state
+  const [sessForm, setSessForm] = useState({ title: '', subject: 'Physics', grade: '11', date: '', time: '', duration: 45 });
+  const [sessLoading, setSessLoading] = useState(false);
+  const [sessError, setSessError] = useState('');
+
+  const resetSessForm = () => {
+    setSessForm({ title: '', subject: 'Physics', grade: '11', date: '', time: '', duration: 45 });
+    setSessError('');
+  };
+
+  const scheduleSession = async () => {
+    if (!sessForm.title.trim() || !sessForm.grade || !sessForm.date || !sessForm.time) {
+      setSessError('Please fill in all fields.');
+      return;
+    }
+    const scheduledAt = new Date(`${sessForm.date}T${sessForm.time}`);
+    if (isNaN(scheduledAt.getTime())) { setSessError('Invalid date/time.'); return; }
+
+    setSessLoading(true);
+    setSessError('');
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/faculty/${userId}/sessions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          title: sessForm.title.trim(),
+          subject: sessForm.subject,
+          grade: sessForm.grade,
+          scheduledAt: scheduledAt.toISOString(),
+          duration: Number(sessForm.duration),
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Failed to schedule session');
+      resetSessForm();
+      onClose();
+      onShowToast('Session scheduled — Zoom meeting created, students notified ✓');
+      onSessionCreated?.(data);
+    } catch (err) {
+      setSessError(err.message);
+    } finally {
+      setSessLoading(false);
+    }
+  };
 
   // Resource upload state
   const [resTitle, setResTitle] = useState('');
@@ -162,24 +208,40 @@ const FacultyModals = ({ openModal, onClose, onShowToast, toast, detailOpen, sel
       <div className={`overlay${isOpen('schedule-modal')}`} onClick={e => e.target.classList.contains('overlay') && onClose()}>
         <div className="modal">
           <div className="mt">Schedule a Session</div>
-          <div className="ms">Set the time, topic, and student. Student will be notified automatically.</div>
-          <div className="fg"><label>Student</label>
-            <select className="finput"><option>Rahul Mehta</option><option>Sneha Kapoor</option><option>Priya Desai</option><option>Arjun Singh</option><option>Vanya Rao</option><option>Kavya Menon</option></select>
-          </div>
-          <div className="fg"><label>Topic</label><input className="finput" type="text" placeholder="e.g. Electrostatics — Gauss's Law" /></div>
-          <div className="fg"><label>Subject</label>
-            <select className="finput"><option>Chemistry</option><option>Mathematics</option><option>Physics</option><option>Biology</option></select>
+          <div className="ms">A Zoom meeting is created automatically and eligible students are notified.</div>
+          <div className="fg"><label>Topic</label>
+            <input className="finput" type="text" placeholder="e.g. Electrostatics — Gauss's Law" value={sessForm.title} onChange={e => setSessForm(f => ({ ...f, title: e.target.value }))} />
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
-            <div className="fg"><label>Date</label><input className="finput" type="date" /></div>
-            <div className="fg"><label>Time</label><input className="finput" type="time" /></div>
+            <div className="fg"><label>Subject</label>
+              <select className="finput" value={sessForm.subject} onChange={e => setSessForm(f => ({ ...f, subject: e.target.value }))}>
+                <option>Physics</option><option>Chemistry</option><option>Maths</option><option>Biology</option>
+              </select>
+            </div>
+            <div className="fg"><label>Grade</label>
+              <select className="finput" value={sessForm.grade} onChange={e => setSessForm(f => ({ ...f, grade: e.target.value }))}>
+                <option value="11">11</option><option value="12">12</option><option value="Dropper">Dropper</option>
+              </select>
+            </div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
+            <div className="fg"><label>Date</label><input className="finput" type="date" value={sessForm.date} onChange={e => setSessForm(f => ({ ...f, date: e.target.value }))} /></div>
+            <div className="fg"><label>Time</label><input className="finput" type="time" value={sessForm.time} onChange={e => setSessForm(f => ({ ...f, time: e.target.value }))} /></div>
           </div>
           <div className="fg"><label>Duration</label>
-            <select className="finput"><option>45 minutes</option><option>60 minutes</option><option>75 minutes</option><option>90 minutes</option></select>
+            <select className="finput" value={sessForm.duration} onChange={e => setSessForm(f => ({ ...f, duration: e.target.value }))}>
+              <option value={45}>45 minutes</option><option value={60}>60 minutes</option><option value={75}>75 minutes</option><option value={90}>90 minutes</option>
+            </select>
           </div>
+          <div style={{ fontSize: '12px', color: 'var(--text3)', marginTop: '2px' }}>
+            Auto-notifies all Apex students in Grade {sessForm.grade} taking {sessForm.subject}.
+          </div>
+          {sessError && <div style={{ color: '#e5484d', fontSize: '13px', marginTop: '6px' }}>{sessError}</div>}
           <div className="ma">
-            <button className="btn btn-ghost btn-sm" onClick={() => { onClose(); }}>Cancel</button>
-            <button className="btn btn-gold btn-sm" onClick={() => { onClose(); onShowToast('Session scheduled. Student notified ✓'); }}>Schedule →</button>
+            <button className="btn btn-ghost btn-sm" onClick={() => { resetSessForm(); onClose(); }}>Cancel</button>
+            <button className="btn btn-gold btn-sm" disabled={sessLoading} onClick={scheduleSession}>
+              {sessLoading ? 'Scheduling…' : 'Schedule →'}
+            </button>
           </div>
         </div>
       </div>

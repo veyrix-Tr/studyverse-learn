@@ -449,6 +449,13 @@ const FacultyLMS = () => {
         onOpenModal={setOpenModal}
         onNav={setActivePage}
         onResourceAdded={(r) => setResources(prev => [r, ...prev])}
+        onSessionCreated={() => {
+          const token = localStorage.getItem('token');
+          fetch(`${import.meta.env.VITE_API_URL}/api/faculty/${userId}/sessions`, { headers: { Authorization: `Bearer ${token}` } })
+            .then(r => r.ok ? r.json() : null)
+            .then(data => { if (Array.isArray(data)) setSessions(data); })
+            .catch(() => {});
+        }}
       />
     </div>
   );

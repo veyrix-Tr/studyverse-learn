@@ -3,6 +3,7 @@ const router   = express.Router({ mergeParams: true });
 const prisma   = require('../lib/prisma');
 const { requireAuth, validateUrlUser } = require('../middleware/auth');
 const { generateStudyPlan } = require('../lib/studyPlanAlgorithm');
+const zoom     = require('../lib/zoom');
 
 // GET /api/student/me
 router.get('/me', requireAuth, async (req, res) => {
@@ -250,10 +251,40 @@ router.get('/sessions', requireAuth, async (req, res) => {
       duration: s.duration,
       note: s.note || null,
       facultyName: s.faculty.user.name,
+      hasZoom: !!s.zoomMeetingId,
     })));
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to fetch sessions' });
+  }
+});
+
+// POST /api/student/sessions/:id/zoom-signature — generates a per-join SDK signature for an eligible student
+router.post('/sessions/:id/zoom-signature', requireAuth, async (req, res) => {
+  try {
+    const profile = await prisma.studentProfile.findUnique({ where: { userId: req.params.userId } });
+    if (!profile || profile.plan !== 'apex') return res.status(403).json({ error: 'Not eligible for live classes' });
+
+    const session = await prisma.session.findUnique({ where: { id: parseInt(req.params.id) } });
+    if (!session) return res.status(404).json({ error: 'Session not found' });
+
+    const subjects = EXAM_SUBJECTS[profile.examTarget] || [];
+    const eligible = profile.grade === session.grade && subjects.includes(session.subject);
+    if (!eligible) return res.status(403).json({ error: 'Not eligible for this session' });
+
+    if (!session.zoomMeetingId) return res.status(400).json({ error: 'This session has no Zoom meeting set up' });
+
+    const signature = zoom.generateSdkSignature({ meetingNumber: session.zoomMeetingId, role: 0 });
+    res.json({
+      signature,
+      meetingNumber: session.zoomMeetingId,
+      password: session.zoomPassword,
+      sdkKey: process.env.ZOOM_SDK_KEY,
+    });
+  } catch (err) {
+    if (err instanceof zoom.ZoomConfigError) return res.status(500).json({ error: 'Zoom is not configured on this server yet.' });
+    console.error(err);
+    res.status(500).json({ error: 'Failed to generate Zoom signature' });
   }
 });
 

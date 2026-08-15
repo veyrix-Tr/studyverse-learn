@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, Fragment } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 
 const fmtTime = (iso) => new Date(iso).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' });
 const fmtDate = (iso) => new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
@@ -138,6 +138,7 @@ const pctFlag  = (p) => p >= 75 ? ['On track', 'pp'] : p >= 60 ? ['Progressing',
 
 const FacultyContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, sessions = [], doubts = [], students = [], resources = [], onDoubtAnswered, onSessionNoteUpdated, onResourceDeleted, onResourceAdded, weeklyReports = [], onReportCreated, onReportUpdated, onReportSubmitted, onReportDeleted, parentFeedback = [], mentorStudents = [], onMentorStudentUpdated, mentorDailyReports = [], alerts = [], onMarkAlertRead, onMarkAllAlertsRead }) => {
   const { id: userId } = useParams();
+  const navigate = useNavigate();
   const firstName = profile?.name?.split(' ').find(p => !p.startsWith('Dr')) || profile?.name?.split(' ')[0] || 'there';
   const [scheduleTab, setScheduleTab] = useState(0);
   const [doubtsTab, setDoubtsTab] = useState(0);
@@ -478,8 +479,8 @@ const FacultyContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '5px' }}>
                     <div className={`sched-status ${live ? 's-live' : upcoming ? 's-up' : ''}`} style={live ? { display: 'flex', alignItems: 'center', gap: 5 } : {}}>{live ? <><span style={{ width: 7, height: 7, borderRadius: '50%', background: '#ef4444', display: 'inline-block', animation: 'pulse 1.5s infinite', flexShrink: 0 }} />Live</> : upcoming ? 'Upcoming' : 'Completed'}</div>
                     {(live || canStart(s.scheduledAt)) && (
-                      s.startUrl
-                        ? <a href={s.startUrl} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} className="btn btn-sm" style={{ background: live ? 'var(--gold)' : '#16a34a', color: live ? '#0F1F3D' : '#fff', textDecoration: 'none', fontSize: '11px', padding: '3px 10px', fontWeight: 600 }}>{live ? 'Start Now' : 'Start'}</a>
+                      s.zoomMeetingId
+                        ? <button className="btn btn-sm" onClick={e => { e.stopPropagation(); navigate(`/faculty/${userId}/live/${s.id}`); }} style={{ background: live ? 'var(--gold)' : '#16a34a', color: live ? '#0F1F3D' : '#fff', fontSize: '11px', padding: '3px 10px', fontWeight: 600 }}>{live ? 'Start Now' : 'Start'}</button>
                         : <button className="btn btn-sm" onClick={e => { e.stopPropagation(); onShowToast('Set up Zoom in the schedule modal to get a start link'); }} style={{ background: live ? 'var(--gold)' : '#16a34a', color: live ? '#0F1F3D' : '#fff', fontSize: '11px', padding: '3px 10px', fontWeight: 600 }}>{live ? 'Start Now' : 'Start'}</button>
                     )}
                   </div>
@@ -651,13 +652,13 @@ const FacultyContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
                             </button>
                             {!past && <button className="btn btn-ghost btn-sm" disabled={sendingReminder === s.id} onClick={() => sendReminder(s.id)}>{sendingReminder === s.id ? 'Sending…' : 'Remind'}</button>}
                             {isLive(s.scheduledAt, s.duration) && (
-                              s.startUrl
-                                ? <a href={s.startUrl} target="_blank" rel="noreferrer" className="btn btn-sm" style={{ background: 'var(--gold)', color: '#0F1F3D', textDecoration: 'none', fontWeight: 600, animation: 'pulse 1.5s infinite' }}>Start Now</a>
+                              s.zoomMeetingId
+                                ? <button className="btn btn-sm" style={{ background: 'var(--gold)', color: '#0F1F3D', fontWeight: 600, animation: 'pulse 1.5s infinite' }} onClick={() => navigate(`/faculty/${userId}/live/${s.id}`)}>Start Now</button>
                                 : <button className="btn btn-sm" style={{ background: 'var(--gold)', color: '#0F1F3D', fontWeight: 600, animation: 'pulse 1.5s infinite' }} onClick={() => onShowToast('Set up Zoom in the schedule modal to get a start link')}>Start Now</button>
                             )}
                             {!past && canStart(s.scheduledAt) && (
-                              s.startUrl
-                                ? <a href={s.startUrl} target="_blank" rel="noreferrer" className="btn btn-sm" style={{ background: '#16a34a', color: '#fff', textDecoration: 'none' }}>Start</a>
+                              s.zoomMeetingId
+                                ? <button className="btn btn-sm" style={{ background: '#16a34a', color: '#fff' }} onClick={() => navigate(`/faculty/${userId}/live/${s.id}`)}>Start</button>
                                 : <button className="btn btn-sm" style={{ background: '#16a34a', color: '#fff' }} onClick={() => onShowToast('Set up Zoom in the schedule modal to get a start link')}>Start</button>
                             )}
                             {past && s.recordingUrl && (

@@ -3,6 +3,7 @@ const router     = express.Router({ mergeParams: true });
 const prisma     = require('../lib/prisma');
 const { requireAuth } = require('../middleware/auth');
 const { v2: cloudinary } = require('cloudinary');
+const zoom       = require('../lib/zoom');
 require('dotenv').config();
 
 cloudinary.config({
@@ -79,11 +80,127 @@ router.get('/sessions', requireAuth, async (req, res) => {
         note: s.note || null,
         enrolledCount: eligible.length,
         enrolledStudents: eligible.map(sp => sp.user.name),
+        zoomMeetingId: s.zoomMeetingId || null,
+        joinUrl: s.joinUrl || null,
+        startUrl: s.startUrl || null,
       };
     }));
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to fetch sessions' });
+  }
+});
+
+// POST /api/faculty/sessions — schedule a new live class (Apex only). Creates
+// a real Zoom meeting via Server-to-Server OAuth and notifies eligible students.
+router.post('/sessions', requireAuth, async (req, res) => {
+  try {
+    const fp = await prisma.facultyProfile.findUnique({
+      where: { userId: req.params.userId },
+      include: { user: { select: { name: true } } },
+    });
+    if (!fp) return res.status(403).json({ error: 'Not a faculty' });
+
+    const { title, subject, grade, scheduledAt, duration } = req.body;
+    if (!title?.trim() || !subject || !grade || !scheduledAt || !duration) {
+      return res.status(400).json({ error: 'title, subject, grade, scheduledAt, duration are required' });
+    }
+
+    const startDate = new Date(scheduledAt);
+    if (isNaN(startDate.getTime())) return res.status(400).json({ error: 'Invalid scheduledAt' });
+
+    const dayOfWeek = startDate.toLocaleDateString('en-US', { weekday: 'long', timeZone: 'Asia/Kolkata' });
+
+    let zoomFields;
+    try {
+      zoomFields = await zoom.createMeeting({
+        topic: `${title.trim()} — ${subject}`,
+        startTime: startDate.toISOString(),
+        durationMin: Number(duration),
+      });
+    } catch (err) {
+      if (err instanceof zoom.ZoomConfigError) {
+        return res.status(500).json({ error: 'Zoom is not configured on this server yet. Ask an admin to add the ZOOM_* env vars.' });
+      }
+      console.error('Zoom createMeeting failed', err.response?.data || err.message);
+      return res.status(502).json({ error: 'Failed to create the Zoom meeting. Please try again in a moment.' });
+    }
+
+    const session = await prisma.session.create({
+      data: {
+        title: title.trim(),
+        subject,
+        grade,
+        dayOfWeek,
+        scheduledAt: startDate,
+        duration: Number(duration),
+        facultyId: fp.id,
+        ...zoomFields,
+      },
+    });
+
+    // Notify eligible Apex students (same grade + exam-subject match used by GET /api/student/sessions)
+    const eligibleStudents = await prisma.studentProfile.findMany({
+      where: { plan: 'apex', grade },
+      select: { id: true, examTarget: true },
+    });
+    const targets = eligibleStudents.filter(sp => (EXAM_SUBJECTS[sp.examTarget] || []).includes(subject));
+
+    const admin = await prisma.adminProfile.findFirst({ orderBy: { id: 'asc' }, select: { id: true } });
+    if (admin && targets.length) {
+      await prisma.adminMessage.createMany({
+        data: targets.map(sp => ({
+          content: `New live class scheduled: "${title.trim()}" (${subject}) — ${startDate.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}`,
+          type: 'Reminder',
+          studentId: sp.id,
+          adminId: admin.id,
+        })),
+      });
+    }
+
+    prisma.facultyAlert.create({
+      data: { facultyId: fp.id, type: 'Session', content: `Live class "${title.trim()}" scheduled and Zoom meeting created ✓` },
+    }).catch(() => {});
+
+    res.status(201).json({
+      id: session.id,
+      title: session.title,
+      subject: session.subject,
+      grade: session.grade,
+      dayOfWeek: session.dayOfWeek,
+      scheduledAt: session.scheduledAt,
+      duration: session.duration,
+      zoomMeetingId: session.zoomMeetingId,
+      joinUrl: session.joinUrl,
+      startUrl: session.startUrl,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to schedule session' });
+  }
+});
+
+// POST /api/faculty/sessions/:id/zoom-signature — generates a per-join SDK signature for the host
+router.post('/sessions/:id/zoom-signature', requireAuth, async (req, res) => {
+  try {
+    const fp = await prisma.facultyProfile.findUnique({ where: { userId: req.params.userId } });
+    if (!fp) return res.status(403).json({ error: 'Not a faculty' });
+
+    const session = await prisma.session.findUnique({ where: { id: parseInt(req.params.id) } });
+    if (!session || session.facultyId !== fp.id) return res.status(403).json({ error: 'Not your session' });
+    if (!session.zoomMeetingId) return res.status(400).json({ error: 'This session has no Zoom meeting set up' });
+
+    const signature = zoom.generateSdkSignature({ meetingNumber: session.zoomMeetingId, role: 1 });
+    res.json({
+      signature,
+      meetingNumber: session.zoomMeetingId,
+      password: session.zoomPassword,
+      sdkKey: process.env.ZOOM_SDK_KEY,
+    });
+  } catch (err) {
+    if (err instanceof zoom.ZoomConfigError) return res.status(500).json({ error: 'Zoom is not configured on this server yet.' });
+    console.error(err);
+    res.status(500).json({ error: 'Failed to generate Zoom signature' });
   }
 });
 

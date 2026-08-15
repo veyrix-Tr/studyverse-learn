@@ -1,3 +1,5 @@
+import { useParams, useNavigate } from 'react-router-dom';
+
 const PAGE_TITLES = {
   dashboard:     'Dashboard',
   schedule:      'Schedule',
@@ -29,6 +31,8 @@ const FacultyTopbar = ({
 }) => {
   const title = PAGE_TITLES[activePage] || 'Dashboard';
   const icon  = PAGE_ICONS[activePage] || null;
+  const { id: userId } = useParams();
+  const navigate = useNavigate();
 
   const now = Date.now();
 
@@ -49,17 +53,17 @@ const FacultyTopbar = ({
     return now >= start - 10 * 60000 && now <= end;
   });
 
-  const canJoin = liveSession?.startUrl || upcomingSession?.startUrl || liveMentorCall?.nextCall?.meetLink;
+  const canJoin = liveSession?.zoomMeetingId || upcomingSession?.zoomMeetingId || liveMentorCall?.nextCall?.meetLink;
   const joinLabel = liveSession ? 'Join Live Session'
     : upcomingSession ? 'Start Soon'
     : liveMentorCall ? `Join Call · ${liveMentorCall.name}`
     : 'No Live Session';
 
   const handleJoin = () => {
-    if (liveSession?.startUrl)               { window.open(liveSession.startUrl, '_blank', 'noreferrer'); return; }
-    if (upcomingSession?.startUrl)           { window.open(upcomingSession.startUrl, '_blank', 'noreferrer'); return; }
+    if (liveSession?.zoomMeetingId)          { navigate(`/faculty/${userId}/live/${liveSession.id}`); return; }
+    if (upcomingSession?.zoomMeetingId)      { navigate(`/faculty/${userId}/live/${upcomingSession.id}`); return; }
     if (liveMentorCall?.nextCall?.meetLink)  { window.open(liveMentorCall.nextCall.meetLink, '_blank', 'noreferrer'); return; }
-    onShowToast('No live session right now. Add a start URL in the schedule modal.');
+    onShowToast('No live session right now. Set it up in the schedule modal.');
   };
 
   const unread = alerts.filter(a => !a.readAt).length;

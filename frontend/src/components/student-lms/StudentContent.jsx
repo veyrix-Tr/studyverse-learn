@@ -1,5 +1,5 @@
 import { useState, useEffect, Fragment } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 
 const SUBJ_COLOR = {
   Physics:     '#4F8EF7',
@@ -209,6 +209,7 @@ const TYPE_DOT = { 'Reminder': 'var(--gold)', 'Motivational Note': 'var(--green)
 
 const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, scores, sessions = [], doubts = [], notifications = [], onMarkNotificationsRead, onNotificationClick, resources = [], questionBank = [], parentReports = null, mentorNotes = [], mentorCalls = [] }) => {
   const { id: userId } = useParams();
+  const navigate = useNavigate();
   const firstName = profile?.name?.split(' ')[0] || 'there';
   const examTarget = profile?.studentProfile?.examTarget || 'your exam';
   const targetYear = profile?.studentProfile?.targetYear;
@@ -433,8 +434,8 @@ const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
                         {live ? <><span style={{ width: 7, height: 7, borderRadius: '50%', background: '#ef4444', display: 'inline-block', marginRight: 5, animation: 'pulse 1.5s infinite' }} />Live</> : upcoming ? countdown(s.scheduledAt, now) : 'Completed'}
                       </div>
                       {(live || upcoming) && (
-                        s.joinUrl
-                          ? <a href={s.joinUrl} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} className="btn btn-sm" style={{ background: live ? 'var(--gold)' : '#16a34a', color: live ? '#0F1F3D' : '#fff', textDecoration: 'none', fontSize: '11px', padding: '3px 10px', fontWeight: 600 }}>{live ? 'Join Now' : 'Join Class'}</a>
+                        s.hasZoom
+                          ? <button className="btn btn-sm" onClick={e => { e.stopPropagation(); navigate(`/student-v2/${userId}/live/${s.id}`); }} style={{ background: live ? 'var(--gold)' : '#16a34a', color: live ? '#0F1F3D' : '#fff', fontSize: '11px', padding: '3px 10px', fontWeight: 600 }}>{live ? 'Join Now' : 'Join Class'}</button>
                           : <button className="btn btn-sm" onClick={e => { e.stopPropagation(); onShowToast('Meeting link not set yet — contact your mentor'); }} style={{ background: live ? 'var(--gold)' : '#16a34a', color: live ? '#0F1F3D' : '#fff', fontSize: '11px', padding: '3px 10px', fontWeight: 600 }}>{live ? 'Join Now' : 'Join Class'}</button>
                       )}
                     </div>
@@ -742,13 +743,13 @@ const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
                           <td>
                             <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                               {isToday(s.scheduledAt) && isUpcoming(s.scheduledAt) && !isLive(s.scheduledAt, s.duration) && (
-                                s.joinUrl
-                                  ? <a href={s.joinUrl} target="_blank" rel="noreferrer" className="btn btn-sm" style={{ background: '#16a34a', color: '#fff', textDecoration: 'none' }}>Join Class</a>
+                                s.hasZoom
+                                  ? <button className="btn btn-sm" style={{ background: '#16a34a', color: '#fff' }} onClick={() => navigate(`/student-v2/${userId}/live/${s.id}`)}>Join Class</button>
                                   : <button className="btn btn-sm" onClick={() => onShowToast('Meeting link not set yet — contact your mentor')} style={{ background: '#16a34a', color: '#fff' }}>Join Class</button>
                               )}
                               {isLive(s.scheduledAt, s.duration) && (
-                                s.joinUrl
-                                  ? <a href={s.joinUrl} target="_blank" rel="noreferrer" className="btn btn-sm" style={{ background: 'var(--gold)', color: '#0F1F3D', textDecoration: 'none', fontWeight: 600, animation: 'pulse 1.5s infinite' }}>Join Now</a>
+                                s.hasZoom
+                                  ? <button className="btn btn-sm" style={{ background: 'var(--gold)', color: '#0F1F3D', fontWeight: 600, animation: 'pulse 1.5s infinite' }} onClick={() => navigate(`/student-v2/${userId}/live/${s.id}`)}>Join Now</button>
                                   : <button className="btn btn-sm" style={{ background: 'var(--gold)', color: '#0F1F3D', fontWeight: 600, animation: 'pulse 1.5s infinite' }} onClick={() => onShowToast('Meeting link not set yet — contact your mentor')}>Join Now</button>
                               )}
                               {!isUpcoming(s.scheduledAt) && s.recordingUrl && (
