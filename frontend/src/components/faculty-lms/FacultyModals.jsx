@@ -1,8 +1,14 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 
 const CLOUD_NAME    = 'dnotkgppz';
 const UPLOAD_PRESET = 'faculty_resources';
+
+const EXAM_SUBJECTS = {
+  'JEE Mains':    ['Physics', 'Chemistry', 'Maths'],
+  'JEE Advanced': ['Physics', 'Chemistry', 'Maths'],
+  'NEET':         ['Physics', 'Chemistry', 'Biology'],
+};
 
 const FacultyModals = ({ openModal, onClose, onShowToast, toast, detailOpen, selectedStudent, onCloseDetail, onOpenModal, onNav, onResourceAdded, onSessionCreated }) => {
   const { id: userId } = useParams();
@@ -12,17 +18,33 @@ const FacultyModals = ({ openModal, onClose, onShowToast, toast, detailOpen, sel
   const [broadcasting, setBroadcasting] = useState(false);
 
   // Schedule Session state
-  const [sessForm, setSessForm] = useState({ title: '', subject: 'Physics', grade: '11', date: '', time: '', duration: 45 });
+  const [sessForm, setSessForm] = useState({ studentId: '', title: '', subject: 'Physics', date: '', time: '', duration: 45 });
   const [sessLoading, setSessLoading] = useState(false);
   const [sessError, setSessError] = useState('');
+  const [apexStudents, setApexStudents] = useState([]);
+  const [studentsLoading, setStudentsLoading] = useState(false);
+
+  useEffect(() => {
+    if (openModal !== 'schedule-modal') return;
+    const token = localStorage.getItem('token');
+    setStudentsLoading(true);
+    fetch(`${import.meta.env.VITE_API_URL}/api/faculty/${userId}/apex-students`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : [])
+      .then(data => { if (Array.isArray(data)) setApexStudents(data); })
+      .catch(() => {})
+      .finally(() => setStudentsLoading(false));
+  }, [openModal, userId]);
+
+  const eligibleStudents = apexStudents.filter(st => (EXAM_SUBJECTS[st.examTarget] || []).includes(sessForm.subject));
+  const selectedStudentInfo = eligibleStudents.find(st => String(st.id) === String(sessForm.studentId));
 
   const resetSessForm = () => {
-    setSessForm({ title: '', subject: 'Physics', grade: '11', date: '', time: '', duration: 45 });
+    setSessForm({ studentId: '', title: '', subject: 'Physics', date: '', time: '', duration: 45 });
     setSessError('');
   };
 
   const scheduleSession = async () => {
-    if (!sessForm.title.trim() || !sessForm.grade || !sessForm.date || !sessForm.time) {
+    if (!sessForm.studentId || !sessForm.title.trim() || !sessForm.date || !sessForm.time) {
       setSessError('Please fill in all fields.');
       return;
     }
@@ -37,9 +59,9 @@ const FacultyModals = ({ openModal, onClose, onShowToast, toast, detailOpen, sel
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
+          studentId: Number(sessForm.studentId),
           title: sessForm.title.trim(),
           subject: sessForm.subject,
-          grade: sessForm.grade,
           scheduledAt: scheduledAt.toISOString(),
           duration: Number(sessForm.duration),
         }),
@@ -48,7 +70,7 @@ const FacultyModals = ({ openModal, onClose, onShowToast, toast, detailOpen, sel
       if (!res.ok) throw new Error(data.error || 'Failed to schedule session');
       resetSessForm();
       onClose();
-      onShowToast('Session scheduled — Zoom meeting created, students notified ✓');
+      onShowToast(`Session scheduled with ${data.studentName || 'the student'} — Zoom meeting created ✓`);
       onSessionCreated?.(data);
     } catch (err) {
       setSessError(err.message);
@@ -208,21 +230,22 @@ const FacultyModals = ({ openModal, onClose, onShowToast, toast, detailOpen, sel
       <div className={`overlay${isOpen('schedule-modal')}`} onClick={e => e.target.classList.contains('overlay') && onClose()}>
         <div className="modal">
           <div className="mt">Schedule a Session</div>
-          <div className="ms">A Zoom meeting is created automatically and eligible students are notified.</div>
+          <div className="ms">A Zoom meeting is created automatically and the student is notified.</div>
+          <div className="fg"><label>Subject</label>
+            <select className="finput" value={sessForm.subject} onChange={e => setSessForm(f => ({ ...f, subject: e.target.value, studentId: '' }))}>
+              <option>Physics</option><option>Chemistry</option><option>Maths</option><option>Biology</option>
+            </select>
+          </div>
+          <div className="fg"><label>Student</label>
+            <select className="finput" value={sessForm.studentId} onChange={e => setSessForm(f => ({ ...f, studentId: e.target.value }))} disabled={studentsLoading}>
+              <option value="">{studentsLoading ? 'Loading students…' : eligibleStudents.length === 0 ? 'No Apex students take this subject' : '— Select student —'}</option>
+              {eligibleStudents.map(st => (
+                <option key={st.id} value={st.id}>{st.name} — Grade {st.grade || '—'}</option>
+              ))}
+            </select>
+          </div>
           <div className="fg"><label>Topic</label>
             <input className="finput" type="text" placeholder="e.g. Electrostatics — Gauss's Law" value={sessForm.title} onChange={e => setSessForm(f => ({ ...f, title: e.target.value }))} />
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
-            <div className="fg"><label>Subject</label>
-              <select className="finput" value={sessForm.subject} onChange={e => setSessForm(f => ({ ...f, subject: e.target.value }))}>
-                <option>Physics</option><option>Chemistry</option><option>Maths</option><option>Biology</option>
-              </select>
-            </div>
-            <div className="fg"><label>Grade</label>
-              <select className="finput" value={sessForm.grade} onChange={e => setSessForm(f => ({ ...f, grade: e.target.value }))}>
-                <option value="11">11</option><option value="12">12</option><option value="Dropper">Dropper</option>
-              </select>
-            </div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
             <div className="fg"><label>Date</label><input className="finput" type="date" value={sessForm.date} onChange={e => setSessForm(f => ({ ...f, date: e.target.value }))} /></div>
@@ -233,9 +256,11 @@ const FacultyModals = ({ openModal, onClose, onShowToast, toast, detailOpen, sel
               <option value={45}>45 minutes</option><option value={60}>60 minutes</option><option value={75}>75 minutes</option><option value={90}>90 minutes</option>
             </select>
           </div>
-          <div style={{ fontSize: '12px', color: 'var(--text3)', marginTop: '2px' }}>
-            Auto-notifies all Apex students in Grade {sessForm.grade} taking {sessForm.subject}.
-          </div>
+          {selectedStudentInfo && (
+            <div style={{ fontSize: '12px', color: 'var(--text3)', marginTop: '2px' }}>
+              {selectedStudentInfo.name} · Grade {selectedStudentInfo.grade || '—'} · {selectedStudentInfo.examTarget || 'No exam target set'}
+            </div>
+          )}
           {sessError && <div style={{ color: '#e5484d', fontSize: '13px', marginTop: '6px' }}>{sessError}</div>}
           <div className="ma">
             <button className="btn btn-ghost btn-sm" onClick={() => { resetSessForm(); onClose(); }}>Cancel</button>

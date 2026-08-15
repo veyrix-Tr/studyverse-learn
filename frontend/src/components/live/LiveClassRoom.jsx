@@ -15,10 +15,12 @@ const LiveClassRoom = ({ role }) => {
   const backHome = () => navigate(role === 'faculty' ? `/faculty/${userId}/dashboard` : `/student-v2/${userId}/dashboard`);
 
   useEffect(() => {
-    if (joinedRef.current) return; // guard against React 18 StrictMode double-invoke
+    // Guard against React 18 StrictMode's dev-only double-invoke (mount → cleanup →
+    // re-mount). We only want the real join to run once per component instance, and
+    // the join must not be aborted partway through by that phantom first cleanup —
+    // Zoom's SDK has no cheap way to cancel an in-flight init/join, so we just let it run.
+    if (joinedRef.current) return;
     joinedRef.current = true;
-
-    let cancelled = false;
 
     async function run() {
       const token = localStorage.getItem('token');
@@ -36,7 +38,6 @@ const LiveClassRoom = ({ role }) => {
         });
         const sigData = await sigRes.json();
         if (!sigRes.ok) throw new Error(sigData.error || 'Could not connect to this class');
-        if (cancelled) return;
 
         setStatus('joining');
 
@@ -49,7 +50,10 @@ const LiveClassRoom = ({ role }) => {
           zoomAppRoot: containerRef.current,
           language: 'en-US',
           customize: {
-            video: { popper: { disableDraggable: true } },
+            video: {
+              isResizable: true,
+              popper: { disableDraggable: false },
+            },
           },
         });
 
@@ -62,19 +66,20 @@ const LiveClassRoom = ({ role }) => {
           userEmail: me?.email || undefined,
         });
 
-        if (!cancelled) setStatus('joined');
+        setStatus('joined');
       } catch (err) {
-        if (!cancelled) {
-          setError(err.message || 'Could not connect to this class.');
-          setStatus('error');
-        }
+        // Zoom's SDK throws { type, reason } objects, not standard Error instances —
+        // surface whatever shape we actually got instead of masking it with a generic message.
+        console.error('Zoom join failed:', err);
+        const reason = err?.reason || err?.message || (typeof err === 'string' ? err : null);
+        setError(reason ? `${reason}${err?.type ? ` (${err.type})` : ''}` : 'Could not connect to this class.');
+        setStatus('error');
       }
     }
 
     run();
 
     return () => {
-      cancelled = true;
       const client = clientRef.current;
       if (client) {
         try { client.leave(); } catch { /* already left / never joined */ }
@@ -83,9 +88,12 @@ const LiveClassRoom = ({ role }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId]);
 
-  const leave = () => {
+  const leave = async () => {
     const client = clientRef.current;
-    if (client) { try { client.leave(); } catch { /* no-op */ } }
+    clientRef.current = null; // prevent the unmount cleanup from calling leave() a second time
+    if (client) {
+      try { await client.leave(); } catch { /* already left / never joined */ }
+    }
     backHome();
   };
 

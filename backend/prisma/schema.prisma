@@ -55,6 +55,7 @@ model StudentProfile {
   mentorNotes          MentorNote[]
   mentorCalls          MentorCall[]
   sessionRequests      SessionRequest[]
+  sessions             Session[]
 }
 
 model FacultyProfile {
@@ -124,6 +125,9 @@ model Session {
 
   facultyId Int
   faculty   FacultyProfile @relation(fields: [facultyId], references: [id], onDelete: Cascade)
+
+  studentId Int?
+  student   StudentProfile? @relation(fields: [studentId], references: [id], onDelete: Cascade)
 }
 
 model Doubt {

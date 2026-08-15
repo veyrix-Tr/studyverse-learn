@@ -50,6 +50,7 @@ router.get('/sessions', requireAuth, async (req, res) => {
     const [sessions, allPremiumStudents] = await Promise.all([
       prisma.session.findMany({
         where: { facultyId: fp.id },
+        include: { student: { include: { user: { select: { name: true } } } } },
         orderBy: { scheduledAt: 'asc' },
       }),
       prisma.studentProfile.findMany({
@@ -59,16 +60,26 @@ router.get('/sessions', requireAuth, async (req, res) => {
     ]);
 
     res.json(sessions.map(s => {
-      const eligible = allPremiumStudents.filter(sp => {
-        if (sp.plan === 'apex') {
-          return sp.grade === s.grade && (EXAM_SUBJECTS[sp.examTarget] || []).includes(s.subject);
-        }
-        // anchor: enrolled if subject-faculty map assigns this faculty for the session subject
-        const sf = sp.subjectFaculty;
-        return sf && Object.entries(sf).some(([subj, facId]) =>
-          subj.toLowerCase() === s.subject.toLowerCase() && facId === fp.id
-        );
-      });
+      // New sessions are scheduled 1:1 with a specific student. Legacy sessions
+      // (seeded before this existed) have no studentId — fall back to the old
+      // grade/subject broadcast-eligibility calc so they still render sensibly.
+      let enrolledCount, enrolledStudents;
+      if (s.studentId && s.student) {
+        enrolledCount = 1;
+        enrolledStudents = [s.student.user.name];
+      } else {
+        const eligible = allPremiumStudents.filter(sp => {
+          if (sp.plan === 'apex') {
+            return sp.grade === s.grade && (EXAM_SUBJECTS[sp.examTarget] || []).includes(s.subject);
+          }
+          const sf = sp.subjectFaculty;
+          return sf && Object.entries(sf).some(([subj, facId]) =>
+            subj.toLowerCase() === s.subject.toLowerCase() && facId === fp.id
+          );
+        });
+        enrolledCount = eligible.length;
+        enrolledStudents = eligible.map(sp => sp.user.name);
+      }
       return {
         id: s.id,
         title: s.title,
@@ -78,8 +89,10 @@ router.get('/sessions', requireAuth, async (req, res) => {
         scheduledAt: s.scheduledAt,
         duration: s.duration,
         note: s.note || null,
-        enrolledCount: eligible.length,
-        enrolledStudents: eligible.map(sp => sp.user.name),
+        studentId: s.studentId || null,
+        studentName: s.student?.user?.name || null,
+        enrolledCount,
+        enrolledStudents,
         zoomMeetingId: s.zoomMeetingId || null,
         joinUrl: s.joinUrl || null,
         startUrl: s.startUrl || null,
@@ -91,8 +104,8 @@ router.get('/sessions', requireAuth, async (req, res) => {
   }
 });
 
-// POST /api/faculty/sessions — schedule a new live class (Apex only). Creates
-// a real Zoom meeting via Server-to-Server OAuth and notifies eligible students.
+// POST /api/faculty/sessions — schedule a new 1:1 live class with a specific Apex
+// student. Creates a real Zoom meeting via Server-to-Server OAuth and notifies them.
 router.post('/sessions', requireAuth, async (req, res) => {
   try {
     const fp = await prisma.facultyProfile.findUnique({
@@ -101,9 +114,23 @@ router.post('/sessions', requireAuth, async (req, res) => {
     });
     if (!fp) return res.status(403).json({ error: 'Not a faculty' });
 
-    const { title, subject, grade, scheduledAt, duration } = req.body;
-    if (!title?.trim() || !subject || !grade || !scheduledAt || !duration) {
-      return res.status(400).json({ error: 'title, subject, grade, scheduledAt, duration are required' });
+    const { studentId, title, subject, scheduledAt, duration } = req.body;
+    if (!studentId || !title?.trim() || !subject || !scheduledAt || !duration) {
+      return res.status(400).json({ error: 'studentId, title, subject, scheduledAt, duration are required' });
+    }
+
+    const student = await prisma.studentProfile.findUnique({
+      where: { id: Number(studentId) },
+      include: { user: { select: { name: true } } },
+    });
+    if (!student || student.plan !== 'apex') {
+      return res.status(400).json({ error: 'Selected student is not on the Apex plan' });
+    }
+    if (!student.grade) {
+      return res.status(400).json({ error: 'This student has no grade set on their profile yet' });
+    }
+    if (!(EXAM_SUBJECTS[student.examTarget] || []).includes(subject)) {
+      return res.status(400).json({ error: 'This student does not study the selected subject' });
     }
 
     const startDate = new Date(scheduledAt);
@@ -114,7 +141,7 @@ router.post('/sessions', requireAuth, async (req, res) => {
     let zoomFields;
     try {
       zoomFields = await zoom.createMeeting({
-        topic: `${title.trim()} — ${subject}`,
+        topic: `${title.trim()} — ${student.user.name} (${subject})`,
         startTime: startDate.toISOString(),
         durationMin: Number(duration),
       });
@@ -130,36 +157,30 @@ router.post('/sessions', requireAuth, async (req, res) => {
       data: {
         title: title.trim(),
         subject,
-        grade,
+        grade: student.grade,
         dayOfWeek,
         scheduledAt: startDate,
         duration: Number(duration),
         facultyId: fp.id,
+        studentId: student.id,
         ...zoomFields,
       },
     });
 
-    // Notify eligible Apex students (same grade + exam-subject match used by GET /api/student/sessions)
-    const eligibleStudents = await prisma.studentProfile.findMany({
-      where: { plan: 'apex', grade },
-      select: { id: true, examTarget: true },
-    });
-    const targets = eligibleStudents.filter(sp => (EXAM_SUBJECTS[sp.examTarget] || []).includes(subject));
-
     const admin = await prisma.adminProfile.findFirst({ orderBy: { id: 'asc' }, select: { id: true } });
-    if (admin && targets.length) {
-      await prisma.adminMessage.createMany({
-        data: targets.map(sp => ({
-          content: `New live class scheduled: "${title.trim()}" (${subject}) — ${startDate.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}`,
+    if (admin) {
+      await prisma.adminMessage.create({
+        data: {
+          content: `New live class scheduled: "${title.trim()}" (${subject}) with ${fp.user.name} — ${startDate.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}`,
           type: 'Reminder',
-          studentId: sp.id,
+          studentId: student.id,
           adminId: admin.id,
-        })),
+        },
       });
     }
 
     prisma.facultyAlert.create({
-      data: { facultyId: fp.id, type: 'Session', content: `Live class "${title.trim()}" scheduled and Zoom meeting created ✓` },
+      data: { facultyId: fp.id, type: 'Session', content: `Live class "${title.trim()}" scheduled with ${student.user.name} — Zoom meeting created ✓` },
     }).catch(() => {});
 
     res.status(201).json({
@@ -170,6 +191,8 @@ router.post('/sessions', requireAuth, async (req, res) => {
       dayOfWeek: session.dayOfWeek,
       scheduledAt: session.scheduledAt,
       duration: session.duration,
+      studentId: student.id,
+      studentName: student.user.name,
       zoomMeetingId: session.zoomMeetingId,
       joinUrl: session.joinUrl,
       startUrl: session.startUrl,
@@ -297,6 +320,32 @@ router.get('/students', requireAuth, async (req, res) => {
     }));
 
     res.json(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch students' });
+  }
+});
+
+// GET /api/faculty/apex-students — lightweight list for the schedule-a-session picker.
+// Returns all Apex students (id, name, grade, examTarget); the frontend filters this
+// by whichever subject the faculty picks, using the same EXAM_SUBJECTS mapping.
+router.get('/apex-students', requireAuth, async (req, res) => {
+  try {
+    const fp = await prisma.facultyProfile.findUnique({ where: { userId: req.params.userId } });
+    if (!fp) return res.json([]);
+
+    const students = await prisma.studentProfile.findMany({
+      where: { plan: 'apex', grade: { not: null } },
+      include: { user: { select: { name: true } } },
+      orderBy: { user: { name: 'asc' } },
+    });
+
+    res.json(students.map(sp => ({
+      id: sp.id,
+      name: sp.user.name,
+      grade: sp.grade,
+      examTarget: sp.examTarget,
+    })));
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to fetch students' });

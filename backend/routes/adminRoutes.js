@@ -49,16 +49,18 @@ router.get('/students', requireAuth, requireAdmin, async (req, res) => {
     });
 
     const result = await Promise.all(students.map(async s => {
-      // Resolve faculty via sessions matching this student's grade + exam subjects
+      // Resolve faculty by subject (one faculty per subject) — not via Session,
+      // since Sessions are now only created lazily per-student and may not exist
+      // yet even though a subject faculty is assigned.
       let facultyName = null;
       if (s.grade && s.examTarget) {
         const subjects = EXAM_SUBJECTS[s.examTarget] || [];
         if (subjects.length > 0) {
-          const session = await prisma.session.findFirst({
-            where: { grade: s.grade, subject: { in: subjects } },
-            include: { faculty: { include: { user: { select: { name: true } } } } },
+          const faculty = await prisma.facultyProfile.findFirst({
+            where: { subject: { in: subjects } },
+            include: { user: { select: { name: true } } },
           });
-          if (session) facultyName = session.faculty.user.name;
+          if (faculty) facultyName = faculty.user.name;
         }
       }
 

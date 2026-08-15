@@ -233,10 +233,15 @@ router.get('/sessions', requireAuth, async (req, res) => {
     if (!profile || profile.plan !== 'apex') return res.json([]);
 
     const subjects = EXAM_SUBJECTS[profile.examTarget] || [];
-    if (!profile.grade || subjects.length === 0) return res.json([]);
+
+    // New sessions are scheduled 1:1 (studentId set). Legacy sessions (seeded
+    // before this existed) have no studentId — keep matching those by grade/subject.
+    const legacyWhere = (profile.grade && subjects.length)
+      ? [{ studentId: null, grade: profile.grade, subject: { in: subjects } }]
+      : [];
 
     const sessions = await prisma.session.findMany({
-      where: { grade: profile.grade, subject: { in: subjects } },
+      where: { OR: [{ studentId: profile.id }, ...legacyWhere] },
       include: { faculty: { include: { user: { select: { name: true } } } } },
       orderBy: { scheduledAt: 'asc' },
     });
@@ -268,8 +273,12 @@ router.post('/sessions/:id/zoom-signature', requireAuth, async (req, res) => {
     const session = await prisma.session.findUnique({ where: { id: parseInt(req.params.id) } });
     if (!session) return res.status(404).json({ error: 'Session not found' });
 
+    // New sessions are 1:1 — must be the exact student it was scheduled for.
+    // Legacy sessions (no studentId) fall back to the old grade/subject match.
     const subjects = EXAM_SUBJECTS[profile.examTarget] || [];
-    const eligible = profile.grade === session.grade && subjects.includes(session.subject);
+    const eligible = session.studentId
+      ? session.studentId === profile.id
+      : (profile.grade === session.grade && subjects.includes(session.subject));
     if (!eligible) return res.status(403).json({ error: 'Not eligible for this session' });
 
     if (!session.zoomMeetingId) return res.status(400).json({ error: 'This session has no Zoom meeting set up' });
@@ -305,22 +314,24 @@ router.post('/doubts', requireAuth, async (req, res) => {
     const validSubjects = EXAM_SUBJECTS[profile.examTarget] || [];
     if (!validSubjects.includes(subject)) return res.status(400).json({ error: 'Invalid subject for your exam' });
 
-    // Find faculty who teaches this subject for this student's grade
-    const session = await prisma.session.findFirst({
-      where: { subject, grade: profile.grade },
-      select: { facultyId: true },
+    // Find faculty who teaches this subject (one faculty per subject) — looked up
+    // directly on FacultyProfile rather than via Session, since Sessions are now
+    // only created lazily per-student and may not exist yet for a given subject.
+    const faculty = await prisma.facultyProfile.findFirst({
+      where: { subject: { equals: subject, mode: 'insensitive' } },
+      select: { id: true },
     });
-    if (!session) return res.status(400).json({ error: 'No faculty found for this subject and grade' });
+    if (!faculty) return res.status(400).json({ error: 'No faculty found for this subject' });
 
     const doubt = await prisma.doubt.create({
-      data: { question: question.trim(), subject, studentId: profile.id, facultyId: session.facultyId },
+      data: { question: question.trim(), subject, studentId: profile.id, facultyId: faculty.id },
       include: { faculty: { include: { user: { select: { name: true } } } } },
     });
 
     // Notify faculty via FacultyAlert
     prisma.facultyAlert.create({
       data: {
-        facultyId: session.facultyId,
+        facultyId: faculty.id,
         type: 'Doubt',
         content: `New ${doubt.subject} doubt from ${profile.user?.name || 'a student'}: "${doubt.question.length > 80 ? doubt.question.slice(0, 80) + '…' : doubt.question}"`,
       },
@@ -580,15 +591,17 @@ router.get('/reports', requireAuth, async (req, res) => {
 
     const subjects = EXAM_SUBJECTS[profile.examTarget] || [];
 
-    // Find faculty for each subject via sessions
+    // Find faculty for each subject directly (one faculty per subject) — not via
+    // Session, since Sessions are now only created lazily per-student and may not
+    // exist yet for this student even though a subject faculty is assigned.
     const subjectFaculties = await Promise.all(
       subjects.map(async (subject) => {
-        const session = await prisma.session.findFirst({
-          where: { subject, grade: profile.grade },
-          include: { faculty: { include: { user: { select: { name: true } } } } },
+        const faculty = await prisma.facultyProfile.findFirst({
+          where: { subject: { equals: subject, mode: 'insensitive' } },
+          include: { user: { select: { name: true } } },
         });
-        return session
-          ? { subject, facultyId: session.facultyId, facultyName: session.faculty.user.name }
+        return faculty
+          ? { subject, facultyId: faculty.id, facultyName: faculty.user.name }
           : { subject, facultyId: null, facultyName: null };
       })
     );
