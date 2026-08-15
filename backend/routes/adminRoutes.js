@@ -419,7 +419,6 @@ router.post('/messages', requireAuth, requireAdmin, async (req, res) => {
     }
 
     if (studentId === 'all') {
-      const VALID_PLANS = ['spark', 'forge', 'apex', null, undefined];
       if (targetPlan !== undefined && targetPlan !== null && !['spark', 'forge', 'apex', 'anchor'].includes(targetPlan)) {
         return res.status(400).json({ error: `Invalid targetPlan "${targetPlan}". Must be spark, forge, apex, or anchor.` });
       }

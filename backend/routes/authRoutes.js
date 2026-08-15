@@ -27,11 +27,6 @@ router.get('/google/callback',
 
       // ── Existing user → login directly ──────────────────
       if (existingUser && existingUser.password !== '') {
-        // Block deprecated plans (apex only)
-        let plan = existingUser.studentProfile?.plan;
-        if (plan === 'apex') {
-          return res.redirect(`${process.env.CLIENT_URL}/login?error=plan-deprecated&plan=${plan}`);
-        }
 
         const token = jwt.sign(
           { id: existingUser.id, role: existingUser.role, plan: existingUser.studentProfile?.plan || null },
@@ -39,7 +34,7 @@ router.get('/google/callback',
           { expiresIn: '7d' }
         );
 
-        plan = plan || 'spark';
+        const plan = existingUser.studentProfile?.plan || 'spark';
         const user = encodeURIComponent(JSON.stringify({
           id:    existingUser.id,
           name:  existingUser.name,

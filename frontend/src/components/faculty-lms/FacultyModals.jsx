@@ -10,7 +10,6 @@ const FacultyModals = ({ openModal, onClose, onShowToast, toast, detailOpen, sel
   const s = selectedStudent || {};
   const [broadcastText, setBroadcastText] = useState('');
   const [broadcasting, setBroadcasting] = useState(false);
-  const [zoomEnabled, setZoomEnabled] = useState(false);
 
   // Resource upload state
   const [resTitle, setResTitle] = useState('');
@@ -178,25 +177,9 @@ const FacultyModals = ({ openModal, onClose, onShowToast, toast, detailOpen, sel
           <div className="fg"><label>Duration</label>
             <select className="finput"><option>45 minutes</option><option>60 minutes</option><option>75 minutes</option><option>90 minutes</option></select>
           </div>
-          <div
-            onClick={() => setZoomEnabled(z => !z)}
-            style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '11px 14px', borderRadius: 'var(--r)', border: `1.5px solid ${zoomEnabled ? '#2d8cff' : 'var(--border)'}`, background: zoomEnabled ? 'rgba(45,140,255,0.06)' : 'var(--cream2)', cursor: 'pointer', transition: 'all 0.15s', userSelect: 'none' }}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-              <rect x="2" y="5" width="15" height="14" rx="2" stroke={zoomEnabled ? '#2d8cff' : 'var(--text3)'} strokeWidth="1.5"/>
-              <path d="M17 9l5-3v12l-5-3V9z" stroke={zoomEnabled ? '#2d8cff' : 'var(--text3)'} strokeWidth="1.5" strokeLinejoin="round"/>
-            </svg>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: '13px', fontWeight: 600, color: zoomEnabled ? '#2d8cff' : 'var(--text)' }}>Create Zoom Meeting</div>
-              <div style={{ fontSize: '11px', color: 'var(--text3)', marginTop: '1px' }}>Auto-generate meeting link for student</div>
-            </div>
-            <div style={{ width: '36px', height: '20px', borderRadius: '10px', background: zoomEnabled ? '#2d8cff' : 'var(--border)', transition: 'background 0.2s', position: 'relative', flexShrink: 0 }}>
-              <div style={{ position: 'absolute', top: '2px', left: zoomEnabled ? '18px' : '2px', width: '16px', height: '16px', borderRadius: '50%', background: '#fff', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }}></div>
-            </div>
-          </div>
           <div className="ma">
-            <button className="btn btn-ghost btn-sm" onClick={() => { setZoomEnabled(false); onClose(); }}>Cancel</button>
-            <button className="btn btn-gold btn-sm" onClick={() => { setZoomEnabled(false); onClose(); onShowToast('Session scheduled. Student notified ✓'); }}>Schedule →</button>
+            <button className="btn btn-ghost btn-sm" onClick={() => { onClose(); }}>Cancel</button>
+            <button className="btn btn-gold btn-sm" onClick={() => { onClose(); onShowToast('Session scheduled. Student notified ✓'); }}>Schedule →</button>
           </div>
         </div>
       </div>

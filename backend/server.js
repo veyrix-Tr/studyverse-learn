@@ -34,16 +34,15 @@ const otpRoutes = require('./routes/otpRoutes');
 app.use('/api/otp', otpRoutes);
 
 const { requireAuth, validateUrlUser } = require('./middleware/auth');
-const blockDeprecatedPlans = require('./middleware/blockDeprecatedPlans');
 
 const studentRoutes = require('./routes/studentRoutes');
-app.use('/api/student/:userId', requireAuth, validateUrlUser, blockDeprecatedPlans, studentRoutes);
+app.use('/api/student/:userId', requireAuth, validateUrlUser, studentRoutes);
 
 const facultyRoutes = require('./routes/facultyRoutes');
-app.use('/api/faculty/:userId', requireAuth, validateUrlUser, blockDeprecatedPlans, facultyRoutes);
+app.use('/api/faculty/:userId', requireAuth, validateUrlUser, facultyRoutes);
 
 const adminRoutes = require('./routes/adminRoutes');
-app.use('/api/admin/:userId', requireAuth, validateUrlUser, blockDeprecatedPlans, adminRoutes);
+app.use('/api/admin/:userId', requireAuth, validateUrlUser, adminRoutes);
 
 const fileRoutes = require('./routes/fileRoutes');
 app.use('/api/files', fileRoutes);

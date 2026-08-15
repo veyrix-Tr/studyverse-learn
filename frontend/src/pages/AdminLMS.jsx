@@ -198,7 +198,7 @@ const AdminLMS = ({ expectedRole }) => {
     });
     if (!res.ok) throw new Error('Failed to send');
     const data = await res.json();
-    const PLAN_LABEL = { spark: 'Spark only', forge: 'Forge & above', apex: 'Apex only' };
+    const PLAN_LABEL = { spark: 'Spark only', forge: 'Forge & above', apex: 'Apex only', anchor: 'Anchor only' };
     let recipient;
     if (Array.isArray(to)) {
       // Fix 1: use String coercion so number/string IDs both match
