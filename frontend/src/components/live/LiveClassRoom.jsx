@@ -6,6 +6,16 @@ const GOLD = '#E8A830';
 const NAVY = '#0F1F3D';
 const RED = '#e5484d';
 
+// Local copy of the stored plan (avoid a circular import with App.jsx).
+const storedPlan = () => {
+  const token = localStorage.getItem('token');
+  if (!token) return 'spark';
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+    return payload.plan || 'spark';
+  } catch { return 'spark'; }
+};
+
 const fmtClock = (totalSeconds) => {
   const h = Math.floor(totalSeconds / 3600);
   const m = Math.floor((totalSeconds % 3600) / 60);
@@ -38,8 +48,9 @@ const LiveClassRoom = ({ role }) => {
   const [elapsed, setElapsed] = useState(0);
 
   const apiBase = `${import.meta.env.VITE_API_URL}/api/${role}/${userId}`;
-  const dashboardUrl = `${window.location.origin}${role === 'faculty' ? `/faculty/${userId}/dashboard` : `/student-v2/${userId}/dashboard`}`;
-  const backHome = () => navigate(role === 'faculty' ? `/faculty/${userId}/dashboard` : `/student-v2/${userId}/dashboard`);
+  const studentHome = role === 'student' && storedPlan() === 'anchor' ? `/anchor/${userId}/dashboard` : `/student-v2/${userId}/dashboard`;
+  const dashboardUrl = `${window.location.origin}${role === 'faculty' ? `/faculty/${userId}/dashboard` : studentHome}`;
+  const backHome = () => navigate(role === 'faculty' ? `/faculty/${userId}/dashboard` : studentHome);
 
   useEffect(() => {
     // Guard against React 18 StrictMode's dev-only double-invoke, and against

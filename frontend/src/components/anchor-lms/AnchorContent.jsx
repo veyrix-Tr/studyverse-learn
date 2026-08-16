@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import DailyReportForm from '../common/DailyReportForm';
 
 // Join button — active 10 min before call, disabled after call ends
@@ -121,10 +121,12 @@ const AnchorContent = ({
   habitLogs = [], onHabitSaved,
   resources = [], dailyReports = [],
   mentorNotes = [], mentorCalls = [],
+  sessions = [],
   notifications = [], onMarkNotifRead, onMarkAllNotifRead,
   profile, onReportSubmitted,
 }) => {
   const { id: userId } = useParams();
+  const navigate = useNavigate();
   const pg = (name) => `page${activePage === name ? ' on' : ''}`;
   const mentorName = profile?.studentProfile?.mentor?.user?.name || null;
   const mentorFirst = mentorName ? mentorName.split(' ')[0] : 'your mentor';
@@ -248,6 +250,20 @@ const AnchorContent = ({
     .sort((a, b) => new Date(b.scheduledAt) - new Date(a.scheduledAt));
   const nextCall = upcomingCalls[0] || null;
 
+  // ── Live classes (mentor → mentee Zoom sessions) ─────────────────────────
+  const sessionEndsAt = (s) => new Date(s.scheduledAt).getTime() + (s.duration || 45) * 60 * 1000;
+  const liveNow = (s) => {
+    const t = new Date(s.scheduledAt).getTime();
+    return now.getTime() >= t && now.getTime() <= sessionEndsAt(s);
+  };
+  // Students can join shortly before the session starts (and while it's live),
+  // but not hours/days ahead — the Zoom meeting won't have started yet.
+  const JOIN_WINDOW_MIN = 30;
+  const canJoin = (s) => now.getTime() >= new Date(s.scheduledAt).getTime() - JOIN_WINDOW_MIN * 60 * 1000;
+  const upcomingSessions = (Array.isArray(sessions) ? sessions : []).filter(s => s.hasZoom && sessionEndsAt(s) > now)
+    .sort((a, b) => new Date(a.scheduledAt) - new Date(b.scheduledAt));
+  const nextSession = upcomingSessions[0] || null;
+
   // ── Latest mentor note ────────────────────────────────────────────────────
   const latestNote = mentorNotes[0] || null;
 
@@ -278,6 +294,40 @@ const AnchorContent = ({
             </div>
           </div>
         </div>
+
+        {/* Mentorship session hero banner */}
+        {nextSession && (
+          <div style={{
+            background: liveNow(nextSession)
+              ? 'linear-gradient(135deg, rgba(232,168,48,.22), rgba(232,168,48,.06))'
+              : 'linear-gradient(135deg, rgba(94,177,144,.18), rgba(94,177,144,.05))',
+            border: '1px solid ' + (liveNow(nextSession) ? 'rgba(232,168,48,.5)' : 'rgba(94,177,144,.35)'),
+            borderRadius: 'var(--rl)',
+            padding: '20px 24px',
+            display: 'flex', alignItems: 'center', gap: '20px',
+            marginBottom: '22px', flexWrap: 'wrap',
+          }}>
+            <div style={{ width: '52px', height: '52px', borderRadius: '14px', background: 'rgba(232,168,48,.18)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#E8A830" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+            </div>
+            <div style={{ flex: 1, minWidth: 220 }}>
+              <div style={{ fontSize: '11px', fontWeight: 700, color: liveNow(nextSession) ? '#E8A830' : 'var(--sage)', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: '4px' }}>
+                {liveNow(nextSession) ? '● LIVE NOW' : 'UPCOMING · MENTORSHIP SESSION'}
+              </div>
+              <div style={{ fontFamily: 'var(--fs)', fontSize: '18px', fontWeight: 700, color: 'var(--t1)', marginBottom: '3px' }}>{nextSession.title}</div>
+              <div style={{ fontSize: '13px', color: 'var(--t2)' }}>{mentorName || 'Your mentor'} · {fmtDate(nextSession.scheduledAt)} · {fmtTime(nextSession.scheduledAt)} · {nextSession.duration || 45} min</div>
+            </div>
+            <button
+              className={`btn ${canJoin(nextSession) ? 'btn-gold' : 'btn-ghost'}`}
+              disabled={!canJoin(nextSession)}
+              onClick={() => canJoin(nextSession) && navigate(`/anchor/${userId}/live/${nextSession.id}`)}
+            >
+              {liveNow(nextSession) ? 'Join Live Class →'
+                : canJoin(nextSession) ? 'Join Class →'
+                : `Starts ${fmtTime(nextSession.scheduledAt)}`}
+            </button>
+          </div>
+        )}
 
         {/* Stats row */}
         <div className="g4 mb">
@@ -438,6 +488,26 @@ const AnchorContent = ({
             </div>
           </div>
         )}
+        {nextSession && (
+          <>
+            <div className="sh"><div className="sh-t">Live Class with Your Mentor</div></div>
+            <div className="call-card" style={{ marginBottom: '10px' }}>
+              <div className="call-icon" style={{ background: 'var(--gd)' }}>🎥</div>
+              <div className="call-info">
+                <div className="call-title">{nextSession.title}</div>
+                <div className="call-meta">{mentorName || 'Mentor'} · {fmtDate(nextSession.scheduledAt)} · {fmtTime(nextSession.scheduledAt)} · {nextSession.duration || 45} min</div>
+              </div>
+              <button
+                className={`btn ${canJoin(nextSession) ? 'btn-gold' : 'btn-ghost'} btn-sm`}
+                disabled={!canJoin(nextSession)}
+                onClick={() => canJoin(nextSession) && navigate(`/anchor/${userId}/live/${nextSession.id}`)}
+                style={{ flexShrink: 0 }}
+              >
+                {canJoin(nextSession) ? 'Join Live Class →' : fmtTime(nextSession.scheduledAt)}
+              </button>
+            </div>
+          </>
+        )}
         <div className="call-card">
           <div className="call-icon" style={{ background: 'var(--bg4)' }}>📋</div>
           <div className="call-info">
@@ -492,6 +562,31 @@ const AnchorContent = ({
             </div>
           </div>
         ))}
+
+        {/* Mentorship sessions */}
+        {upcomingSessions.length > 0 && (
+          <>
+            <div className="sh" style={{ marginTop: '24px' }}><div className="sh-t">Mentorship Sessions</div></div>
+            {upcomingSessions.map(s => (
+              <div key={s.id} className="call-card" style={{ borderColor: 'var(--gb)', marginBottom: '10px' }}>
+                <div className="call-icon" style={{ background: 'var(--gd)' }}>🎥</div>
+                <div className="call-info">
+                  <div className="call-title">{s.title}</div>
+                  <div className="call-meta">{mentorName || 'Mentor'} · {fmtDate(s.scheduledAt)} · {fmtTime(s.scheduledAt)} · {s.duration || 45} min</div>
+                </div>
+                <button
+                  className={`btn ${canJoin(s) ? 'btn-gold' : 'btn-ghost'} btn-sm`}
+                  disabled={!canJoin(s)}
+                  onClick={() => canJoin(s) && navigate(`/anchor/${userId}/live/${s.id}`)}
+                  style={{ flexShrink: 0 }}
+                >
+                  {canJoin(s) ? 'Join Live →' : fmtTime(s.scheduledAt)}
+                </button>
+              </div>
+            ))}
+          </>
+        )}
+
 
         {/* Past calls */}
         <div className="sh" style={{ marginTop: '8px' }}><div className="sh-t">Past Calls</div></div>

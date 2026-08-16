@@ -19,6 +19,7 @@ const AnchorLMS = () => {
   const [dailyReports, setDailyReports] = useState([]);
   const [mentorNotes, setMentorNotes] = useState([]);
   const [mentorCalls, setMentorCalls] = useState([]);
+  const [sessions, setSessions] = useState([]);
   const [notifications, setNotifications] = useState([]);
   const toastTimer = useRef(null);
 
@@ -58,6 +59,7 @@ const AnchorLMS = () => {
     get(`/api/student/${userId}/daily-reports`, setDailyReports);
     get(`/api/student/${userId}/mentor-notes`, setMentorNotes);
     get(`/api/student/${userId}/mentor-calls`, setMentorCalls);
+    get(`/api/student/${userId}/sessions`, setSessions);
     get(`/api/student/${userId}/notifications`, setNotifications);
 
     // Poll notifications + mentor data every 15s so student sees updates without refresh
@@ -65,6 +67,7 @@ const AnchorLMS = () => {
       get(`/api/student/${userId}/notifications`, setNotifications);
       get(`/api/student/${userId}/mentor-notes`, setMentorNotes);
       get(`/api/student/${userId}/mentor-calls`, setMentorCalls);
+      get(`/api/student/${userId}/sessions`, setSessions);
     }, 15000);
     return () => clearInterval(poll);
   }, [userId]);
@@ -152,6 +155,7 @@ const AnchorLMS = () => {
             dailyReports={dailyReports}
             mentorNotes={mentorNotes}
             mentorCalls={mentorCalls}
+            sessions={sessions}
             notifications={notifications}
             profile={profile}
             onReportSubmitted={(report) => setDailyReports(prev => [report, ...prev])}

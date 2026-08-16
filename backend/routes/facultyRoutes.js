@@ -124,8 +124,8 @@ router.post('/sessions', requireAuth, async (req, res) => {
 
     const { studentId, studentIds, title, subject, scheduledAt, duration } = req.body;
     const ids = (Array.isArray(studentIds) && studentIds.length) ? studentIds : (studentId ? [studentId] : []);
-    if (ids.length === 0 || !title?.trim() || !subject || !scheduledAt || !duration) {
-      return res.status(400).json({ error: 'At least one student, plus title, subject, scheduledAt, duration are required' });
+    if (ids.length === 0 || !title?.trim() || !scheduledAt || !duration) {
+      return res.status(400).json({ error: 'At least one student, plus title, scheduledAt, duration are required' });
     }
 
     const students = await prisma.studentProfile.findMany({
@@ -136,10 +136,28 @@ router.post('/sessions', requireAuth, async (req, res) => {
       return res.status(400).json({ error: 'One or more selected students were not found' });
     }
     for (const st of students) {
-      if (st.plan !== 'apex') return res.status(400).json({ error: `${st.user.name} is not on the Apex plan` });
-      if (!st.grade) return res.status(400).json({ error: `${st.user.name} has no grade set on their profile yet` });
-      if (!(EXAM_SUBJECTS[st.examTarget] || []).includes(subject)) {
-        return res.status(400).json({ error: `${st.user.name} does not study ${subject}` });
+      const isApex = st.plan === 'apex';
+      const isMentee = st.mentorId === fp.id;
+      if (!isApex && !isMentee) {
+        return res.status(400).json({ error: `${st.user.name} is not eligible for this session (not an Apex student or your mentee)` });
+      }
+      if (!st.grade) {
+        return res.status(400).json({ error: `${st.user.name} has no grade set on their profile yet` });
+      }
+    }
+
+    // Mentor-mentee sessions are pure mentorship check-ins — no academic subject.
+    // If every selected student is this faculty's mentee, default to 'Mentorship'
+    // and don't require a subject. Mixed/Apex sessions still use the provided one.
+    const allMentees = students.every(st => st.mentorId === fp.id);
+    const effectiveSubject = allMentees ? 'Mentorship' : subject;
+    if (!allMentees && !effectiveSubject?.trim()) {
+      return res.status(400).json({ error: 'subject is required for academic sessions' });
+    }
+    for (const st of students) {
+      const isApex = st.plan === 'apex';
+      if (isApex && !(EXAM_SUBJECTS[st.examTarget] || []).includes(effectiveSubject)) {
+        return res.status(400).json({ error: `${st.user.name} does not study ${effectiveSubject}` });
       }
     }
 
@@ -152,9 +170,11 @@ router.post('/sessions', requireAuth, async (req, res) => {
     // the real roster lives in the SessionStudent join table.
     const primary = students[0];
 
-    const zoomTopic = names.length === 1
-      ? `${title.trim()} — ${names[0]} (${subject})`
-      : `${title.trim()} (${subject}) — ${names.length} students${names.length <= 3 ? `: ${names.join(', ')}` : ''}`;
+    const zoomTopic = allMentees
+      ? (names.length === 1 ? `${title.trim()} — ${names[0]}` : `${title.trim()} — ${names.length} mentees`)
+      : (names.length === 1
+        ? `${title.trim()} — ${names[0]} (${effectiveSubject})`
+        : `${title.trim()} (${effectiveSubject}) — ${names.length} students${names.length <= 3 ? `: ${names.join(', ')}` : ''}`);
 
     let zoomFields;
     try {
@@ -174,7 +194,7 @@ router.post('/sessions', requireAuth, async (req, res) => {
     const session = await prisma.session.create({
       data: {
         title: title.trim(),
-        subject,
+        subject: effectiveSubject,
         grade: primary.grade,
         dayOfWeek,
         scheduledAt: startDate,
@@ -191,8 +211,10 @@ router.post('/sessions', requireAuth, async (req, res) => {
       for (const st of students) {
         const adminMsgs = prisma.adminMessage.create({
           data: {
-            content: `New live class scheduled: "${title.trim()}" (${subject}) by ${fp.user.name} for ${names.join(', ')} — ${startDate.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}`,
-            type: 'Reminder',
+            content: allMentees
+              ? `Your mentorship session "${title.trim()}" with ${fp.user.name} is scheduled for ${startDate.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}. Join live from your dashboard when it starts.`
+              : `New live class scheduled: "${title.trim()}" (${effectiveSubject}) by ${fp.user.name} for ${names.join(', ')} — ${startDate.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}`,
+            type: allMentees ? 'Mentorship Session' : 'Reminder',
             studentId: st.id,
             adminId: admin.id,
           },
@@ -370,16 +392,15 @@ router.get('/students', requireAuth, async (req, res) => {
   }
 });
 
-// GET /api/faculty/apex-students — lightweight list for the schedule-a-session picker.
-// Returns all Apex students (id, name, grade, examTarget); the frontend filters this
-// by whichever subject the faculty picks, using the same EXAM_SUBJECTS mapping.
+// GET /api/faculty/apex-students — students a faculty can schedule a session with:
+// their Apex students (subject-filtered client-side) plus their own mentees.
 router.get('/apex-students', requireAuth, async (req, res) => {
   try {
     const fp = await prisma.facultyProfile.findUnique({ where: { userId: req.params.userId } });
     if (!fp) return res.json([]);
 
     const students = await prisma.studentProfile.findMany({
-      where: { plan: 'apex', grade: { not: null } },
+      where: { OR: [{ plan: 'apex', grade: { not: null } }, { mentorId: fp.id }] },
       include: { user: { select: { name: true } } },
       orderBy: { user: { name: 'asc' } },
     });
@@ -389,6 +410,7 @@ router.get('/apex-students', requireAuth, async (req, res) => {
       name: sp.user.name,
       grade: sp.grade,
       examTarget: sp.examTarget,
+      plan: sp.plan,
     })));
   } catch (err) {
     console.error(err);

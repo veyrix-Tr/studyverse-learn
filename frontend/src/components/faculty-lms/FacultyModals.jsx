@@ -36,8 +36,10 @@ const FacultyModals = ({ openModal, onClose, onShowToast, toast, detailOpen, sel
       .finally(() => setStudentsLoading(false));
   }, [openModal, userId]);
 
-  const eligibleStudents = apexStudents.filter(st => (EXAM_SUBJECTS[st.examTarget] || []).includes(sessForm.subject));
-  const selectedStudentsInfo = eligibleStudents.filter(st => sessForm.studentIds.includes(String(st.id)));
+  const menteeStudents = apexStudents.filter(st => String(st.plan) !== 'apex');
+  const apexEligible = apexStudents.filter(st => String(st.plan) === 'apex' && (EXAM_SUBJECTS[st.examTarget] || []).includes(sessForm.subject));
+  const roster = [...menteeStudents, ...apexEligible];
+  const selectedStudentsInfo = roster.filter(st => sessForm.studentIds.includes(String(st.id)));
 
   const toggleStudent = (id) => setSessForm(f => ({
     ...f,
@@ -52,13 +54,16 @@ const FacultyModals = ({ openModal, onClose, onShowToast, toast, detailOpen, sel
     setSessError('');
   };
 
+  const menteeOnly = selectedStudentsInfo.length > 0 && selectedStudentsInfo.every(x => String(x.plan) !== 'apex');
+
   const scheduleSession = async () => {
-    if (!sessForm.studentIds.length || !sessForm.title.trim() || !sessForm.date || !sessForm.time) {
+    if (!sessForm.studentIds.length || (!menteeOnly && !sessForm.title.trim()) || !sessForm.date || !sessForm.time) {
       setSessError('Select at least one student and fill in all fields.');
       return;
     }
     const scheduledAt = new Date(`${sessForm.date}T${sessForm.time}`);
     if (isNaN(scheduledAt.getTime())) { setSessError('Invalid date/time.'); return; }
+    const finalTitle = sessForm.title.trim() || (menteeOnly ? 'Mentorship session' : '');
 
     setSessLoading(true);
     setSessError('');
@@ -69,7 +74,7 @@ const FacultyModals = ({ openModal, onClose, onShowToast, toast, detailOpen, sel
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
           studentIds: sessForm.studentIds.map(Number),
-          title: sessForm.title.trim(),
+          title: finalTitle,
           subject: sessForm.subject,
           scheduledAt: scheduledAt.toISOString(),
           duration: Number(sessForm.duration),
@@ -79,9 +84,11 @@ const FacultyModals = ({ openModal, onClose, onShowToast, toast, detailOpen, sel
       if (!res.ok) throw new Error(data.error || 'Failed to schedule session');
       resetSessForm();
       onClose();
-      onShowToast(data.enrolledCount > 1
-        ? `Session scheduled with ${data.enrolledCount} students — Zoom meeting created ✓`
-        : `Session scheduled with ${data.studentName || 'the student'} — Zoom meeting created ✓`);
+      onShowToast(menteeOnly
+        ? `Mentorship session scheduled${data.enrolledCount > 1 ? ` with ${data.enrolledCount} mentees` : ` with ${data.studentName || 'your mentee'}`} — Zoom meeting created ✓`
+        : (data.enrolledCount > 1
+          ? `Session scheduled with ${data.enrolledCount} students — Zoom meeting created ✓`
+          : `Session scheduled with ${data.studentName || 'the student'} — Zoom meeting created ✓`));
       onSessionCreated?.(data);
     } catch (err) {
       setSessError(err.message);
@@ -242,11 +249,13 @@ const FacultyModals = ({ openModal, onClose, onShowToast, toast, detailOpen, sel
         <div className="modal">
           <div className="mt">Schedule a Session</div>
           <div className="ms">A Zoom meeting is created automatically and all selected students are notified.</div>
-          <div className="fg"><label>Subject</label>
-            <select className="finput" value={sessForm.subject} onChange={e => { setSessForm(f => ({ ...f, subject: e.target.value, studentIds: [] })); setStudentsOpen(false); }}>
-              <option>Physics</option><option>Chemistry</option><option>Maths</option><option>Biology</option>
-            </select>
-          </div>
+          {!menteeOnly && (
+            <div className="fg"><label>Subject</label>
+              <select className="finput" value={sessForm.subject} onChange={e => { setSessForm(f => ({ ...f, subject: e.target.value, studentIds: [] })); setStudentsOpen(false); }}>
+                <option>Physics</option><option>Chemistry</option><option>Maths</option><option>Biology</option>
+              </select>
+            </div>
+          )}
           <div className="fg"><label>Students</label>
             <button type="button" className="finput" style={{ textAlign: 'left', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }} disabled={studentsLoading} onClick={() => setStudentsOpen(o => !o)}>
               <span style={{ color: selectedStudentsInfo.length ? 'inherit' : 'var(--text3)' }}>
@@ -258,23 +267,43 @@ const FacultyModals = ({ openModal, onClose, onShowToast, toast, detailOpen, sel
               <span style={{ fontSize: '11px', transform: studentsOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', color: 'var(--text3)' }}>▾</span>
             </button>
             {studentsOpen && (
-              eligibleStudents.length === 0 ? (
-                <div style={{ marginTop: '6px', fontSize: '12px', color: 'var(--text3)' }}>No Apex students take this subject</div>
+              roster.length === 0 ? (
+                <div style={{ marginTop: '6px', fontSize: '12px', color: 'var(--text3)' }}>
+                  {menteeStudents.length === 0 ? 'You have no mentees, and no Apex students take this subject' : 'No students are available to schedule with'}
+                </div>
               ) : (
                 <div style={{ maxHeight: '180px', overflowY: 'auto', border: '1px solid var(--line)', borderRadius: '8px', padding: '6px', marginTop: '6px' }}>
-                  {eligibleStudents.map(st => (
-                    <label key={st.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 8px', borderRadius: '6px', cursor: 'pointer', color: sessForm.studentIds.includes(String(st.id)) ? '#E8A830' : 'inherit' }}>
-                      <input type="checkbox" style={{ accentColor: '#E8A830' }} checked={sessForm.studentIds.includes(String(st.id))} onChange={() => toggleStudent(st.id)} />
-                      <span>{st.name} — Grade {st.grade || '—'}</span>
-                    </label>
-                  ))}
+                  {menteeStudents.length > 0 && (
+                    <>
+                      <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text3)', padding: '4px 8px' }}>Your mentees</div>
+                      {menteeStudents.map(st => (
+                        <label key={st.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 8px', borderRadius: '6px', cursor: 'pointer', color: sessForm.studentIds.includes(String(st.id)) ? '#E8A830' : 'inherit' }}>
+                          <input type="checkbox" style={{ accentColor: '#E8A830' }} checked={sessForm.studentIds.includes(String(st.id))} onChange={() => toggleStudent(st.id)} />
+                          <span>{st.name} — Grade {st.grade || '—'}</span>
+                        </label>
+                      ))}
+                    </>
+                  )}
+                  {apexEligible.length > 0 && (
+                    <>
+                      <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text3)', padding: '4px 8px' }}>Apex students — {sessForm.subject}</div>
+                      {apexEligible.map(st => (
+                        <label key={st.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 8px', borderRadius: '6px', cursor: 'pointer', color: sessForm.studentIds.includes(String(st.id)) ? '#E8A830' : 'inherit' }}>
+                          <input type="checkbox" style={{ accentColor: '#E8A830' }} checked={sessForm.studentIds.includes(String(st.id))} onChange={() => toggleStudent(st.id)} />
+                          <span>{st.name} — Grade {st.grade || '—'}</span>
+                        </label>
+                      ))}
+                    </>
+                  )}
                 </div>
               )
             )}
           </div>
-          <div className="fg"><label>Topic</label>
-            <input className="finput" type="text" placeholder="e.g. Electrostatics — Gauss's Law" value={sessForm.title} onChange={e => setSessForm(f => ({ ...f, title: e.target.value }))} />
-          </div>
+          {!menteeOnly && (
+            <div className="fg"><label>Topic</label>
+              <input className="finput" type="text" placeholder="e.g. Electrostatics — Gauss's Law" value={sessForm.title} onChange={e => setSessForm(f => ({ ...f, title: e.target.value }))} />
+            </div>
+          )}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
             <div className="fg"><label>Date</label><input className="finput" type="date" value={sessForm.date} onChange={e => setSessForm(f => ({ ...f, date: e.target.value }))} /></div>
             <div className="fg"><label>Time</label><input className="finput" type="time" value={sessForm.time} onChange={e => setSessForm(f => ({ ...f, time: e.target.value }))} /></div>

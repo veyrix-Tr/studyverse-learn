@@ -98,6 +98,7 @@ function App() {
       {/* Student — Anchor */}
       <Route path="/anchor/:id"       element={<AuthGuard expectedRole="student" requirePlan="anchor"><AnchorLMS /></AuthGuard>} />
       <Route path="/anchor/:id/:page" element={<AuthGuard expectedRole="student" requirePlan="anchor"><AnchorLMS /></AuthGuard>} />
+      <Route path="/anchor/:id/live/:sessionId" element={<AuthGuard expectedRole="student" requirePlan="anchor"><LiveClassRoom role="student" /></AuthGuard>} />
 
       {/* Student — free */}
       <Route path="/student/:id"       element={<AuthGuard expectedRole="student" requirePlan="free"><FreeLMS /></AuthGuard>} />

@@ -1201,7 +1201,6 @@ const MentorPanel = ({ userId, mentorStudents, onMentorStudentUpdated, onShowToa
   const [callDate, setCallDate] = useState('');
   const [callTime, setCallTime] = useState('18:00');
   const [callDuration, setCallDuration] = useState(45);
-  const [callMeetLink, setCallMeetLink] = useState('');
   const [callNotes, setCallNotes] = useState('');
   const [callSaving, setCallSaving] = useState(false);
   const [activeTab, setActiveTab] = useState('calls');
@@ -1271,7 +1270,7 @@ const MentorPanel = ({ userId, mentorStudents, onMentorStudentUpdated, onShowToa
   };
 
   const submitCall = async () => {
-    if (!callDate || !selected || !callMeetLink.trim()) return;
+    if (!callDate || !selected) return;
     setCallSaving(true);
     try {
       // Build time as IST to avoid browser-timezone shifting the stored UTC value
@@ -1280,17 +1279,20 @@ const MentorPanel = ({ userId, mentorStudents, onMentorStudentUpdated, onShowToa
       const istOffsetMs = 5.5 * 60 * 60 * 1000;
       const localMs = Date.UTC(y, mo - 1, d, h, m) - istOffsetMs;
       const scheduledAt = new Date(localMs).toISOString();
-      const r = await fetch(`${api}/api/faculty/${userId}/mentor-student/${selected.id}/call`, {
+      const r = await fetch(`${api}/api/faculty/${userId}/sessions`, {
         method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token()}` },
-        body: JSON.stringify({ scheduledAt, durationMin: callDuration, meetLink: callMeetLink.trim() || null, notes: callNotes || null }),
+        body: JSON.stringify({
+          studentIds: [selected.id],
+          title: `Mentorship session — ${selected.name}${callNotes?.trim() ? ` · ${callNotes.trim()}` : ''}`,
+          scheduledAt,
+          duration: callDuration,
+        }),
       });
+      const data = await r.json().catch(() => ({}));
       if (r.ok) {
-        const call = await r.json();
-        setDetail(d => ({ ...d, mentorCalls: [call, ...(d?.mentorCalls || [])] }));
-        onMentorStudentUpdated?.({ id: selected.id, nextCall: call });
-        setCallDate(''); setCallMeetLink(''); setCallNotes('');
-        onShowToast('Call scheduled and student notified ✓');
-      } else { onShowToast('Failed to schedule call'); }
+        setCallDate(''); setCallNotes('');
+        onShowToast('Live session scheduled — a Zoom meeting was created ✓');
+      } else { onShowToast(data.error || 'Failed to schedule session'); }
     } catch { onShowToast('Could not connect to server'); }
     finally { setCallSaving(false); }
   };
@@ -1443,8 +1445,8 @@ const MentorPanel = ({ userId, mentorStudents, onMentorStudentUpdated, onShowToa
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
                   </div>
                   <div className="mpac-head-text">
-                    <div className="mpac-title">Schedule Call</div>
-                    <div className="mpac-desc">Student notified automatically</div>
+                    <div className="mpac-title">Schedule Live Session</div>
+                    <div className="mpac-desc">Creates a Zoom meeting — mentee notified automatically</div>
                   </div>
                 </div>
                 <div className="mpac-fields">
@@ -1465,17 +1467,13 @@ const MentorPanel = ({ userId, mentorStudents, onMentorStudentUpdated, onShowToa
                         {[30, 45, 60, 90].map(d => <option key={d} value={d}>{d} min</option>)}
                       </select>
                     </div>
-                    <div className="mpac-field">
-                      <label className="mpac-label">Agenda <span className="mpac-opt">(optional)</span></label>
-                      <input type="text" className="mpac-input" value={callNotes} onChange={e => setCallNotes(e.target.value)} placeholder="e.g. Thermodynamics revision" />
-                    </div>
                   </div>
                   <div className="mpac-field">
-                    <label className="mpac-label">Google Meet Link</label>
-                    <input type="url" className="mpac-input" value={callMeetLink} onChange={e => setCallMeetLink(e.target.value)} placeholder="https://meet.google.com/xxx-xxxx-xxx" />
+                    <label className="mpac-label">Agenda <span className="mpac-opt">(optional)</span></label>
+                    <input type="text" className="mpac-input" value={callNotes} onChange={e => setCallNotes(e.target.value)} placeholder="e.g. Revision plan, doubt-clearing, weekly check-in" />
                   </div>
                 </div>
-                <button className="mp-btn mp-btn-navy" onClick={submitCall} disabled={callSaving || !callDate || !callMeetLink.trim()} style={{ marginTop: 'auto' }}>
+                <button className="mp-btn mp-btn-navy" onClick={submitCall} disabled={callSaving || !callDate} style={{ marginTop: 'auto' }}>
                   {callSaving ? <><span className="mp-btn-spinner" />Scheduling…</> : 'Schedule & Notify →'}
                 </button>
               </div>

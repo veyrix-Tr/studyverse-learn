@@ -230,7 +230,7 @@ const EXAM_SUBJECTS = {
 router.get('/sessions', requireAuth, async (req, res) => {
   try {
     const profile = await prisma.studentProfile.findUnique({ where: { userId: req.params.userId } });
-    if (!profile || profile.plan !== 'apex') return res.json([]);
+    if (!profile) return res.json([]);
 
     const subjects = EXAM_SUBJECTS[profile.examTarget] || [];
 
@@ -278,7 +278,7 @@ router.get('/sessions', requireAuth, async (req, res) => {
 router.post('/sessions/:id/zoom-signature', requireAuth, async (req, res) => {
   try {
     const profile = await prisma.studentProfile.findUnique({ where: { userId: req.params.userId } });
-    if (!profile || profile.plan !== 'apex') return res.status(403).json({ error: 'Not eligible for live classes' });
+    if (!profile) return res.status(403).json({ error: 'Not a student' });
 
     const session = await prisma.session.findUnique({
       where: { id: parseInt(req.params.id) },
