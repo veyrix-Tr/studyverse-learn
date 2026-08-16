@@ -1,24 +1,49 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { ZoomMtg } from '@zoom/meetingsdk';
 
-// Embedded Zoom call — students/faculty never see zoom.us, just this page.
+const GOLD = '#E8A830';
+const NAVY = '#0F1F3D';
+const RED = '#e5484d';
+
+const fmtClock = (totalSeconds) => {
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const s = totalSeconds % 60;
+  const pad = (n) => String(n).padStart(2, '0');
+  return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`;
+};
+
+// Client view in SDK 6.x loads its own required CSS/assets from Zoom's CDN;
+// the legacy <link> injection for source.zoom.us/{ver}/css no longer exists.
+
+// Zoom Client View — the "identical to the real Zoom app" experience. Unlike
+// Component View, this isn't something we mount into a ref'd container: the
+// SDK creates its own #zmmtg-root element on document.body and takes over the
+// full screen with its own native UI, including a working toolbar (mic,
+// camera, leave, and — for the host — record/lock) that we don't have to
+// rebuild. We only render a small branded badge as a completely separate
+// sibling element (never nested inside Zoom's own DOM), so React re-rendering
+// it can never collide with anything Zoom is doing to its own tree.
+let sdkPrepared = false;
+
 const LiveClassRoom = ({ role }) => {
   const { id: userId, sessionId } = useParams();
   const navigate = useNavigate();
-  const containerRef = useRef(null);
-  const clientRef = useRef(null);
   const joinedRef = useRef(false);
+
   const [status, setStatus] = useState('loading'); // loading | joining | joined | error
   const [error, setError] = useState('');
+  const [session, setSession] = useState(null); // { title, subject, duration, scheduledAt }
+  const [elapsed, setElapsed] = useState(0);
 
   const apiBase = `${import.meta.env.VITE_API_URL}/api/${role}/${userId}`;
+  const dashboardUrl = `${window.location.origin}${role === 'faculty' ? `/faculty/${userId}/dashboard` : `/student-v2/${userId}/dashboard`}`;
   const backHome = () => navigate(role === 'faculty' ? `/faculty/${userId}/dashboard` : `/student-v2/${userId}/dashboard`);
 
   useEffect(() => {
-    // Guard against React 18 StrictMode's dev-only double-invoke (mount → cleanup →
-    // re-mount). We only want the real join to run once per component instance, and
-    // the join must not be aborted partway through by that phantom first cleanup —
-    // Zoom's SDK has no cheap way to cancel an in-flight init/join, so we just let it run.
+    // Guard against React 18 StrictMode's dev-only double-invoke, and against
+    // re-preparing the SDK if this component ever remounts.
     if (joinedRef.current) return;
     joinedRef.current = true;
 
@@ -38,41 +63,50 @@ const LiveClassRoom = ({ role }) => {
         });
         const sigData = await sigRes.json();
         if (!sigRes.ok) throw new Error(sigData.error || 'Could not connect to this class');
+        setSession({ title: sigData.title, subject: sigData.subject, duration: sigData.duration, scheduledAt: sigData.scheduledAt });
 
         setStatus('joining');
 
-        // 3. Load the SDK and join, embedded inside our own container
-        const { default: ZoomMtgEmbedded } = await import('@zoom/meetingsdk/embedded');
-        const client = ZoomMtgEmbedded.createClient();
-        clientRef.current = client;
+        if (!sdkPrepared) {
+          sdkPrepared = true;
+          ZoomMtg.preLoadWasm();
+          ZoomMtg.prepareWebSDK();
+          ZoomMtg.i18n.load('en-US');
+        }
 
-        await client.init({
-          zoomAppRoot: containerRef.current,
-          language: 'en-US',
-          customize: {
-            video: {
-              isResizable: true,
-              popper: { disableDraggable: false },
-            },
+        // Zoom creates #zmmtg-root on import, hidden by default — show it now
+        // that we're actually about to join.
+        const root = document.getElementById('zmmtg-root');
+        if (root) root.style.display = 'block';
+
+        ZoomMtg.init({
+          leaveUrl: dashboardUrl,
+          patchJsMedia: true,
+          leaveOnPageUnload: true,
+          success: () => {
+            ZoomMtg.join({
+              signature: sigData.signature,
+              meetingNumber: sigData.meetingNumber,
+              passWord: sigData.password || '',
+              userName: me?.name || (role === 'faculty' ? 'Faculty' : 'Student'),
+              userEmail: me?.email || undefined,
+              success: () => setStatus('joined'),
+              error: (err) => {
+                console.error('Zoom join failed:', err);
+                setError(err?.reason || err?.errorMessage || 'Could not connect to this class.');
+                setStatus('error');
+              },
+            });
+          },
+          error: (err) => {
+            console.error('Zoom init failed:', err);
+            setError(err?.reason || err?.errorMessage || 'Could not connect to this class.');
+            setStatus('error');
           },
         });
-
-        await client.join({
-          signature: sigData.signature,
-          sdkKey: sigData.sdkKey,
-          meetingNumber: sigData.meetingNumber,
-          password: sigData.password || '',
-          userName: me?.name || (role === 'faculty' ? 'Faculty' : 'Student'),
-          userEmail: me?.email || undefined,
-        });
-
-        setStatus('joined');
       } catch (err) {
-        // Zoom's SDK throws { type, reason } objects, not standard Error instances —
-        // surface whatever shape we actually got instead of masking it with a generic message.
-        console.error('Zoom join failed:', err);
-        const reason = err?.reason || err?.message || (typeof err === 'string' ? err : null);
-        setError(reason ? `${reason}${err?.type ? ` (${err.type})` : ''}` : 'Could not connect to this class.');
+        console.error('Class join failed:', err);
+        setError(err?.message || 'Could not connect to this class.');
         setStatus('error');
       }
     }
@@ -80,27 +114,28 @@ const LiveClassRoom = ({ role }) => {
     run();
 
     return () => {
-      const client = clientRef.current;
-      if (client) {
-        try { client.leave(); } catch { /* already left / never joined */ }
-      }
+      // Best-effort leave + hide Zoom's root if this component unmounts
+      // without the person having clicked Zoom's own Leave button.
+      try { ZoomMtg.leaveMeeting({}); } catch { /* not in a meeting */ }
+      const root = document.getElementById('zmmtg-root');
+      if (root) root.style.display = 'none';
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId]);
 
-  const leave = async () => {
-    const client = clientRef.current;
-    clientRef.current = null; // prevent the unmount cleanup from calling leave() a second time
-    if (client) {
-      try { await client.leave(); } catch { /* already left / never joined */ }
-    }
-    backHome();
-  };
+  // Elapsed-time ticker for the badge, only while actually joined
+  useEffect(() => {
+    if (status !== 'joined') return;
+    const id = setInterval(() => setElapsed((e) => e + 1), 1000);
+    return () => clearInterval(id);
+  }, [status]);
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: '#0F1F3D', zIndex: 500 }}>
+    <>
+      {/* Pre-join loading / error state — this is our own element, separate
+          from #zmmtg-root, shown while Zoom's UI is still hidden. */}
       {status !== 'joined' && (
-        <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#fff', gap: '14px', padding: '20px', textAlign: 'center' }}>
+        <div style={{ position: 'fixed', inset: 0, background: NAVY, zIndex: 500, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#fff', gap: '14px', padding: '20px', textAlign: 'center' }}>
           {status === 'error' ? (
             <>
               <div style={{ fontSize: '16px', fontWeight: 600 }}>Couldn't join this class</div>
@@ -109,27 +144,28 @@ const LiveClassRoom = ({ role }) => {
             </>
           ) : (
             <>
-              <div className="spinner" style={{ width: '32px', height: '32px', border: '3px solid rgba(255,255,255,0.2)', borderTopColor: '#E8A830', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+              <div style={{ width: '32px', height: '32px', border: '3px solid rgba(255,255,255,0.2)', borderTopColor: GOLD, borderRadius: '50%', animation: 'lcr-spin 0.8s linear infinite' }} />
               <div style={{ fontSize: '14px' }}>{status === 'joining' ? 'Connecting to your live class…' : 'Loading…'}</div>
             </>
           )}
         </div>
       )}
 
-      <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
-
+      {/* Small branded badge — a sibling of #zmmtg-root, never nested inside
+          it, so it can re-render freely without touching Zoom's own DOM. */}
       {status === 'joined' && (
-        <button
-          className="btn btn-sm"
-          onClick={leave}
-          style={{ position: 'absolute', top: '14px', right: '14px', zIndex: 10, background: '#e5484d', color: '#fff', fontWeight: 600, border: 'none' }}
-        >
-          Leave class
-        </button>
+        <div style={{ position: 'fixed', top: '12px', left: '12px', zIndex: 100000, background: 'rgba(15,31,61,0.85)', color: '#fff', padding: '6px 12px', borderRadius: '8px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '8px', pointerEvents: 'none' }}>
+          <span style={{ width: 7, height: 7, borderRadius: '50%', background: RED, animation: 'lcr-pulse 1.5s infinite', flexShrink: 0 }} />
+          <span style={{ fontWeight: 600 }}>{session?.title || 'Live Class'}</span>
+          <span style={{ color: 'rgba(255,255,255,0.65)' }}>{fmtClock(elapsed)}</span>
+        </div>
       )}
 
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-    </div>
+      <style>{`
+        @keyframes lcr-spin { to { transform: rotate(360deg); } }
+        @keyframes lcr-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+      `}</style>
+    </>
   );
 };
 

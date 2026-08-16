@@ -213,12 +213,30 @@ router.post('/sessions/:id/zoom-signature', requireAuth, async (req, res) => {
     if (!session || session.facultyId !== fp.id) return res.status(403).json({ error: 'Not your session' });
     if (!session.zoomMeetingId) return res.status(400).json({ error: 'This session has no Zoom meeting set up' });
 
+    let livePassword = session.zoomPassword; // fallback if the refresh call fails
+
+    try {
+      const meeting = await zoom.getMeeting(session.zoomMeetingId);
+      const freshPassword = meeting.password || ''; // live value — may legitimately be empty (no password)
+      if (freshPassword !== session.zoomPassword) {
+        livePassword = freshPassword;
+        session.zoomPassword = freshPassword;
+        await prisma.session.update({ where: { id: session.id }, data: { zoomPassword: freshPassword } });
+      }
+    } catch (err) {
+      console.error(`Zoom getMeeting refresh failed for session ${session.id}:`, err.message);
+    }
+
     const signature = zoom.generateSdkSignature({ meetingNumber: session.zoomMeetingId, role: 1 });
     res.json({
       signature,
       meetingNumber: session.zoomMeetingId,
-      password: session.zoomPassword,
+      password: livePassword,
       sdkKey: process.env.ZOOM_SDK_KEY,
+      title: session.title,
+      subject: session.subject,
+      duration: session.duration,
+      scheduledAt: session.scheduledAt,
     });
   } catch (err) {
     if (err instanceof zoom.ZoomConfigError) return res.status(500).json({ error: 'Zoom is not configured on this server yet.' });

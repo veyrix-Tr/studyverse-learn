@@ -45,9 +45,10 @@ async function createMeeting({ topic, startTime, durationMin }) {
       start_time: startTime, // ISO 8601 UTC
       duration: durationMin,
       timezone: 'Asia/Kolkata',
+      password: '', // no passcode — Waiting Room below is the security option instead
       settings: {
         join_before_host: false,
-        waiting_room: false,
+        waiting_room: true, // required: Zoom forces at least one security option (pw/waiting room/auth)
         approval_type: 2,
         meeting_authentication: false,
         mute_upon_entry: true,
@@ -64,7 +65,22 @@ async function createMeeting({ topic, startTime, durationMin }) {
   };
 }
 
+// Fetches the live meeting record so the join flow can use the current
+// plain-text password rather than a possibly-stale cached copy.
+async function getMeeting(meetingId) {
+  const token = await getS2SToken();
+  const { data } = await axios.get(
+    `https://api.zoom.us/v2/meetings/${meetingId}`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  return data; // includes .password (plain-text)
+}
+
 // role: 1 = host (faculty), 0 = attendee (student)
+// The Meeting SDK JWT uses the Meeting SDK app's Client ID + Client Secret.
+// These are stored in ZOOM_SDK_KEY / ZOOM_SDK_SECRET (the SDK Key/Secret names
+// are deprecated, but for a Meeting SDK app the SDK Key == Client ID and the
+// SDK Secret == Client Secret, so reusing these vars is correct).
 function generateSdkSignature({ meetingNumber, role }) {
   const { ZOOM_SDK_KEY, ZOOM_SDK_SECRET } = process.env;
   if (!ZOOM_SDK_KEY || !ZOOM_SDK_SECRET) {
@@ -75,16 +91,15 @@ function generateSdkSignature({ meetingNumber, role }) {
   const exp = iat + 60 * 60 * 2; // 2hr validity — comfortably over any class duration
 
   const payload = {
-    sdkKey: ZOOM_SDK_KEY,
+    appKey: ZOOM_SDK_KEY, // == the Meeting SDK app's Client ID
     mn: Number(meetingNumber),
     role,
     iat,
     exp,
-    appKey: ZOOM_SDK_KEY,
     tokenExp: exp,
   };
 
   return jwt.sign(payload, ZOOM_SDK_SECRET, { algorithm: 'HS256' });
 }
 
-module.exports = { createMeeting, generateSdkSignature, ZoomConfigError };
+module.exports = { createMeeting, getMeeting, generateSdkSignature, ZoomConfigError };
