@@ -56,6 +56,7 @@ model StudentProfile {
   mentorCalls          MentorCall[]
   sessionRequests      SessionRequest[]
   sessions             Session[]
+  sessionStudents      SessionStudent[]
 }
 
 model FacultyProfile {
@@ -126,8 +127,22 @@ model Session {
   facultyId Int
   faculty   FacultyProfile @relation(fields: [facultyId], references: [id], onDelete: Cascade)
 
-  studentId Int?
+  studentId Int? // legacy primary student for old 1:1 sessions. Prefer `students` for real enrollments.
   student   StudentProfile? @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  students SessionStudent[]
+}
+
+model SessionStudent {
+  id        Int            @id @default(autoincrement())
+  sessionId Int
+  studentId Int
+  session   Session        @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  student   StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, studentId])
+  @@index([studentId])
+  @@index([sessionId])
 }
 
 model Doubt {

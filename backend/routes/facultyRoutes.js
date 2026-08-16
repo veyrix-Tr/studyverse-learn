@@ -50,7 +50,10 @@ router.get('/sessions', requireAuth, async (req, res) => {
     const [sessions, allPremiumStudents] = await Promise.all([
       prisma.session.findMany({
         where: { facultyId: fp.id },
-        include: { student: { include: { user: { select: { name: true } } } } },
+        include: {
+          student: { include: { user: { select: { name: true } } } },
+          students: { include: { student: { include: { user: { select: { name: true } } } } } },
+        },
         orderBy: { scheduledAt: 'asc' },
       }),
       prisma.studentProfile.findMany({
@@ -60,11 +63,15 @@ router.get('/sessions', requireAuth, async (req, res) => {
     ]);
 
     res.json(sessions.map(s => {
-      // New sessions are scheduled 1:1 with a specific student. Legacy sessions
-      // (seeded before this existed) have no studentId — fall back to the old
-      // grade/subject broadcast-eligibility calc so they still render sensibly.
+      // Modern sessions (1:1 or group) store an explicit roster in the
+      // SessionStudent join table. Legacy sessions (seeded before this existed)
+      // have no studentId and no roster — fall back to the old grade/subject
+      // broadcast-eligibility calc so they still render sensibly.
       let enrolledCount, enrolledStudents;
-      if (s.studentId && s.student) {
+      if (s.students.length > 0) {
+        enrolledCount = s.students.length;
+        enrolledStudents = s.students.map(ss => ss.student.user.name);
+      } else if (s.studentId && s.student) {
         enrolledCount = 1;
         enrolledStudents = [s.student.user.name];
       } else {
@@ -104,8 +111,9 @@ router.get('/sessions', requireAuth, async (req, res) => {
   }
 });
 
-// POST /api/faculty/sessions — schedule a new 1:1 live class with a specific Apex
-// student. Creates a real Zoom meeting via Server-to-Server OAuth and notifies them.
+// POST /api/faculty/sessions — schedule a live class with one or more Apex
+// students. A single shared Zoom meeting is created (faculty hosts, all selected
+// students attend), each student is enrolled, and they're notified.
 router.post('/sessions', requireAuth, async (req, res) => {
   try {
     const fp = await prisma.facultyProfile.findUnique({
@@ -114,34 +122,44 @@ router.post('/sessions', requireAuth, async (req, res) => {
     });
     if (!fp) return res.status(403).json({ error: 'Not a faculty' });
 
-    const { studentId, title, subject, scheduledAt, duration } = req.body;
-    if (!studentId || !title?.trim() || !subject || !scheduledAt || !duration) {
-      return res.status(400).json({ error: 'studentId, title, subject, scheduledAt, duration are required' });
+    const { studentId, studentIds, title, subject, scheduledAt, duration } = req.body;
+    const ids = (Array.isArray(studentIds) && studentIds.length) ? studentIds : (studentId ? [studentId] : []);
+    if (ids.length === 0 || !title?.trim() || !subject || !scheduledAt || !duration) {
+      return res.status(400).json({ error: 'At least one student, plus title, subject, scheduledAt, duration are required' });
     }
 
-    const student = await prisma.studentProfile.findUnique({
-      where: { id: Number(studentId) },
+    const students = await prisma.studentProfile.findMany({
+      where: { id: { in: ids.map(Number) } },
       include: { user: { select: { name: true } } },
     });
-    if (!student || student.plan !== 'apex') {
-      return res.status(400).json({ error: 'Selected student is not on the Apex plan' });
+    if (students.length !== ids.length) {
+      return res.status(400).json({ error: 'One or more selected students were not found' });
     }
-    if (!student.grade) {
-      return res.status(400).json({ error: 'This student has no grade set on their profile yet' });
-    }
-    if (!(EXAM_SUBJECTS[student.examTarget] || []).includes(subject)) {
-      return res.status(400).json({ error: 'This student does not study the selected subject' });
+    for (const st of students) {
+      if (st.plan !== 'apex') return res.status(400).json({ error: `${st.user.name} is not on the Apex plan` });
+      if (!st.grade) return res.status(400).json({ error: `${st.user.name} has no grade set on their profile yet` });
+      if (!(EXAM_SUBJECTS[st.examTarget] || []).includes(subject)) {
+        return res.status(400).json({ error: `${st.user.name} does not study ${subject}` });
+      }
     }
 
     const startDate = new Date(scheduledAt);
     if (isNaN(startDate.getTime())) return res.status(400).json({ error: 'Invalid scheduledAt' });
 
     const dayOfWeek = startDate.toLocaleDateString('en-US', { weekday: 'long', timeZone: 'Asia/Kolkata' });
+    const names = students.map(st => st.user.name);
+    // Keep a primary student for continuity (old display + legacy eligibility);
+    // the real roster lives in the SessionStudent join table.
+    const primary = students[0];
+
+    const zoomTopic = names.length === 1
+      ? `${title.trim()} — ${names[0]} (${subject})`
+      : `${title.trim()} (${subject}) — ${names.length} students${names.length <= 3 ? `: ${names.join(', ')}` : ''}`;
 
     let zoomFields;
     try {
       zoomFields = await zoom.createMeeting({
-        topic: `${title.trim()} — ${student.user.name} (${subject})`,
+        topic: zoomTopic,
         startTime: startDate.toISOString(),
         durationMin: Number(duration),
       });
@@ -157,31 +175,37 @@ router.post('/sessions', requireAuth, async (req, res) => {
       data: {
         title: title.trim(),
         subject,
-        grade: student.grade,
+        grade: primary.grade,
         dayOfWeek,
         scheduledAt: startDate,
         duration: Number(duration),
         facultyId: fp.id,
-        studentId: student.id,
+        studentId: primary.id,
+        students: { create: students.map(st => ({ studentId: st.id })) },
         ...zoomFields,
       },
     });
 
     const admin = await prisma.adminProfile.findFirst({ orderBy: { id: 'asc' }, select: { id: true } });
     if (admin) {
-      await prisma.adminMessage.create({
-        data: {
-          content: `New live class scheduled: "${title.trim()}" (${subject}) with ${fp.user.name} — ${startDate.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}`,
-          type: 'Reminder',
-          studentId: student.id,
-          adminId: admin.id,
-        },
-      });
+      for (const st of students) {
+        const adminMsgs = prisma.adminMessage.create({
+          data: {
+            content: `New live class scheduled: "${title.trim()}" (${subject}) by ${fp.user.name} for ${names.join(', ')} — ${startDate.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}`,
+            type: 'Reminder',
+            studentId: st.id,
+            adminId: admin.id,
+          },
+        });
+        await adminMsgs.catch(() => {});
+      }
     }
 
-    prisma.facultyAlert.create({
-      data: { facultyId: fp.id, type: 'Session', content: `Live class "${title.trim()}" scheduled with ${student.user.name} — Zoom meeting created ✓` },
-    }).catch(() => {});
+    for (const st of students) {
+      prisma.facultyAlert.create({
+        data: { facultyId: fp.id, type: 'Session', content: `Live class "${title.trim()}" scheduled with ${st.user.name} (${names.join(', ')}) — Zoom meeting created ✓` },
+      }).catch(() => {});
+    }
 
     res.status(201).json({
       id: session.id,
@@ -191,8 +215,11 @@ router.post('/sessions', requireAuth, async (req, res) => {
       dayOfWeek: session.dayOfWeek,
       scheduledAt: session.scheduledAt,
       duration: session.duration,
-      studentId: student.id,
-      studentName: student.user.name,
+      studentId: primary.id,
+      studentName: names[0],
+      studentNames: names,
+      studentIds: students.map(st => st.id),
+      enrolledCount: students.length,
       zoomMeetingId: session.zoomMeetingId,
       joinUrl: session.joinUrl,
       startUrl: session.startUrl,
@@ -232,7 +259,6 @@ router.post('/sessions/:id/zoom-signature', requireAuth, async (req, res) => {
       signature,
       meetingNumber: session.zoomMeetingId,
       password: livePassword,
-      sdkKey: process.env.ZOOM_SDK_KEY,
       title: session.title,
       subject: session.subject,
       duration: session.duration,

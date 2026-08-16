@@ -474,7 +474,7 @@ const FacultyContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
                   <div className="sched-dot" style={{ background: live ? '#ef4444' : upcoming ? 'var(--gold)' : 'var(--green)', boxShadow: live ? '0 0 0 3px rgba(239,68,68,0.2)' : upcoming ? 'none' : '0 0 0 3px rgba(34,197,94,0.2)' }}></div>
                   <div className="sched-info">
                     <div className="sched-name">{s.title}</div>
-                    <div className="sched-meta">{s.subject} • {s.duration} min • {s.studentName ? `with ${s.studentName}` : `${s.enrolledCount} student${s.enrolledCount !== 1 ? 's' : ''}`}</div>
+                    <div className="sched-meta">{s.subject} • {s.duration} min • {s.enrolledCount > 1 ? `${s.enrolledCount} students` : (s.studentName ? `with ${s.studentName}` : `${s.enrolledCount} student`)}</div>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '5px' }}>
                     <div className={`sched-status ${live ? 's-live' : upcoming ? 's-up' : ''}`} style={live ? { display: 'flex', alignItems: 'center', gap: 5 } : {}}>{live ? <><span style={{ width: 7, height: 7, borderRadius: '50%', background: '#ef4444', display: 'inline-block', animation: 'pulse 1.5s infinite', flexShrink: 0 }} />Live</> : upcoming ? 'Upcoming' : 'Completed'}</div>

@@ -234,15 +234,23 @@ router.get('/sessions', requireAuth, async (req, res) => {
 
     const subjects = EXAM_SUBJECTS[profile.examTarget] || [];
 
-    // New sessions are scheduled 1:1 (studentId set). Legacy sessions (seeded
-    // before this existed) have no studentId — keep matching those by grade/subject.
+    // Sessions shown to this student: those they're explicitly enrolled in
+    // (1:1 via studentId, or group via the SessionStudent roster), plus any
+    // legacy broadcast sessions (no roster) matching grade/subject.
+    const enrolledWhere = [
+      { studentId: profile.id },
+      { students: { some: { studentId: profile.id } } },
+    ];
     const legacyWhere = (profile.grade && subjects.length)
-      ? [{ studentId: null, grade: profile.grade, subject: { in: subjects } }]
+      ? [{ students: { none: {} }, studentId: null, grade: profile.grade, subject: { in: subjects } }]
       : [];
 
     const sessions = await prisma.session.findMany({
-      where: { OR: [{ studentId: profile.id }, ...legacyWhere] },
-      include: { faculty: { include: { user: { select: { name: true } } } } },
+      where: { OR: [...enrolledWhere, ...legacyWhere] },
+      include: {
+        faculty: { include: { user: { select: { name: true } } } },
+        students: { include: { student: { include: { user: { select: { name: true } } } } } },
+      },
       orderBy: { scheduledAt: 'asc' },
     });
 
@@ -256,6 +264,8 @@ router.get('/sessions', requireAuth, async (req, res) => {
       duration: s.duration,
       note: s.note || null,
       facultyName: s.faculty.user.name,
+      enrolledCount: s.students.length || 1,
+      enrolledStudents: s.students.length ? s.students.map(ss => ss.student.user.name) : (s.student?.user?.name ? [s.student.user.name] : []),
       hasZoom: !!s.zoomMeetingId,
     })));
   } catch (err) {
@@ -270,14 +280,18 @@ router.post('/sessions/:id/zoom-signature', requireAuth, async (req, res) => {
     const profile = await prisma.studentProfile.findUnique({ where: { userId: req.params.userId } });
     if (!profile || profile.plan !== 'apex') return res.status(403).json({ error: 'Not eligible for live classes' });
 
-    const session = await prisma.session.findUnique({ where: { id: parseInt(req.params.id) } });
+    const session = await prisma.session.findUnique({
+      where: { id: parseInt(req.params.id) },
+      include: { students: { select: { studentId: true } } },
+    });
     if (!session) return res.status(404).json({ error: 'Session not found' });
 
-    // New sessions are 1:1 — must be the exact student it was scheduled for.
-    // Legacy sessions (no studentId) fall back to the old grade/subject match.
+    // Sessions are 1:1 (studentId) or group (SessionStudent roster). Legacy
+    // sessions (no roster, no studentId) fall back to the old grade/subject match.
     const subjects = EXAM_SUBJECTS[profile.examTarget] || [];
-    const eligible = session.studentId
-      ? session.studentId === profile.id
+    const enrolled = session.studentId === profile.id || session.students.some(x => x.studentId === profile.id);
+    const eligible = session.studentId || session.students.length > 0
+      ? enrolled
       : (profile.grade === session.grade && subjects.includes(session.subject));
     if (!eligible) return res.status(403).json({ error: 'Not eligible for this session' });
 
@@ -302,7 +316,6 @@ router.post('/sessions/:id/zoom-signature', requireAuth, async (req, res) => {
       signature,
       meetingNumber: session.zoomMeetingId,
       password: livePassword,
-      sdkKey: process.env.ZOOM_SDK_KEY,
       title: session.title,
       subject: session.subject,
       duration: session.duration,

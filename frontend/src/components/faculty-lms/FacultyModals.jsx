@@ -18,11 +18,12 @@ const FacultyModals = ({ openModal, onClose, onShowToast, toast, detailOpen, sel
   const [broadcasting, setBroadcasting] = useState(false);
 
   // Schedule Session state
-  const [sessForm, setSessForm] = useState({ studentId: '', title: '', subject: 'Physics', date: '', time: '', duration: 45 });
+  const [sessForm, setSessForm] = useState({ studentIds: [], title: '', subject: 'Physics', date: '', time: '', duration: 45 });
   const [sessLoading, setSessLoading] = useState(false);
   const [sessError, setSessError] = useState('');
   const [apexStudents, setApexStudents] = useState([]);
   const [studentsLoading, setStudentsLoading] = useState(false);
+  const [studentsOpen, setStudentsOpen] = useState(false);
 
   useEffect(() => {
     if (openModal !== 'schedule-modal') return;
@@ -36,16 +37,24 @@ const FacultyModals = ({ openModal, onClose, onShowToast, toast, detailOpen, sel
   }, [openModal, userId]);
 
   const eligibleStudents = apexStudents.filter(st => (EXAM_SUBJECTS[st.examTarget] || []).includes(sessForm.subject));
-  const selectedStudentInfo = eligibleStudents.find(st => String(st.id) === String(sessForm.studentId));
+  const selectedStudentsInfo = eligibleStudents.filter(st => sessForm.studentIds.includes(String(st.id)));
+
+  const toggleStudent = (id) => setSessForm(f => ({
+    ...f,
+    studentIds: f.studentIds.includes(String(id))
+      ? f.studentIds.filter(x => x !== String(id))
+      : [...f.studentIds, String(id)],
+  }));
 
   const resetSessForm = () => {
-    setSessForm({ studentId: '', title: '', subject: 'Physics', date: '', time: '', duration: 45 });
+    setSessForm({ studentIds: [], title: '', subject: 'Physics', date: '', time: '', duration: 45 });
+    setStudentsOpen(false);
     setSessError('');
   };
 
   const scheduleSession = async () => {
-    if (!sessForm.studentId || !sessForm.title.trim() || !sessForm.date || !sessForm.time) {
-      setSessError('Please fill in all fields.');
+    if (!sessForm.studentIds.length || !sessForm.title.trim() || !sessForm.date || !sessForm.time) {
+      setSessError('Select at least one student and fill in all fields.');
       return;
     }
     const scheduledAt = new Date(`${sessForm.date}T${sessForm.time}`);
@@ -59,7 +68,7 @@ const FacultyModals = ({ openModal, onClose, onShowToast, toast, detailOpen, sel
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
-          studentId: Number(sessForm.studentId),
+          studentIds: sessForm.studentIds.map(Number),
           title: sessForm.title.trim(),
           subject: sessForm.subject,
           scheduledAt: scheduledAt.toISOString(),
@@ -70,7 +79,9 @@ const FacultyModals = ({ openModal, onClose, onShowToast, toast, detailOpen, sel
       if (!res.ok) throw new Error(data.error || 'Failed to schedule session');
       resetSessForm();
       onClose();
-      onShowToast(`Session scheduled with ${data.studentName || 'the student'} — Zoom meeting created ✓`);
+      onShowToast(data.enrolledCount > 1
+        ? `Session scheduled with ${data.enrolledCount} students — Zoom meeting created ✓`
+        : `Session scheduled with ${data.studentName || 'the student'} — Zoom meeting created ✓`);
       onSessionCreated?.(data);
     } catch (err) {
       setSessError(err.message);
@@ -230,19 +241,36 @@ const FacultyModals = ({ openModal, onClose, onShowToast, toast, detailOpen, sel
       <div className={`overlay${isOpen('schedule-modal')}`} onClick={e => e.target.classList.contains('overlay') && onClose()}>
         <div className="modal">
           <div className="mt">Schedule a Session</div>
-          <div className="ms">A Zoom meeting is created automatically and the student is notified.</div>
+          <div className="ms">A Zoom meeting is created automatically and all selected students are notified.</div>
           <div className="fg"><label>Subject</label>
-            <select className="finput" value={sessForm.subject} onChange={e => setSessForm(f => ({ ...f, subject: e.target.value, studentId: '' }))}>
+            <select className="finput" value={sessForm.subject} onChange={e => { setSessForm(f => ({ ...f, subject: e.target.value, studentIds: [] })); setStudentsOpen(false); }}>
               <option>Physics</option><option>Chemistry</option><option>Maths</option><option>Biology</option>
             </select>
           </div>
-          <div className="fg"><label>Student</label>
-            <select className="finput" value={sessForm.studentId} onChange={e => setSessForm(f => ({ ...f, studentId: e.target.value }))} disabled={studentsLoading}>
-              <option value="">{studentsLoading ? 'Loading students…' : eligibleStudents.length === 0 ? 'No Apex students take this subject' : '— Select student —'}</option>
-              {eligibleStudents.map(st => (
-                <option key={st.id} value={st.id}>{st.name} — Grade {st.grade || '—'}</option>
-              ))}
-            </select>
+          <div className="fg"><label>Students</label>
+            <button type="button" className="finput" style={{ textAlign: 'left', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }} disabled={studentsLoading} onClick={() => setStudentsOpen(o => !o)}>
+              <span style={{ color: selectedStudentsInfo.length ? 'inherit' : 'var(--text3)' }}>
+                {studentsLoading ? 'Loading students…'
+                  : selectedStudentsInfo.length === 0 ? 'Select students…'
+                  : selectedStudentsInfo.length === 1 ? `1 student selected`
+                  : `${selectedStudentsInfo.length} students selected`}
+              </span>
+              <span style={{ fontSize: '11px', transform: studentsOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', color: 'var(--text3)' }}>▾</span>
+            </button>
+            {studentsOpen && (
+              eligibleStudents.length === 0 ? (
+                <div style={{ marginTop: '6px', fontSize: '12px', color: 'var(--text3)' }}>No Apex students take this subject</div>
+              ) : (
+                <div style={{ maxHeight: '180px', overflowY: 'auto', border: '1px solid var(--line)', borderRadius: '8px', padding: '6px', marginTop: '6px' }}>
+                  {eligibleStudents.map(st => (
+                    <label key={st.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 8px', borderRadius: '6px', cursor: 'pointer', color: sessForm.studentIds.includes(String(st.id)) ? '#E8A830' : 'inherit' }}>
+                      <input type="checkbox" style={{ accentColor: '#E8A830' }} checked={sessForm.studentIds.includes(String(st.id))} onChange={() => toggleStudent(st.id)} />
+                      <span>{st.name} — Grade {st.grade || '—'}</span>
+                    </label>
+                  ))}
+                </div>
+              )
+            )}
           </div>
           <div className="fg"><label>Topic</label>
             <input className="finput" type="text" placeholder="e.g. Electrostatics — Gauss's Law" value={sessForm.title} onChange={e => setSessForm(f => ({ ...f, title: e.target.value }))} />
@@ -256,9 +284,11 @@ const FacultyModals = ({ openModal, onClose, onShowToast, toast, detailOpen, sel
               <option value={45}>45 minutes</option><option value={60}>60 minutes</option><option value={75}>75 minutes</option><option value={90}>90 minutes</option>
             </select>
           </div>
-          {selectedStudentInfo && (
+          {selectedStudentsInfo.length > 0 && (
             <div style={{ fontSize: '12px', color: 'var(--text3)', marginTop: '2px' }}>
-              {selectedStudentInfo.name} · Grade {selectedStudentInfo.grade || '—'} · {selectedStudentInfo.examTarget || 'No exam target set'}
+              {selectedStudentsInfo.length === 1
+                ? `${selectedStudentsInfo[0].name} · Grade ${selectedStudentsInfo[0].grade || '—'} · ${selectedStudentsInfo[0].examTarget || 'No exam target set'}`
+                : `${selectedStudentsInfo.length} students selected (${selectedStudentsInfo.map(x => x.name).join(', ')})`}
             </div>
           )}
           {sessError && <div style={{ color: '#e5484d', fontSize: '13px', marginTop: '6px' }}>{sessError}</div>}
