@@ -445,6 +445,7 @@ const FacultyLMS = () => {
         toast={toast}
         detailOpen={detailOpen}
         selectedStudent={selectedStudent}
+        profile={profile}
         onCloseDetail={() => setDetailOpen(false)}
         onOpenModal={setOpenModal}
         onNav={setActivePage}

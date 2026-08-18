@@ -148,9 +148,14 @@ router.post('/sessions', requireAuth, async (req, res) => {
 
     // Mentor-mentee sessions are pure mentorship check-ins — no academic subject.
     // If every selected student is this faculty's mentee, default to 'Mentorship'
-    // and don't require a subject. Mixed/Apex sessions still use the provided one.
+    // and don't require a subject.
     const allMentees = students.every(st => st.mentorId === fp.id);
-    const effectiveSubject = allMentees ? 'Mentorship' : subject;
+
+    // Academic sessions stay locked to the faculty's OWN subject (a Physics
+    // teacher can only schedule Physics). Fall back to the submitted subject
+    // only when the faculty has no subject set on their profile.
+    const academicSubject = (fp.subject && fp.subject.trim()) ? fp.subject : subject;
+    const effectiveSubject = allMentees ? 'Mentorship' : academicSubject;
     if (!allMentees && !effectiveSubject?.trim()) {
       return res.status(400).json({ error: 'subject is required for academic sessions' });
     }

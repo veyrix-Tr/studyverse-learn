@@ -10,20 +10,36 @@ const EXAM_SUBJECTS = {
   'NEET':         ['Physics', 'Chemistry', 'Biology'],
 };
 
-const FacultyModals = ({ openModal, onClose, onShowToast, toast, detailOpen, selectedStudent, onCloseDetail, onOpenModal, onNav, onResourceAdded, onSessionCreated }) => {
+const FacultyModals = ({ openModal, onClose, onShowToast, toast, detailOpen, selectedStudent, onCloseDetail, onOpenModal, onNav, onResourceAdded, onSessionCreated, profile }) => {
   const { id: userId } = useParams();
   const isOpen = (id) => openModal === id ? ' open' : '';
   const s = selectedStudent || {};
   const [broadcastText, setBroadcastText] = useState('');
   const [broadcasting, setBroadcasting] = useState(false);
 
+  // Every faculty has one subject on their profile (e.g. "Physics"). Sessions
+  // and resources stay tied to it rather than letting the teacher free-pick.
+  const facultySubject = (profile?.facultyProfile?.subject || '').trim();
+
   // Schedule Session state
-  const [sessForm, setSessForm] = useState({ studentIds: [], title: '', subject: 'Physics', date: '', time: '', duration: 45 });
+  const [sessForm, setSessForm] = useState({ studentIds: [], title: '', subject: facultySubject || 'Physics', date: '', time: '', duration: 45 });
   const [sessLoading, setSessLoading] = useState(false);
   const [sessError, setSessError] = useState('');
   const [apexStudents, setApexStudents] = useState([]);
   const [studentsLoading, setStudentsLoading] = useState(false);
   const [studentsOpen, setStudentsOpen] = useState(false);
+
+  // Lock the session subject to the faculty's own subject once the modal opens.
+  useEffect(() => {
+    if (openModal !== 'schedule-modal') return;
+    if (facultySubject) setSessForm(f => ({ ...f, subject: facultySubject, studentIds: [] }));
+  }, [openModal, facultySubject]);
+
+  // Default resource subject to the faculty's own subject on each open.
+  useEffect(() => {
+    if (openModal !== 'suggest-res-modal') return;
+    if (facultySubject) setResSubject(facultySubject);
+  }, [openModal, facultySubject]);
 
   useEffect(() => {
     if (openModal !== 'schedule-modal') return;
@@ -37,7 +53,8 @@ const FacultyModals = ({ openModal, onClose, onShowToast, toast, detailOpen, sel
   }, [openModal, userId]);
 
   const menteeStudents = apexStudents.filter(st => String(st.plan) !== 'apex');
-  const apexEligible = apexStudents.filter(st => String(st.plan) === 'apex' && (EXAM_SUBJECTS[st.examTarget] || []).includes(sessForm.subject));
+  const shownSubject = facultySubject || sessForm.subject;
+  const apexEligible = apexStudents.filter(st => String(st.plan) === 'apex' && (EXAM_SUBJECTS[st.examTarget] || []).includes(shownSubject));
   const roster = [...menteeStudents, ...apexEligible];
   const selectedStudentsInfo = roster.filter(st => sessForm.studentIds.includes(String(st.id)));
 
@@ -49,7 +66,7 @@ const FacultyModals = ({ openModal, onClose, onShowToast, toast, detailOpen, sel
   }));
 
   const resetSessForm = () => {
-    setSessForm({ studentIds: [], title: '', subject: 'Physics', date: '', time: '', duration: 45 });
+    setSessForm({ studentIds: [], title: '', subject: facultySubject || 'Physics', date: '', time: '', duration: 45 });
     setStudentsOpen(false);
     setSessError('');
   };
@@ -75,7 +92,7 @@ const FacultyModals = ({ openModal, onClose, onShowToast, toast, detailOpen, sel
         body: JSON.stringify({
           studentIds: sessForm.studentIds.map(Number),
           title: finalTitle,
-          subject: sessForm.subject,
+          subject: facultySubject || sessForm.subject,
           scheduledAt: scheduledAt.toISOString(),
           duration: Number(sessForm.duration),
         }),
@@ -100,7 +117,7 @@ const FacultyModals = ({ openModal, onClose, onShowToast, toast, detailOpen, sel
   // Resource upload state
   const [resTitle, setResTitle] = useState('');
   const [resDescription, setResDescription] = useState('');
-  const [resSubject, setResSubject] = useState('Physics');
+  const [resSubject, setResSubject] = useState(facultySubject || 'Physics');
   const [resGrade, setResGrade] = useState('11');
   const [resType, setResType] = useState('');
   const [resFile, setResFile] = useState(null);
@@ -108,7 +125,7 @@ const FacultyModals = ({ openModal, onClose, onShowToast, toast, detailOpen, sel
   const fileInputRef = useRef(null);
 
   const resetResForm = () => {
-    setResTitle(''); setResDescription(''); setResSubject('Physics');
+    setResTitle(''); setResDescription(''); setResSubject(facultySubject || 'Physics');
     setResGrade('11'); setResType(''); setResFile(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
@@ -250,11 +267,21 @@ const FacultyModals = ({ openModal, onClose, onShowToast, toast, detailOpen, sel
           <div className="mt">Schedule a Session</div>
           <div className="ms">A Zoom meeting is created automatically and all selected students are notified.</div>
           {!menteeOnly && (
-            <div className="fg"><label>Subject</label>
-              <select className="finput" value={sessForm.subject} onChange={e => { setSessForm(f => ({ ...f, subject: e.target.value, studentIds: [] })); setStudentsOpen(false); }}>
-                <option>Physics</option><option>Chemistry</option><option>Maths</option><option>Biology</option>
-              </select>
-            </div>
+            facultySubject ? (
+              <div className="fg">
+                <label>Subject</label>
+                <div className="finput" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: 'var(--text)', background: 'var(--cream2)', fontWeight: 600 }}>
+                  <span>{facultySubject}</span>
+                  <span style={{ fontSize: '10.5px', fontWeight: 600, color: 'var(--green)', textTransform: 'uppercase', letterSpacing: '.05em' }}>Your subject</span>
+                </div>
+              </div>
+            ) : (
+              <div className="fg"><label>Subject</label>
+                <select className="finput" value={sessForm.subject} onChange={e => { setSessForm(f => ({ ...f, subject: e.target.value, studentIds: [] })); setStudentsOpen(false); }}>
+                  <option>Physics</option><option>Chemistry</option><option>Maths</option><option>Biology</option>
+                </select>
+              </div>
+            )
           )}
           <div className="fg"><label>Students</label>
             <button type="button" className="finput" style={{ textAlign: 'left', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }} disabled={studentsLoading} onClick={() => setStudentsOpen(o => !o)}>
@@ -286,7 +313,7 @@ const FacultyModals = ({ openModal, onClose, onShowToast, toast, detailOpen, sel
                   )}
                   {apexEligible.length > 0 && (
                     <>
-                      <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text3)', padding: '4px 8px' }}>Apex students — {sessForm.subject}</div>
+                      <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text3)', padding: '4px 8px' }}>Apex students — {shownSubject}</div>
                       {apexEligible.map(st => (
                         <label key={st.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 8px', borderRadius: '6px', cursor: 'pointer', color: sessForm.studentIds.includes(String(st.id)) ? '#E8A830' : 'inherit' }}>
                           <input type="checkbox" style={{ accentColor: '#E8A830' }} checked={sessForm.studentIds.includes(String(st.id))} onChange={() => toggleStudent(st.id)} />
