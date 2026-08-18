@@ -10,19 +10,11 @@ Completed items are removed from this file once done (kept out entirely so no tr
 
 ## A. Genuine bugs (broken / wrong code)
 
-### A1. 🟡 Session note / remind notifications ignore the actual roster → over-notify
-`backend/routes/facultyRoutes.js:452–459` (note) and `502–506` (remind)
-New sessions store an explicit roster (`SessionStudent`), and creation notifies per-roster. But the "add note" and "remind" routes recompute recipients by **grade + exam-subject across all Apex/Anchor students**, ignoring the roster. A 1:1 session's note/reminder goes to every student of that grade studying that subject — not the enrollees. Over-notification bug.
-
-### A2. 🟡 Apex & Anchor plan CTAs are no-ops / unbuyable
+### A1. 🟡 Apex & Anchor plan CTAs are no-ops / unbuyable
 `frontend/src/components/free-lms/FreeContent.jsx:2613` (Apex) and `:2632` (Anchor) — both cards' only CTA is `onClick={() => onNav('plans')}` while **already on the plans page**, so clicking does nothing. `openPlanCheckout` is only ever called with `'forge'` (sole call site). The backend `create-plan-order` supports `'apex'`/`'anchor'` (paymentController.js:139–140) but no UI path triggers it. **Two of four paid plans can't be bought through the app.** (Stacked with B3.)
 
-### A3. 🟡 ₹99 pay-per-session is bypassable — the free session-request route has no gate
+### A2. 🟡 ₹99 pay-per-session is bypassable — the free session-request route has no gate
 `backend/routes/studentRoutes.js:748–770` `POST /session-request` creates a `SessionRequest` for any authenticated student with **no plan check and no payment requirement** — the same booking the paid flow materialises on payment. It's live and callable directly, so the advertised ₹99 single-session fee isn't enforced. (Frontend uses the paid path, but the public route defeats it.)
-
-### A4. 🟠 Webhook `notify_url` can fall back to a relative/invalid URL
-`backend/controllers/paymentController.js:158` and `:206`
-`notify_url: process.env.CASHFREE_WEBHOOK_URL || `${process.env.BACKEND_URL || ''}/api/payment/webhook``. If neither env var is set, this becomes relative `/api/payment/webhook`, which Cashfree cannot POST to. If the user also closes the checkout before the frontend `verify` runs, the payment is **never applied and the plan stays PENDING forever** ("paid but not upgraded"). Depends on env, but the default fallback is broken.
 
 ---
 
@@ -52,25 +44,22 @@ Course cards show fabricated progress ("36 of 48 lectures"); the video player an
 `frontend/src/components/student-lms/StudentModals.jsx:67`
 "Send Request" runs `onClose(); onShowToast('Session request sent!')` — form fields (topic/date/time) aren't wired to state. Yet a complete round-trip exists unused: `POST /api/student/session-request` (studentRoutes.js:748) and `GET /api/student/session-requests` (:773). Requests from this modal are never persisted.
 
-### B7. 🟠 Session recordings don't exist end-to-end
-`frontend/.../student-lms/StudentContent.jsx:755`, `faculty-lms/FacultyContent.jsx:664` both render a "Recording" link guarded by `s.recordingUrl`. But the `Session` model **has no `recordingUrl` column**, and neither session mapper returns it. `s.recordingUrl` is always falsy → the Recording link can never appear.
-
-### B8. 🟡 Faculty "Quick Note", "Session Notes", and "Suggest a Test" modals are fake
+### B7. 🟡 Faculty "Quick Note", "Session Notes", and "Suggest a Test" modals are fake
 `frontend/src/components/faculty-lms/FacultyModals.jsx`
 - Quick Note `:361–376` — hardcoded fake student dropdown, no state, Save only toasts `'Note saved. Will appear in Sunday report ✓'`.
 - Session Notes `:379–400` — every field is `defaultValue` hardcoded prose; Save only toasts. (A real notes flow exists via `POST /api/faculty/sessions/:id/note` + the inline editor in FacultyContent — this modal bypasses it entirely.)
 - Suggest a Test `:452–473` — **no backend route exists at all** for test suggestions; Send only toasts. The advertised "mentor-assigned test → admin approval" flow is unbuilt; the review tables in FacultyContent are hardcoded `<tr>` rows.
 
-### B9. 🟡 "Forgot password?" is a stub
+### B8. 🟡 "Forgot password?" is a stub
 `frontend/src/components/login/LoginForm.jsx:147–149` — `triggerToast('Password reset coming soon!')`. No reset route/controller/form anywhere. Dead end for a user who forgets their password.
 
-### B10. 🟡 Student "Send Message" (mentor chat) is fake
+### B9. 🟡 Student "Send Message" (mentor chat) is fake
 `frontend/src/components/student-lms/StudentContent.jsx:872` — button only toasts `'Opening chat...'`. No chat feature/route exists.
 
-### B11. 🟡 Registration "City" is silently discarded
+### B10. 🟡 Registration "City" is silently discarded
 `frontend/src/components/login/RegisterForm.jsx:164` sends `city`; `backend/controllers/authController.js:8` destructures only `{ name, email, password, examTarget, targetYear, grade, phone }`, and `StudentProfile` has **no `city` column**. Accepted then dropped — never stored or shown.
 
-### B12. 🟡 Diagnostic "score" is the form-fill percentage, not an assessment result
+### B11. 🟡 Diagnostic "score" is the form-fill percentage, not an assessment result
 `frontend/src/components/common/DiagnosticForm.jsx:262–268` posts `{ score: progress, answers: form }` where `progress` is `% of questionnaire answered` (:153–160). Stored as `diagnosticScore` and surfaced to admins as "completed their diagnostic (score: N%)". Misrepresents completion % as an exam score. Real scoring never happens.
 
 ---
@@ -107,13 +96,10 @@ Course cards show fabricated progress ("36 of 48 lectures"); the video player an
 
 ## Suggested fix order (highest-impact, cheapest first)
 
-1. **B1 + A3** — tie gating to `planEndDate` (add an expiry cron + check planning), and gate `POST /session-request` behind the paid plan.
-2. **A2 / B3 / B2** — decide the buying story: wire Apex/Anchor to `openPlanCheckout`, and build real create-admin / enroll-student routes (or remove the fake modals).
+1. **B1 + A2** — tie gating to `planEndDate` (add an expiry cron + check planning), and gate `POST /session-request` behind the paid plan.
+2. **A1 / B3 / B2** — decide the buying story: wire Apex/Anchor to `openPlanCheckout`, and build real create-admin / enroll-student routes (or remove the fake modals).
 3. **B4 / B5 / C1 / C2** — either build the weekly-test/course/test engines or replace the hardcoded mockups with honest "Coming Soon" placeholders and remove fabricated dashboards.
 4. **C3 / C4** — decide whether Apex or Anchor owns `subjectFaculty`, wire the correct plan's admin panel, and make the Mentor column use `mentorId`.
-5. **B6 / B8 / B9 / B10** — wire the student session-request modal, the faculty note/test modals, forgot-password, and chat (or remove the fake ones).
-6. **B7** — recording: add a `recordingUrl`-capable field + surface it, or remove the dead UI checks.
-7. **A1** — make session note/remind notifications use the actual roster.
-8. **A4** — set `CASHFREE_WEBHOOK_URL` (+ `BACKEND_URL`) in backend env / `.env.example` so webhooks resolve.
+5. **B6 / B7 / B8 / B9** — wire the student session-request modal, the faculty note/test modals, forgot-password, and chat (or remove the fake ones).
 
 ---

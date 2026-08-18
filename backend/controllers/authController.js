@@ -107,4 +107,39 @@ const checkEmail = async (req, res) => {
   }
 };
 
-module.exports = { register, login, checkEmail };
+// POST /api/auth/refresh
+// Re-issues the JWT from a still-valid token, refreshing the plan claim from the
+// current DB value. Used after a payment so the client picks up the upgraded plan
+// without forcing the user to log out and log back in.
+const refresh = async (req, res) => {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      include: { studentProfile: true },
+    });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const token = jwt.sign(
+      { id: user.id, role: user.role, plan: user.studentProfile?.plan || null },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    res.json({
+      message: 'Session refreshed',
+      token,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        plan: user.studentProfile?.plan || null,
+      },
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to refresh session' });
+  }
+};
+
+module.exports = { register, login, checkEmail, refresh };

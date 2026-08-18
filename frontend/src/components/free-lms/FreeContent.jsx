@@ -2549,31 +2549,10 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
       {/* ══════════ PLANS ══════════ */}
       <div className={p('plans')}>
         <div style={{ textAlign: 'center', marginBottom: '28px' }}>
-          <div style={{ fontFamily: 'var(--fs)', fontSize: '26px', fontWeight: 700, color: 'var(--text)', marginBottom: '6px' }}>Four plans. One mission.</div>
-          <div style={{ fontSize: '13.5px', color: 'var(--text2)' }}>Start free with Spark. Upgrade when it makes sense.</div>
+          <div style={{ fontFamily: 'var(--fs)', fontSize: '26px', fontWeight: 700, color: 'var(--text)', marginBottom: '6px' }}>Three plans. One mission.</div>
+          <div style={{ fontSize: '13.5px', color: 'var(--text2)' }}>Start free. Upgrade when it makes sense.</div>
         </div>
         <div className="pricing-grid">
-          {/* ── Spark ── */}
-          <div className="price-card">
-            <div className="pc-name">Spark</div>
-            <div className="pc-tagline">The ignition</div>
-            <div className="pc-price">₹0</div>
-            <div className="pc-sub">Free forever. No card.</div>
-            <div className="pc-feats">
-              <div className="pc-feat">Deep diagnostic form (JEE &amp; NEET)</div>
-              <div className="pc-feat">Chapter-level topic weakness map</div>
-              <div className="pc-feat">Personalised study guidance</div>
-              <div className="pc-feat">Daily habit tracker (5 habits)</div>
-              <div className="pc-feat">Basic NCERT resources</div>
-              <div className="pc-feat no">Custom question bank</div>
-              <div className="pc-feat no">Faculty sessions</div>
-              <div className="pc-feat no">Mentorship &amp; accountability</div>
-
-
-            </div>
-            <button className="btn btn-ghost btn-full" style={{ opacity: 0.6, cursor: 'default' }}>Current Plan</button>
-          </div>
-
           {/* ── Forge ── */}
           <div className="price-card featured">
             <div className="pc-badge">GET STARTED</div>
@@ -2610,7 +2589,7 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
               <div className="pc-feat" style={{ color: 'rgba(253,248,240,0.9)' }}>Doubt desk — reply within 4 hours</div>
               <div className="pc-feat" style={{ color: 'rgba(253,248,240,0.9)' }}>Mentor-assigned tests based on your progress</div>
             </div>
-            <button className="btn btn-gold btn-full" onClick={() => onNav('plans')}>Talk to Us →</button>
+            <button className="btn btn-gold btn-full" onClick={() => openPlanCheckout('apex')}>Get Apex →</button>
           </div>
 
           {/* ── Anchor ── */}
@@ -2629,7 +2608,7 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
               <div className="pc-feat no">Live teaching sessions</div>
               <div className="pc-feat no">Question bank</div>
             </div>
-            <button className="btn btn-navy btn-full" onClick={() => onNav('plans')}>Talk to Us →</button>
+            <button className="btn btn-navy btn-full" onClick={() => openPlanCheckout('anchor')}>Get Anchor →</button>
           </div>
         </div>
         <div style={{ background: 'var(--cream)', border: '1px solid var(--gold-b)', borderRadius: 'var(--rl)', padding: '18px 22px', textAlign: 'center', boxShadow: 'var(--sh)', marginTop: '16px' }}>

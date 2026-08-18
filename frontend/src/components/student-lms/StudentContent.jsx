@@ -752,9 +752,6 @@ const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
                                   ? <button className="btn btn-sm" style={{ background: 'var(--gold)', color: '#0F1F3D', fontWeight: 600, animation: 'pulse 1.5s infinite' }} onClick={() => navigate(`/student-v2/${userId}/live/${s.id}`)}>Join Now</button>
                                   : <button className="btn btn-sm" style={{ background: 'var(--gold)', color: '#0F1F3D', fontWeight: 600, animation: 'pulse 1.5s infinite' }} onClick={() => onShowToast('Meeting link not set yet — contact your mentor')}>Join Now</button>
                               )}
-                              {!isUpcoming(s.scheduledAt) && s.recordingUrl && (
-                                <a href={s.recordingUrl} target="_blank" rel="noreferrer" className="btn btn-ghost btn-sm" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }}><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="8"/></svg>Recording</a>
-                              )}
                               {!isUpcoming(s.scheduledAt) && (
                                 <button
                                   className={`btn btn-sm ${s.note ? (noteOpen ? 'btn-gold' : 'btn-ghost') : 'btn-ghost'}`}

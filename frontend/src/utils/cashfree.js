@@ -24,26 +24,39 @@ const loadCashfreeSdk = () => {
 };
 
 // Opens the Cashfree checkout for a payment_session_id.
-// options: { paymentSessionId, onSuccess, onFailure }
-// (The backend decides TEST vs PROD via CASHFREE_MODE; the SDK works for both.)
+// options: { paymentSessionId, mode, onSuccess, onFailure }
+// mode is the backend's 'TEST' | 'PROD'; the SDK uses 'sandbox' | 'production'.
+// The checkout() promise resolves with { error } | { redirect } | { paymentDetails };
+// we only treat paymentDetails (a completed payment) as success — the caller then
+// verifies the order against our backend before applying anything.
 const openCheckout = async ({
   paymentSessionId,
+  mode,
   onSuccess,
   onFailure,
 }) => {
   if (!paymentSessionId) throw new Error('Missing payment session id');
   const Cashfree = await loadCashfreeSdk();
 
-  const config = {
-    paymentSessionId,
-    redirectTarget: '_modal', // keep the user on the page; we verify via our backend
-  };
+  const sdkMode = mode === 'TEST' ? 'sandbox' : 'production';
+  const cashfree = Cashfree({ mode: sdkMode });
 
-  const checkout = Cashfree(config);
-  checkout.redirect({
-    onSuccess: (data) => onSuccess && onSuccess(data),
-    onFailure: (data) => onFailure && onFailure(data),
-  });
+  try {
+    const result = await cashfree.checkout({
+      paymentSessionId,
+      redirectTarget: '_self', // full-page redirect to Cashfree's hosted checkout
+    });
+    if (result && result.paymentDetails) {
+      onSuccess && onSuccess(result);
+    } else if (result && result.redirect) {
+      // The tab is navigating out to the hosted checkout — this is not a failure.
+      // Success/failure is reported when the user returns (via return_url → verify).
+    } else {
+      onFailure && onFailure(result);
+    }
+  } catch (err) {
+    onFailure && onFailure(err);
+  }
 };
 
 export { openCheckout, loadCashfreeSdk };

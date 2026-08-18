@@ -135,7 +135,7 @@ const createPlanOrder = async (req, res) => {
   try {
     if (!paymentsEnabled()) return res.status(403).json({ error: 'Payments are currently disabled' });
 
-    const { plan } = req.body;
+    const { plan, phone } = req.body;
     const price = planPrices()[plan];
     if (!price) return res.status(400).json({ error: `Invalid plan. Choose one of: ${SUPPORTED_PLANS.join(', ')}` });
 
@@ -151,11 +151,12 @@ const createPlanOrder = async (req, res) => {
         customer_id: String(student.id),
         name: student.user.name,
         email: student.user.email,
-        phone: student.parentPhone || '',
+        phone: phone || student.parentPhone || '',
       },
       note: `Studyverse ${plan} plan upgrade`,
       meta: {
         notify_url: process.env.CASHFREE_WEBHOOK_URL || `${process.env.BACKEND_URL || ''}/api/payment/webhook`,
+        return_url: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/payment/return?userId=${req.params.userId}&order_id=${orderId}`,
       },
     });
 
@@ -204,6 +205,7 @@ const createSessionOrder = async (req, res) => {
       note: 'Studyverse pay-per-session (1x1)',
       meta: {
         notify_url: process.env.CASHFREE_WEBHOOK_URL || `${process.env.BACKEND_URL || ''}/api/payment/webhook`,
+        return_url: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/payment/return?userId=${req.params.userId}&order_id=${orderId}`,
       },
     });
 

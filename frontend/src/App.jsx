@@ -6,6 +6,7 @@ import StudentLMS from './pages/StudentLMS'
 import FreeLMS from './pages/FreeLMS'
 import AnchorLMS from './pages/AnchorLMS'
 import GoogleCallback from './pages/GoogleCallback'
+import PaymentReturn from './pages/PaymentReturn'
 import LiveClassRoom from './components/live/LiveClassRoom'
 
 export const getTokenPayload = () => {
@@ -89,6 +90,7 @@ function App() {
       <Route path="/login"       element={<Login />} />
       <Route path="/register"    element={<Login defaultView="register" />} />
       <Route path="/auth/google" element={<GoogleCallback />} />
+      <Route path="/payment/return" element={<PaymentReturn />} />
 
       {/* Student — premium */}
       <Route path="/student-v2/:id"       element={<AuthGuard expectedRole="student" requirePlan="premium"><StudentLMS /></AuthGuard>} />

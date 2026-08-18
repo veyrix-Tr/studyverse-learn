@@ -659,9 +659,6 @@ const FacultyContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
                                 ? <button className="btn btn-sm" style={{ background: '#16a34a', color: '#fff' }} onClick={() => navigate(`/faculty/${userId}/live/${s.id}`)}>Start</button>
                                 : <button className="btn btn-sm" style={{ background: '#16a34a', color: '#fff' }} onClick={() => onShowToast('Set up Zoom in the schedule modal to get a start link')}>Start</button>
                             )}
-                            {past && s.recordingUrl && (
-                              <a href={s.recordingUrl} target="_blank" rel="noreferrer" className="btn btn-ghost btn-sm" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }}><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="8"/></svg>Recording</a>
-                            )}
                           </div>
                         </td>
                       </tr>

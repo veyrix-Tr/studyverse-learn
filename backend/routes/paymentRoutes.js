@@ -3,7 +3,7 @@
 // The public /api/payment/webhook endpoint is registered directly in server.js.
 
 const express = require('express');
-const router  = express.Router();
+const router  = express.Router({ mergeParams: true });
 
 const {
   createPlanOrder,

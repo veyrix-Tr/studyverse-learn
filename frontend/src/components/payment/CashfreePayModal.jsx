@@ -27,6 +27,7 @@ const CashfreePayModal = ({
   const [errorMsg, setErrorMsg] = useState('');
   const [planPricing, setPlanPricing] = useState(DEFAULT_PLAN_PRICING);
   const [sessionPrice, setSessionPrice] = useState(99);
+  const [phone, setPhone] = useState('');
 
   const token = localStorage.getItem('token');
   const api = import.meta.env.VITE_API_URL;
@@ -52,7 +53,7 @@ const CashfreePayModal = ({
   const [lastOpen, setLastOpen] = useState(open);
   if (open !== lastOpen) {
     setLastOpen(open);
-    if (open) reset();
+    if (open) { reset(); setPhone(sessionData.phone || ''); }
   }
 
   const price = mode === 'plan' ? (planPricing[plan] || DEFAULT_PLAN_PRICING[plan]) : sessionPrice;
@@ -63,14 +64,17 @@ const CashfreePayModal = ({
 
   const handlePay = async () => {
     if (!token) { setErrorMsg('Please log in first.'); setStage('error'); return; }
+    if (!/^\d{10}$/.test(phone.replace(/\D/g, ''))) {
+      setErrorMsg('Please enter a valid 10-digit phone number.'); setStage('error'); return;
+    }
     setStage('processing');
     setErrorMsg('');
 
     try {
       const endpoint = mode === 'plan' ? 'create-plan-order' : 'create-session-order';
       const body = mode === 'plan'
-        ? { plan }
-        : { topic: sessionData.topic, phone: sessionData.phone, preferredTime: sessionData.preferredTime };
+        ? { plan, phone }
+        : { topic: sessionData.topic, phone: phone.replace(/\D/g, ''), preferredTime: sessionData.preferredTime };
 
       const res = await fetch(`${api}/api/payment/${userId}/${endpoint}`, {
         method: 'POST',
@@ -82,6 +86,7 @@ const CashfreePayModal = ({
 
       await openCheckout({
         paymentSessionId: data.payment_session_id,
+        mode: data.mode,
         onSuccess: () => handleVerify(data.order_id),
         onFailure: () => { setErrorMsg('Payment was not completed. You can try again.'); setStage('error'); },
       });
@@ -135,6 +140,19 @@ const CashfreePayModal = ({
             {mode === 'plan' && (
               <div className="cf-warn">After payment you'll need to log in again to activate your new plan.</div>
             )}
+            <div className="cf-phone-field">
+              <label className="cf-phone-label" htmlFor="cf-phone">Phone number</label>
+              <input
+                id="cf-phone"
+                className="cf-phone-input"
+                type="tel"
+                inputMode="numeric"
+                placeholder="10-digit mobile number"
+                value={phone}
+                maxLength={10}
+                onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
+              />
+            </div>
             <div className="cf-actions">
               <button className="cf-btn cf-btn-ghost" onClick={onClose}>Cancel</button>
               <button className="cf-btn cf-btn-gold" onClick={handlePay}>Pay ₹ {price}</button>

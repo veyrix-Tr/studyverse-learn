@@ -447,16 +447,11 @@ router.post('/sessions/:id/note', requireAuth, async (req, res) => {
       data: { note: trimmedNote },
     });
 
-    // Notify eligible students if a note was actually set
+    // Notify the students actually enrolled in this session (roster), not the whole grade
     if (trimmedNote) {
-      const students = await prisma.studentProfile.findMany({
-        where: { plan: { in: ['apex', 'anchor'] } },
-      });
-      const eligible = students.filter(sp => {
-        if (sp.plan === 'apex') return sp.grade === session.grade && (EXAM_SUBJECTS[sp.examTarget] || []).includes(session.subject);
-        const sf = sp.subjectFaculty;
-        return sf && Object.entries(sf).some(([subj, facId]) => subj.toLowerCase() === session.subject.toLowerCase() && facId === fp.id);
-      });
+      const rosterIds = (await prisma.sessionStudent.findMany({ where: { sessionId }, select: { studentId: true } })).map(r => r.studentId);
+      const ids = rosterIds.length > 0 ? rosterIds : [session.studentId].filter(Boolean);
+      const eligible = ids.length > 0 ? await prisma.studentProfile.findMany({ where: { id: { in: ids } } }) : [];
       if (eligible.length > 0) {
         // Delete old notification for this session (so we don't pile up duplicates on edits)
         await prisma.facultyNotification.deleteMany({
@@ -496,14 +491,9 @@ router.post('/sessions/:id/remind', requireAuth, async (req, res) => {
     const session = await prisma.session.findUnique({ where: { id: sessionId } });
     if (!session || session.facultyId !== fp.id) return res.status(404).json({ error: 'Session not found' });
 
-    const students = await prisma.studentProfile.findMany({
-      where: { plan: { in: ['apex', 'anchor'] } },
-    });
-    const eligible = students.filter(sp => {
-      if (sp.plan === 'apex') return sp.grade === session.grade && (EXAM_SUBJECTS[sp.examTarget] || []).includes(session.subject);
-      const sf = sp.subjectFaculty;
-      return sf && Object.entries(sf).some(([subj, facId]) => subj.toLowerCase() === session.subject.toLowerCase() && facId === fp.id);
-    });
+    const rosterIds = (await prisma.sessionStudent.findMany({ where: { sessionId }, select: { studentId: true } })).map(r => r.studentId);
+    const ids = rosterIds.length > 0 ? rosterIds : [session.studentId].filter(Boolean);
+    const eligible = ids.length > 0 ? await prisma.studentProfile.findMany({ where: { id: { in: ids } } }) : [];
     if (eligible.length === 0) return res.json({ success: true, notified: 0 });
 
     const scheduledAt = new Date(session.scheduledAt);
