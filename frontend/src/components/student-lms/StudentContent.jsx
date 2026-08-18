@@ -405,7 +405,7 @@ const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
         </div>
 
         <div className="g2 mb">
-          <div className="card">
+          <div className="card card-gold-accent">
             <div className="sh">
               <div className="sh-title">Today's Sessions</div>
               <span className="sh-action" onClick={() => onNav('sessions')}>All sessions →</span>

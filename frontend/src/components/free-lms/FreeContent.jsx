@@ -2593,22 +2593,23 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
           </div>
 
           {/* ── Anchor ── */}
-          <div className="price-card">
-            <div className="pc-name">Anchor</div>
-            <div className="pc-tagline">Someone in your corner, every day</div>
-            <div className="pc-price">₹ 799/-</div>
-            <div className="pc-sub">Monthly · Mentorship only</div>
+          <div className="price-card" style={{ background: 'var(--navy)', color: '#fff', border: '2px solid var(--gold)', paddingTop: '46px' }}>
+            <div className="pc-badge" style={{ background: 'var(--gold)', color: '#0F1F3D' }}>MENTORSHIP UPGRADE</div>
+            <div className="pc-name" style={{ color: '#fff' }}>Anchor</div>
+            <div className="pc-tagline" style={{ color: 'rgba(253,248,240,0.6)' }}>Someone in your corner, every day</div>
+            <div className="pc-price" style={{ color: 'var(--gold)' }}>₹ 799/-</div>
+            <div className="pc-sub" style={{ color: 'rgba(253,248,240,0.6)' }}>Monthly · Mentorship only</div>
             <div className="pc-feats">
-              <div className="pc-feat">Everything in Spark (free features)</div>
-              <div className="pc-feat">Daily check-in — you report, mentor reviews</div>
-              <div className="pc-feat">Weekly 1-to-1 strategy call with mentor</div>
-              <div className="pc-feat">Study plan updated weekly based on your data</div>
-              <div className="pc-feat">Direct mentor access during the day</div>
-              <div className="pc-feat">Habit consistency tracking by mentor</div>
+              <div className="pc-feat" style={{ color: 'rgba(253,248,240,0.9)' }}>Everything in Spark (free features)</div>
+              <div className="pc-feat" style={{ color: 'rgba(253,248,240,0.9)' }}>Daily check-in — you report, mentor reviews</div>
+              <div className="pc-feat" style={{ color: 'rgba(253,248,240,0.9)' }}>Weekly 1-to-1 strategy call with mentor</div>
+              <div className="pc-feat" style={{ color: 'rgba(253,248,240,0.9)' }}>Study plan updated weekly based on your data</div>
+              <div className="pc-feat" style={{ color: 'rgba(253,248,240,0.9)' }}>Direct mentor access during the day</div>
+              <div className="pc-feat" style={{ color: 'rgba(253,248,240,0.9)' }}>Habit consistency tracking by mentor</div>
               <div className="pc-feat no">Live teaching sessions</div>
               <div className="pc-feat no">Question bank</div>
             </div>
-            <button className="btn btn-navy btn-full" onClick={() => openPlanCheckout('anchor')}>Get Anchor →</button>
+            <button className="btn btn-gold btn-full" onClick={() => openPlanCheckout('anchor')}>Get Anchor →</button>
           </div>
         </div>
         <div style={{ background: 'var(--cream)', border: '1px solid var(--gold-b)', borderRadius: 'var(--rl)', padding: '18px 22px', textAlign: 'center', boxShadow: 'var(--sh)', marginTop: '16px' }}>

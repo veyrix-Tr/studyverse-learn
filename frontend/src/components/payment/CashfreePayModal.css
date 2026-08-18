@@ -1,11 +1,11 @@
 /* components/payment/CashfreePayModal.css */
-/* All selectors are scoped under body.free-mode so their specificity (0,2,x)
-   beats FreeStyles.css's `body.free-mode * { margin:0; padding:0 }` reset. */
+/* Scoped under body.free-mode and body.anchor-mode for both LMS contexts */
 
-body.free-mode .cf-overlay {
+body.free-mode .cf-overlay,
+body.anchor-mode .cf-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(15, 31, 61, 0.55);
+  background: rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
@@ -14,166 +14,267 @@ body.free-mode .cf-overlay {
   padding: 20px;
 }
 
-body.free-mode .cf-modal {
+body.free-mode .cf-modal,
+body.anchor-mode .cf-modal {
   box-sizing: border-box;
-  background: #fff;
-  border-radius: 18px;
-  max-width: 420px;
+  background: #ffffff;
+  border-radius: 16px;
+  max-width: 400px;
   width: 100%;
   max-height: calc(100vh - 40px);
   overflow-y: auto;
-  padding: 28px;
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.25);
+  padding: 32px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
   animation: cfSlideUp 0.25s ease;
 }
 
-body.free-mode .cf-title {
-  font-family: var(--fs, inherit);
-  font-size: 20px;
-  font-weight: 700;
-  color: var(--text, #0F1F3D);
+body.free-mode .cf-header,
+body.anchor-mode .cf-header {
+  margin-bottom: 24px;
+}
+
+body.free-mode .cf-title,
+body.anchor-mode .cf-title {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 22px;
+  font-weight: 600;
+  color: #1a1a1a;
   margin-bottom: 8px;
 }
 
-body.free-mode .cf-detail {
-  font-size: 13.5px;
-  color: var(--text2, #4A5568);
-  line-height: 1.6;
-  margin-bottom: 16px;
-}
-
-body.free-mode .cf-price {
-  background: var(--gold-dim, #FBF3DF);
-  border: 1px solid var(--gold-b, #E8C47A);
-  border-radius: 12px;
-  padding: 14px 18px;
-  margin-bottom: 16px;
-}
-
-body.free-mode .cf-amount {
-  font-size: 26px;
-  font-weight: 700;
-  color: var(--text, #0F1F3D);
-}
-
-body.free-mode .cf-note {
-  font-size: 12.5px;
-  color: var(--text3, #8896B3);
-  margin-left: 6px;
-}
-
-body.free-mode .cf-warn {
-  font-size: 12px;
-  color: #B45309;
-  background: rgba(245, 158, 11, 0.12);
-  border-radius: 8px;
-  padding: 8px 10px;
-  margin-bottom: 16px;
-}
-
-body.free-mode .cf-phone-field {
-  margin: 0 0 14px;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-}
-body.free-mode .cf-phone-label {
-  font-size: 13px;
-  font-weight: 600;
-  margin: 0 0 5px;
-  color: inherit;
-}
-body.free-mode .cf-phone-input {
-  width: 100%;
-  padding: 10px 12px;
-  font-size: 15px;
-  border: 1px solid #d0d7de;
-  border-radius: 6px;
-  background: #fff;
-  color: #1f2328;
-  box-sizing: border-box;
-}
-body.free-mode .cf-phone-input:focus {
-  outline: none;
-  border-color: #10b981;
-  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
-}
-body.free-mode .cf-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 6px;
-}
-
-body.free-mode .cf-btn {
-  flex: 1 1 0;
-  min-width: 120px;
-  white-space: nowrap;
-  padding: 12px 14px;
-  border: none;
-  border-radius: 10px;
+body.free-mode .cf-detail,
+body.anchor-mode .cf-detail {
   font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: transform 0.12s, box-shadow 0.12s;
+  color: #666;
+  line-height: 1.5;
 }
 
-body.free-mode .cf-btn:active { transform: scale(0.97); }
-
-body.free-mode .cf-btn-gold {
-  background: #E8A830;
-  color: #fff;
-}
-
-body.free-mode .cf-btn-ghost {
-  background: transparent;
-  color: var(--text2, #4A5568);
-  border: 1px solid rgba(15, 31, 61, 0.15);
-}
-
-body.free-mode .cf-center {
+body.free-mode .cf-price-card,
+body.anchor-mode .cf-price-card {
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin-bottom: 20px;
   text-align: center;
-  padding: 8px 0;
+}
+
+body.free-mode .cf-price-amount,
+body.anchor-mode .cf-price-amount {
+  font-size: 28px;
+  font-weight: 700;
+  color: #1a1a1a;
+}
+
+body.free-mode .cf-price-label,
+body.anchor-mode .cf-price-label {
+  font-size: 13px;
+  color: #666;
+  margin-top: 4px;
+}
+
+body.free-mode .cf-info,
+body.anchor-mode .cf-info {
+  font-size: 13px;
+  color: #666;
+  background: #fff3cd;
+  border: 1px solid #ffc107;
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 20px;
+}
+
+body.free-mode .cf-phone-section,
+body.anchor-mode .cf-phone-section {
+  margin-bottom: 24px;
+}
+
+body.free-mode .cf-phone-label,
+body.anchor-mode .cf-phone-label {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  color: #1a1a1a;
+  margin-bottom: 8px;
+}
+
+body.free-mode .cf-phone-input-wrapper,
+body.anchor-mode .cf-phone-input-wrapper {
+  display: flex;
+  align-items: center;
+  background: #fff;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  overflow: hidden;
+  transition: border-color 0.15s ease;
+}
+
+body.free-mode .cf-phone-input-wrapper:focus-within,
+body.anchor-mode .cf-phone-input-wrapper:focus-within {
+  border-color: #000;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.05);
+}
+
+body.free-mode .cf-phone-prefix,
+body.anchor-mode .cf-phone-prefix {
+  padding: 12px 10px 12px 14px;
+  font-size: 15px;
+  font-weight: 500;
+  color: #666;
+  border-right: 1px solid #e5e7eb;
+  margin-right: 10px;
+}
+
+body.free-mode .cf-phone-input,
+body.anchor-mode .cf-phone-input {
+  flex: 1;
+  padding: 12px 14px;
+  font-size: 15px;
+  font-weight: 400;
+  border: none;
+  background: transparent;
+  color: #1a1a1a;
+  outline: none;
+}
+
+body.free-mode .cf-phone-input::placeholder,
+body.anchor-mode .cf-phone-input::placeholder {
+  color: #9ca3af;
+}
+
+body.free-mode .cf-phone-valid,
+body.anchor-mode .cf-phone-valid {
+  padding: 8px 10px;
+  margin-left: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #37c368;
+  border-radius: 6px;
+}
+
+body.free-mode .cf-phone-hint,
+body.anchor-mode .cf-phone-hint {
+  font-size: 12px;
+  color: #5c636f;
+  margin-top: 9px;
+}
+
+body.free-mode .cf-actions,
+body.anchor-mode .cf-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+body.free-mode .cf-btn,
+body.anchor-mode .cf-btn {
+  flex: 1;
+  padding: 12px 16px;
+  border: none;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+body.free-mode .cf-btn:active,
+body.anchor-mode .cf-btn:active { transform: scale(0.98); }
+
+body.free-mode .cf-btn-cancel,
+body.anchor-mode .cf-btn-cancel {
+  background: #fff;
+  color: #666;
+  border: 1px solid #d1d5db;
+}
+
+body.free-mode .cf-btn-cancel:hover,
+body.anchor-mode .cf-btn-cancel:hover {
+  background: #f9fafb;
+}
+
+body.free-mode .cf-btn-pay,
+body.anchor-mode .cf-btn-pay {
+  background: #000;
+  color: #fff;
+  cursor: pointer;
+}
+
+body.free-mode .cf-btn-pay:hover,
+body.anchor-mode .cf-btn-pay:hover {
+  background: #1a1a1a;
+}
+
+body.free-mode .cf-btn-pay:disabled,
+body.anchor-mode .cf-btn-pay:disabled {
+  background: #e5e7eb;
+  color: #9ca3af;
+  cursor: not-allowed;
+}
+
+body.free-mode .cf-btn:disabled,
+body.anchor-mode .cf-btn:disabled {
+  opacity: 1;
+}
+
+body.free-mode .cf-btn-ghost,
+body.anchor-mode .cf-btn-ghost {
+  background: transparent;
+  color: #666;
+  border: 1px solid #d1d5db;
+}
+
+body.free-mode .cf-center,
+body.anchor-mode .cf-center {
+  text-align: center;
+  padding: 16px 0;
 }
 
 body.free-mode .cf-center .cf-title,
-body.free-mode .cf-center .cf-detail { text-align: center; }
+body.anchor-mode .cf-center .cf-title,
+body.free-mode .cf-center .cf-detail,
+body.anchor-mode .cf-center .cf-detail { text-align: center; }
 
-body.free-mode .cf-spinner {
-  width: 34px;
-  height: 34px;
+body.free-mode .cf-spinner,
+body.anchor-mode .cf-spinner {
+  width: 32px;
+  height: 32px;
   margin: 0 auto 16px;
-  border: 3px solid rgba(232, 168, 48, 0.25);
-  border-top-color: #E8A830;
+  border: 3px solid #e5e7eb;
+  border-top-color: #000;
   border-radius: 50%;
   animation: cfSpin 0.8s linear infinite;
 }
 
-body.free-mode .cf-check {
-  width: 54px;
-  height: 54px;
-  margin: 0 auto 14px;
+body.free-mode .cf-check,
+body.anchor-mode .cf-check {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 16px;
   border-radius: 50%;
-  background: #16A34A;
-  color: #fff;
-  font-size: 26px;
-  line-height: 54px;
-  text-align: center;
-}
-
-body.free-mode .cf-x {
-  width: 54px;
-  height: 54px;
-  margin: 0 auto 14px;
-  border-radius: 50%;
-  background: #DC2626;
+  background: #22c55e;
   color: #fff;
   font-size: 24px;
-  line-height: 54px;
+  line-height: 56px;
   text-align: center;
 }
 
-body.free-mode .cf-center .cf-actions { justify-content: center; margin-top: 16px; }
+body.free-mode .cf-x,
+body.anchor-mode .cf-x {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 16px;
+  border-radius: 50%;
+  background: #ef4444;
+  color: #fff;
+  font-size: 24px;
+  line-height: 56px;
+  text-align: center;
+}
+
+body.free-mode .cf-center .cf-actions,
+body.anchor-mode .cf-center .cf-actions { justify-content: center; margin-top: 16px; }
 
 @keyframes cfSpin { to { transform: rotate(360deg); } }
 @keyframes cfSlideUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }

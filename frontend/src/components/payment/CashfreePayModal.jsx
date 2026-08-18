@@ -20,6 +20,7 @@ const CashfreePayModal = ({
   plan = 'forge',
   sessionData = {},
   userId,
+  profile,
   onSuccess,
 }) => {
   const navigate = useNavigate();
@@ -28,6 +29,7 @@ const CashfreePayModal = ({
   const [planPricing, setPlanPricing] = useState(DEFAULT_PLAN_PRICING);
   const [sessionPrice, setSessionPrice] = useState(99);
   const [phone, setPhone] = useState('');
+  const isValidPhone = phone.length === 10;
 
   const token = localStorage.getItem('token');
   const api = import.meta.env.VITE_API_URL;
@@ -53,7 +55,12 @@ const CashfreePayModal = ({
   const [lastOpen, setLastOpen] = useState(open);
   if (open !== lastOpen) {
     setLastOpen(open);
-    if (open) { reset(); setPhone(sessionData.phone || ''); }
+    if (open) {
+      reset();
+      // Pre-fill phone from sessionData or profile
+      const savedPhone = sessionData.phone || profile?.studentProfile?.phone || '';
+      setPhone(savedPhone.replace(/\D/g, ''));
+    }
   }
 
   const price = mode === 'plan' ? (planPricing[plan] || DEFAULT_PLAN_PRICING[plan]) : sessionPrice;
@@ -131,31 +138,44 @@ const CashfreePayModal = ({
 
         {stage === 'idle' && (
           <>
-            <div className="cf-title">{title}</div>
-            <div className="cf-detail">{detail}</div>
-            <div className="cf-price">
-              <span className="cf-amount">₹ {price}</span>
-              <span className="cf-note">{mode === 'plan' ? '/ month' : 'one-time'}</span>
+            <div className="cf-header">
+              <div className="cf-title">{title}</div>
+              <div className="cf-detail">{detail}</div>
+            </div>
+            <div className="cf-price-card">
+              <div className="cf-price-amount">₹ {price}</div>
+              <div className="cf-price-label">{mode === 'plan' ? '/ month' : 'one-time'}</div>
             </div>
             {mode === 'plan' && (
-              <div className="cf-warn">After payment you'll need to log in again to activate your new plan.</div>
+              <div className="cf-info">
+                After payment you'll need to log in again to activate your new plan.
+              </div>
             )}
-            <div className="cf-phone-field">
+            <div className="cf-phone-section">
               <label className="cf-phone-label" htmlFor="cf-phone">Phone number</label>
-              <input
-                id="cf-phone"
-                className="cf-phone-input"
-                type="tel"
-                inputMode="numeric"
-                placeholder="10-digit mobile number"
-                value={phone}
-                maxLength={10}
-                onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
-              />
+              <div className="cf-phone-input-wrapper">
+                <span className="cf-phone-prefix">+91</span>
+                <input
+                  id="cf-phone"
+                  className="cf-phone-input"
+                  type="tel"
+                  inputMode="numeric"
+                  placeholder="Enter 10-digit number"
+                  value={phone}
+                  maxLength={10}
+                  onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
+                />
+                {phone.length === 10 && (
+                  <div className="cf-phone-valid">✓</div>
+                )}
+              </div>
+              <div className="cf-phone-hint">We'll use this to send payment confirmation.</div>
             </div>
             <div className="cf-actions">
-              <button className="cf-btn cf-btn-ghost" onClick={onClose}>Cancel</button>
-              <button className="cf-btn cf-btn-gold" onClick={handlePay}>Pay ₹ {price}</button>
+              <button className="cf-btn cf-btn-cancel" onClick={onClose}>Cancel</button>
+              <button className="cf-btn cf-btn-pay" disabled={!isValidPhone} onClick={handlePay}>
+                Pay ₹ {price}
+              </button>
             </div>
           </>
         )}
@@ -194,7 +214,7 @@ const CashfreePayModal = ({
             <div className="cf-detail">{errorMsg}</div>
             <div className="cf-actions">
               <button className="cf-btn cf-btn-ghost" onClick={onClose}>Close</button>
-              <button className="cf-btn cf-btn-gold" onClick={handlePay}>Try Again</button>
+              <button className="cf-btn cf-btn-gold" disabled={!isValidPhone} onClick={handlePay}>Try Again</button>
             </div>
           </div>
         )}

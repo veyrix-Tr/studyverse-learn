@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import DailyReportForm from '../common/DailyReportForm';
+import CashfreePayModal from '../payment/CashfreePayModal';
 
 // Join button — opens the embedded Zoom call room; active 10 min before call, disabled after it ends
 const JoinCallButton = ({ userId, callId, scheduledAt, durationMin }) => {
@@ -133,6 +134,11 @@ const AnchorContent = ({
   const [resTab, setResTab] = useState(0);
   const [openSections, setOpenSections] = useState(new Set());
   const [notifFilter, setNotifFilter] = useState('all');
+
+  // Payment modal state for plan upgrades
+  const [payModal, setPayModal] = useState({ open: false, mode: 'plan', plan: 'forge' });
+
+  const openPlanCheckout = (planName) => setPayModal({ open: true, mode: 'plan', plan: planName });
 
   const toggleSection = (key) => setOpenSections(prev => {
     const next = new Set(prev);
@@ -445,6 +451,18 @@ const AnchorContent = ({
               View all mentor notes →
             </button>
           </div>
+        </div>
+
+        {/* Upgrade CTA */}
+        <div style={{ background: 'linear-gradient(135deg,rgba(232,168,48,.12),rgba(232,168,48,.06))', border: '1px solid rgba(232,168,48,.35)', borderRadius: 'var(--rl)', padding: '20px 24px', display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '22px' }}>
+          <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: 'rgba(232,168,48,.18)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#E8A830" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontFamily: 'var(--fs)', fontSize: '16px', fontWeight: 700, color: 'var(--t1)', marginBottom: '4px' }}>Upgrade your plan</div>
+            <div style={{ fontSize: '13px', color: 'var(--t2)' }}>Get question bank, weekly tests, and live sessions with Forge or Apex.</div>
+          </div>
+          <button className="btn btn-gold" onClick={() => onNav('plans')}>View Plans →</button>
         </div>
 
         {/* Today's report CTA */}
@@ -947,6 +965,72 @@ const AnchorContent = ({
           </div>
         )}
       </div>
+
+      {/* ══════════ PLANS ══════════ */}
+      <div className={pg('plans')}>
+        <div style={{ textAlign: 'center', marginBottom: '28px' }}>
+          <div style={{ fontFamily: 'var(--fs)', fontSize: '26px', fontWeight: 700, color: 'var(--t1)', marginBottom: '6px' }}>Upgrade Your Plan</div>
+          <div style={{ fontSize: '13.5px', color: 'var(--t2)' }}>Get question bank, weekly tests, and live sessions.</div>
+        </div>
+        <div className="pricing-grid">
+          {/* ── Forge ── */}
+          <div className="price-card featured">
+            <div className="pc-badge">GET STARTED</div>
+            <div className="pc-name">Forge</div>
+            <div className="pc-tagline">Build your score, problem by problem</div>
+            <div className="pc-price" style={{ color: 'var(--gold)' }}>₹ 999/-</div>
+            <div className="pc-sub">Monthly</div>
+            <div className="pc-feats">
+              <div className="pc-feat">Everything in Spark</div>
+              <div className="pc-feat">Custom question bank (matched to your gaps)</div>
+              <div className="pc-feat">Weekly tests based on current weak topics</div>
+              <div className="pc-feat">Progress tracking — map updates with each test</div>
+              <div className="pc-feat">Premium resources (HC Verma, PYQs, formula sheets)</div>
+              <div className="pc-feat no">Live faculty sessions</div>
+              <div className="pc-feat no">Dedicated mentor</div>
+            </div>
+            <button className="btn btn-gold btn-full" onClick={() => openPlanCheckout('forge')}>Get Forge →</button>
+          </div>
+
+          {/* ── Apex ── */}
+          <div className="price-card" style={{ background: 'var(--navy)', color: '#fff', border: '2px solid var(--gold)' }}>
+            <div className="pc-badge" style={{ background: 'var(--gold)', color: '#0F1F3D' }}>COMPLETE PROGRAM</div>
+            <div className="pc-name" style={{ color: '#fff' }}>Apex</div>
+            <div className="pc-tagline" style={{ color: 'rgba(253,248,240,0.6)' }}>The highest point</div>
+            <div className="pc-price" style={{ color: 'var(--gold)' }}>₹ 2499/-</div>
+            <div className="pc-sub" style={{ color: 'rgba(253,248,240,0.6)' }}>Per month · Personalised</div>
+            <div className="pc-feats">
+              <div className="pc-feat" style={{ color: 'rgba(253,248,240,0.9)' }}>Everything in Forge</div>
+              <div className="pc-feat" style={{ color: 'rgba(253,248,240,0.9)' }}>Dedicated 1-to-1 faculty</div>
+              <div className="pc-feat" style={{ color: 'rgba(253,248,240,0.9)' }}>Weekly live sessions — personalised to your gaps</div>
+              <div className="pc-feat" style={{ color: 'rgba(253,248,240,0.9)' }}>Mentorship + daily accountability</div>
+              <div className="pc-feat" style={{ color: 'rgba(253,248,240,0.9)' }}>Score Journey arc (baseline → target)</div>
+              <div className="pc-feat" style={{ color: 'rgba(253,248,240,0.9)' }}>Weekly parent reports every Sunday</div>
+              <div className="pc-feat" style={{ color: 'rgba(253,248,240,0.9)' }}>Doubt desk — reply within 4 hours</div>
+              <div className="pc-feat" style={{ color: 'rgba(253,248,240,0.9)' }}>Mentor-assigned tests based on your progress</div>
+            </div>
+            <button className="btn btn-gold btn-full" onClick={() => openPlanCheckout('apex')}>Get Apex →</button>
+          </div>
+        </div>
+      </div>
+
+      {/* Cashfree payment modal for plan upgrades */}
+      <CashfreePayModal
+        open={payModal.open}
+        onClose={() => setPayModal(m => ({ ...m, open: false }))}
+        mode={payModal.mode}
+        plan={payModal.plan}
+        userId={userId}
+        profile={profile}
+        onSuccess={(res) => {
+          if (res?.goal === 'plan') {
+            onShowToast('Plan activated! Please log in again to continue.');
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            navigate('/', { replace: true });
+          }
+        }}
+      />
 
     </div>
   );
