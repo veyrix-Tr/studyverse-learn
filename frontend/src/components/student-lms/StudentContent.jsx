@@ -839,7 +839,7 @@ const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
           </div>
         ) : (() => {
           const lastWeeks = weeks.length;
-          const marksImproved = weeks.length >= 2 ? Math.round(weeks[weeks.length-1].score - weeks[0].score) : null;
+          const marksImproved = weeks.length >= 2 ? Math.round(weeks[weeks.length-1].avgPct - weeks[0].avgPct) : null;
 
           return (
             <div>
@@ -1020,7 +1020,9 @@ const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
               <div key={t} className={`tab${doubtTab === i ? ' on' : ''}`} onClick={() => setDoubtTab(i)}>{t}</div>
             ))}
           </div>
-          <button className="btn btn-primary" onClick={() => onOpenModal('doubt-modal')}>+ Ask a Doubt</button>
+          {profile?.studentProfile?.plan === 'apex' && (
+            <button className="btn btn-primary" onClick={() => onOpenModal('doubt-modal')}>+ Ask a Doubt</button>
+          )}
         </div>
         {(() => {
           const filtered = doubts.filter(d =>

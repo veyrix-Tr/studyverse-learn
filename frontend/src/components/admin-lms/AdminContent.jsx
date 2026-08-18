@@ -1240,7 +1240,7 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
             return new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
           };
           const histFiltered = sentMessages.filter(m => {
-            const typeOk = h
+            const typeOk = histTypeFilter === 'all' || (m.type || 'Announcement') === histTypeFilter;
             // Fix 2: 'All Students' (all-plans broadcast) should pass any plan filter
             const planOk = histPlanFilter === 'all'
               || m.recipient === 'All Students'

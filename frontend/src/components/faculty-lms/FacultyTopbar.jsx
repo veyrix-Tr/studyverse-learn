@@ -47,13 +47,13 @@ const FacultyTopbar = ({
   });
   // Find live mentor call
   const liveMentorCall = mentorStudents.find(s => {
-    if (!s.nextCall?.meetLink) return false;
+    if (!s.nextCall?.zoomMeetingId) return false;
     const start = new Date(s.nextCall.scheduledAt).getTime();
     const end   = start + s.nextCall.durationMin * 60000;
     return now >= start - 10 * 60000 && now <= end;
   });
 
-  const canJoin = liveSession?.zoomMeetingId || upcomingSession?.zoomMeetingId || liveMentorCall?.nextCall?.meetLink;
+  const canJoin = liveSession?.zoomMeetingId || upcomingSession?.zoomMeetingId || liveMentorCall?.nextCall?.zoomMeetingId;
   const joinLabel = liveSession ? 'Join Live Session'
     : upcomingSession ? 'Start Soon'
     : liveMentorCall ? `Join Call · ${liveMentorCall.name}`
@@ -62,7 +62,7 @@ const FacultyTopbar = ({
   const handleJoin = () => {
     if (liveSession?.zoomMeetingId)          { navigate(`/faculty/${userId}/live/${liveSession.id}`); return; }
     if (upcomingSession?.zoomMeetingId)      { navigate(`/faculty/${userId}/live/${upcomingSession.id}`); return; }
-    if (liveMentorCall?.nextCall?.meetLink)  { window.open(liveMentorCall.nextCall.meetLink, '_blank', 'noreferrer'); return; }
+    if (liveMentorCall?.nextCall?.zoomMeetingId) { navigate(`/faculty/${userId}/call/${liveMentorCall.nextCall.id}`); return; }
     onShowToast('No live session right now. Set it up in the schedule modal.');
   };
 

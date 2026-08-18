@@ -161,7 +161,7 @@ router.post('/sessions', requireAuth, async (req, res) => {
     }
     for (const st of students) {
       const isApex = st.plan === 'apex';
-      if (isApex && !(EXAM_SUBJECTS[st.examTarget] || []).includes(effectiveSubject)) {
+      if (!allMentees && isApex && !(EXAM_SUBJECTS[st.examTarget] || []).includes(effectiveSubject)) {
         return res.status(400).json({ error: `${st.user.name} does not study ${effectiveSubject}` });
       }
     }
@@ -1111,13 +1111,28 @@ router.post('/mentor-student/:studentId/call', requireAuth, async (req, res) => 
     const sid = parseInt(req.params.studentId);
     const { scheduledAt, durationMin, meetLink, notes, completed } = req.body;
     if (!scheduledAt) return res.status(400).json({ error: 'scheduledAt required' });
-    if (!meetLink?.trim()) return res.status(400).json({ error: 'Google Meet link is required' });
 
-    const s = await prisma.studentProfile.findUnique({ where: { id: sid } });
+    const s = await prisma.studentProfile.findUnique({ where: { id: sid }, include: { user: { select: { name: true } } } });
     if (!s || s.mentorId !== fp.id) return res.status(403).json({ error: 'Not your mentee' });
 
+    // Mentor calls run on Zoom, exactly like live sessions — auto-create a meeting.
+    let zoomFields = {};
+    try {
+      zoomFields = await zoom.createMeeting({
+        topic: `Mentor call — ${s.user?.name || 'mentee'}`,
+        startTime: new Date(scheduledAt).toISOString(),
+        durationMin: durationMin || 45,
+      });
+    } catch (err) {
+      if (err instanceof zoom.ZoomConfigError) {
+        return res.status(500).json({ error: 'Zoom is not configured on this server yet. Ask an admin to add the ZOOM_* env vars.' });
+      }
+      console.error('Zoom createMeeting failed for mentor call', err.response?.data || err.message);
+      return res.status(502).json({ error: 'Failed to create the Zoom meeting. Please try again in a moment.' });
+    }
+
     const call = await prisma.mentorCall.create({
-      data: { studentId: sid, mentorId: fp.id, scheduledAt: new Date(scheduledAt), durationMin: durationMin || 45, meetLink: meetLink?.trim() || null, notes: notes?.trim() || null, completed: completed ?? false },
+      data: { studentId: sid, mentorId: fp.id, scheduledAt: new Date(scheduledAt), durationMin: durationMin || 45, meetLink: meetLink?.trim() || null, notes: notes?.trim() || null, completed: completed ?? false, ...zoomFields },
     });
 
     if (!completed) {
@@ -1141,10 +1156,50 @@ router.post('/mentor-student/:studentId/call', requireAuth, async (req, res) => 
       data: { facultyId: fp.id, type: 'Call', content: `Mentor call with ${cs?.user?.name || 'mentee'} scheduled — ${callLabel} at ${callTime2}` },
     }).catch(() => {});
 
-    res.json({ id: call.id, scheduledAt: call.scheduledAt, durationMin: call.durationMin, meetLink: call.meetLink, notes: call.notes, completed: call.completed, mentorName: fp.user.name });
+    res.json({ id: call.id, scheduledAt: call.scheduledAt, durationMin: call.durationMin, meetLink: call.meetLink, notes: call.notes, completed: call.completed, mentorName: fp.user.name, zoomMeetingId: call.zoomMeetingId, joinUrl: call.joinUrl, startUrl: call.startUrl });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to save call' });
+  }
+});
+
+// POST /api/faculty/:userId/mentor-calls/:id/zoom-signature — SDK signature for the mentor (host) to host their call on Zoom
+router.post('/mentor-calls/:id/zoom-signature', requireAuth, async (req, res) => {
+  try {
+    const fp = await prisma.facultyProfile.findUnique({ where: { userId: req.params.userId } });
+    if (!fp) return res.status(403).json({ error: 'Not a faculty' });
+
+    const call = await prisma.mentorCall.findUnique({ where: { id: parseInt(req.params.id) } });
+    if (!call) return res.status(404).json({ error: 'Call not found' });
+    if (call.mentorId !== fp.id) return res.status(403).json({ error: 'Not your call' });
+    if (!call.zoomMeetingId) return res.status(400).json({ error: 'This call has no Zoom meeting set up' });
+
+    let livePassword = call.zoomPassword || '';
+
+    try {
+      const meeting = await zoom.getMeeting(call.zoomMeetingId);
+      const freshPassword = meeting.password || '';
+      if (freshPassword !== call.zoomPassword) {
+        livePassword = freshPassword;
+        await prisma.mentorCall.update({ where: { id: call.id }, data: { zoomPassword: freshPassword } });
+      }
+    } catch (err) {
+      console.error(`Zoom getMeeting refresh failed for mentor call ${call.id}:`, err.message);
+    }
+
+    const signature = zoom.generateSdkSignature({ meetingNumber: call.zoomMeetingId, role: 1 });
+    res.json({
+      signature,
+      meetingNumber: call.zoomMeetingId,
+      password: livePassword,
+      title: 'Mentor call',
+      duration: call.durationMin,
+      scheduledAt: call.scheduledAt,
+    });
+  } catch (err) {
+    if (err instanceof zoom.ZoomConfigError) return res.status(500).json({ error: 'Zoom is not configured on this server yet.' });
+    console.error(err);
+    res.status(500).json({ error: 'Failed to generate Zoom signature' });
   }
 });
 

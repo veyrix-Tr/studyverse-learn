@@ -920,10 +920,52 @@ router.get('/mentor-calls', requireAuth, async (req, res) => {
       notes: c.notes,
       completed: c.completed,
       mentorName: c.mentor?.user?.name || null,
+      zoomMeetingId: c.zoomMeetingId,
+      joinUrl: c.joinUrl,
     })));
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to fetch mentor calls' });
+  }
+});
+
+// POST /api/student/:userId/mentor-calls/:id/zoom-signature — SDK signature for a mentee to join their call on Zoom
+router.post('/mentor-calls/:id/zoom-signature', requireAuth, async (req, res) => {
+  try {
+    const profile = await prisma.studentProfile.findUnique({ where: { userId: req.params.userId } });
+    if (!profile) return res.status(403).json({ error: 'Not a student' });
+
+    const call = await prisma.mentorCall.findUnique({ where: { id: parseInt(req.params.id) } });
+    if (!call) return res.status(404).json({ error: 'Call not found' });
+    if (call.studentId !== profile.id) return res.status(403).json({ error: 'Not your call' });
+    if (!call.zoomMeetingId) return res.status(400).json({ error: 'This call has no Zoom meeting set up' });
+
+    let livePassword = call.zoomPassword || '';
+
+    try {
+      const meeting = await zoom.getMeeting(call.zoomMeetingId);
+      const freshPassword = meeting.password || '';
+      if (freshPassword !== call.zoomPassword) {
+        livePassword = freshPassword;
+        await prisma.mentorCall.update({ where: { id: call.id }, data: { zoomPassword: freshPassword } });
+      }
+    } catch (err) {
+      console.error(`Zoom getMeeting refresh failed for mentor call ${call.id}:`, err.message);
+    }
+
+    const signature = zoom.generateSdkSignature({ meetingNumber: call.zoomMeetingId, role: 0 });
+    res.json({
+      signature,
+      meetingNumber: call.zoomMeetingId,
+      password: livePassword,
+      title: 'Mentor call',
+      duration: call.durationMin,
+      scheduledAt: call.scheduledAt,
+    });
+  } catch (err) {
+    if (err instanceof zoom.ZoomConfigError) return res.status(500).json({ error: 'Zoom is not configured on this server yet.' });
+    console.error(err);
+    res.status(500).json({ error: 'Failed to generate Zoom signature' });
   }
 });
 

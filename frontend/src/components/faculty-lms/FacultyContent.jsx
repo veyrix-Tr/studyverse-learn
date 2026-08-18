@@ -544,27 +544,25 @@ const FacultyContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
                         <div className={`sched-status ${done ? '' : live ? 's-live' : 's-up'}`} style={live ? { display: 'flex', alignItems: 'center', gap: 5 } : {}}>
                           {done ? 'Done' : live ? <><span style={{ width: 7, height: 7, borderRadius: '50%', background: '#ef4444', display: 'inline-block', animation: 'pulse 1.5s infinite', flexShrink: 0 }} />Live</> : 'Upcoming'}
                         </div>
-                        {c.meetLink && !done && (
-                          <a
-                            href={live ? c.meetLink : undefined}
-                            target="_blank" rel="noopener noreferrer"
-                            onClick={e => { if (!live) e.preventDefault(); }}
+                        {!done && (
+                          <button
+                            onClick={() => live && navigate(`/faculty/${userId}/call/${c.id}`)}
+                            disabled={!live}
                             style={{
                               display: 'inline-flex', alignItems: 'center', gap: '5px',
                               padding: '3px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 600,
-                              textDecoration: 'none', transition: 'all .15s',
-                              cursor: live ? 'pointer' : 'not-allowed',
+                              border: 'none', cursor: live ? 'pointer' : 'not-allowed',
                               background: live ? '#16a34a' : 'var(--cream2)',
                               color: live ? '#fff' : 'var(--text3)',
-                              border: live ? 'none' : '1px solid var(--b)',
+                              opacity: live ? 1 : 0.7,
                             }}
-                            title={live ? 'Join Google Meet' : 'Activates 10 min before call'}
+                            title={live ? 'Join Zoom call' : 'Activates 10 min before call'}
                           >
                             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                               <polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/>
                             </svg>
                             {live ? 'Join Now' : 'Join'}
-                          </a>
+                          </button>
                         )}
                       </div>
                     </div>
@@ -1193,6 +1191,7 @@ const FacultyContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
 
 // Sub-component so hooks work inside the mentor page
 const MentorPanel = ({ userId, mentorStudents, onMentorStudentUpdated, onShowToast }) => {
+  const navigate = useNavigate();
   const [selected, setSelected] = useState(null);
   const [detail, setDetail] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -1279,20 +1278,20 @@ const MentorPanel = ({ userId, mentorStudents, onMentorStudentUpdated, onShowToa
       const istOffsetMs = 5.5 * 60 * 60 * 1000;
       const localMs = Date.UTC(y, mo - 1, d, h, m) - istOffsetMs;
       const scheduledAt = new Date(localMs).toISOString();
-      const r = await fetch(`${api}/api/faculty/${userId}/sessions`, {
+      const r = await fetch(`${api}/api/faculty/${userId}/mentor-student/${selected.id}/call`, {
         method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token()}` },
         body: JSON.stringify({
-          studentIds: [selected.id],
-          title: `Mentorship session — ${selected.name}${callNotes?.trim() ? ` · ${callNotes.trim()}` : ''}`,
           scheduledAt,
-          duration: callDuration,
+          durationMin: callDuration,
+          notes: callNotes?.trim() || null,
         }),
       });
       const data = await r.json().catch(() => ({}));
       if (r.ok) {
         setCallDate(''); setCallNotes('');
-        onShowToast('Live session scheduled — a Zoom meeting was created ✓');
-      } else { onShowToast(data.error || 'Failed to schedule session'); }
+        setDetail(d => ({ ...d, mentorCalls: [{ ...data, studentId: selected.id }, ...(d?.mentorCalls || [])] }));
+        onShowToast('Mentor call scheduled — a Zoom meeting was created ✓');
+      } else { onShowToast(data.error || 'Failed to schedule call'); }
     } catch { onShowToast('Could not connect to server'); }
     finally { setCallSaving(false); }
   };
@@ -1516,28 +1515,25 @@ const MentorPanel = ({ userId, mentorStudents, onMentorStudentUpdated, onShowToa
                         <div className="mpcc-row">
                           <div className="mpcc-dt">{fmtD(c.scheduledAt)} · {fmtT(c.scheduledAt)}</div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            {c.meetLink && !c.completed && (
-                              <a
-                                href={isLive ? c.meetLink : undefined}
-                                target="_blank" rel="noopener noreferrer"
-                                onClick={e => { if (!isLive) e.preventDefault(); }}
+                            {!c.completed && (
+                              <button
+                                onClick={() => isLive && navigate(`/faculty/${userId}/call/${c.id}`)}
+                                disabled={!isLive}
                                 style={{
                                   display: 'inline-flex', alignItems: 'center', gap: '5px',
                                   padding: '5px 12px', borderRadius: '7px', fontSize: '12px', fontWeight: 700,
-                                  textDecoration: 'none', transition: 'all .18s',
-                                  cursor: isLive ? 'pointer' : 'not-allowed',
+                                  border: 'none', cursor: isLive ? 'pointer' : 'not-allowed',
                                   background: isLive ? 'linear-gradient(135deg,#22C55E,#16a34a)' : 'rgba(15,31,61,0.06)',
                                   color: isLive ? '#fff' : 'var(--text3)',
-                                  border: isLive ? 'none' : '1px solid var(--b)',
-                                  boxShadow: isLive ? '0 2px 10px rgba(34,197,94,0.3)' : 'none',
+                                  opacity: isLive ? 1 : 0.7,
                                 }}
-                                title={isLive ? 'Join Google Meet' : 'Activates 10 min before call'}
+                                title={isLive ? 'Join Zoom call' : 'Activates 10 min before call'}
                               >
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                                   <polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/>
                                 </svg>
                                 {isLive ? 'Join Now' : 'Join'}
-                              </a>
+                              </button>
                             )}
                             <span className={`mpcc-badge mpcc-badge-${status}`}>
                               {c.completed ? '✓ Done' : isPast ? 'Overdue' : 'Upcoming'}

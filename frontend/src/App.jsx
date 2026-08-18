@@ -99,6 +99,7 @@ function App() {
       <Route path="/anchor/:id"       element={<AuthGuard expectedRole="student" requirePlan="anchor"><AnchorLMS /></AuthGuard>} />
       <Route path="/anchor/:id/:page" element={<AuthGuard expectedRole="student" requirePlan="anchor"><AnchorLMS /></AuthGuard>} />
       <Route path="/anchor/:id/live/:sessionId" element={<AuthGuard expectedRole="student" requirePlan="anchor"><LiveClassRoom role="student" /></AuthGuard>} />
+      <Route path="/anchor/:id/call/:sessionId" element={<AuthGuard expectedRole="student" requirePlan="anchor"><LiveClassRoom role="student" kind="call" /></AuthGuard>} />
 
       {/* Student — free */}
       <Route path="/student/:id"       element={<AuthGuard expectedRole="student" requirePlan="free"><FreeLMS /></AuthGuard>} />
@@ -108,6 +109,7 @@ function App() {
       <Route path="/faculty/:id"       element={<AuthGuard expectedRole="faculty"><FacultyLMS /></AuthGuard>} />
       <Route path="/faculty/:id/:page" element={<AuthGuard expectedRole="faculty"><FacultyLMS /></AuthGuard>} />
       <Route path="/faculty/:id/live/:sessionId" element={<AuthGuard expectedRole="faculty"><LiveClassRoom role="faculty" /></AuthGuard>} />
+      <Route path="/faculty/:id/call/:sessionId" element={<AuthGuard expectedRole="faculty"><LiveClassRoom role="faculty" kind="call" /></AuthGuard>} />
 
       {/* Admin */}
       <Route path="/admin/:id"       element={<AuthGuard expectedRole="admin"><AdminLMS expectedRole="admin" /></AuthGuard>} />

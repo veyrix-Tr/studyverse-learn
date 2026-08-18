@@ -37,7 +37,7 @@ const fmtClock = (totalSeconds) => {
 // it can never collide with anything Zoom is doing to its own tree.
 let sdkPrepared = false;
 
-const LiveClassRoom = ({ role }) => {
+const LiveClassRoom = ({ role, kind = 'session' }) => {
   const { id: userId, sessionId } = useParams();
   const navigate = useNavigate();
   const joinedRef = useRef(false);
@@ -48,6 +48,7 @@ const LiveClassRoom = ({ role }) => {
   const [elapsed, setElapsed] = useState(0);
 
   const apiBase = `${import.meta.env.VITE_API_URL}/api/${role}/${userId}`;
+  const signUrl = `${apiBase}/${kind === 'call' ? 'mentor-calls' : 'sessions'}/${sessionId}/zoom-signature`;
   const studentHome = role === 'student' && storedPlan() === 'anchor' ? `/anchor/${userId}/dashboard` : `/student-v2/${userId}/dashboard`;
   const dashboardUrl = `${window.location.origin}${role === 'faculty' ? `/faculty/${userId}/dashboard` : studentHome}`;
   const backHome = () => navigate(role === 'faculty' ? `/faculty/${userId}/dashboard` : studentHome);
@@ -68,7 +69,7 @@ const LiveClassRoom = ({ role }) => {
         const me = meRes.ok ? await meRes.json() : null;
 
         // 2. Get a signed per-join token for this session
-        const sigRes = await fetch(`${apiBase}/sessions/${sessionId}/zoom-signature`, {
+        const sigRes = await fetch(`${signUrl}`, {
           method: 'POST',
           headers: { Authorization: `Bearer ${token}` },
         });

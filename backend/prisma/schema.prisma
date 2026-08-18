@@ -367,6 +367,11 @@ model MentorCall {
   completed   Boolean  @default(false)
   createdAt   DateTime @default(now())
 
+  zoomMeetingId String?
+  joinUrl       String?
+  startUrl      String?
+  zoomPassword  String?
+
   studentId Int
   student   StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
   mentorId  Int

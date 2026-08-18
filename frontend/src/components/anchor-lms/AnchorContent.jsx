@@ -2,13 +2,14 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import DailyReportForm from '../common/DailyReportForm';
 
-// Join button — active 10 min before call, disabled after call ends
-const JoinCallButton = ({ scheduledAt, durationMin, meetLink }) => {
+// Join button — opens the embedded Zoom call room; active 10 min before call, disabled after it ends
+const JoinCallButton = ({ userId, callId, scheduledAt, durationMin }) => {
+  const navigate = useNavigate();
   const [active, setActive] = useState(false);
   const timerRef = useRef(null);
 
   useEffect(() => {
-    if (!meetLink) return;
+    if (!callId) return;
     const check = () => {
       const now = Date.now();
       const start = new Date(scheduledAt).getTime();
@@ -18,33 +19,30 @@ const JoinCallButton = ({ scheduledAt, durationMin, meetLink }) => {
     check();
     timerRef.current = setInterval(check, 15000);
     return () => clearInterval(timerRef.current);
-  }, [scheduledAt, durationMin, meetLink]);
+  }, [scheduledAt, durationMin, callId]);
 
-  if (!meetLink) return null;
+  if (!callId) return null;
 
   return (
-    <a
-      href={active ? meetLink : undefined}
-      target="_blank"
-      rel="noopener noreferrer"
-      onClick={e => { if (!active) e.preventDefault(); }}
+    <button
+      onClick={() => active && navigate(`/anchor/${userId}/call/${callId}`)}
+      disabled={!active}
       style={{
         display: 'inline-flex', alignItems: 'center', gap: '6px',
         padding: '7px 16px', borderRadius: '8px', fontSize: '12.5px', fontWeight: 700,
-        textDecoration: 'none', transition: 'all .18s', cursor: active ? 'pointer' : 'not-allowed',
+        border: 'none', cursor: active ? 'pointer' : 'not-allowed',
         background: active ? 'linear-gradient(135deg,#22C55E,#16a34a)' : 'rgba(234,244,236,0.06)',
         color: active ? '#fff' : 'var(--t4)',
-        border: active ? 'none' : '1px solid var(--b)',
         boxShadow: active ? '0 3px 12px rgba(34,197,94,0.35)' : 'none',
-        pointerEvents: 'auto',
+        opacity: active ? 1 : 0.7,
       }}
-      title={active ? 'Join Google Meet' : 'Activates 10 minutes before the call'}
+      title={active ? 'Join Zoom call' : 'Activates 10 minutes before the call'}
     >
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
         <polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/>
       </svg>
       {active ? 'Join Now' : 'Join Now (opens closer to call)'}
-    </a>
+    </button>
   );
 };
 
@@ -475,7 +473,7 @@ const AnchorContent = ({
               <div className="call-meta">{mentorName || 'Mentor'} · {fmtDate(nextCall.scheduledAt)} · {fmtTime(nextCall.scheduledAt)} · {nextCall.durationMin} min</div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px', flexShrink: 0 }}>
-              <JoinCallButton scheduledAt={nextCall.scheduledAt} durationMin={nextCall.durationMin} meetLink={nextCall.meetLink} />
+              <JoinCallButton userId={userId} callId={nextCall.id} scheduledAt={nextCall.scheduledAt} durationMin={nextCall.durationMin} />
               <span className="call-badge c-upcoming" onClick={() => onNav('calls')} style={{ cursor: 'pointer' }}>View →</span>
             </div>
           </div>
@@ -557,7 +555,7 @@ const AnchorContent = ({
               <div className="call-meta">{fmtDate(c.scheduledAt)} · {fmtTime(c.scheduledAt)} · {c.durationMin} min</div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px', flexShrink: 0 }}>
-              <JoinCallButton scheduledAt={c.scheduledAt} durationMin={c.durationMin} meetLink={c.meetLink} />
+              <JoinCallButton userId={userId} callId={c.id} scheduledAt={c.scheduledAt} durationMin={c.durationMin} />
               <span className="call-badge c-upcoming">Upcoming</span>
             </div>
           </div>
