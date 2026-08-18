@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import DiagnosticForm from '../common/DiagnosticForm';
 import { useParams } from 'react-router-dom';
+import CashfreePayModal from '../payment/CashfreePayModal';
 
 // ── Journey helpers (shared logic with apex My Journey) ──────────────────────
 const getExamMax = (t) => (!t ? 360 : t.toLowerCase().includes('neet') ? 720 : 360);
@@ -152,26 +153,24 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
   const [sessPhone, setSessPhone] = useState('');
   const [sessTopic, setSessTopic] = useState('');
   const [sessTime, setSessTime] = useState('');
-  const [sessSending, setSessSending] = useState(false);
   const [sessDone, setSessDone] = useState(false);
 
-  const submitSessionRequest = async () => {
+  // Payment modal state (plan upgrade + pay-per-session)
+  const [payModal, setPayModal] = useState({ open: false, mode: 'plan', plan: 'forge' });
+
+  const openPlanCheckout = (planName) => setPayModal({ open: true, mode: 'plan', plan: planName });
+  const openSessionCheckout = () => {
     if (!sessTopic.trim()) { onShowToast('Please describe the topic you need help with'); return; }
-    setSessSending(true);
-    try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/student/${userId}/session-request`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ topic: sessTopic.trim(), phone: sessPhone.trim() || null, preferredTime: sessTime.trim() || null }),
-      });
-      if (!res.ok) throw new Error();
-      const data = await res.json();
-      onSessionRequestSubmitted?.({ id: data.id, topic: sessTopic.trim(), phone: sessPhone.trim() || null, preferredTime: sessTime.trim() || null, status: 'pending', createdAt: new Date().toISOString() });
-      setSessDone(true);
-      onShowToast('Request sent! Our team will reach out within 24h ✓');
-    } catch { onShowToast('Failed to send request. Try again.'); }
-    finally { setSessSending(false); }
+    setPayModal({ open: true, mode: 'session', plan: 'forge' });
+  };
+
+  // Called by the payment modal once the ₹99 session is confirmed. The backend
+  // materialises the SessionRequest on payment success, so here we only refresh
+  // the local list + mark the form done.
+  const onSessionPaySuccess = () => {
+    setSessDone(true);
+    onShowToast('Payment received! We\'ll reach out within 24h ✓');
+    onSessionRequestSubmitted?.({ id: Date.now(), topic: sessTopic.trim(), phone: sessPhone.trim() || null, preferredTime: sessTime.trim() || null, status: 'pending', createdAt: new Date().toISOString() });
   };
 
   // Question bank + resources + scores (forge only)
@@ -2342,13 +2341,13 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
 
                 <button
                   className="btn btn-gold btn-full"
-                  onClick={submitSessionRequest}
-                  disabled={sessSending || !sessTopic.trim()}
+                  onClick={openSessionCheckout}
+                  disabled={!sessTopic.trim()}
                 >
-                  {sessSending ? 'Sending…' : 'Send Request →'}
+                  {`Pay ₹99 & Request Session →`}
                 </button>
                 <div style={{ fontSize: '11.5px', color: 'var(--text3)', marginTop: '10px', textAlign: 'center' }}>
-                  We'll contact you within 24 hours to confirm the session.
+                  Pay ₹99 to book. We'll contact you within 24 hours to confirm the session.
                 </div>
               </>
             )}
@@ -2591,7 +2590,7 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
               <div className="pc-feat no">Live faculty sessions</div>
               <div className="pc-feat no">Dedicated mentor</div>
             </div>
-            <button className="btn btn-gold btn-full" onClick={() => onNav('plans')}>Get Forge →</button>
+            <button className="btn btn-gold btn-full" onClick={() => openPlanCheckout('forge')}>Get Forge →</button>
           </div>
 
           {/* ── Apex ── */}
@@ -3023,6 +3022,21 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
         </>
         )}
       </div>
+
+      {/* Cashfree payment modal (plan upgrade + ₹99 session) */}
+      <CashfreePayModal
+        open={payModal.open}
+        onClose={() => setPayModal(m => ({ ...m, open: false }))}
+        mode={payModal.mode}
+        plan={payModal.plan}
+        userId={userId}
+        profile={profile}
+        sessionData={{ topic: sessTopic, phone: sessPhone, preferredTime: sessTime }}
+        onSuccess={(res) => {
+          if (res?.goal === 'session') onSessionPaySuccess();
+          else if (res?.goal === 'plan') onShowToast('Plan activated! Please log in again to continue.');
+        }}
+      />
 
     </div>
   );

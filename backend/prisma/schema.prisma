@@ -57,6 +57,39 @@ model StudentProfile {
   sessionRequests      SessionRequest[]
   sessions             Session[]
   sessionStudents      SessionStudent[]
+  payments             Payment[]
+}
+
+// Payment = a single Cashfree order. Same order is referenced by both the
+// DB row and Cashfree's PG order_id. goal distinguishes a plan upgrade from
+// a pay-per-session (₹99) booking, which post-payment logic branches on.
+model Payment {
+  id             Int       @id @default(autoincrement())
+  orderId        String    @unique // Cashfree order_id (also used to look up in our DB)
+  paymentId      String? // Cashfree payment_id once paid
+  orderAmount    Float
+  orderCurrency  String    @default("INR")
+  orderStatus    String    @default("PENDING") // PENDING | PAID | FAILED | CANCELLED
+  paymentStatus  String? // captured via webhook/order fetch
+  paymentMethod  String?
+  goal           String    // 'plan' | 'session'
+  plan           String? // target plan for 'plan' payments (forge|apex|anchor)
+  sessionTopic   String? // payload for 'session' payments (materialised as SessionRequest on success)
+  sessionPhone   String?
+  sessionTime    String?
+  customerName   String?
+  customerPhone  String?
+  customerEmail  String?
+  failureMessage String?
+  paidAt         DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  studentId Int
+  student   StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([orderStatus])
+  @@index([studentId])
 }
 
 model FacultyProfile {

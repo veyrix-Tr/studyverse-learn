@@ -1,0 +1,144 @@
+/* components/payment/CashfreePayModal.css */
+
+.cf-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 31, 61, 0.55);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.cf-modal {
+  background: #fff;
+  border-radius: 18px;
+  max-width: 420px;
+  width: 100%;
+  padding: 28px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.25);
+  animation: cfSlideUp 0.25s ease;
+}
+
+.cf-title {
+  font-family: var(--fs, inherit);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text, #0F1F3D);
+  margin-bottom: 8px;
+}
+
+.cf-detail {
+  font-size: 13.5px;
+  color: var(--text2, #4A5568);
+  line-height: 1.6;
+  margin-bottom: 16px;
+}
+
+.cf-price {
+  background: var(--gold-dim, #FBF3DF);
+  border: 1px solid var(--gold-b, #E8C47A);
+  border-radius: 12px;
+  padding: 14px 18px;
+  margin-bottom: 16px;
+}
+
+.cf-amount {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--text, #0F1F3D);
+}
+
+.cf-note {
+  font-size: 12.5px;
+  color: var(--text3, #8896B3);
+  margin-left: 6px;
+}
+
+.cf-warn {
+  font-size: 12px;
+  color: #B45309;
+  background: rgba(245, 158, 11, 0.12);
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin-bottom: 16px;
+}
+
+.cf-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.cf-btn {
+  flex: 1;
+  padding: 12px 0;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.12s, box-shadow 0.12s;
+}
+
+.cf-btn:active { transform: scale(0.97); }
+
+.cf-btn-gold {
+  background: #E8A830;
+  color: #fff;
+}
+
+.cf-btn-ghost {
+  background: transparent;
+  color: var(--text2, #4A5568);
+  border: 1px solid rgba(15, 31, 61, 0.15);
+}
+
+.cf-center {
+  text-align: center;
+  padding: 8px 0;
+}
+
+.cf-center .cf-title,
+.cf-center .cf-detail { text-align: center; }
+
+.cf-spinner {
+  width: 34px;
+  height: 34px;
+  margin: 0 auto 16px;
+  border: 3px solid rgba(232, 168, 48, 0.25);
+  border-top-color: #E8A830;
+  border-radius: 50%;
+  animation: cfSpin 0.8s linear infinite;
+}
+
+.cf-check {
+  width: 54px;
+  height: 54px;
+  margin: 0 auto 14px;
+  border-radius: 50%;
+  background: #16A34A;
+  color: #fff;
+  font-size: 26px;
+  line-height: 54px;
+  text-align: center;
+}
+
+.cf-x {
+  width: 54px;
+  height: 54px;
+  margin: 0 auto 14px;
+  border-radius: 50%;
+  background: #DC2626;
+  color: #fff;
+  font-size: 24px;
+  line-height: 54px;
+  text-align: center;
+}
+
+.cf-center .cf-actions { justify-content: center; margin-top: 16px; }
+
+@keyframes cfSpin { to { transform: rotate(360deg); } }
+@keyframes cfSlideUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }

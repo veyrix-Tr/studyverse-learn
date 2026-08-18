@@ -11,7 +11,8 @@ const allowedOrigins = process.env.FRONTEND_URL
   ? [process.env.FRONTEND_URL, 'http://localhost:3000', 'http://localhost:5173']
   : ['http://localhost:3000', 'http://localhost:5173'];
 app.use(cors({ origin: allowedOrigins, credentials: true }));
-app.use(express.json());
+// Preserve the raw request body (used to verify the Cashfree webhook HMAC signature).
+app.use(express.json({ verify: (req, res, buf) => { req.rawBody = buf.toString('utf8'); } }));
 app.use(passport.initialize());
 
 // Routes
@@ -49,6 +50,20 @@ app.use('/api/files', fileRoutes);
 
 const cronRoutes = require('./routes/cronRoutes');
 app.use('/api/cron', cronRoutes);
+
+// Payments — Cashfree
+// Public config endpoint (prices + mode) so the UI matches the server.
+const { webhook, paymentConfig } = require('./controllers/paymentController');
+app.get('/api/payment/config', paymentConfig);
+
+// Protected student-facing payment endpoints (create order / verify).
+const paymentRoutes = require('./routes/paymentRoutes');
+app.use('/api/payment/:userId', requireAuth, validateUrlUser, paymentRoutes);
+
+// Public webhook endpoint for Cashfree to push order events to.
+// Body is verbatim JSON; Express is configured below to keep the raw body for
+// HMAC signature verification.
+app.post('/api/payment/webhook', webhook);
 
 // Local dev: run server + node-cron; Vercel imports this file as a module
 if (require.main === module) {
