@@ -49,18 +49,12 @@ Course cards show fabricated progress ("36 of 48 lectures"); the video player an
 ### B9. 🟡 Student "Send Message" (mentor chat) is fake
 `frontend/src/components/student-lms/StudentContent.jsx:872` — button only toasts `'Opening chat...'`. No chat feature/route exists.
 
-### B11. 🟡 Diagnostic "score" is the form-fill percentage, not an assessment result
-`frontend/src/components/common/DiagnosticForm.jsx:262–268` posts `{ score: progress, answers: form }` where `progress` is `% of questionnaire answered` (:153–160). Stored as `diagnosticScore` and surfaced to admins as "completed their diagnostic (score: N%)". Misrepresents completion % as an exam score. Real scoring never happens.
-
 ---
 
 ## C. Misleading / fabricated data shown as real (admin & student hubs)
 
 ### C1. 🟠 Admin dashboard, pipeline, revenue, Access Log are hardcoded constants
 `frontend/src/components/admin-lms/AdminContent.jsx` — "Active Students 12", "Revenue ₹1.84L", "Avg Improvement +76", pipeline cards with fake names, revenue numbers, revenue-by-plan, `RevenueChart` uses hardcoded `chartData`, Access Log hardcoded. Only "Premium Students" count and the subscriptions table read real `students`. Pipeline actions only toast — nothing persists. Revenue/pipeline analytics are fabricated; no payments query feeds them.
-
-### C2. 🟠 Student dashboard "Tests" page shows hardcoded metrics
-`frontend/src/components/student-lms/StudentContent.jsx:795–798` — "Tests Taken: 18", "Best Accuracy: 83%", "Weak Areas: 7" are literals, not derived from data.
 
 ### C3. 🟠 "Subject Faculty — Apex only" panel writes data nobody reads; Anchor (which needs it) has no UI
 `frontend/.../admin-lms/AdminContent.jsx:1028` (panel shown only when `plan === 'apex'`), writes via `PUT /api/admin/student/:id/subject-faculty`. But every consumer (`facultyRoutes.js`, 5 call sites) branches on `sp.plan`: Apex is matched by grade + exam-subject lookup and **never reads `subjectFaculty`**; only Anchor reads it. So the panel writes into a field no Apex logic consumes, while Anchor — the plan that actually depends on it — has no assignment UI.
@@ -85,9 +79,8 @@ Course cards show fabricated progress ("36 of 48 lectures"); the video player an
 
 1. **B1 + A2** — tie gating to `planEndDate` (add an expiry cron + check planning), and gate `POST /session-request` behind the paid plan.
 2. **B3 / B2** — decide the buying story: build real create-admin / enroll-student routes (or remove the fake modals).
-3. **B4 / B5 / C1 / C2** — either build the weekly-test/course/test engines or replace the hardcoded mockups with honest "Coming Soon" placeholders and remove fabricated dashboards.
+3. **B4 / B5 / C1** — either build the weekly-test/course/test engines or replace the hardcoded mockups with honest "Coming Soon" placeholders and remove fabricated dashboards.
 4. **C3** — decide whether Apex or Anchor owns `subjectFaculty`, and wire the correct plan's admin panel.
-5. **B11** — decide whether diagnostic "score" should be a real assessment result or explicitly relabeled as completion %.
-6. **B7 / B8 / B9** — wire the faculty note/test modals, forgot-password, and chat (or remove the fake ones).
+5. **B7 / B8 / B9** — wire the faculty note/test modals, forgot-password, and chat (or remove the fake ones).
 
 ---

@@ -789,11 +789,11 @@ const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
       {/* ══════════ TESTS ══════════ */}
       <div className={p('tests')}>
         <div className="g4 mb">
-          <div className="stat"><div className="stat-accent accent-gold"></div><div className="stat-lbl">Tests Taken</div><div className="stat-val">18</div><div className="stat-note up">vs 0 at start</div></div>
-          <div className="stat"><div className="stat-accent accent-green"></div><div className="stat-lbl">Latest Score</div><div className="stat-val">{currentMarks ?? '—'}</div><div className="stat-note up">{improvement !== null ? `+${improvement} from baseline` : 'No data yet'}</div></div>
-          <div className="stat"><div className="stat-accent accent-gold"></div><div className="stat-lbl">Best Accuracy</div><div className="stat-val">83%</div><div className="stat-note up">Maths this week</div></div>
-          <div className="stat"><div className="stat-accent accent-navy"></div><div className="stat-lbl">Weak Areas</div><div className="stat-val">7</div><div className="stat-note warn">flagged by mentor</div></div>
-        </div>
+  <div className="stat"><div className="stat-accent accent-gold"></div><div className="stat-lbl">Tests Taken</div><div className="stat-val">{weeks.length}</div><div className="stat-note up">{weeks.length > 0 ? `across ${last?.weekNumber ?? weeks.length} week${weeks.length !== 1 ? 's' : ''}` : 'No tests yet'}</div></div>
+  <div className="stat"><div className="stat-accent accent-green"></div><div className="stat-lbl">Latest Score</div><div className="stat-val">{currentMarks ?? '—'}</div><div className="stat-note up">{improvement !== null ? `+${improvement} from baseline` : 'No data yet'}</div></div>
+  <div className="stat"><div className="stat-accent accent-gold"></div><div className="stat-lbl">Latest Accuracy</div><div className="stat-val">{last && last.avgPct != null ? `${Math.round(last.avgPct)}%` : '—'}</div><div className="stat-note up">{topImprover ? `best jump: ${topImprover.name}` : 'No tests yet'}</div></div>
+  <div className="stat"><div className="stat-accent accent-navy"></div><div className="stat-lbl">Weak Area</div><div className="stat-val">{weakestSubject ? weakestSubject.name : '—'}</div><div className="stat-note warn">{weakestSubject ? `${weakestSubject.lastPct}% latest` : 'Add scores to see'}</div></div>
+</div>
         <div className="g2 mb">
           <div className="test-card">
             <div className="test-pills"><span className="pill pill-gold">JEE Advanced</span><span className="pill pill-navy">Full Mock</span></div>

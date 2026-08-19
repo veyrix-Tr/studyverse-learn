@@ -89,7 +89,7 @@ router.post('/diagnostic', requireAuth, async (req, res) => {
         if (admins.length && user) {
           await prisma.adminMessage.createMany({
             data: admins.map(a => ({
-              content: `${user.name} completed their diagnostic (score: ${Math.round(score)}%). View their report in the Students tab.`,
+              content: `${user.name} completed their diagnostic questionnaire (${Math.round(score)}% complete). View their report in the Students tab.`,
               type: 'Diagnostic',
               studentId: profile.id,
               adminId: a.id,

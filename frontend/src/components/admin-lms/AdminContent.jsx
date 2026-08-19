@@ -768,7 +768,7 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
                 <td>
                   {diagDone
                     ? <div>
-                        <span style={{ fontSize: '12px', fontWeight: '600', color: 'var(--green)' }}>Done — {s.diagnosticScore}%</span>
+                        <span style={{ fontSize: '12px', fontWeight: '600', color: 'var(--green)' }}>Done — {s.diagnosticScore}% complete</span>
                         {diagDate && <div style={{ fontSize: '11px', color: 'var(--text3)', marginTop: '2px' }}>{diagDate}</div>}
                       </div>
                     : <span style={{ fontSize: '12px', color: 'var(--text3)' }}>Pending</span>}
