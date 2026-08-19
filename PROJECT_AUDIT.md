@@ -10,9 +10,6 @@ Completed items are removed from this file once done (kept out entirely so no tr
 
 ## A. Genuine bugs (broken / wrong code)
 
-### A1. 🟡 Apex & Anchor plan CTAs are no-ops / unbuyable
-`frontend/src/components/free-lms/FreeContent.jsx:2613` (Apex) and `:2632` (Anchor) — both cards' only CTA is `onClick={() => onNav('plans')}` while **already on the plans page**, so clicking does nothing. `openPlanCheckout` is only ever called with `'forge'` (sole call site). The backend `create-plan-order` supports `'apex'`/`'anchor'` (paymentController.js:139–140) but no UI path triggers it. **Two of four paid plans can't be bought through the app.** (Stacked with B3.)
-
 ### A2. 🟡 ₹99 pay-per-session is bypassable — the free session-request route has no gate
 `backend/routes/studentRoutes.js:748–770` `POST /session-request` creates a `SessionRequest` for any authenticated student with **no plan check and no payment requirement** — the same booking the paid flow materialises on payment. It's live and callable directly, so the advertised ₹99 single-session fee isn't enforced. (Frontend uses the paid path, but the public route defeats it.)
 
@@ -40,10 +37,6 @@ Forge card advertises "Weekly tests based on current weak topics"; sidebar expos
 `frontend/src/components/student-lms/StudentContent.jsx:631–693` (courses + video player), `:800–828` (test cards)
 Course cards show fabricated progress ("36 of 48 lectures"); the video player and lecture list are hardcoded; "Start Test →" only toasts `'Launching test environment...'`. No course content / test-engine data source exists. Advertised-but-unbuilt.
 
-### B6. 🟠 Student-side "Book a 1-to-1 Session" modal never calls the API
-`frontend/src/components/student-lms/StudentModals.jsx:67`
-"Send Request" runs `onClose(); onShowToast('Session request sent!')` — form fields (topic/date/time) aren't wired to state. Yet a complete round-trip exists unused: `POST /api/student/session-request` (studentRoutes.js:748) and `GET /api/student/session-requests` (:773). Requests from this modal are never persisted.
-
 ### B7. 🟡 Faculty "Quick Note", "Session Notes", and "Suggest a Test" modals are fake
 `frontend/src/components/faculty-lms/FacultyModals.jsx`
 - Quick Note `:361–376` — hardcoded fake student dropdown, no state, Save only toasts `'Note saved. Will appear in Sunday report ✓'`.
@@ -55,9 +48,6 @@ Course cards show fabricated progress ("36 of 48 lectures"); the video player an
 
 ### B9. 🟡 Student "Send Message" (mentor chat) is fake
 `frontend/src/components/student-lms/StudentContent.jsx:872` — button only toasts `'Opening chat...'`. No chat feature/route exists.
-
-### B10. 🟡 Registration "City" is silently discarded
-`frontend/src/components/login/RegisterForm.jsx:164` sends `city`; `backend/controllers/authController.js:8` destructures only `{ name, email, password, examTarget, targetYear, grade, phone }`, and `StudentProfile` has **no `city` column**. Accepted then dropped — never stored or shown.
 
 ### B11. 🟡 Diagnostic "score" is the form-fill percentage, not an assessment result
 `frontend/src/components/common/DiagnosticForm.jsx:262–268` posts `{ score: progress, answers: form }` where `progress` is `% of questionnaire answered` (:153–160). Stored as `diagnosticScore` and surfaced to admins as "completed their diagnostic (score: N%)". Misrepresents completion % as an exam score. Real scoring never happens.
@@ -75,12 +65,9 @@ Course cards show fabricated progress ("36 of 48 lectures"); the video player an
 ### C3. 🟠 "Subject Faculty — Apex only" panel writes data nobody reads; Anchor (which needs it) has no UI
 `frontend/.../admin-lms/AdminContent.jsx:1028` (panel shown only when `plan === 'apex'`), writes via `PUT /api/admin/student/:id/subject-faculty`. But every consumer (`facultyRoutes.js`, 5 call sites) branches on `sp.plan`: Apex is matched by grade + exam-subject lookup and **never reads `subjectFaculty`**; only Anchor reads it. So the panel writes into a field no Apex logic consumes, while Anchor — the plan that actually depends on it — has no assignment UI.
 
-### C4. 🟡 Admin "Mentor" column / per-faculty counts use a fabricated faculty name
-`backend/routes/adminRoutes.js:56–64` — `facultyName` is computed via `findFirst` over any faculty whose subject matches the exam list, **ignoring `mentorId` and `subjectFaculty`**. So the students-table Mentor column and "N students" counts can show the wrong/generic faculty, not the student's actual mentor.
-
 ---
 
-## D. Notes on stale internal docs (so you don't chase dead leads)
+## D. Notes on stale internal docs
 
 - **`APEX_TODO.md` is now stale in two places:**
   - It claims Zoom/live-classes and the faculty "Schedule a Session" modal are **unbuilt / hardcoded fake names**. That is **no longer true** — the modal is wired (POSTs `studentIds`/`subject`/`scheduledAt` to `POST /api/faculty/:id/sessions`) and Zoom is a **real integration**: `backend/lib/zoom.js` does S2S OAuth + `createMeeting` + signed Meeting-SDK signatures; faculty session creation calls Zoom and persists `zoomMeetingId`/`joinUrl`/`startUrl`/`zoomPassword`; `LiveClassRoom.jsx` joins via `ZoomMtg`. (Since this audit, **mentor calls also use Zoom** via the same embedded player.) What's still missing around sessions: **recording** (B7) and the other fake modals (B8).
@@ -97,9 +84,10 @@ Course cards show fabricated progress ("36 of 48 lectures"); the video player an
 ## Suggested fix order (highest-impact, cheapest first)
 
 1. **B1 + A2** — tie gating to `planEndDate` (add an expiry cron + check planning), and gate `POST /session-request` behind the paid plan.
-2. **A1 / B3 / B2** — decide the buying story: wire Apex/Anchor to `openPlanCheckout`, and build real create-admin / enroll-student routes (or remove the fake modals).
+2. **B3 / B2** — decide the buying story: build real create-admin / enroll-student routes (or remove the fake modals).
 3. **B4 / B5 / C1 / C2** — either build the weekly-test/course/test engines or replace the hardcoded mockups with honest "Coming Soon" placeholders and remove fabricated dashboards.
-4. **C3 / C4** — decide whether Apex or Anchor owns `subjectFaculty`, wire the correct plan's admin panel, and make the Mentor column use `mentorId`.
-5. **B6 / B7 / B8 / B9** — wire the student session-request modal, the faculty note/test modals, forgot-password, and chat (or remove the fake ones).
+4. **C3** — decide whether Apex or Anchor owns `subjectFaculty`, and wire the correct plan's admin panel.
+5. **B11** — decide whether diagnostic "score" should be a real assessment result or explicitly relabeled as completion %.
+6. **B7 / B8 / B9** — wire the faculty note/test modals, forgot-password, and chat (or remove the fake ones).
 
 ---

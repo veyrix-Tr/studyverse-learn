@@ -226,7 +226,7 @@ const DiagnosticForm = ({ profile, onComplete }) => {
     return null;
   };
 
-  const handleSubmit = e => {
+  const handleSubmit = async e => {
     e.preventDefault();
     const err = validate();
     if (err) { showToast(err); return; }
@@ -243,7 +243,7 @@ const DiagnosticForm = ({ profile, onComplete }) => {
       submitted_at: new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }),
     };
 
-    // 1. Fire to Google Sheets (detailed form data for mentor)
+    // 1. Fire to Google Sheets (detailed form data for mentor) — best-effort
     if (SCRIPT_URL) {
       window.__diagCb = () => {};
       const params = Object.entries(data)
@@ -255,24 +255,38 @@ const DiagnosticForm = ({ profile, onComplete }) => {
       document.head.appendChild(s);
     }
 
-    // 2. Save score to backend DB so diagDone becomes true
+    // 2. Save score to backend DB so diagDone becomes true — must succeed first
     const userId = profile?.id;
     const token  = localStorage.getItem('token');
+    let saved = false;
     if (userId && token) {
-      fetch(`${import.meta.env.VITE_API_URL}/api/student/${userId}/diagnostic`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ score: progress, answers: form }),
-      })
-        .then(r => r.json())
-        .then(res => { if (res.success) onComplete?.(); })
-        .catch(() => {});
+      try {
+        const res = await fetch(`${import.meta.env.VITE_API_URL}/api/student/${userId}/diagnostic`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ score: progress, answers: form }),
+        });
+        const parsed = await res.json().catch(() => ({}));
+        saved = res.ok && parsed.success;
+      } catch {
+        saved = false;
+      }
+    } else {
+      saved = true;
     }
 
-    setTimeout(() => { setSubmitting(false); setSubmitted(true); }, 1500);
+    if (!saved) {
+      setSubmitting(false);
+      showToast('Could not save your diagnostic. Please try again.');
+      return;
+    }
+
+    setSubmitting(false);
+    setSubmitted(true);
+    onComplete?.();
   };
 
   // ── Step bar ────────────────────────────────────────────────────────────────

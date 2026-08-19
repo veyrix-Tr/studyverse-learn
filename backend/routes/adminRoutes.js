@@ -50,21 +50,6 @@ router.get('/students', requireAuth, requireAdmin, async (req, res) => {
     });
 
     const result = await Promise.all(students.map(async s => {
-      // Resolve faculty by subject (one faculty per subject) — not via Session,
-      // since Sessions are now only created lazily per-student and may not exist
-      // yet even though a subject faculty is assigned.
-      let facultyName = null;
-      if (s.grade && s.examTarget) {
-        const subjects = EXAM_SUBJECTS[s.examTarget] || [];
-        if (subjects.length > 0) {
-          const faculty = await prisma.facultyProfile.findFirst({
-            where: { subject: { in: subjects } },
-            include: { user: { select: { name: true } } },
-          });
-          if (faculty) facultyName = faculty.user.name;
-        }
-      }
-
       // Aggregate score and totalMarks per week
       const scoreMap = {};
       const totalMap = {};
@@ -83,7 +68,6 @@ router.get('/students', requireAuth, requireAdmin, async (req, res) => {
         plan: s.plan, examTarget: s.examTarget, grade: s.grade,
         diagnosticScore: s.diagnosticScore,
         diagnosticTakenAt: s.diagnosticTakenAt,
-        facultyName,
         mentorId: s.mentorId || null,
         mentorName: s.mentor?.user?.name || null,
         subjectFaculty: s.subjectFaculty || {},

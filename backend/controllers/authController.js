@@ -5,7 +5,7 @@ const prisma = require('../lib/prisma');
 // POST /api/auth/register
 const register = async (req, res) => {
   try {
-    const { name, email, password, examTarget, targetYear, grade, phone } = req.body;
+    const { name, email, password, examTarget, targetYear, grade, city, phone } = req.body;
 
     if (!name || !email || !password) {
       return res.status(400).json({ error: 'name, email, and password are required' });
@@ -24,6 +24,7 @@ const register = async (req, res) => {
             examTarget:  examTarget  || null,
             targetYear:  targetYear  || null,
             grade:       grade       || null,
+            city:        city        || null,
             parentPhone: phone       || null,
           },
         },

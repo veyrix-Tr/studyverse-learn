@@ -337,7 +337,7 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
   const habitCount = alreadyCheckedIn
     ? HABIT_KEYS.filter(k => todayLog[k]).length
     : Object.keys(habitState).filter(k => habitState[k] === 'yes').length;
-  const allHabitsDone = Object.keys(habitState).length === 5;
+  const anyHabitAnswered = Object.keys(habitState).length > 0;
 
   const logHabit = (key, val) => {
     if (alreadyCheckedIn) return;
@@ -395,7 +395,7 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
           // ── FORGE DASHBOARD ──────────────────────────────────────────────
           const examTarget = profile?.studentProfile?.examTarget || 'your exam';
           const targetYear = parseInt(profile?.studentProfile?.targetYear) || null;
-          const daysLeft = targetYear ? Math.max(0, Math.ceil((new Date(targetYear, 3, 1) - new Date()) / 86400000)) : null;
+          const daysLeft = getDaysRemaining(profile?.studentProfile?.examTarget, targetYear) ?? null;
           const sortedWeeks = [...scores].sort((a, b) => a.weekNumber - b.weekNumber);
           const latestWeek  = sortedWeeks[sortedWeeks.length - 1] || null;
           const firstWeek   = sortedWeeks[0] || null;
@@ -603,7 +603,7 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
           (() => {
             const spExam     = profile?.studentProfile?.examTarget || 'your exam';
             const spYear     = parseInt(profile?.studentProfile?.targetYear) || null;
-            const spDaysLeft = spYear ? Math.max(0, Math.ceil((new Date(spYear, 3, 1) - new Date()) / 86400000)) : null;
+            const spDaysLeft = getDaysRemaining(profile?.studentProfile?.examTarget, spYear) ?? null;
             const topicsTotal  = studyPlan ? Object.values(studyPlan.subjectTopics || {}).flat().length : 0;
             const topicsUrgent = studyPlan ? Object.values(studyPlan.subjectTopics || {}).flat().filter(t => t.label === 'Urgent' || t.label === 'High').length : 0;
             const priorityTopics = studyPlan
@@ -2016,7 +2016,7 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
               </div>
             ))}
 
-            {!alreadyCheckedIn && allHabitsDone && (
+            {!alreadyCheckedIn && anyHabitAnswered && (
               <div style={{ marginTop: '16px', textAlign: 'right' }}>
                 <button className="btn btn-gold" onClick={saveHabits} disabled={habitSaving}>
                   {habitSaving ? 'Saving…' : 'Save Today\'s Check-in ✓'}

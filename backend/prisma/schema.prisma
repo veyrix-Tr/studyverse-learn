@@ -30,6 +30,7 @@ model StudentProfile {
   examTarget      String?
   targetYear      String?
   grade           String?
+  city            String?
   parentPhone     String?
   planEndDate     DateTime?
   diagnosticScore   Int?

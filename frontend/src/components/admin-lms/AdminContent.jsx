@@ -704,14 +704,15 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
             const av = s.name?.[0]?.toUpperCase() || '?';
             const examClass = s.examTarget?.includes('NEET') ? 'pp' : 'pn';
             const hasScores = Number.isFinite(s.lastScore) && Number.isFinite(s.lastTotalMarks) && s.lastTotalMarks > 0;
-            const mentorAv = s.facultyName?.[0]?.toUpperCase() || '?';
+            const mentorAv = s.mentorName?.[0]?.toUpperCase() || '?';
+            const mentorLabel = s.mentorName || null;
             return (
               <tr>
                 <td><div className="av-row"><div className="av">{av}</div>{s.name}</div></td>
                 <td><span className={`pill ${examClass}`}>{s.examTarget || 'Not set'}</span></td>
                 <td>
-                  {s.facultyName
-                    ? <div className="av-row"><div className="av" style={{ background: 'transparent', borderColor: 'var(--text3)', color: 'var(--text3)' }}>{mentorAv}</div>{s.facultyName}</div>
+                  {mentorLabel
+                    ? <div className="av-row"><div className="av" style={{ background: 'transparent', borderColor: 'var(--text3)', color: 'var(--text3)' }}>{mentorAv}</div>{mentorLabel}</div>
                     : <span style={{ color: 'var(--text3)', fontSize: '12px' }}>Unassigned</span>}
                 </td>
                 <td>
@@ -841,7 +842,7 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
               if (l.includes('jee'))    return 'pg';
               return 'pn';
             };
-            const assignedStudents = students.filter(s => s.facultyName === f.name);
+            const assignedStudents = f.mentorStudentCount || 0;
             return (
               <div key={f.id} className="card" style={{ transition: 'all .2s' }}
                 onMouseOver={e => e.currentTarget.style.borderColor = 'var(--gold)'}
@@ -852,9 +853,9 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
                     <div style={{ fontSize: '15px', fontWeight: '700', fontFamily: 'var(--fs)' }}>{f.name}</div>
                     <div style={{ fontSize: '11.5px', color: 'var(--text3)' }}>{f.subject}{f.qualification ? ` • ${f.qualification}` : ''}</div>
                   </div>
-                  {assignedStudents.length > 0 && (
+                  {assignedStudents > 0 && (
                     <span style={{ fontSize: '11px', fontWeight: '700', padding: '3px 9px', borderRadius: '99px', background: 'rgba(34,197,94,0.1)', color: '#16A34A', flexShrink: 0 }}>
-                      {assignedStudents.length} student{assignedStudents.length > 1 ? 's' : ''}
+                      {assignedStudents} student{assignedStudents > 1 ? 's' : ''}
                     </span>
                   )}
                 </div>
@@ -1191,7 +1192,7 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
                 <div className="g3">
                   {facultyList.map(f => {
                     const mentees = f.mentorStudentCount || 0;
-                    const assigned = students.filter(s => s.facultyName === f.name).length;
+                    const assigned = students.filter(s => Object.values(s.subjectFaculty || {}).includes(f.id)).length;
                     const pct = Math.min(Math.round((mentees / 10) * 100), 100);
                     const barColor = pct >= 80 ? '#EF4444' : pct >= 50 ? '#F59E0B' : '#22C55E';
                     return (

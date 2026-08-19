@@ -16,6 +16,38 @@ const StudentModals = ({ openModal, onClose, onShowToast, toast, profile, onDoub
   const [doubtQuestion, setDoubtQuestion] = useState('');
   const [posting, setPosting] = useState(false);
 
+  const [sessionTopic, setSessionTopic] = useState('');
+  const [sessionDate, setSessionDate] = useState('');
+  const [sessionTime, setSessionTime] = useState('Morning (9–12)');
+  const [sessionNote, setSessionNote] = useState('');
+  const [sending, setSending] = useState(false);
+
+  const handleSendSession = async () => {
+    if (!sessionTopic.trim()) { onShowToast('Please enter a topic'); return; }
+    if (!sessionDate) { onShowToast('Please pick a preferred date'); return; }
+    setSending(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/student/${userId}/session-request`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          topic: sessionTopic.trim(),
+          preferredTime: `${sessionDate} — ${sessionTime}${sessionNote ? ' · ' + sessionNote : ''}`,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to send request');
+      setSessionTopic(''); setSessionDate(''); setSessionTime('Morning (9–12)'); setSessionNote('');
+      onClose();
+      onShowToast('Session request sent! Your mentor will confirm shortly.');
+    } catch (err) {
+      onShowToast(err.message || 'Failed to send request. Try again.');
+    } finally {
+      setSending(false);
+    }
+  };
+
   const handlePostDoubt = async () => {
     if (!doubtQuestion.trim()) { onShowToast('Please write your question'); return; }
     const subject = doubtSubject || subjects[0];
@@ -48,12 +80,12 @@ const StudentModals = ({ openModal, onClose, onShowToast, toast, profile, onDoub
         <div className="modal">
           <div className="modal-title">Book a 1-to-1 Session</div>
           <div className="modal-sub">Every session is built around your specific need. No templates.</div>
-          <div className="fg"><label>Topic / Area</label><input className="fi" type="text" placeholder="e.g. Organic Chemistry — Reaction Mechanisms" /></div>
+          <div className="fg"><label>Topic / Area</label><input className="fi" type="text" placeholder="e.g. Organic Chemistry — Reaction Mechanisms" value={sessionTopic} onChange={e => setSessionTopic(e.target.value)} /></div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-            <div className="fg"><label>Preferred Date</label><input className="fi" type="date" /></div>
+            <div className="fg"><label>Preferred Date</label><input className="fi" type="date" value={sessionDate} onChange={e => setSessionDate(e.target.value)} /></div>
             <div className="fg">
               <label>Preferred Time</label>
-              <select className="fi">
+              <select className="fi" value={sessionTime} onChange={e => setSessionTime(e.target.value)}>
                 <option>Morning (9–12)</option>
                 <option>Afternoon (12–4)</option>
                 <option>Evening (4–8 PM)</option>
@@ -61,10 +93,10 @@ const StudentModals = ({ openModal, onClose, onShowToast, toast, profile, onDoub
               </select>
             </div>
           </div>
-          <div className="fg"><label>Any specific doubt to address?</label><textarea className="fi" rows="2" placeholder="Optional — helps your faculty prepare before the session"></textarea></div>
+          <div className="fg"><label>Any specific doubt to address?</label><textarea className="fi" rows="2" placeholder="Optional — helps your faculty prepare before the session" value={sessionNote} onChange={e => setSessionNote(e.target.value)} /></div>
           <div className="ma">
             <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
-            <button className="btn btn-primary" onClick={() => { onClose(); onShowToast('Session request sent!'); }}>Send Request</button>
+            <button className="btn btn-primary" onClick={handleSendSession} disabled={sending}>{sending ? 'Sending…' : 'Send Request'}</button>
           </div>
         </div>
       </div>
