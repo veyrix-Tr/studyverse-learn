@@ -215,7 +215,7 @@ const fmtWeekRange = (weekStartDate) => {
   return `${fmt(mon)} – ${fmt(sun)}`;
 };
 
-const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, students = [], facultyList = [], onOpenMessage, isSuperAdmin, adminAccounts = [], onDeactivateAdmin, onReactivateAdmin, resources = [], onApproveResource, onDeclineResource, sentMessages = [], onSendMessage, parentReports = [], onApproveReport, onRejectReport, onSendReports, onApproveAllReports, onStudentMentorUpdated, onStudentSubjectFacultyUpdated, sessionRequests = [], onSessionRequestsUpdated }) => {
+const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, students = [], facultyList = [], onOpenMessage, isSuperAdmin, adminAccounts = [], onDeactivateAdmin, onReactivateAdmin, resources = [], onApproveResource, onDeclineResource, sentMessages = [], onSendMessage, parentReports = [], onApproveReport, onRejectReport, onSendReports, onApproveAllReports, onStudentMentorUpdated, onStudentSubjectFacultyUpdated, sessionRequests = [], onSessionRequestsUpdated, adminNotifications = [], onMarkNotifRead, onMarkAllNotifsRead }) => {
   const firstName = profile?.name?.split(' ')[0] || 'there';
   const [studentsTab, setStudentsTab] = useState(0);
 
@@ -327,6 +327,106 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
   return (
     <>
     <div className="content">
+
+      {/* ══ TASKS (assignment inbox) ══ */}
+      {(() => {
+        const pending = adminNotifications.filter(n => n.status === 'pending');
+        const undone  = adminNotifications.filter(n => n.status !== 'done');
+        const unread  = adminNotifications.filter(n => !n.readAt);
+        const LABEL = { mentor: 'Assign Mentor', faculty: 'Assign Faculty', session: 'Session Request' };
+        const tileLabel = (n) => n.type === 'session' ? '1:1' : (n.student?.plan || 'STU').toUpperCase();
+        const fmtAgo = (iso) => {
+          const s = (Date.now() - new Date(iso).getTime()) / 1000;
+          if (s < 60) return 'just now';
+          if (s < 3600) return Math.floor(s / 60) + 'm ago';
+          if (s < 86400) return Math.floor(s / 3600) + 'h ago';
+          return new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+        };
+        return (
+          <div className={pg('tasks')} id="p-tasks">
+            <div style={{ marginBottom: '18px', display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+              <div>
+                <div style={{ fontSize: '11px', color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '.1em', fontWeight: '500', marginBottom: '4px' }}>Action Required</div>
+                <div style={{ fontFamily: 'var(--fs)', fontSize: '23px', fontWeight: '700' }}>Assignment Tasks</div>
+                <div style={{ fontSize: '13.5px', color: 'var(--text2)', marginTop: '3px' }}>
+                  Assign mentors and faculty as students upgrade, and route session bookings.
+                  <strong style={{ color: 'var(--navy)' }}> {pending.length} pending</strong>{pending.length ? ` · ${unread.length} unread` : ''}
+                </div>
+              </div>
+              {unread.length > 0 && (
+                <button className="btn btn-ghost" style={{ fontSize: '13px' }} onClick={onMarkAllNotifsRead}>Mark all read</button>
+              )}
+            </div>
+
+            {adminNotifications.length === 0 ? (
+              <div className="card" style={{ textAlign: 'center', padding: '42px 20px' }}>
+                <div style={{ width: '56px', height: '56px', margin: '0 auto 14px', borderRadius: '50%', background: 'rgba(22,163,74,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#16A34A" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+                </div>
+                <div style={{ fontFamily: 'var(--fs)', fontSize: '16px', fontWeight: '700', color: 'var(--text)', marginBottom: '6px' }}>All caught up!</div>
+                <div style={{ fontSize: '13px', color: 'var(--text2)' }}>New mentor/faculty assignments and session bookings will appear here as a highlighted prompt.</div>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {adminNotifications.map(n => {
+                  const label = LABEL[n.type] || LABEL.mentor;
+                  const isPending = n.status === 'pending';
+                  const isUnread  = !n.readAt;
+                  return (
+                    <div key={n.id}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: '14px', padding: '15px 18px',
+                        background: '#fff',
+                        border: `1px solid ${isPending ? 'var(--gold-b, rgba(232,168,48,0.3))' : 'var(--b)'}`,
+                        borderLeft: `4px solid ${isPending ? '#E8A830' : 'var(--b)'}`,
+                        borderRadius: '10px',
+                        opacity: isPending ? 1 : 0.55,
+                        boxShadow: isPending ? '0 10px 24px rgba(15,31,61,0.06)' : 'none',
+                        cursor: isUnread ? 'pointer' : 'default',
+                        transition: 'box-shadow .15s ease',
+                      }}
+                      onClick={() => { if (isUnread) onMarkNotifRead(n.id); }}
+                    >
+                      <div style={{
+                        minWidth: '44px', height: '44px', padding: '0 10px', borderRadius: '9px',
+                        background: 'rgba(15,31,61,0.05)', color: 'var(--navy)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: '11px', fontWeight: 700, letterSpacing: '.06em', flexShrink: 0,
+                      }}>
+                        {tileLabel(n)}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '3px' }}>
+                          <span style={{ fontSize: '10.5px', fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '.09em', flexShrink: 0 }}>{label}</span>
+                          {isUnread && <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#E8A830', flexShrink: 0 }} />}
+                        </div>
+                        <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text)', lineHeight: 1.45 }}>{n.content}</div>
+                        <div style={{ fontSize: '12px', color: 'var(--text2)', marginTop: '3px' }}>
+                          {n.student?.user?.name ? `${n.student.user.name} · ` : ''}{fmtAgo(n.createdAt)}
+                          {isPending && <span style={{ marginLeft: '8px', color: '#B7791F', fontWeight: 600 }}>Pending</span>}
+                        </div>
+                      </div>
+                      {isPending && (
+                        <button className="btn btn-gold" style={{ fontSize: '13px', padding: '9px 16px', flexShrink: 0 }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (isUnread) onMarkNotifRead(n.id);
+                            onNav(n.type === 'session' ? 'session-requests' : 'assign');
+                          }}>
+                          Assign →
+                        </button>
+                      )}
+                      {!isPending && (
+                        <span style={{ fontSize: '11.5px', fontWeight: 600, color: '#16A34A', flexShrink: 0 }}>Done</span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* ══ DASHBOARD ══ */}
       <div className={pg('dashboard')} id="p-dashboard">

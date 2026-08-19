@@ -149,7 +149,6 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
   const isForge = plan === 'forge';
 
   // Session request form state
-  const [sessName, setSessName] = useState('');
   const [sessPhone, setSessPhone] = useState('');
   const [sessTopic, setSessTopic] = useState('');
   const [sessTime, setSessTime] = useState('');
@@ -161,6 +160,7 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
   const openPlanCheckout = (planName) => setPayModal({ open: true, mode: 'plan', plan: planName });
   const openSessionCheckout = () => {
     if (!sessTopic.trim()) { onShowToast('Please describe the topic you need help with'); return; }
+    if (!/^\d{10}$/.test((sessPhone || '').replace(/\D/g, ''))) { onShowToast('Please enter a valid 10-digit phone number so we can reach you'); return; }
     setPayModal({ open: true, mode: 'session', plan: 'forge' });
   };
 
@@ -2230,10 +2230,17 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
         })()}
 
         {/* Header */}
-        <div style={{ marginBottom: '28px' }}>
-          <div style={{ fontFamily: 'var(--fs)', fontSize: '22px', fontWeight: 700, color: 'var(--text)', marginBottom: '6px' }}>Request a 1-on-1 Session</div>
-          <div style={{ fontSize: '13.5px', color: 'var(--text2)', lineHeight: 1.7 }}>
-            Pick your topic, leave your number, and we'll confirm a time with you directly.
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '26px', flexWrap: 'wrap' }}>
+          <div style={{ width: '50px', height: '50px', borderRadius: '14px', background: 'linear-gradient(135deg,#E8A830 0%,#B97F1F 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 18px rgba(232,168,48,.35)', flexShrink: 0 }}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0F1F3D" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          </div>
+          <div style={{ flex: 1, minWidth: '220px' }}>
+            <div style={{ fontFamily: 'var(--fs)', fontSize: '25px', fontWeight: 700, color: 'var(--text)', marginBottom: '3px' }}>Book a 1-on-1 Session</div>
+            <div style={{ fontSize: '13.5px', color: 'var(--text2)' }}>Pick a topic, tell us a good time, and we'll match you with the right faculty member.</div>
+          </div>
+          <div style={{ textAlign: 'center', background: 'var(--cream2)', border: '1.5px solid var(--gold-b)', borderRadius: 'var(--r)', padding: '8px 18px' }}>
+            <div style={{ fontFamily: 'var(--fs)', fontSize: '19px', fontWeight: 700, color: 'var(--gold)' }}>₹99</div>
+            <div style={{ fontSize: '10px', color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '.08em' }}>one session</div>
           </div>
         </div>
 
@@ -2267,48 +2274,57 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
 
         <div className="g2 mb" style={{ alignItems: 'start', display: sessionRequests.find(r => r.status === 'pending' || r.status === 'assigned') ? 'none' : 'grid' }}>
           {/* Request form */}
-          <div className="card" style={{ borderTop: '3px solid var(--gold)' }}>
+          <div className="card" style={{ borderTop: '3px solid var(--gold)', padding: 0, overflow: 'hidden' }}>
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--b)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+              <div>
+                <div style={{ fontFamily: 'var(--fs)', fontSize: '15px', fontWeight: 700, color: 'var(--text)' }}>{sessDone ? 'Request received!' : 'Tell us what you need'}</div>
+                <div style={{ fontSize: '12px', color: 'var(--text3)', marginTop: '2px' }}>{sessDone ? 'Our team will confirm your slot within 24 hours.' : 'Takes less than a minute — no subscription needed'}</div>
+              </div>
+              {!sessDone && <span style={{ fontSize: '10.5px', fontWeight: 700, padding: '5px 11px', borderRadius: '20px', background: 'rgba(232,168,48,.12)', color: 'var(--gold)', border: '1px solid var(--gold-b)', flexShrink: 0 }}>PAY ₹99 TO BOOK</span>}
+            </div>
             {sessDone ? (
-              <div style={{ textAlign: 'center', padding: '32px 16px' }}>
-                <div style={{ fontSize: '40px', marginBottom: '14px' }}>✅</div>
-                <div style={{ fontFamily: 'var(--fs)', fontSize: '18px', fontWeight: 700, color: 'var(--text)', marginBottom: '8px' }}>Request received!</div>
-                <div style={{ fontSize: '13px', color: 'var(--text2)', lineHeight: 1.7, marginBottom: '20px' }}>Our team will reach out within 24 hours to confirm your session.</div>
+              <div style={{ textAlign: 'center', padding: '36px 20px' }}>
+                <div style={{ width: '58px', height: '58px', borderRadius: '50%', background: 'rgba(34,197,94,.12)', color: '#16a34a', fontSize: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>✓</div>
+                <div style={{ fontFamily: 'var(--fs)', fontSize: '18px', fontWeight: 700, color: 'var(--text)', marginBottom: '8px' }}>You're all set!</div>
+                <div style={{ fontSize: '13px', color: 'var(--text2)', lineHeight: 1.7, maxWidth: '320px', margin: '0 auto' }}>Our team will reach out within 24 hours to confirm your session with the right faculty member.</div>
               </div>
             ) : (
-              <>
-                <div style={{ fontFamily: 'var(--fs)', fontSize: '16px', fontWeight: 700, color: 'var(--text)', marginBottom: '18px' }}>Tell us what you need</div>
-
-                <div style={{ marginBottom: '14px' }}>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--text2)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '.06em' }}>What topic do you need help with? *</label>
+              <div style={{ padding: '20px' }}>
+                <div style={{ marginBottom: '16px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: '.06em' }}>What topic do you need help with? <span style={{ color: 'var(--gold)' }}>*</span></label>
+                    <span style={{ fontSize: '11px', color: 'var(--text3)' }}>{sessTopic.length}/600</span>
+                  </div>
                   <textarea
                     rows={3}
+                    maxLength={600}
                     placeholder="e.g. Electrostatics — I understand the theory but keep losing marks on Gauss's Law problems. Need someone to walk me through the approach."
                     value={sessTopic}
                     onChange={e => setSessTopic(e.target.value)}
-                    style={{ width: '100%', padding: '10px 12px', border: '1.5px solid var(--b)', borderRadius: 'var(--r)', fontSize: '13px', color: 'var(--text)', fontFamily: 'var(--fb)', resize: 'vertical', outline: 'none', background: 'var(--cream2)', lineHeight: 1.6, transition: 'border-color .2s' }}
-                    onFocus={e => e.target.style.borderColor = 'var(--gold)'}
-                    onBlur={e => e.target.style.borderColor = 'var(--b)'}
+                    style={{ width: '100%', padding: '11px 13px', border: '1.5px solid var(--b)', borderRadius: '10px', fontSize: '13px', color: 'var(--text)', fontFamily: 'var(--fb)', resize: 'vertical', outline: 'none', background: '#F0F0F0', lineHeight: 1.6, transition: 'border-color .2s, box-shadow .2s' }}
+                    onFocus={e => { e.target.style.borderColor = 'var(--gold)'; e.target.style.boxShadow = '0 0 0 3px rgba(232,168,48,.15)'; }}
+                    onBlur={e => { e.target.style.borderColor = 'var(--b)'; e.target.style.boxShadow = 'none'; }}
                   />
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '12px', marginBottom: '14px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '14px', marginBottom: '18px' }}>
                   <div>
-                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--text2)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '.06em' }}>Your phone number</label>
-                    <input
-                      type="tel"
-                      placeholder="+91 98765 43210"
-                      value={sessPhone}
-                      onChange={e => setSessPhone(e.target.value)}
-                      style={{ width: '100%', padding: '9px 12px', border: '1.5px solid var(--b)', borderRadius: 'var(--r)', fontSize: '13px', color: 'var(--text)', fontFamily: 'var(--fb)', outline: 'none', background: 'var(--cream2)', transition: 'border-color .2s' }}
-                      onFocus={e => e.target.style.borderColor = 'var(--gold)'}
-                      onBlur={e => e.target.style.borderColor = 'var(--b)'}
-                    />
+                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, color: 'var(--text2)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '.06em' }}>Your phone number <span style={{ color: 'var(--gold)' }}>*</span></label>
+                    <div style={{ display: 'flex', border: '1.5px solid var(--b)', borderRadius: '10px', background: '#F0F0F0', overflow: 'hidden' }}>
+                      <span style={{ display: 'flex', alignItems: 'center', padding: '0 10px', fontSize: '12.5px', fontWeight: 600, color: 'var(--text3)', borderRight: '1px solid var(--b)', background: '#E4E4E6' }}>+91</span>
+                      <input
+                        type="tel"
+                        inputMode="numeric"
+                        maxLength={10}
+                        placeholder="98765 43210"
+                        value={sessPhone}
+                        onChange={e => setSessPhone(e.target.value.replace(/\D/g, ''))}
+                        style={{ flex: 1, padding: '10px 12px', border: 'none', fontSize: '13px', color: 'var(--text)', fontFamily: 'var(--fb)', outline: 'none', background: 'transparent' }}
+                      />
+                    </div>
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--text2)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '.06em' }}>
-                      Preferred time <span style={{ fontWeight: 400, color: 'var(--text3)' }}>(optional)</span>
-                    </label>
-                    {/* Quick-select chips */}
+                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, color: 'var(--text2)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '.06em' }}>Preferred time <span style={{ fontWeight: 400, color: 'var(--text3)' }}>(optional)</span></label>
                     <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '8px' }}>
                       {['Morning (9–12 AM)', 'Afternoon (12–4 PM)', 'Evening (4–7 PM)', 'Night (7–10 PM)', 'Weekends only', 'Any time'].map(slot => (
                         <button
@@ -2318,9 +2334,9 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
                           style={{
                             padding: '5px 11px', borderRadius: '20px', fontSize: '11.5px', fontWeight: 600,
                             cursor: 'pointer', transition: 'all .15s', fontFamily: 'var(--fb)',
-                            background: sessTime === slot ? 'var(--gold)' : 'var(--cream2)',
-                            color:      sessTime === slot ? 'var(--navy)' : 'var(--text3)',
-                            border:     sessTime === slot ? '1.5px solid var(--gold)' : '1.5px solid var(--b)',
+                            background: sessTime === slot ? 'var(--gold)' : '#DCDEE2',
+                            color:      sessTime === slot ? 'var(--navy)' : 'var(--text2)',
+                            border:     sessTime === slot ? '1.5px solid var(--gold)' : '1.5px solid #C6CAD0',
                           }}
                         >
                           {slot}
@@ -2332,24 +2348,24 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
                       placeholder="Or type a specific time..."
                       value={sessTime}
                       onChange={e => setSessTime(e.target.value)}
-                      style={{ width: '100%', padding: '9px 12px', border: '1.5px solid var(--b)', borderRadius: 'var(--r)', fontSize: '13px', color: 'var(--text)', fontFamily: 'var(--fb)', outline: 'none', background: 'var(--cream2)', transition: 'border-color .2s' }}
-                      onFocus={e => e.target.style.borderColor = 'var(--gold)'}
-                      onBlur={e => e.target.style.borderColor = 'var(--b)'}
+                      style={{ width: '100%', padding: '9px 12px', border: '1.5px solid var(--b)', borderRadius: '10px', fontSize: '13px', color: 'var(--text)', fontFamily: 'var(--fb)', outline: 'none', background: '#F0F0F0', transition: 'border-color .2s' }}
                     />
                   </div>
                 </div>
 
                 <button
                   className="btn btn-gold btn-full"
+                  style={{ fontSize: '14.5px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
                   onClick={openSessionCheckout}
                   disabled={!sessTopic.trim()}
                 >
-                  {`Pay ₹99 & Request Session →`}
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                  Pay ₹99 &amp; Request Session
                 </button>
                 <div style={{ fontSize: '11.5px', color: 'var(--text3)', marginTop: '10px', textAlign: 'center' }}>
-                  Pay ₹99 to book. We'll contact you within 24 hours to confirm the session.
+                  Secure payment via Cashfree · We confirm within 24 hours
                 </div>
-              </>
+              </div>
             )}
           </div>
 
@@ -2365,7 +2381,7 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
                   { n: '4', t: 'You leave with clarity', d: 'A clear next-step plan for that topic, from someone who knows where you are.' },
                 ].map(step => (
                   <div key={step.n} style={{ display: 'flex', gap: '12px' }}>
-                    <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: 'var(--navy)', color: 'var(--gold)', fontSize: '11px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: '1px' }}>{step.n}</div>
+                    <div style={{ width: '26px', height: '26px', borderRadius: '50%', background: 'var(--gold-dim)', color: 'var(--navy)', border: '1.5px solid var(--gold-b)', fontSize: '11.5px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: '1px' }}>{step.n}</div>
                     <div>
                       <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text)', marginBottom: '2px' }}>{step.t}</div>
                       <div style={{ fontSize: '12px', color: 'var(--text3)', lineHeight: 1.6 }}>{step.d}</div>
@@ -2385,16 +2401,16 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
         </div>
 
         {/* Enrollment CTA */}
-        <div style={{ background: 'linear-gradient(135deg,var(--navy) 0%,#1a2f5e 100%)', border: '1px solid var(--gold-b)', borderRadius: 'var(--rxl)', padding: '28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '20px', flexWrap: 'wrap' }}>
+        <div style={{ background: 'var(--cream)', border: '1px solid var(--gold-b)', borderRadius: 'var(--rxl)', padding: '28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '20px', flexWrap: 'wrap', boxShadow: 'var(--sh)' }}>
           <div>
-            <div style={{ fontSize: '10px', color: 'var(--gold)', textTransform: 'uppercase', letterSpacing: '.1em', fontWeight: 600, marginBottom: '6px' }}>Full Program</div>
-            <div style={{ fontFamily: 'var(--fs)', fontSize: '20px', fontWeight: 700, color: 'var(--inv)', marginBottom: '6px' }}>Want a dedicated mentor, not just a session?</div>
-            <div style={{ fontSize: '13px', color: 'var(--inv2)', maxWidth: '500px' }}>Weekly 1-on-1 calls, daily check-ins, parent reports — everything built around your preparation. For students who want consistent mentorship, not just one-off help.</div>
-            <div style={{ display: 'flex', gap: '16px', marginTop: '14px' }}>
-              {[{ val: '1-on-1', lbl: 'Weekly Calls' }, { val: 'Daily', lbl: 'Check-ins' }, { val: '100%', lbl: 'Personalised' }].map((s, i) => (
+            <div style={{ fontSize: '10px', color: 'var(--gold)', textTransform: 'uppercase', letterSpacing: '.1em', fontWeight: 700, marginBottom: '6px' }}>Full Program</div>
+            <div style={{ fontFamily: 'var(--fs)', fontSize: '20px', fontWeight: 700, color: 'var(--text)', marginBottom: '6px' }}>Want a dedicated mentor, not just a session?</div>
+            <div style={{ fontSize: '13px', color: 'var(--text2)', maxWidth: '520px', lineHeight: 1.7 }}>Weekly 1-on-1 calls, daily check-ins, parent reports — everything built around your preparation. For students who want consistent mentorship, not just one-off help.</div>
+            <div style={{ display: 'flex', gap: '22px', marginTop: '16px' }}>
+              {[{ val: '1-on-1', lbl: 'Weekly Calls' }, { val: 'Daily', lbl: 'Check-ins' }, { val: '24h', lbl: 'Doubt Support' }].map((s, i) => (
                 <div key={i} style={{ textAlign: 'center' }}>
                   <div style={{ fontFamily: 'var(--fs)', fontSize: '20px', fontWeight: 700, color: 'var(--gold)' }}>{s.val}</div>
-                  <div style={{ fontSize: '10px', color: 'var(--inv3)' }}>{s.lbl}</div>
+                  <div style={{ fontSize: '10px', color: 'var(--text3)' }}>{s.lbl}</div>
                 </div>
               ))}
             </div>
@@ -2554,7 +2570,7 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
         </div>
         <div className="pricing-grid">
           {/* ── Forge ── */}
-          <div className="price-card featured">
+          {plan !== 'forge' && <div className="price-card featured">
             <div className="pc-badge">GET STARTED</div>
             <div className="pc-name">Forge</div>
             <div className="pc-tagline">Build your score, problem by problem</div>
@@ -2570,10 +2586,10 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
               <div className="pc-feat no">Dedicated mentor</div>
             </div>
             <button className="btn btn-gold btn-full" onClick={() => openPlanCheckout('forge')}>Get Forge →</button>
-          </div>
+          </div>}
 
           {/* ── Apex ── */}
-          <div className="price-card" style={{ background: 'var(--navy)', color: '#fff', border: '2px solid var(--gold)' }}>
+          {plan !== 'apex' && <div className="price-card" style={{ background: 'var(--navy)', color: '#fff', border: '2px solid var(--gold)' }}>
             <div className="pc-badge" style={{ background: 'var(--gold)', color: '#0F1F3D' }}>COMPLETE PROGRAM</div>
             <div className="pc-name" style={{ color: '#fff' }}>Apex</div>
             <div className="pc-tagline" style={{ color: 'rgba(253,248,240,0.6)' }}>The highest point</div>
@@ -2590,10 +2606,10 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
               <div className="pc-feat" style={{ color: 'rgba(253,248,240,0.9)' }}>Mentor-assigned tests based on your progress</div>
             </div>
             <button className="btn btn-gold btn-full" onClick={() => openPlanCheckout('apex')}>Get Apex →</button>
-          </div>
+          </div>}
 
           {/* ── Anchor ── */}
-          <div className="price-card" style={{ background: 'var(--navy)', color: '#fff', border: '2px solid var(--gold)', paddingTop: '46px' }}>
+          {plan !== 'anchor' && <div className="price-card" style={{ background: 'var(--navy)', color: '#fff', border: '2px solid var(--gold)', paddingTop: '46px' }}>
             <div className="pc-badge" style={{ background: 'var(--gold)', color: '#0F1F3D' }}>MENTORSHIP UPGRADE</div>
             <div className="pc-name" style={{ color: '#fff' }}>Anchor</div>
             <div className="pc-tagline" style={{ color: 'rgba(253,248,240,0.6)' }}>Someone in your corner, every day</div>
@@ -2610,7 +2626,7 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
               <div className="pc-feat no">Question bank</div>
             </div>
             <button className="btn btn-gold btn-full" onClick={() => openPlanCheckout('anchor')}>Get Anchor →</button>
-          </div>
+          </div>}
         </div>
         <div style={{ background: 'var(--cream)', border: '1px solid var(--gold-b)', borderRadius: 'var(--rl)', padding: '18px 22px', textAlign: 'center', boxShadow: 'var(--sh)', marginTop: '16px' }}>
           <div style={{ fontFamily: 'var(--fs)', fontSize: '15px', fontWeight: 600, marginBottom: '4px' }}>Not ready to commit? That's fine.</div>

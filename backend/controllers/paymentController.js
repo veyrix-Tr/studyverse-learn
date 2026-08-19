@@ -55,8 +55,25 @@ const getStudent = async (userId) => {
   return { id: profile.id, userId, user: profile.user, plan: profile.plan, parentPhone: profile.parentPhone };
 };
 
-// Idempotent post-payment side effects. Returns the (now PAID) Payment row.
-// Guarded so replayed webhooks / duplicate verifies can never double-apply:
+// Creates an admin assignment task (persistent inbox) for all active admins.
+// `dedup` prevents re-creating a pending task for the same student+type (mentor/
+// faculty are singular per student); session tasks always get their own entry.
+const notifyAdminsOfTask = async (tx, { type, content, studentId, dedup = false }) => {
+  if (dedup && studentId != null) {
+    const existing = await tx.adminNotification.findMany({
+      where: { studentId, type, status: 'pending' },
+      select: { id: true },
+    });
+    if (existing.length) return;
+  }
+  const admins = await tx.adminProfile.findMany({ where: { isActive: true }, select: { id: true } });
+  if (!admins.length) return;
+  await tx.adminNotification.createMany({
+    data: admins.map(a => ({ adminId: a.id, studentId: studentId ?? null, type, content })),
+  });
+};
+
+// Idempotent post-payment side effects. Returns the (now PAID) Payment row.// Guarded so replayed webhooks / duplicate verifies can never double-apply:
 // we claim the payment with an atomic conditional UPDATE first, and only the
 // caller that wins the claim runs the side effects — all inside one transaction.
 const applyPaymentSuccess = async (payment) => {
@@ -82,6 +99,23 @@ const applyPaymentSuccess = async (payment) => {
         where: { id: latest.studentId },
         data: { plan: latest.plan, planEndDate },
       });
+
+      if (latest.plan === 'anchor' || latest.plan === 'apex') {
+        await notifyAdminsOfTask(tx, {
+          type: 'mentor',
+          content: `Assign a mentor to ${latest.customerName || 'a new student'} (${latest.plan} plan)`,
+          studentId: latest.studentId,
+          dedup: true,
+        });
+      }
+      if (latest.plan === 'apex') {
+        await notifyAdminsOfTask(tx, {
+          type: 'faculty',
+          content: `Assign subject faculty to ${latest.customerName || 'a new student'} (apex plan)`,
+          studentId: latest.studentId,
+          dedup: true,
+        });
+      }
     } else if (latest.goal === 'session') {
       // Materialise the pay-per-session request the student wanted.
       await tx.sessionRequest.create({
@@ -91,6 +125,13 @@ const applyPaymentSuccess = async (payment) => {
           phone:        latest.sessionPhone,
           preferredTime: latest.sessionTime,
         },
+      });
+
+      await notifyAdminsOfTask(tx, {
+        type: 'session',
+        content: `Assign faculty for the new session request from ${latest.customerName || 'a student'}`,
+        studentId: latest.studentId,
+        dedup: false,
       });
     }
 

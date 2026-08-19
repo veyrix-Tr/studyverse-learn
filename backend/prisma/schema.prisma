@@ -47,6 +47,7 @@ model StudentProfile {
   weeklyScores         WeeklyScore[]
   adminMessages        AdminMessage[]
   facultyNotifications FacultyNotification[]
+  adminNotifs          AdminNotification[]
   habitLogs            HabitLog[]
   completedTopics      CompletedTopic[]
   dailyReports         DailyReport[]
@@ -139,6 +140,28 @@ model AdminProfile {
   adminMessages     AdminMessage[]
   approvedResources Resource[]
   approvedReports   WeeklyReport[]
+  adminNotifs       AdminNotification[]
+}
+
+// Admin-facing assignment tasks (mentor / subject-faculty / session).
+// Created when a student upgrades to Anchor/Apex or books a session; surfaced
+// to admins as a persistent, highlighted inbox until the task is resolved.
+model AdminNotification {
+  id         Int       @id @default(autoincrement())
+  content    String
+  type       String    @default("mentor") // mentor | faculty | session
+  status     String    @default("pending") // pending | done
+  readAt     DateTime?
+  createdAt  DateTime  @default(now())
+  resolvedAt DateTime?
+
+  adminId   Int
+  admin     AdminProfile @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  studentId Int?
+  student   StudentProfile? @relation(fields: [studentId], references: [id], onDelete: SetNull)
+
+  @@index([adminId, status])
+  @@index([adminId, readAt])
 }
 
 model Session {

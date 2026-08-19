@@ -1,6 +1,6 @@
 import React from 'react';
 
-const AdminSidebar = ({ activePage, isSuperAdmin, onNav, onShowToast, profile, studentsCount = 0, facultyCount = 0, pendingApprovalsCount = 0, pendingReportsCount = 0, pendingSessionRequests = 0, isOpen = false, onClose }) => {
+const AdminSidebar = ({ activePage, isSuperAdmin, onNav, onShowToast, profile, studentsCount = 0, facultyCount = 0, pendingApprovalsCount = 0, pendingReportsCount = 0, pendingSessionRequests = 0, pendingTasksCount = 0, isOpen = false, onClose }) => {
   const name = profile?.name || (isSuperAdmin ? 'Super Admin' : 'Admin');
   const initial = name.charAt(0).toUpperCase();
   const handleLogout = () => {
@@ -53,6 +53,13 @@ const AdminSidebar = ({ activePage, isSuperAdmin, onNav, onShowToast, profile, s
             <rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>
           </svg>
           Dashboard
+        </div>
+        <div className={`${niClass('tasks')}${pendingTasksCount > 0 ? ' has-tasks' : ''}`} onClick={() => onNav('tasks')}>
+          <svg className="nic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+          </svg>
+          Assignment Tasks
+          {pendingTasksCount > 0 && <span className="nbadge nb-red">{pendingTasksCount}</span>}
         </div>
         <div className={niClass('pipeline')} onClick={() => onNav('pipeline')}>
           <svg className="nic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

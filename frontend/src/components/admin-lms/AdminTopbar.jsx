@@ -1,5 +1,6 @@
 const PAGE_TITLES = {
   dashboard: 'Dashboard',
+  tasks:     'Assignment Tasks',
   pipeline:  'Enrollment Pipeline',
   revenue:   'Revenue',
   students:  'Students',
@@ -21,7 +22,7 @@ const PAGE_ICONS = {
   messages:  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>,
 };
 
-const AdminTopbar = ({ activePage, isSuperAdmin, onOpenModal, onNav, onMenuClick }) => {
+const AdminTopbar = ({ activePage, isSuperAdmin, onOpenModal, onNav, onMenuClick, unreadTasks = 0 }) => {
   const title = PAGE_TITLES[activePage] || 'Dashboard';
   const icon  = PAGE_ICONS[activePage] || null;
 
@@ -51,6 +52,18 @@ const AdminTopbar = ({ activePage, isSuperAdmin, onOpenModal, onNav, onMenuClick
             <path d="M12 5v14M5 12h14"/>
           </svg>
           <span className="adm-tb-enroll-label">Enroll Student</span>
+        </button>
+
+        <button className="adm-tbb" onClick={() => onNav('tasks')} title="Assignment Tasks" style={{ position: 'relative' }}>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={unreadTasks > 0 ? 'var(--gold, #E8A830)' : 'currentColor'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+          </svg>
+          {unreadTasks > 0 && (
+            <>
+              <span className="adm-tb-pip" style={{ background: '#EF4444' }} />
+              <span style={{ position: 'absolute', top: -6, right: -8, minWidth: '16px', height: '16px', padding: '0 4px', borderRadius: '10px', background: '#EF4444', color: '#fff', fontSize: '10px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{unreadTasks > 9 ? '9+' : unreadTasks}</span>
+            </>
+          )}
         </button>
 
         <div className="adm-tbb" onClick={() => onNav('approvals')} title="Approvals">

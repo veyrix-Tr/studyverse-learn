@@ -71,7 +71,8 @@ const CashfreePayModal = ({
 
   const handlePay = async () => {
     if (!token) { setErrorMsg('Please log in first.'); setStage('error'); return; }
-    if (!/^\d{10}$/.test(phone.replace(/\D/g, ''))) {
+    const effPhone = mode === 'plan' ? phone : (sessionData.phone || '');
+    if (mode === 'plan' && !/^\d{10}$/.test(effPhone.replace(/\D/g, ''))) {
       setErrorMsg('Please enter a valid 10-digit phone number.'); setStage('error'); return;
     }
     setStage('processing');
@@ -80,8 +81,8 @@ const CashfreePayModal = ({
     try {
       const endpoint = mode === 'plan' ? 'create-plan-order' : 'create-session-order';
       const body = mode === 'plan'
-        ? { plan, phone }
-        : { topic: sessionData.topic, phone: phone.replace(/\D/g, ''), preferredTime: sessionData.preferredTime };
+        ? { plan, phone: effPhone }
+        : { topic: sessionData.topic, phone: effPhone.replace(/\D/g, ''), preferredTime: sessionData.preferredTime };
 
       const res = await fetch(`${api}/api/payment/${userId}/${endpoint}`, {
         method: 'POST',
@@ -151,26 +152,28 @@ const CashfreePayModal = ({
                 After payment you'll need to log in again to activate your new plan.
               </div>
             )}
-            <div className="cf-phone-section">
-              <label className="cf-phone-label" htmlFor="cf-phone">Phone number</label>
-              <div className="cf-phone-input-wrapper">
-                <span className="cf-phone-prefix">+91</span>
-                <input
-                  id="cf-phone"
-                  className="cf-phone-input"
-                  type="tel"
-                  inputMode="numeric"
-                  placeholder="Enter 10-digit number"
-                  value={phone}
-                  maxLength={10}
-                  onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
-                />
-                {phone.length === 10 && (
-                  <div className="cf-phone-valid">✓</div>
-                )}
+            {mode === 'plan' && (
+              <div className="cf-phone-section">
+                <label className="cf-phone-label" htmlFor="cf-phone">Phone number</label>
+                <div className="cf-phone-input-wrapper">
+                  <span className="cf-phone-prefix">+91</span>
+                  <input
+                    id="cf-phone"
+                    className="cf-phone-input"
+                    type="tel"
+                    inputMode="numeric"
+                    placeholder="Enter 10-digit number"
+                    value={phone}
+                    maxLength={10}
+                    onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
+                  />
+                  {phone.length === 10 && (
+                    <div className="cf-phone-valid">✓</div>
+                  )}
+                </div>
+                <div className="cf-phone-hint">We'll use this to send payment confirmation.</div>
               </div>
-              <div className="cf-phone-hint">We'll use this to send payment confirmation.</div>
-            </div>
+            )}
             <div className="cf-actions">
               <button className="cf-btn cf-btn-cancel" onClick={onClose}>Cancel</button>
               <button className="cf-btn cf-btn-pay" disabled={!isValidPhone} onClick={handlePay}>

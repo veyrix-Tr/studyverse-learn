@@ -2,6 +2,7 @@ const express  = require('express');
 const router   = express.Router({ mergeParams: true });
 const prisma   = require('../lib/prisma');
 const { requireAuth, requireAdmin } = require('../middleware/auth');
+const { ensureAssignmentTasks } = require('../services/adminTaskService');
 
 const EXAM_SUBJECTS = {
   'JEE Mains':    ['Physics', 'Chemistry', 'Maths'],
@@ -222,6 +223,13 @@ router.put('/student/:studentUserId/mentor', requireAuth, requireAdmin, async (r
       include: { mentor: { include: { user: { select: { name: true } } } } },
     });
 
+    if (mentorId) {
+      await prisma.adminNotification.updateMany({
+        where: { studentId: profile.id, type: 'mentor', status: 'pending' },
+        data: { status: 'done', resolvedAt: new Date() },
+      });
+    }
+
     res.json({ mentorId: updated.mentorId, mentorName: updated.mentor?.user?.name || null });
   } catch (err) {
     console.error(err);
@@ -253,6 +261,13 @@ router.put('/student/:studentUserId/subject-faculty', requireAuth, requireAdmin,
       where: { userId: req.params.studentUserId },
       data: { subjectFaculty: updated },
     });
+
+    if (facultyId) {
+      await prisma.adminNotification.updateMany({
+        where: { studentId: profile.id, type: 'faculty', status: 'pending' },
+        data: { status: 'done', resolvedAt: new Date() },
+      });
+    }
 
     res.json({ subjectFaculty: result.subjectFaculty });
   } catch (err) {
@@ -869,6 +884,12 @@ router.put('/session-requests/:id/assign', requireAuth, requireAdmin, async (req
       });
     }
 
+    // Resolve this admin's pending session-assignment task for that student
+    await prisma.adminNotification.updateMany({
+      where: { studentId: request.studentId, type: 'session', status: 'pending' },
+      data: { status: 'done', resolvedAt: new Date() },
+    });
+
     res.json({ success: true, request: updated, conflicts: [] });
   } catch (err) {
     console.error(err);
@@ -889,6 +910,56 @@ router.put('/session-requests/:id/status', requireAuth, requireAdmin, async (req
     res.json({ success: true, status: updated.status });
   } catch (err) {
     res.status(500).json({ error: 'Failed to update status' });
+  }
+});
+
+// GET /api/admin/:userId/notifications — persistent admin assignment inbox
+router.get('/notifications', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const ap = await prisma.adminProfile.findUnique({ where: { userId: req.params.userId } });
+    if (!ap) return res.status(403).json({ error: 'Not an admin' });
+    await ensureAssignmentTasks(prisma);
+    const items = await prisma.adminNotification.findMany({
+      where: { adminId: ap.id },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        student: { select: { id: true, plan: true, user: { select: { id: true, name: true, email: true } } } },
+      },
+    });
+    res.json(items);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch notifications' });
+  }
+});
+
+// PUT /api/admin/:userId/notifications/read-all — mark every admin task read
+router.put('/notifications/read-all', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const ap = await prisma.adminProfile.findUnique({ where: { userId: req.params.userId } });
+    if (!ap) return res.status(403).json({ error: 'Not an admin' });
+    await prisma.adminNotification.updateMany({
+      where: { adminId: ap.id, readAt: null },
+      data: { readAt: new Date() },
+    });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to mark all read' });
+  }
+});
+
+// PUT /api/admin/:userId/notifications/:id/read — mark a single task read
+router.put('/notifications/:id/read', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const ap = await prisma.adminProfile.findUnique({ where: { userId: req.params.userId } });
+    if (!ap) return res.status(403).json({ error: 'Not an admin' });
+    await prisma.adminNotification.updateMany({
+      where: { id: parseInt(req.params.id), adminId: ap.id },
+      data: { readAt: new Date() },
+    });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to mark read' });
   }
 });
 

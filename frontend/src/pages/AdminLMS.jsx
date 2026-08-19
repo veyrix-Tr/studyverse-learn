@@ -23,14 +23,17 @@ const AdminLMS = ({ expectedRole }) => {
   const [sentMessages, setSentMessages] = useState([]);
   const [parentReports, setParentReports] = useState([]);
   const [sessionRequests, setSessionRequests] = useState([]);
+  const [adminNotifs, setAdminNotifs] = useState([]);
   const [deactivated, setDeactivated] = useState(false);
   const toastTimer        = useRef(null);
   const reportsRef        = useRef([]);
   const resourcesRef      = useRef([]);
   const sessionReqRef     = useRef([]);
+  const notifsRef         = useRef([]);
   useEffect(() => { reportsRef.current    = parentReports;    }, [parentReports]);
   useEffect(() => { resourcesRef.current  = resources;        }, [resources]);
   useEffect(() => { sessionReqRef.current = sessionRequests;  }, [sessionRequests]);
+  useEffect(() => { notifsRef.current     = adminNotifs;      }, [adminNotifs]);
 
   useEffect(() => {
     document.documentElement.classList.add('admin-mode');
@@ -90,6 +93,11 @@ const AdminLMS = ({ expectedRole }) => {
     fetch(`${import.meta.env.VITE_API_URL}/api/admin/${userId}/session-requests`, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.ok ? r.json() : [])
       .then(data => { if (Array.isArray(data)) setSessionRequests(data); })
+      .catch(() => {});
+
+    fetch(`${import.meta.env.VITE_API_URL}/api/admin/${userId}/notifications`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : [])
+      .then(data => { if (Array.isArray(data)) setAdminNotifs(data); })
       .catch(() => {});
   }, []);
 
@@ -153,6 +161,46 @@ const AdminLMS = ({ expectedRole }) => {
     }, 20000);
     return () => clearInterval(id);
   }, [profile]);
+
+  // Poll assignment tasks every 20s — toast when a new pending task arrives
+  useEffect(() => {
+    if (!profile) return;
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    const id = setInterval(() => {
+      fetch(`${import.meta.env.VITE_API_URL}/api/admin/${userId}/notifications`, { headers: { Authorization: `Bearer ${token}` } })
+        .then(r => r.ok ? r.json() : null)
+        .then(fresh => {
+          if (!Array.isArray(fresh)) return;
+          const prev = notifsRef.current;
+          const newPending = fresh.filter(f => f.status === 'pending' && !prev.some(p => p.id === f.id));
+          newPending.forEach(n => showToast(`New task: ${n.content}`));
+          setAdminNotifs(fresh);
+        })
+        .catch(() => {});
+    }, 20000);
+    return () => clearInterval(id);
+  }, [profile]);
+
+  const markNotifRead = async (id) => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    setAdminNotifs(prev => prev.map(n => n.id === id ? { ...n, readAt: new Date().toISOString() } : n));
+    await fetch(`${import.meta.env.VITE_API_URL}/api/admin/${userId}/notifications/${id}/read`, {
+      method: 'PUT', headers: { Authorization: `Bearer ${token}` },
+    }).catch(() => {});
+  };
+
+  const markAllNotifsRead = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    const now = new Date().toISOString();
+    setAdminNotifs(prev => prev.map(n => n.readAt ? n : { ...n, readAt: now }));
+    await fetch(`${import.meta.env.VITE_API_URL}/api/admin/${userId}/notifications/read-all`, {
+      method: 'PUT', headers: { Authorization: `Bearer ${token}` },
+    }).catch(() => {});
+    showToast('All tasks marked as read ✓');
+  };
 
   const showToast = (msg) => {
     setToast({ show: true, msg });
@@ -408,6 +456,7 @@ const AdminLMS = ({ expectedRole }) => {
         pendingApprovalsCount={resources.filter(r => r.status === 'pending').length}
         pendingReportsCount={parentReports.filter(r => r.status === 'submitted').length}
         pendingSessionRequests={sessionRequests.filter(r => r.status === 'pending').length}
+        pendingTasksCount={adminNotifs.filter(n => n.status === 'pending').length}
         isOpen={navOpen}
         onClose={() => setNavOpen(false)}
       />
@@ -419,6 +468,7 @@ const AdminLMS = ({ expectedRole }) => {
           onOpenModal={setOpenModal}
           onNav={(page) => { setActivePage(page); setNavOpen(false); }}
           onMenuClick={() => setNavOpen(true)}
+          unreadTasks={adminNotifs.filter(n => !n.readAt).length}
         />
         <AdminContent
           activePage={activePage}
@@ -447,6 +497,9 @@ const AdminLMS = ({ expectedRole }) => {
           onSendReports={sendApprovedReports}
           sessionRequests={sessionRequests}
           onSessionRequestsUpdated={setSessionRequests}
+          adminNotifications={adminNotifs}
+          onMarkNotifRead={markNotifRead}
+          onMarkAllNotifsRead={markAllNotifsRead}
         />
       </div>
       <AdminModals
