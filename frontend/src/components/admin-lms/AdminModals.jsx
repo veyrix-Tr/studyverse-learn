@@ -15,6 +15,9 @@ const AdminModals = ({ openModal, onClose, onShowToast, toast, students = [], me
   const [newFaculty, setNewFaculty] = useState({ name: '', subject: '', qualification: '', department: 'Science' });
   const [addingFaculty, setAddingFaculty] = useState(false);
   const [createdCredentials, setCreatedCredentials] = useState(null);
+  const [newAdmin, setNewAdmin] = useState({ name: '', email: '', department: 'Operations' });
+  const [addingAdmin, setAddingAdmin] = useState(false);
+  const [adminCredentials, setAdminCredentials] = useState(null);
 
   const handleAddFaculty = async () => {
     if (!newFaculty.name.trim() || !newFaculty.subject.trim()) {
@@ -38,6 +41,30 @@ const AdminModals = ({ openModal, onClose, onShowToast, toast, students = [], me
       onShowToast('Failed to add faculty: ' + e.message);
     }
     setAddingFaculty(false);
+  };
+
+  const handleAddAdmin = async () => {
+    if (!newAdmin.name.trim() || !newAdmin.email.trim()) {
+      onShowToast('Name and email are required');
+      return;
+    }
+    setAddingAdmin(true);
+    const token = localStorage.getItem('token');
+    try {
+      const r = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/${userId}/admins`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(newAdmin),
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error || 'Failed');
+      setAdminCredentials(data.credentials);
+      setNewAdmin({ name: '', email: '', department: 'Operations' });
+      onShowToast(`${data.admin.name} created — login credentials generated ✓`);
+    } catch (e) {
+      onShowToast('Failed to create admin: ' + e.message);
+    }
+    setAddingAdmin(false);
   };
 
   const [msgStudent, setMsgStudent] = useState('all');
@@ -163,8 +190,8 @@ const AdminModals = ({ openModal, onClose, onShowToast, toast, students = [], me
           <div className="mt">Create Admin Account</div>
           <div className="ms">Set their permissions carefully. They can only do what you allow.</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
-            <div className="fg"><label>Full Name</label><input className="fi" type="text" placeholder="Admin's name" /></div>
-            <div className="fg"><label>Email</label><input className="fi" type="email" placeholder="admin@studyverse.in" /></div>
+            <div className="fg"><label>Full Name</label><input className="fi" type="text" placeholder="Admin's name" value={newAdmin.name} onChange={e => setNewAdmin({ ...newAdmin, name: e.target.value })} /></div>
+            <div className="fg"><label>Email</label><input className="fi" type="email" placeholder="admin@studyverse.in" value={newAdmin.email} onChange={e => setNewAdmin({ ...newAdmin, email: e.target.value })} /></div>
           </div>
           <div style={{ fontSize: '12px', fontWeight: '500', color: 'var(--text2)', marginBottom: '10px' }}>Permissions</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
@@ -183,7 +210,16 @@ const AdminModals = ({ openModal, onClose, onShowToast, toast, students = [], me
           </div>
           <div className="ma">
             <button className="btn btn-ghost btn-sm" onClick={onClose}>Cancel</button>
-            <button className="btn btn-purple btn-sm" onClick={() => { onClose(); onShowToast('Admin account created. Login credentials sent ✓'); }}>Create Account →</button>
+            <button className="btn btn-purple btn-sm" onClick={handleAddAdmin} disabled={addingAdmin}>{addingAdmin ? 'Creating…' : 'Create Account →'}</button>
+          {adminCredentials && (
+            <div style={{ marginTop: '12px', padding: '12px 14px', borderRadius: 'var(--r)', background: 'var(--cream2)', borderLeft: '3px solid var(--green)', fontSize: '12px', lineHeight: 1.7 }}>
+              <strong style={{ color: 'var(--green)' }}>Created ✓</strong> Share these login credentials with the new admin:
+              <div style={{ fontFamily: 'var(--fs)', marginTop: '4px' }}>
+                Email: <strong>{adminCredentials.email}</strong><br />
+                Password: <strong>{adminCredentials.password}</strong>
+              </div>
+            </div>
+          )}
           </div>
         </div>
       </div>

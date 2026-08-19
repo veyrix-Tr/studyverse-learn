@@ -561,6 +561,19 @@ router.get('/resources', requireAuth, async (req, res) => {
     const subjects = EXAM_SUBJECTS[profile.examTarget] || [];
     if (!subjects.length) return res.json([]);
 
+    // Plan gate (mirrors adminRoutes): Session Notes are Apex-exclusive;
+    // Study Material / Formula Sheet require Forge or Apex. Spark/Free get nothing here.
+    const APEX_ONLY   = ['Session Notes'];
+    const FORGE_ABOVE = ['Study Material', 'Formula Sheet'];
+    const isApex      = profile.plan === 'apex';
+    const isForge     = profile.plan === 'forge';
+    if (!isApex && !isForge) return res.json([]);
+
+    const allowedTypes = RESOURCE_TYPES.filter(t =>
+      APEX_ONLY.includes(t)   ? isApex :
+      FORGE_ABOVE.includes(t) ? (isForge || isApex) : false,
+    );
+
     // Grade filter: Dropper sees both 11 and 12, others see only their grade
     const allowedGrades = profile.grade === 'Dropper' ? ['11', '12'] : [profile.grade].filter(Boolean);
 
@@ -568,7 +581,7 @@ router.get('/resources', requireAuth, async (req, res) => {
       where: {
         status: 'approved',
         subject: { in: subjects },
-        type: { in: RESOURCE_TYPES },
+        type: { in: allowedTypes },
         ...(allowedGrades.length ? { grade: { in: allowedGrades } } : {}),
       },
       include: { faculty: { include: { user: { select: { name: true } } } } },

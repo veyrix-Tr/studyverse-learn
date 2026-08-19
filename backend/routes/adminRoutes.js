@@ -366,6 +366,41 @@ router.get('/admins', requireAuth, requireAdmin, async (req, res) => {
   }
 });
 
+// POST /api/admin/admins — create a new admin account (superadmin only)
+router.post('/admins', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    if (req.user.role !== 'superadmin') return res.status(403).json({ error: 'Superadmin only' });
+    const { name, email, department } = req.body;
+    if (!name?.trim() || !email?.trim()) return res.status(400).json({ error: 'name and email required' });
+
+    const bcrypt = require('bcrypt');
+    const password = Math.random().toString(36).slice(2, 10) + Math.random().toString(36).slice(2, 6).toUpperCase() + '!';
+
+    const existing = await prisma.user.findUnique({ where: { email: email.trim().toLowerCase() } });
+    if (existing) return res.status(409).json({ error: 'Email already exists' });
+
+    const user = await prisma.user.create({
+      data: {
+        name: name.trim(),
+        email: email.trim().toLowerCase(),
+        password: await bcrypt.hash(password, 10),
+        role: 'admin',
+        adminProfile: { create: { department: department || 'Operations' } },
+      },
+      include: { adminProfile: true },
+    });
+
+    res.status(201).json({
+      success: true,
+      admin: { id: user.adminProfile.id, userId: user.id, name: user.name, email: user.email, isActive: true },
+      credentials: { email: user.email, password },
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to create admin' });
+  }
+});
+
 // PUT /api/admin/admins/:id/deactivate — deactivate an admin account (superadmin only)
 router.put('/admins/:id/deactivate', requireAuth, requireAdmin, async (req, res) => {
   try {

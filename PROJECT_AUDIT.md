@@ -23,7 +23,7 @@ On a successful plan payment, `plan = X`, `planEndDate = now + months` is writte
 
 ### B2. 🟠 No admin flow to provision a student into Apex/Anchor/Forge
 `backend/routes/adminRoutes.js` (whole file), `frontend/.../admin-lms/AdminModals.jsx`, `AdminContent.jsx`
-No PUT/PATCH route writes `StudentProfile.plan`. The only code path that ever sets `plan` on a student is the Cashfree webhook. And "Create Admin" (`AdminModals.jsx:161–189`) also does nothing — its button only fires a toast, no route exists (only `GET /admins` + deactivate/reactivate).
+No PUT/PATCH route writes `StudentProfile.plan`. The only code path that ever sets `plan` on a student is the Cashfree webhook. (The "Create Admin" modal was wired to a real `POST /api/admin/:id/admins` route, but plan-provisioning still doesn't exist.)
 
 ### B3. 🟠 Admin "Enroll Student" and "Assign / Reassign Faculty" modals create nothing
 `frontend/src/components/admin-lms/AdminModals.jsx:73–104` (enroll) and `:107–128` (assign)
@@ -66,12 +66,7 @@ Course cards show fabricated progress ("36 of 48 lectures"); the video player an
 - **`APEX_TODO.md` is now stale in two places:**
   - It claims Zoom/live-classes and the faculty "Schedule a Session" modal are **unbuilt / hardcoded fake names**. That is **no longer true** — the modal is wired (POSTs `studentIds`/`subject`/`scheduledAt` to `POST /api/faculty/:id/sessions`) and Zoom is a **real integration**: `backend/lib/zoom.js` does S2S OAuth + `createMeeting` + signed Meeting-SDK signatures; faculty session creation calls Zoom and persists `zoomMeetingId`/`joinUrl`/`startUrl`/`zoomPassword`; `LiveClassRoom.jsx` joins via `ZoomMtg`. (Since this audit, **mentor calls also use Zoom** via the same embedded player.) What's still missing around sessions: **recording** (B7) and the other fake modals (B8).
   - It claims no `POST /api/faculty/sessions` route exists — that route **does exist** and is used.
-- **What remains true** from earlier audits: `GET /api/student/resources` has no plan gate (E1), and there's no admin plan-provisioning (B2).
-
-## E. Plan-gate gaps / permission leaks (functional, not security)
-
-### E1. 🟡 `GET /api/student/resources` has no plan gate
-`backend/routes/studentRoutes.js:556–588` filters only by `status:'approved'`, exam subjects, type, grade — no `profile.plan` check, despite the comment describing it as "Forge, Apex, Anchor" and `session-notes` being Apex-exclusive in the notification logic. Any plan (Free/Spark) can fetch premium resources.
+- **What remains true** from earlier audits: there's no admin plan-provisioning (B2).
 
 ---
 
