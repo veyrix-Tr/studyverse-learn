@@ -7,6 +7,17 @@ const LoginForm = ({ onSwitchToRegister }) => {
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showReset, setShowReset] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetOtp, setResetOtp] = useState('');
+  const [resetPass, setResetPass] = useState('');
+  const [resetConfirm, setResetConfirm] = useState('');
+  const [resetSending, setResetSending] = useState(false);
+  const [resetOtpSent, setResetOtpSent] = useState(false);
+  const [resetOtpVerified, setResetOtpVerified] = useState(false);
+  const [resetVerifying, setResetVerifying] = useState(false);
+  const [resetMsg, setResetMsg] = useState('');
+  const [resetDone, setResetDone] = useState(false);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -57,6 +68,117 @@ const LoginForm = ({ onSwitchToRegister }) => {
     setToastMessage(msg);
     setShowToast(true);
     setTimeout(() => setShowToast(false), 3000);
+  };
+
+  const handleForgotSubmit = async (e) => {
+    e.preventDefault();
+    if (!resetEmail) {
+      setResetMsg('Please enter your email');
+      return;
+    }
+    setResetSending(true);
+    setResetMsg('');
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/forgot-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: resetEmail }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setResetMsg(data.error || 'Something went wrong');
+      } else {
+        setResetOtp('');
+        setResetPass('');
+        setResetOtpSent(true);
+        setResetOtpVerified(false);
+        setResetMsg(data.message || 'OTP sent to your email');
+        setShowReset(true);
+      }
+    } catch {
+      setResetMsg('Cannot connect to server');
+    } finally {
+      setResetSending(false);
+    }
+  };
+
+  // Step 2 — verify the OTP (does NOT consume it); reveals the password fields
+  const handleOtpVerify = async (e) => {
+    e.preventDefault();
+    if (!resetOtp) {
+      setResetMsg('Enter the OTP sent to your email');
+      return;
+    }
+    setResetVerifying(true);
+    setResetMsg('');
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/verify-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: resetEmail, otp: resetOtp }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setResetMsg(data.error || 'Incorrect OTP');
+      } else {
+        setResetOtpVerified(true);
+        setResetPass('');
+        setResetConfirm('');
+        setResetMsg('');
+      }
+    } catch {
+      setResetMsg('Cannot connect to server');
+    } finally {
+      setResetVerifying(false);
+    }
+  };
+
+  // Step 3 — set the new password (OTP was already verified, but backend re-checks it)
+  const handleResetSubmit = async (e) => {
+    e.preventDefault();
+    if (!resetPass || !resetConfirm) {
+      setResetMsg('Enter both the new password and its confirmation');
+      return;
+    }
+    if (resetPass.length < 8) {
+      setResetMsg('Password must be at least 8 characters long');
+      return;
+    }
+    if (resetPass !== resetConfirm) {
+      setResetMsg('Passwords do not match');
+      return;
+    }
+    setResetSending(true);
+    setResetMsg('');
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/reset-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: resetEmail, otp: resetOtp, password: resetPass }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setResetMsg(data.error || 'Something went wrong');
+      } else {
+        setResetDone(true);
+      }
+    } catch {
+      setResetMsg('Cannot connect to server');
+    } finally {
+      setResetSending(false);
+    }
+  };
+
+  const closeReset = () => {
+    setShowReset(false);
+    setResetDone(false);
+    setResetOtpSent(false);
+    setResetOtpVerified(false);
+    setResetMsg('');
+    setResetEmail('');
+    setResetOtp('');
+    setResetPass('');
+    setResetConfirm('');
   };
 
   return (
@@ -144,7 +266,7 @@ const LoginForm = ({ onSwitchToRegister }) => {
           <label className="remember-label">
             <input type="checkbox" /> Remember me
           </label>
-          <a href="#" className="forgot-link" onClick={(e) => { e.preventDefault(); triggerToast('Password reset coming soon!'); }}>
+          <a href="#" className="forgot-link" onClick={(e) => { e.preventDefault(); setShowReset(true); setResetDone(false); setResetMsg(''); }}>
             Forgot password?
           </a>
         </div>
@@ -189,6 +311,99 @@ const LoginForm = ({ onSwitchToRegister }) => {
         <div className="toast show" style={{ background: '#0F1F3D', color: '#fff' }}>
           <div className="toast-pip"></div>
           <span style={{ color: '#fff' }}>{toastMessage}</span>
+        </div>
+      )}
+
+      {showReset && (
+        <div className="reset-modal-overlay" onClick={closeReset}>
+          <div className="reset-modal" onClick={(e) => e.stopPropagation()}>
+            <button type="button" className="reset-modal-close" onClick={closeReset} aria-label="Close">×</button>
+            <div className="reset-modal-title">Reset your password</div>
+
+            {resetDone ? (
+              <>
+                <p className="reset-modal-sub">Password reset successfully. You can now log in with your new password.</p>
+                <button type="button" className="btn-primary" style={{ width: '100%' }} onClick={closeReset}>
+                  Back to sign in
+                </button>
+              </>
+            ) : (
+              <>
+                {resetMsg && <p className="reset-msg">{resetMsg}</p>}
+                {!resetOtpSent && (
+                  <form onSubmit={handleForgotSubmit}>
+                    <div className="form-group">
+                      <label className="form-label">Email Address</label>
+                      <input
+                        type="email"
+                        className="form-input"
+                        value={resetEmail}
+                        onChange={(e) => setResetEmail(e.target.value)}
+                        placeholder="you@example.com"
+                        autoComplete="email"
+                        required
+                      />
+                    </div>
+                    <button type="submit" className="btn-primary" style={{ width: '100%' }} disabled={resetSending}>
+                      {resetSending ? 'Sending…' : 'Send OTP'}
+                    </button>
+                  </form>
+                )}
+                {resetOtpSent && !resetOtpVerified && (
+                  <form onSubmit={handleOtpVerify}>
+                    <p className="reset-modal-sub">Enter the 6-digit code sent to {resetEmail}</p>
+                    <div className="form-group">
+                      <label className="form-label">OTP</label>
+                      <input
+                        type="text"
+                        className="form-input"
+                        value={resetOtp}
+                        onChange={(e) => setResetOtp(e.target.value)}
+                        placeholder="6-digit code"
+                        autoComplete="one-time-code"
+                        required
+                      />
+                    </div>
+                    <button type="submit" className="btn-primary" style={{ width: '100%' }} disabled={resetVerifying}>
+                      {resetVerifying ? 'Verifying…' : 'Verify OTP'}
+                    </button>
+                  </form>
+                )}
+                {resetOtpVerified && (
+                  <form onSubmit={handleResetSubmit}>
+                    <p className="reset-modal-sub">OTP verified. Choose your new password.</p>
+                    <div className="form-group">
+                      <label className="form-label">New Password</label>
+                      <input
+                        type="password"
+                        className="form-input"
+                        value={resetPass}
+                        onChange={(e) => setResetPass(e.target.value)}
+                        placeholder="At least 8 characters"
+                        autoComplete="new-password"
+                        required
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Confirm Password</label>
+                      <input
+                        type="password"
+                        className="form-input"
+                        value={resetConfirm}
+                        onChange={(e) => setResetConfirm(e.target.value)}
+                        placeholder="Re-enter your new password"
+                        autoComplete="new-password"
+                        required
+                      />
+                    </div>
+                    <button type="submit" className="btn-primary" style={{ width: '100%' }} disabled={resetSending}>
+                      {resetSending ? 'Resetting…' : 'Reset Password'}
+                    </button>
+                  </form>
+                )}
+              </>
+            )}
+          </div>
         </div>
       )}
     </>

@@ -1,6 +1,9 @@
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const prisma = require('../lib/prisma');
+const { sendOtpEmail } = require('../services/emailService');
+
+const generateOtp = () => Math.floor(100000 + Math.random() * 900000).toString();
 
 // POST /api/auth/register
 const register = async (req, res) => {
@@ -143,4 +146,99 @@ const refresh = async (req, res) => {
   }
 };
 
-module.exports = { register, login, checkEmail, refresh };
+// POST /api/auth/forgot-password
+// Body: { email }
+const forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ error: 'Email is required' });
+
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user) {
+      return res.status(404).json({ error: 'No account is registered with this email.' });
+    }
+
+    const otp       = generateOtp();
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
+
+    await prisma.otp.deleteMany({ where: { email } });
+    await prisma.otp.create({ data: { email, otp, expiresAt } });
+
+    const sent = await sendOtpEmail(email, otp, 'reset');
+    if (!sent) return res.status(500).json({ error: 'Failed to send OTP email. Please try again.' });
+
+    res.json({ message: 'OTP sent to your email' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Something went wrong' });
+  }
+};
+
+// POST /api/auth/verify-otp
+// Body: { email, otp } — checks the OTP WITHOUT consuming it, so the UI can
+// reveal the new-password fields only after the correct OTP is entered.
+// The actual reset (resetPassword) still re-validates and consumes the OTP.
+const verifyOtp = async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+    if (!email || !otp) {
+      return res.status(400).json({ error: 'Email and OTP are required' });
+    }
+
+    const record = await prisma.otp.findFirst({ where: { email } });
+    if (!record) {
+      return res.status(400).json({ error: 'No OTP found for this email. Please request a new one.' });
+    }
+    if (record.expiresAt < new Date()) {
+      await prisma.otp.deleteMany({ where: { email } });
+      return res.status(400).json({ error: 'OTP has expired. Please request a new one.' });
+    }
+    if (record.otp !== otp) {
+      return res.status(400).json({ error: 'Incorrect OTP' });
+    }
+
+    res.json({ message: 'OTP verified successfully' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Something went wrong' });
+  }
+};
+
+// POST /api/auth/reset-password
+// Body: { email, otp, password }
+const resetPassword = async (req, res) => {
+  try {
+    const { email, otp, password } = req.body;
+    if (!email || !otp || !password) {
+      return res.status(400).json({ error: 'Email, OTP, and new password are required' });
+    }
+    if (password.length < 8) {
+      return res.status(400).json({ error: 'Password must be at least 8 characters long' });
+    }
+
+    const record = await prisma.otp.findFirst({ where: { email } });
+    if (!record) {
+      return res.status(400).json({ error: 'No OTP found for this email. Please request a new one.' });
+    }
+    if (record.expiresAt < new Date()) {
+      await prisma.otp.deleteMany({ where: { email } });
+      return res.status(400).json({ error: 'OTP has expired. Please request a new one.' });
+    }
+    if (record.otp !== otp) {
+      return res.status(400).json({ error: 'Incorrect OTP' });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    await prisma.user.update({ where: { email }, data: { password: hashedPassword } });
+
+    // Invalid one-time use only
+    await prisma.otp.deleteMany({ where: { email } });
+
+    res.json({ message: 'Password reset successfully. You can now log in with your new password.' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Something went wrong' });
+  }
+};
+
+module.exports = { register, login, checkEmail, refresh, forgotPassword, verifyOtp, resetPassword };

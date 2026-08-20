@@ -1,6 +1,22 @@
 const express = require('express');
 const router = express.Router();
 const prisma = require('../lib/prisma');
+const { downgradeExpiredPlans } = require('../services/planExpiryService');
+
+// Protected by CRON_SECRET header — called by cron-job.org on a schedule
+router.post('/expire-plans', async (req, res) => {
+  if (req.headers['x-cron-secret'] !== process.env.CRON_SECRET) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  try {
+    const { downgraded } = await downgradeExpiredPlans();
+    res.json({ message: `Downgraded ${downgraded} expired plan(s)` });
+  } catch (err) {
+    console.error('[cron] Plan expiry failed:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // Protected by CRON_SECRET header — called by cron-job.org on a schedule
 router.post('/send-reports', async (req, res) => {

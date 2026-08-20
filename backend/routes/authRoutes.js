@@ -2,13 +2,16 @@ const express  = require('express');
 const router   = express.Router();
 const passport = require('passport');
 const jwt      = require('jsonwebtoken');
-const { register, login, checkEmail, refresh } = require('../controllers/authController');
+const { register, login, checkEmail, refresh, forgotPassword, verifyOtp, resetPassword } = require('../controllers/authController');
 const { requireAuth } = require('../middleware/auth');
 
 router.post('/register', register);
 router.post('/login', login);
 router.post('/check-email', checkEmail);
 router.post('/refresh', requireAuth, refresh);
+router.post('/forgot-password', forgotPassword);
+router.post('/verify-otp', verifyOtp);
+router.post('/reset-password', resetPassword);
 
 // Step 1 — redirect user to Google login page
 // state:false + session:false → no server-side session needed (works on serverless)

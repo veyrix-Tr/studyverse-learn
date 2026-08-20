@@ -17,10 +17,6 @@ Completed items are removed from this file once done (kept out entirely so no tr
 
 ## B. Unimplemented / advertised-but-not-built features
 
-### B1. 🔴 Paid plans never expire — `planEndDate` is decorative; no renewal/expiry job
-`backend/services/cronService.js` (only cron = weekly reports), `backend/controllers/paymentController.js:78–84`
-On a successful plan payment, `plan = X`, `planEndDate = now + months` is written. But **nothing ever reads `planEndDate`** — no cron downgrades `plan` to `spark` on expiry, and all backend gating reads only `profile.plan`. A one-time ₹999/₹2499/₹799 "monthly" payment grants **permanent** premium. Only Apex has a (display-only, frontend) expiry screen (`StudentContent.jsx`); Forge and Anchor have no expiry handling at all.
-
 ### B2. 🟠 No admin flow to provision a student into Apex/Anchor/Forge
 `backend/routes/adminRoutes.js` (whole file), `frontend/.../admin-lms/AdminModals.jsx`, `AdminContent.jsx`
 No PUT/PATCH route writes `StudentProfile.plan`. The only code path that ever sets `plan` on a student is the Cashfree webhook. (The "Create Admin" modal was wired to a real `POST /api/admin/:id/admins` route, but plan-provisioning still doesn't exist.)
@@ -42,9 +38,6 @@ Course cards show fabricated progress ("36 of 48 lectures"); the video player an
 - Quick Note `:361–376` — hardcoded fake student dropdown, no state, Save only toasts `'Note saved. Will appear in Sunday report ✓'`.
 - Session Notes `:379–400` — every field is `defaultValue` hardcoded prose; Save only toasts. (A real notes flow exists via `POST /api/faculty/sessions/:id/note` + the inline editor in FacultyContent — this modal bypasses it entirely.)
 - Suggest a Test `:452–473` — **no backend route exists at all** for test suggestions; Send only toasts. The advertised "mentor-assigned test → admin approval" flow is unbuilt; the review tables in FacultyContent are hardcoded `<tr>` rows.
-
-### B8. 🟡 "Forgot password?" is a stub
-`frontend/src/components/login/LoginForm.jsx:147–149` — `triggerToast('Password reset coming soon!')`. No reset route/controller/form anywhere. Dead end for a user who forgets their password.
 
 ### B9. 🟡 Student "Send Message" (mentor chat) is fake
 `frontend/src/components/student-lms/StudentContent.jsx:872` — button only toasts `'Opening chat...'`. No chat feature/route exists.
@@ -72,10 +65,10 @@ Course cards show fabricated progress ("36 of 48 lectures"); the video player an
 
 ## Suggested fix order (highest-impact, cheapest first)
 
-1. **B1 + A2** — tie gating to `planEndDate` (add an expiry cron + check planning), and gate `POST /session-request` behind the paid plan.
+1. ~~**B1 + A2** — tie gating to `planEndDate` (add an expiry cron + check planning), and gate `POST /session-request` behind the paid plan.~~ (**B1 done** — expiry cron + gating; **A2** pending: gate `POST /session-request`.)
 2. **B3 / B2** — decide the buying story: build real create-admin / enroll-student routes (or remove the fake modals).
 3. **B4 / B5 / C1** — either build the weekly-test/course/test engines or replace the hardcoded mockups with honest "Coming Soon" placeholders and remove fabricated dashboards.
 4. **C3** — decide whether Apex or Anchor owns `subjectFaculty`, and wire the correct plan's admin panel.
-5. **B7 / B8 / B9** — wire the faculty note/test modals, forgot-password, and chat (or remove the fake ones).
+5. **B7 / B9** — wire the faculty note/test modals and chat (or remove the fake ones).
 
 ---

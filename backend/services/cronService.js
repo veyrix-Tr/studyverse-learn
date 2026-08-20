@@ -1,5 +1,6 @@
 const cron = require('node-cron');
 const prisma = require('../lib/prisma');
+const { downgradeExpiredPlans } = require('./planExpiryService');
 
 // Runs every Saturday and Sunday at 6:00 AM IST
 function startCronJobs() {
@@ -35,6 +36,16 @@ function startCronJobs() {
       console.log(`[cron] Sent ${approved.length} report(s) and created notifications`);
     } catch (err) {
       console.error('[cron] Failed to send reports:', err.message);
+    }
+  }, { timezone: 'Asia/Kolkata' });
+
+  // Runs every 5 minutes — reverts expired premium plans back to spark
+  cron.schedule('*/5 * * * *', async () => {
+    try {
+      const { downgraded } = await downgradeExpiredPlans();
+      if (downgraded > 0) console.log(`[cron] Plan expiry sweep: downgraded ${downgraded} student(s)`);
+    } catch (err) {
+      console.error('[cron] Plan expiry sweep failed:', err.message);
     }
   }, { timezone: 'Asia/Kolkata' });
 

@@ -2,6 +2,7 @@ const express  = require('express');
 const router   = express.Router({ mergeParams: true });
 const prisma   = require('../lib/prisma');
 const { requireAuth, validateUrlUser } = require('../middleware/auth');
+const { getEffectivePlan } = require('../services/planAccessService');
 const { generateStudyPlan } = require('../lib/studyPlanAlgorithm');
 const zoom     = require('../lib/zoom');
 
@@ -340,7 +341,7 @@ router.post('/doubts', requireAuth, async (req, res) => {
       include: { user: { select: { name: true } } },
     });
     if (!profile) return res.status(403).json({ error: 'Student not found' });
-    if (!['apex'].includes(profile.plan)) return res.status(403).json({ error: 'Doubt desk is available on the Apex plan only' });
+    if (!['apex'].includes(getEffectivePlan(profile))) return res.status(403).json({ error: 'Doubt desk is available on the Apex plan only' });
 
     const validSubjects = EXAM_SUBJECTS[profile.examTarget] || [];
     if (!validSubjects.includes(subject)) return res.status(400).json({ error: 'Invalid subject for your exam' });
@@ -442,7 +443,7 @@ router.get('/notifications', requireAuth, async (req, res) => {
     if (!profile) return res.json([]);
 
     // FacultyNotification relevant to all paid plans (Forge, Apex, Anchor have assigned faculty)
-    const hasFaculty = ['forge', 'apex', 'anchor'].includes(profile.plan);
+    const hasFaculty = ['forge', 'apex', 'anchor'].includes(getEffectivePlan(profile));
 
     // Types that are admin-only — never shown in student notification feed
     const ADMIN_ONLY_TYPES = ['Session Request'];
@@ -565,8 +566,8 @@ router.get('/resources', requireAuth, async (req, res) => {
     // Study Material / Formula Sheet require Forge or Apex. Spark/Free get nothing here.
     const APEX_ONLY   = ['Session Notes'];
     const FORGE_ABOVE = ['Study Material', 'Formula Sheet'];
-    const isApex      = profile.plan === 'apex';
-    const isForge     = profile.plan === 'forge';
+    const isApex      = getEffectivePlan(profile) === 'apex';
+    const isForge     = getEffectivePlan(profile) === 'forge';
     if (!isApex && !isForge) return res.json([]);
 
     const allowedTypes = RESOURCE_TYPES.filter(t =>
@@ -604,7 +605,7 @@ router.get('/resources', requireAuth, async (req, res) => {
 router.get('/question-bank', requireAuth, async (req, res) => {
   try {
     const profile = await prisma.studentProfile.findUnique({ where: { userId: req.params.userId } });
-    if (!profile || !['forge', 'apex'].includes(profile.plan)) return res.json([]);
+    if (!profile || !['forge', 'apex'].includes(getEffectivePlan(profile))) return res.json([]);
 
     const subjects = EXAM_SUBJECTS[profile.examTarget] || [];
     if (!subjects.length) return res.json([]);

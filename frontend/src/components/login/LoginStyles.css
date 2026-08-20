@@ -1043,3 +1043,59 @@
   .input-action-btn { align-self: stretch; padding: 10px 0; font-size: 12.5px; }
   .input-valid-check { right: 14px; }
 }
+
+/* ── FORGOT / RESET PASSWORD MODAL ── */
+.reset-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 31, 61, 0.5);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: resetFade 0.15s ease;
+}
+@keyframes resetFade { from { opacity: 0; } to { opacity: 1; } }
+.reset-modal {
+  background: #fff;
+  border-radius: 14px;
+  padding: 28px 26px;
+  width: 100%;
+  max-width: 400px;
+  position: relative;
+  box-shadow: 0 20px 60px rgba(15, 31, 61, 0.25);
+}
+.reset-modal-close {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  background: none;
+  border: none;
+  font-size: 26px;
+  line-height: 1;
+  color: #8896b3;
+  cursor: pointer;
+  padding: 4px;
+}
+.reset-modal-close:hover { color: #0f1f3d; }
+.reset-modal-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #0f1f3d;
+  margin-bottom: 6px;
+}
+.reset-modal-sub {
+  font-size: 13.5px;
+  color: #4a5568;
+  margin-bottom: 16px;
+}
+.reset-modal .form-group { margin-bottom: 14px; }
+.reset-msg {
+  margin: 0 0 14px;
+  font-size: 13.5px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #f5efe3;
+  color: #0f1f3d;
+}
