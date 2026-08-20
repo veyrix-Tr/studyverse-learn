@@ -6,7 +6,6 @@ const PAGE_TITLES = {
   students:      'My Students',
   doubts:        'Doubt Queue',
   resources:     'Resources',
-  tests:         'Assign Tests',
   reports:       'Weekly Reports',
   feedback:      'Weekly Feedback',
   mentor:        'My Mentees',

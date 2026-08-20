@@ -177,6 +177,60 @@ const FacultyModals = ({ openModal, onClose, onShowToast, toast, detailOpen, sel
     }
   };
 
+  // Quick Note — a fast student note that feeds into weekly parent reports.
+  // Reuses the real MentorNote API (POST /mentor-student/:studentId/note) and
+  // the same reachable-student pool as the schedule modal (/apex-students).
+  const [quickStudentId, setQuickStudentId] = useState('');
+  const [quickContent, setQuickContent] = useState('');
+  const [quickLoading, setQuickLoading] = useState(false);
+
+  // Load the reachable student list for the dropdown whenever the modal opens.
+  useEffect(() => {
+    if (openModal !== 'quick-note-modal') return;
+    const token = localStorage.getItem('token');
+    setStudentsLoading(true);
+    fetch(`${import.meta.env.VITE_API_URL}/api/faculty/${userId}/apex-students`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => (r.ok ? r.json() : []))
+      .then(data => {
+        if (Array.isArray(data)) {
+          setApexStudents(data);
+          setQuickStudentId(prev => (data.some(st => String(st.id) === String(prev)) ? prev : (data[0]?.id || '')));
+        }
+      })
+      .catch(() => {})
+      .finally(() => setStudentsLoading(false));
+  }, [openModal, userId]);
+
+  // Clear the note content each time the modal opens.
+  useEffect(() => {
+    if (openModal !== 'quick-note-modal') return;
+    setQuickContent('');
+  }, [openModal]);
+
+  const submitQuickNote = async () => {
+    const sid = parseInt(quickStudentId, 10);
+    if (!sid) { onShowToast('Please select a student'); return; }
+    if (!quickContent.trim()) { onShowToast('Please write a note'); return; }
+    const token = localStorage.getItem('token');
+    setQuickLoading(true);
+    try {
+      const r = await fetch(`${import.meta.env.VITE_API_URL}/api/faculty/${userId}/mentor-student/${sid}/note`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ content: quickContent.trim() }),
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error || 'Failed to save note');
+      setQuickContent('');
+      onClose();
+      onShowToast(`Note saved for ${apexStudents.find(st => String(st.id) === String(sid))?.name || 'student'} ✓`);
+    } catch (err) {
+      onShowToast(err.message || 'Failed to save note. Try again.');
+    } finally {
+      setQuickLoading(false);
+    }
+  };
+
   const sendBroadcast = async () => {
     if (!broadcastText.trim()) { onShowToast('Please type a message first'); return; }
     const token = localStorage.getItem('token');
@@ -246,7 +300,6 @@ const FacultyModals = ({ openModal, onClose, onShowToast, toast, detailOpen, sel
             <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: '12px' }}>Quick Actions</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               <button className="btn btn-gold btn-full" onClick={() => { onOpenModal('schedule-modal'); onCloseDetail(); }}>+ Schedule Session</button>
-              <button className="btn btn-navy btn-full" onClick={() => { onOpenModal('assign-test-modal'); onCloseDetail(); }}>Suggest a Test</button>
               <button className="btn btn-ghost btn-full" onClick={() => { onOpenModal('suggest-res-modal'); onCloseDetail(); }}>Suggest Resource</button>
               <button className="btn btn-ghost btn-full" onClick={() => { onNav('reports'); onCloseDetail(); }}>Draft Weekly Report</button>
             </div>
@@ -358,43 +411,25 @@ const FacultyModals = ({ openModal, onClose, onShowToast, toast, detailOpen, sel
       </div>
 
       {/* Quick Note Modal */}
-      <div className={`overlay${isOpen('quick-note-modal')}`} onClick={e => e.target.classList.contains('overlay') && onClose()}>
+      <div className={`overlay${isOpen('quick-note-modal')}`} onClick={e => { if (e.target.classList.contains('overlay')) { onClose(); } }}>
         <div className="modal">
           <div className="mt">Quick Session Note</div>
           <div className="ms">Notes feed into weekly parent reports. Be specific — vague notes make weak reports.</div>
           <div className="fg"><label>Student</label>
-            <select className="finput"><option>Rahul Mehta</option><option>Sneha Kapoor</option><option>Priya Desai</option><option>Arjun Singh</option></select>
+            <select className="finput" value={quickStudentId} onChange={e => setQuickStudentId(e.target.value)}>
+              {studentsLoading && <option value="">Loading students…</option>}
+              {!studentsLoading && apexStudents.length === 0 && <option value="">No reachable students</option>}
+              {apexStudents.map(st => (
+                <option key={st.id} value={st.id}>{st.name}{st.plan === 'apex' ? ' · Apex' : ' · Mentee'}</option>
+              ))}
+            </select>
           </div>
           <div className="fg"><label>Session Note</label>
-            <textarea className="finput" rows="4" placeholder="What happened in the session? What clicked, what didn't, what's next?"></textarea>
+            <textarea className="finput" rows="4" placeholder="What happened in the session? What clicked, what didn't, what's next?" value={quickContent} onChange={e => setQuickContent(e.target.value)}></textarea>
           </div>
           <div className="ma">
             <button className="btn btn-ghost btn-sm" onClick={onClose}>Cancel</button>
-            <button className="btn btn-gold btn-sm" onClick={() => { onClose(); onShowToast('Note saved. Will appear in Sunday report ✓'); }}>Save Note →</button>
-          </div>
-        </div>
-      </div>
-
-      {/* Session Note Modal */}
-      <div className={`overlay${isOpen('session-note-modal')}`} onClick={e => e.target.classList.contains('overlay') && onClose()}>
-        <div className="modal">
-          <div className="mt">Session Notes — Sneha Kapoor</div>
-          <div className="ms">Integration — By Parts • Today, 4:00 PM</div>
-          <div className="fg"><label>What was covered</label>
-            <input className="finput" type="text" defaultValue="Integration — By Parts & ILATE Rule" />
-          </div>
-          <div className="fg"><label>What went well</label>
-            <textarea className="finput" rows="2" defaultValue="Substitution method now solid. ILATE rule understood quickly."></textarea>
-          </div>
-          <div className="fg"><label>What needs work</label>
-            <textarea className="finput" rows="2" defaultValue="Choosing u vs dv in non-standard forms — needs more practice."></textarea>
-          </div>
-          <div className="fg"><label>Next session plan</label>
-            <input className="finput" type="text" defaultValue="Integration — Definite Integrals and limits applications" />
-          </div>
-          <div className="ma">
-            <button className="btn btn-ghost btn-sm" onClick={onClose}>Cancel</button>
-            <button className="btn btn-gold btn-sm" onClick={() => { onClose(); onShowToast('Session notes saved ✓'); }}>Save Notes →</button>
+            <button className="btn btn-gold btn-sm" onClick={submitQuickNote} disabled={quickLoading}>{quickLoading ? 'Saving…' : 'Save Note →'}</button>
           </div>
         </div>
       </div>
@@ -444,30 +479,6 @@ const FacultyModals = ({ openModal, onClose, onShowToast, toast, detailOpen, sel
             <button className="btn btn-gold btn-sm" disabled={resUploading} onClick={submitResource}>
               {resUploading ? 'Uploading…' : 'Submit for Approval →'}
             </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Assign Test Modal */}
-      <div className={`overlay${isOpen('assign-test-modal')}`} onClick={e => e.target.classList.contains('overlay') && onClose()}>
-        <div className="modal">
-          <div className="mt">Suggest a Test</div>
-          <div className="ms">Your suggestion goes to admin. Once approved it appears as a "Mentor-assigned" test for the student.</div>
-          <div className="fg"><label>Student</label>
-            <select className="finput"><option>Rahul Mehta</option><option>Sneha Kapoor</option><option>Priya Desai</option><option>Arjun Singh</option></select>
-          </div>
-          <div className="fg"><label>Test Topic / Name</label><input className="finput" type="text" placeholder="e.g. Electrostatics — Targeted 25Q Test" /></div>
-          <div className="fg"><label>Why is this test needed now?</label>
-            <textarea className="finput" rows="3" placeholder="Admin needs your reasoning — what gap does this test address?"></textarea>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
-            <div className="fg"><label>No. of Questions</label><input className="finput" type="number" placeholder="e.g. 25" /></div>
-            <div className="fg"><label>Suggested Deadline</label><input className="finput" type="date" /></div>
-          </div>
-          <div className="approval-notice">⏳ Admin will review and approve within 24h.</div>
-          <div className="ma">
-            <button className="btn btn-ghost btn-sm" onClick={onClose}>Cancel</button>
-            <button className="btn btn-gold btn-sm" onClick={() => { onClose(); onShowToast('Test suggestion sent for admin approval ✓'); }}>Send for Approval →</button>
           </div>
         </div>
       </div>

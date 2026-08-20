@@ -875,53 +875,6 @@ const FacultyContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
         )}
       </div>
 
-      {/* ══════════ ASSIGN TESTS ══════════ */}
-      <div className={`page${activePage === 'tests' ? ' on' : ''}`}>
-        <div style={{ fontSize: '13px', color: 'var(--text2)', marginBottom: '18px', background: 'var(--cream)', border: '1px solid var(--b)', borderRadius: 'var(--r)', padding: '11px 14px' }}>
-          📌 Suggest a test for a student → goes to admin for approval. Student sees it as "Mentor-assigned" once approved.
-        </div>
-
-        <div className="sh">
-          <div className="sh-t">Suggest a Test for a Student</div>
-          <button className="btn btn-gold btn-sm" onClick={() => onOpenModal('assign-test-modal')}>+ Suggest Test</button>
-        </div>
-
-        <div style={{ marginBottom: '22px' }}>
-          <div style={{ fontSize: '12px', color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '.08em', fontWeight: 500, marginBottom: '10px' }}>Pending Admin Approval</div>
-          <div className="card mb" style={{ padding: '16px 18px' }}>
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-              <div className="di-av">R</div>
-              <div style={{ flex: 1 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '8px' }}>
-                  <div>
-                    <div style={{ fontSize: '13.5px', fontWeight: 600, color: 'var(--text)' }}>Rahul Mehta — Electrostatics Targeted Test</div>
-                    <div style={{ fontSize: '12px', color: 'var(--text3)', marginTop: '2px' }}>25 questions • 45 min • Suggested Apr 14</div>
-                  </div>
-                  <span className="pending-badge">Pending Admin</span>
-                </div>
-                <div style={{ fontSize: '12.5px', color: 'var(--text2)', marginTop: '8px', background: 'var(--cream2)', padding: '9px 11px', borderRadius: 'var(--r)', borderLeft: '3px solid var(--gold)' }}>
-                  Reason: "Rahul's Gauss's Law accuracy is at 31%. This test covers exactly his gap — 15 questions on field lines + 10 on potential. Needs to do this before our Apr 18 session."
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div>
-          <div style={{ fontSize: '12px', color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '.08em', fontWeight: 500, marginBottom: '10px' }}>Recently Approved &amp; Student Results</div>
-          <div className="card" style={{ padding: '14px 18px' }}>
-            <table className="tbl">
-              <thead><tr><th>Student</th><th>Test</th><th>Assigned</th><th>Completed</th><th>Score</th><th>vs Target</th></tr></thead>
-              <tbody>
-                <tr key="test-sneha"><td><div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}><div className="di-av">S</div>Sneha Kapoor</div></td><td>Integration — Substitution Test</td><td>Apr 10</td><td>Apr 11</td><td><strong style={{ color: 'var(--green)' }}>68%</strong></td><td><span className="pill pp">+11%</span></td></tr>
-                <tr key="test-priya"><td><div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}><div className="di-av">P</div>Priya Desai</div></td><td>Organic Chemistry — Reactions</td><td>Apr 9</td><td>Apr 10</td><td><strong style={{ color: 'var(--orange)' }}>55%</strong></td><td><span className="pill po">Needs work</span></td></tr>
-                <tr key="test-arjun"><td><div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}><div className="di-av">A</div>Arjun Singh</div></td><td>Electrostatics — Full Chapter</td><td>Apr 8</td><td>Apr 9</td><td><strong style={{ color: 'var(--gold)' }}>66%</strong></td><td><span className="pill pg">+8%</span></td></tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
       {/* ══════════ WEEKLY REPORTS ══════════ */}
       <div className={`page${activePage === 'reports' ? ' on' : ''}`}>
 

@@ -1062,7 +1062,10 @@ router.post('/mentor-student/:studentId/note', requireAuth, async (req, res) => 
     if (content.trim().length > 2000) return res.status(400).json({ error: 'Note too long (max 2000 chars)' });
 
     const s = await prisma.studentProfile.findUnique({ where: { id: sid }, include: { user: { select: { name: true } } } });
-    if (!s || s.mentorId !== fp.id) return res.status(403).json({ error: 'Not your mentee' });
+    if (!s) return res.status(404).json({ error: 'Student not found' });
+    // Reachable pool = faculty's own mentees + Apex students (same as /apex-students)
+    const reachable = s.mentorId === fp.id || (s.plan === 'apex' && s.grade !== null);
+    if (!reachable) return res.status(403).json({ error: 'Not your mentee or Apex student' });
 
     const wof = weekOf || (() => {
       const d = new Date(Date.now() + 5.5 * 60 * 60 * 1000);

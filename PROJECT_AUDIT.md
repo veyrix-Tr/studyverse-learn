@@ -14,12 +14,6 @@ Completed items are removed from this file once done (kept out entirely so no tr
 `frontend/src/components/student-lms/StudentContent.jsx:631–693` (courses + video player), `:800–828` (test cards)
 Course cards show fabricated progress ("36 of 48 lectures"); the video player and lecture list are hardcoded; "Start Test →" only toasts `'Launching test environment...'`. No course content / test-engine data source exists. Advertised-but-unbuilt.
 
-### B7. 🟡 Faculty "Quick Note", "Session Notes", and "Suggest a Test" modals are fake
-`frontend/src/components/faculty-lms/FacultyModals.jsx`
-- Quick Note `:361–376` — hardcoded fake student dropdown, no state, Save only toasts `'Note saved. Will appear in Sunday report ✓'`.
-- Session Notes `:379–400` — every field is `defaultValue` hardcoded prose; Save only toasts. (A real notes flow exists via `POST /api/faculty/sessions/:id/note` + the inline editor in FacultyContent — this modal bypasses it entirely.)
-- Suggest a Test `:452–473` — **no backend route exists at all** for test suggestions; Send only toasts. The advertised "mentor-assigned test → admin approval" flow is unbuilt; the review tables in FacultyContent are hardcoded `<tr>` rows.
-
 ---
 
 ## C. Misleading / fabricated data shown as real (admin & student hubs)
@@ -34,7 +28,7 @@ Course cards show fabricated progress ("36 of 48 lectures"); the video player an
 
 ## D. Notes on stale internal docs
 
-- **`APEX_TODO.md` is stale:** it claims Zoom/live-classes and the faculty "Schedule a Session" modal are **unbuilt / hardcoded fake names**. That is **no longer true** — the modal is wired (`POST /api/faculty/:id/sessions`) and Zoom is a **real integration** (`backend/lib/zoom.js`: S2S OAuth, `createMeeting`, signed Meeting-SDK signatures; `LiveClassRoom.jsx` joins via `ZoomMtg`; **mentor calls also use Zoom**). What's still missing around sessions is the **recording** path (B7) and the **fake faculty note/test modals** (B7).
+- **`APEX_TODO.md` is stale:** it claims Zoom/live-classes and the faculty "Schedule a Session" modal are **unbuilt / hardcoded fake names**. That is **no longer true** — the modal is wired (`POST /api/faculty/:id/sessions`) and Zoom is a **real integration** (`backend/lib/zoom.js`: S2S OAuth, `createMeeting`, signed Meeting-SDK signatures; `LiveClassRoom.jsx` joins via `ZoomMtg`; **mentor calls also use Zoom**). What's still missing around sessions is just the **recording** path (planned recording/reporting loop).
 - It also claims no `POST /api/faculty/sessions` route exists — that route **does exist** and is used.
 
 ---
@@ -43,6 +37,5 @@ Course cards show fabricated progress ("36 of 48 lectures"); the video player an
 
 1. **B5 / C1** — either build the course/test engines or replace the hardcoded mockups with honest "Coming Soon" placeholders and remove fabricated dashboards.
 2. **C3** — decide whether Apex or Anchor owns `subjectFaculty`, and wire the correct plan's admin panel.
-3. **B7** — wire the faculty note/test modals (or remove the fake ones).
 
 ---
