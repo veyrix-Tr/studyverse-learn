@@ -22,7 +22,7 @@ const PAGE_ICONS = {
   messages:  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>,
 };
 
-const AdminTopbar = ({ activePage, isSuperAdmin, onOpenModal, onNav, onMenuClick, unreadTasks = 0 }) => {
+const AdminTopbar = ({ activePage, isSuperAdmin, onNav, onMenuClick, unreadTasks = 0 }) => {
   const title = PAGE_TITLES[activePage] || 'Dashboard';
   const icon  = PAGE_ICONS[activePage] || null;
 
@@ -46,13 +46,6 @@ const AdminTopbar = ({ activePage, isSuperAdmin, onOpenModal, onNav, onMenuClick
             Super Admin
           </div>
         )}
-
-        <button className="adm-tb-enroll" onClick={() => onOpenModal('enroll-modal')}>
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-            <path d="M12 5v14M5 12h14"/>
-          </svg>
-          <span className="adm-tb-enroll-label">Enroll Student</span>
-        </button>
 
         <button className="adm-tbb" onClick={() => onNav('tasks')} title="Assignment Tasks" style={{ position: 'relative' }}>
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={unreadTasks > 0 ? 'var(--gold, #E8A830)' : 'currentColor'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

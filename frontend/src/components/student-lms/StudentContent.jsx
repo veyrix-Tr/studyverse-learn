@@ -866,7 +866,6 @@ const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
                       </div>
                       <div style={{ display:'flex', gap:'10px' }}>
                         <button className="btn btn-primary" style={{ flex:1, justifyContent:'center' }} onClick={() => onOpenModal('book-modal')}>Book Session</button>
-                        <button className="btn" style={{ background:'rgba(255,255,255,0.08)', color:'var(--text-inv2)', flex:1, justifyContent:'center' }} onClick={() => onShowToast('Opening chat...')}>Send Message</button>
                       </div>
                     </div>
 

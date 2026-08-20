@@ -759,6 +759,11 @@ router.post('/feedback', requireAuth, async (req, res) => {
 });
 
 // POST /api/student/:userId/session-request — student requests a 1-on-1 session
+// Apex students get 1-to-1 sessions included with their plan, so this books a
+// SessionRequest directly. All other plans (Spark/Forge/Anchor) must go through
+// the paid ₹99 flow (POST /api/payment/:userId/create-session-order), which only
+// materialises the request once payment succeeds — enforced here so the free
+// route can't be used to bypass the pay-per-session fee.
 router.post('/session-request', requireAuth, validateUrlUser, async (req, res) => {
   try {
     const { topic, phone, preferredTime } = req.body;
@@ -766,6 +771,20 @@ router.post('/session-request', requireAuth, validateUrlUser, async (req, res) =
 
     const profile = await prisma.studentProfile.findUnique({ where: { userId: req.params.userId } });
     if (!profile) return res.status(404).json({ error: 'Profile not found' });
+
+    if (getEffectivePlan(profile) !== 'apex') {
+      return res.status(403).json({
+        error: 'Free session booking is available on the Apex plan only. Book a single session for ₹99 instead.',
+      });
+    }
+
+    // Prevent stacking — a student can only have one pending/in-flight request
+    const active = await prisma.sessionRequest.findFirst({
+      where: { studentId: profile.id, status: { in: ['pending', 'assigned'] } },
+    });
+    if (active) {
+      return res.status(409).json({ error: 'You already have an active session request. Let it be confirmed or cancelled first.' });
+    }
 
     const request = await prisma.sessionRequest.create({
       data: {

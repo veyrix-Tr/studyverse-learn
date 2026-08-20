@@ -96,64 +96,6 @@ const AdminModals = ({ openModal, onClose, onShowToast, toast, students = [], me
 
   return (
     <>
-      {/* Enroll Student */}
-      <div className={`overlay${isOpen('enroll-modal')}`} id="enroll-modal" onClick={e => e.target.classList.contains('overlay') && onClose()}>
-        <div className="modal">
-          <div className="mt">Enroll a New Student</div>
-          <div className="ms">This creates their profile and moves them into the Enrolled stage.</div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
-            <div className="fg"><label>Student Name</label><input className="fi" type="text" placeholder="Full name" /></div>
-            <div className="fg"><label>Parent Name</label><input className="fi" type="text" placeholder="Parent's name" /></div>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
-            <div className="fg"><label>Parent Mobile</label><input className="fi" type="tel" placeholder="+91 XXXXX XXXXX" /></div>
-            <div className="fg"><label>City</label><input className="fi" type="text" placeholder="City" /></div>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
-            <div className="fg"><label>Target Exam</label>
-              <select className="fi"><option>JEE Mains 2026</option><option>JEE Advanced 2026</option><option>NEET 2026</option><option>JEE 2027</option><option>NEET 2027</option></select>
-            </div>
-            <div className="fg"><label>Plan</label>
-              <select className="fi"><option>Full Program</option><option>Unlock Plan</option><option>Single Sessions</option></select>
-            </div>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
-            <div className="fg"><label>Assign Faculty</label>
-              <select className="fi"><option>Ajay Sharma</option><option>Neha Gupta</option><option>Assign later</option></select>
-            </div>
-          </div>
-          <div className="fg"><label>Diagnostic Score (Baseline)</label><input className="fi" type="number" placeholder="e.g. 380 — from diagnostic call" /></div>
-          <div className="ma">
-            <button className="btn btn-ghost btn-sm" onClick={onClose}>Cancel</button>
-            <button className="btn btn-gold btn-sm" onClick={() => { onClose(); onShowToast('Student enrolled. Faculty notified. Dashboard created ✓'); }}>Enroll Student →</button>
-          </div>
-        </div>
-      </div>
-
-      {/* Assign / Reassign Faculty */}
-      <div className={`overlay${isOpen('assign-modal')}`} id="assign-modal" onClick={e => e.target.classList.contains('overlay') && onClose()}>
-        <div className="modal">
-          <div className="mt">Assign / Reassign Faculty</div>
-          <div className="ms">This will notify both the student and the new faculty member.</div>
-          <div className="fg"><label>Student</label>
-            <select className="fi"><option>Vanya Rao (unassigned)</option><option>Rahul Mehta (Ajay Sharma)</option><option>Priya Desai (Ajay Sharma)</option></select>
-          </div>
-          <div className="fg"><label>Assign to Faculty</label>
-            <select className="fi"><option>Ajay Sharma — 8 students (80% capacity)</option><option>Neha Gupta — 3 students (30% capacity)</option></select>
-          </div>
-          <div className="fg"><label>Reason for assignment / change</label>
-            <textarea className="fi" rows="2" placeholder="Optional — will be logged"></textarea>
-          </div>
-          <div style={{ background: 'var(--odim)', border: '1px solid rgba(249,115,22,0.25)', borderRadius: 'var(--r)', padding: '10px 12px', fontSize: '12px', color: 'var(--orange)', marginTop: '4px' }}>
-            Note: Student and parent will be notified. Faculty workload will update immediately.
-          </div>
-          <div className="ma">
-            <button className="btn btn-ghost btn-sm" onClick={onClose}>Cancel</button>
-            <button className="btn btn-gold btn-sm" onClick={() => { onClose(); onShowToast('Faculty assigned. Student and faculty notified ✓'); }}>Confirm Assignment →</button>
-          </div>
-        </div>
-      </div>
-
       {/* Message Modal */}
       <div className={`overlay${isOpen('message-modal')}`} id="message-modal" onClick={e => e.target.classList.contains('overlay') && onClose()}>
         <div className="modal">
@@ -197,7 +139,7 @@ const AdminModals = ({ openModal, onClose, onShowToast, toast, students = [], me
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
             {[
               { label: 'View & manage students', on: true },
-              { label: 'Enroll new students', on: true },
+              { label: 'Provision paid plans & enrollments', on: false },
               { label: 'Assign faculty to students', on: true },
               { label: 'Approve tests & resources', on: true },
               { label: 'Send messages to students', on: true },
@@ -220,32 +162,6 @@ const AdminModals = ({ openModal, onClose, onShowToast, toast, students = [], me
               </div>
             </div>
           )}
-          </div>
-        </div>
-      </div>
-
-      {/* Edit Admin Permissions */}
-      <div className={`overlay${isOpen('edit-admin-modal')}`} id="edit-admin-modal" onClick={e => e.target.classList.contains('overlay') && onClose()}>
-        <div className="modal">
-          <div className="mt">Edit Permissions — Meera Krishnan</div>
-          <div className="ms">Toggle access on or off. Changes take effect immediately.</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
-            {[
-              { label: 'View & manage students', on: true },
-              { label: 'Enroll new students', on: true },
-              { label: 'Assign faculty to students', on: true },
-              { label: 'Approve tests & resources', on: true },
-              { label: 'Send messages to students', on: true },
-              { label: 'View revenue', on: false },
-              { label: 'Manage subscriptions', on: false },
-              { label: 'Add / remove faculty', on: false }
-            ].map(({ label, on }, i, arr) => (
-              <PermToggleRow key={label} label={label} defaultOn={on} last={i === arr.length - 1} />
-            ))}
-          </div>
-          <div className="ma">
-            <button className="btn btn-ghost btn-sm" onClick={onClose}>Cancel</button>
-            <button className="btn btn-purple btn-sm" onClick={() => { onClose(); onShowToast('Permissions updated for Meera Krishnan ✓'); }}>Save Changes →</button>
           </div>
         </div>
       </div>

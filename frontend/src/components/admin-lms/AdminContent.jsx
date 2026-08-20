@@ -509,7 +509,6 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
       <div className={pg('pipeline')} id="p-pipeline">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
           <div style={{ fontSize: '13px', color: 'var(--text2)' }}>Every student starts with an enquiry. Only the right ones reach Active. <span style={{ color: 'var(--gold)', fontWeight: '600' }}>Meaningful guidance cannot exist at scale.</span></div>
-          <button className="btn btn-gold btn-sm" onClick={() => onOpenModal('enroll-modal')}>+ New Enquiry</button>
         </div>
 
         <div className="pipeline">
@@ -803,7 +802,6 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
                     >{label}</div>
                   ))}
                 </div>
-                <button className="btn btn-gold btn-sm" onClick={() => onOpenModal('enroll-modal')}>+ Enroll Student</button>
               </div>
               <div className="card" style={{ padding: '0', overflow: 'hidden' }}>
                 <table className="tbl">
@@ -875,7 +873,7 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
                   ))}
                 </div>
                 <div style={{ display: 'flex', gap: '7px' }}>
-                  <button className="btn btn-ghost btn-sm" style={{ flex: 1, justifyContent: 'center' }} onClick={() => onOpenModal('assign-modal')}>Assign Student</button>
+                  <button className="btn btn-ghost btn-sm" style={{ flex: 1, justifyContent: 'center' }} onClick={() => onNav('assign')}>Assign Student</button>
                   <button className="btn btn-gold btn-sm" style={{ flex: 1, justifyContent: 'center' }} onClick={() => { onShowToast(`Message to ${f.name}: use Messages tab to reach faculty`); }}>Message</button>
                 </div>
               </div>

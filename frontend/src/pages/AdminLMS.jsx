@@ -465,7 +465,6 @@ const AdminLMS = ({ expectedRole }) => {
         <AdminTopbar
           activePage={activePage}
           isSuperAdmin={isSuperAdmin}
-          onOpenModal={setOpenModal}
           onNav={(page) => { setActivePage(page); setNavOpen(false); }}
           onMenuClick={() => setNavOpen(true)}
           unreadTasks={adminNotifs.filter(n => !n.readAt).length}

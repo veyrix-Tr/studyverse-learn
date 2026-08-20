@@ -60,30 +60,6 @@ const FreeModals = ({ openModal, onClose, onShowToast, toast }) => {
         </div>
       </div>
 
-      {/* Enroll Modal */}
-      <div className={`overlay${isOpen('enroll-modal')}`} onClick={e => e.target.classList.contains('overlay') && onClose()}>
-        <div className="modal">
-          <div className="mt">Full Program Enquiry</div>
-          <div className="ms">Tell us about yourself. The team will reach out within 24 hours to discuss fit.</div>
-          <div className="fg"><label>Student Name</label><input className="fi" type="text" placeholder="Full name" /></div>
-          <div className="fg"><label>Parent Mobile Number</label><input className="fi" type="tel" placeholder="+91 XXXXX XXXXX" /></div>
-          <div className="fg">
-            <label>Preparing For</label>
-            <select className="fi">
-              <option>JEE Mains 2026</option>
-              <option>JEE Advanced 2026</option>
-              <option>NEET 2026</option>
-              <option>JEE 2027</option>
-            </select>
-          </div>
-          <div className="fg"><label>Biggest challenge right now</label><textarea className="fi" rows="2" placeholder="What's your child struggling with most?"></textarea></div>
-          <div className="ma">
-            <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
-            <button className="btn btn-gold" onClick={() => { onClose(); onShowToast("Enquiry submitted! We'll call you within 24 hours."); }}>Submit Enquiry →</button>
-          </div>
-        </div>
-      </div>
-
       {/* Toast */}
       <div className={`toast${toast.show ? ' show' : ''}`}>
         <div className="tpip"></div>
