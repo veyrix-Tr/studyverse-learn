@@ -9,6 +9,15 @@ const SUBJ_COLOR = {
   Biology:     '#F97316',
 };
 
+const SUBJ_THEME = (name) => {
+  const t = (name || '').toLowerCase();
+  if (t.includes('physic'))  return { grad: 'linear-gradient(135deg,#2563EB 0%,#7C3AED 100%)',  color: '#4F8EF7',  pill: '#4F8EF7'  };
+  if (t.includes('chem'))    return { grad: 'linear-gradient(135deg,#059669 0%,#0EA5E9 100%)',  color: '#22C55E',  pill: '#059669'  };
+  if (t.includes('math') || t.includes('calculus')) return { grad: 'linear-gradient(135deg,#7C3AED 0%,#DB2777 100%)', color: '#A855F7', pill: '#9333EA' };
+  if (t.includes('bio'))     return { grad: 'linear-gradient(135deg,#EA580C 0%,#F43F5E 100%)', color: '#F97316',  pill: '#EA580C'  };
+  return { grad: 'linear-gradient(135deg,#0F1F3D 0%,#233660 100%)', color: '#4F8EF7', pill: '#0F1F3D' };
+};
+
 const ArcTrack = ({ height = 120, viewBox = '0 0 800 110', solidPath, dashedPath, fillPath, nodes }) => (
   <div className="arc-track" style={{ height, position: 'relative', margin: '0 0 24px' }}>
     <svg className="arc-svg" viewBox={viewBox} preserveAspectRatio="none" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}>
@@ -252,6 +261,52 @@ const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
   const topImprover    = subjectStats.length > 0 ? subjectStats.reduce((a, b) => a.delta  > b.delta  ? a : b) : null;
   const weakestSubject = subjectStats.length > 0 ? subjectStats.reduce((a, b) => a.lastPct < b.lastPct ? a : b) : null;
 
+  // ── Per-subject real record (drives the Courses overview) ─────────────────
+  // One row per subject the student actually studies (exam-target subjects ∪
+  // anything that appears in their sessions/resources/question bank/scores).
+  const subjectRecord = (() => {
+    const examSet = (() => {
+      const t = (String(examTarget || '')).toLowerCase();
+      const base = t.includes('neet')
+        ? ['Physics', 'Chemistry', 'Biology']
+        : ['Physics', 'Chemistry', 'Maths'];
+      const set = new Set(base);
+      sessions.forEach(s => s.subject && set.add(s.subject));
+      resources.forEach(r => r.subject && set.add(r.subject));
+      questionBank.forEach(r => r.subject && set.add(r.subject));
+      weeks.forEach(w => (w.subjects || []).forEach(s => s.subject && set.add(s.subject)));
+      return [...set];
+    })();
+
+    const eq = (a, b) => String(a || '').toLowerCase() === String(b || '').toLowerCase();
+
+    return examSet.map(name => {
+      const sessionList  = sessions.filter(s => eq(s.subject, name));
+      const resourceList = resources.filter(r => eq(r.subject, name));
+      const qbList       = questionBank.filter(r => eq(r.subject, name));
+      const testWeeks    = weeks.filter(w => (w.subjects || []).some(s => eq(s.subject, name)));
+      const sf = subjectFaculty?.[name];
+      return {
+        name,
+        color: SUBJ_COLOR[name] || SUBJ_COLOR[Object.keys(SUBJ_COLOR).find(k => eq(k, name))] || '#4F8EF7',
+        faculty: sf?.name || null,
+        sessionCount: sessionList.length,
+        testCount: testWeeks.length,
+        resourceCount: resourceList.length,
+        qbCount: qbList.length,
+        sessionList,
+        resourceList,
+        qbList,
+        testWeeks,
+      };
+    }).sort((a, b) => {
+      // Faculty-assigned subjects first, then by study volume
+      if (a.faculty && !b.faculty) return -1;
+      if (!a.faculty && b.faculty) return 1;
+      return (b.sessionCount + b.testCount) - (a.sessionCount + a.testCount);
+    });
+  })();
+
   const [now, setNow] = useState(() => new Date());
   useEffect(() => { const t = setInterval(() => setNow(new Date()), 30000); return () => clearInterval(t); }, []);
   useEffect(() => {
@@ -260,8 +315,7 @@ const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
     setSessionsTab(hasToday ? 0 : 1);
   }, [sessions]);
 
-  const [coursesTab, setCoursesTab] = useState(0);
-  const [videoTab, setVideoTab] = useState(0);
+  const [courseSubject, setCourseSubject] = useState(null); // null = grid, else a subject name (detail view)
   const [sessionsTab, setSessionsTab] = useState(0);
   const [resourcesTab, setResourcesTab] = useState(0);
   const [questionBankTab, setQuestionBankTab] = useState(0);
@@ -619,77 +673,132 @@ const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
         )}
       </div>
 
-      {/* ══════════ COURSES ══════════ */}
-      <div className={p('courses')}>
-        <div className="tabs">
-          {['In Progress', 'Completed', 'All Subjects'].map((t, i) => (
-            <div key={t} className={`tab${coursesTab === i ? ' on' : ''}`} onClick={() => setCoursesTab(i)}>{t}</div>
-          ))}
-        </div>
-
-        <div className="g3 mb">
-          {[
-            { emoji: '⚛️', name: 'Physical Chemistry', pill: 'JEE', meta: '36 of 48 lectures • Baseline: 54% → Now: 68%', pct: 74, pbarClass: 'pbar-gold', goVideo: true },
-            { emoji: '📐', name: 'Calculus & Algebra', pill: 'JEE', meta: '51 of 62 lectures • Baseline: 60% → Now: 82%', pct: 82, pbarClass: 'pbar-green' },
-            { emoji: '⚡', name: 'Mechanics & Electrostatics', pill: 'JEE', meta: '34 of 55 lectures • Baseline: 52% → Now: 61%', pct: 61, pctText: '62', pbarStyle: { background: 'var(--navy3)' } },
-          ].map((c, i) => (
-            <div key={i} className="card"
-              style={{ cursor: 'pointer', transition: 'all 0.2s' }}
-              onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--gold)'}
-              onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}
-              onClick={c.goVideo ? () => onNav('video') : undefined}>
-              <div style={{ background: 'var(--navy)', borderRadius: '10px', height: '100px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '36px', marginBottom: '16px' }}>{c.emoji}</div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
-                <div style={{ fontFamily: 'var(--font-serif)', fontSize: '15px', fontWeight: 600 }}>{c.name}</div>
-                <span className="pill pill-gold">{c.pill}</span>
-              </div>
-              <div style={{ fontSize: '12px', color: 'var(--text3)', marginBottom: '14px' }}>{c.meta}</div>
-              <div className="pbar"><div className={`pbar-inner${c.pbarClass ? ' ' + c.pbarClass : ''}`} style={{ width: `${c.pct}%`, ...(c.pbarStyle || {}) }}></div></div>
-              <div style={{ fontSize: '11px', color: 'var(--text3)', marginTop: '5px', marginBottom: '14px' }}>{c.pctText || c.pct}% complete</div>
-              <button className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }} onClick={c.goVideo ? (e) => { e.stopPropagation(); onNav('video'); } : undefined}>Continue</button>
+      {/* ══════════ COURSES / SUBJECTS ══════════ */}
+      <div className={p('courses')} style={{ overflow: 'hidden' }}>
+        {courseSubject ? (() => {
+          const rec = subjectRecord.find(r => r.name === courseSubject);
+          if (!rec) return (
+            <div style={{ fontSize: '13px', color: 'var(--text3)', padding: '24px 0', textAlign: 'center' }}>
+              Subject not found.{' '}
+              <button className="btn btn-ghost btn-sm" onClick={() => setCourseSubject(null)}>Back to subjects</button>
             </div>
-          ))}
-        </div>
-      </div>
+          );
+          const th = SUBJ_THEME(rec.name);
+          const fmtDate = (d) => new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+          return (
+            <div key={rec.name}>
+              <button className="subj-back" onClick={() => setCourseSubject(null)}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+                All Subjects
+              </button>
 
-      {/* ══════════ VIDEO ══════════ */}
-      <div className={p('video')}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
-          <button className="btn btn-ghost btn-sm" onClick={() => onNav('courses')}>← Back</button>
-          <div style={{ fontSize: '12px', color: 'var(--text3)' }}>Physical Chemistry / Atomic Structure</div>
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: '22px' }}>
-          <div>
-            <div className="vplayer" onClick={() => onShowToast('Playing lecture...')}>
-              <div className="vthumb">
-                <div className="play-circle">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="var(--navy)"><polygon points="5,3 19,12 5,21"/></svg>
+              <div className="subj-hero" style={{ marginTop: '16px', background: th.grad }}>
+                <div className="subj-hero-orb"></div>
+                <div className="subj-hero-eyebrow">{rec.faculty ? 'Current Faculty' : 'Subject'}</div>
+                <div className="subj-hero-name">{rec.name}</div>
+                <div className="subj-hero-faculty">
+                  {rec.faculty ? <>Taught by <strong style={{ color: '#FDF8F0' }}>{rec.faculty}</strong></> : 'Awaiting faculty assignment'}
                 </div>
-                <div className="vthumb-label">Lecture 24 — Quantum Numbers &amp; Orbitals</div>
+                <div className="subj-chips">
+                  <div className="subj-chip"><div className="subj-chip-val">{rec.sessionCount}</div><div className="subj-chip-lbl">Sessions</div></div>
+                  <div className="subj-chip"><div className="subj-chip-val">{rec.testCount}</div><div className="subj-chip-lbl">Weekly Tests</div></div>
+                  <div className="subj-chip"><div className="subj-chip-val">{rec.resourceCount}</div><div className="subj-chip-lbl">Resources</div></div>
+                  <div className="subj-chip"><div className="subj-chip-val">{rec.qbCount}</div><div className="subj-chip-lbl">Question Bank</div></div>
+                </div>
+              </div>
+
+              <div className="subj-detail">
+                <div className="subj-panel" style={{ background: 'var(--cream)', borderLeft: `3px solid ${th.pill}` }}>
+                  <div className="subj-panel-title" style={{ color: th.pill }}>Sessions</div>
+                  {rec.sessionList.length === 0 && <div className="subj-empty">No sessions recorded for {rec.name} yet — they'll appear here as your mentor schedules them.</div>}
+                  {rec.sessionList.slice(0, 10).map((s, i) => (
+                    <div className="subj-row" key={s.id} style={{ animationDelay: `${i * 40}ms` }}>
+                      <div className="subj-row-title">{s.title}</div>
+                      <div className="subj-row-meta">{s.dayOfWeek}, {fmtDate(s.scheduledAt)} · {s.duration} min</div>
+                    </div>
+                  ))}
+                </div>
+                <div className="subj-panel" style={{ background: 'var(--cream)', borderLeft: `3px solid var(--gold)` }}>
+                  <div className="subj-panel-title" style={{ color: 'var(--gold)' }}>Recent Weekly Tests</div>
+                  {rec.testWeeks.length === 0 && <div className="subj-empty">Weekly tests will appear here once the test programme starts.</div>}
+                  {rec.testWeeks.slice(0, 10).map((w, i) => {
+                    const s = (w.subjects || []).find(x => String(x.subject).toLowerCase() === rec.name.toLowerCase());
+                    const pct = s && s.totalMarks > 0 ? Math.round(s.score / s.totalMarks * 100) : 0;
+                    return (
+                      <div className="subj-row" key={w.weekNumber} style={{ animationDelay: `${i * 40}ms` }}>
+                        <div className="subj-row-title">
+                          Week {String(w.weekNumber).slice(-2)}
+                          {w.testDate ? <span className="subj-row-meta" style={{ marginLeft: 6, fontWeight: 400 }}>· {fmtDate(w.testDate)}</span> : null}
+                        </div>
+                        <div className="subj-row-meta" style={{ fontWeight: 700, color: pct >= 70 ? 'var(--green)' : pct >= 40 ? 'var(--gold)' : 'var(--red)' }}>{pct}%</div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="subj-panel" style={{ background: 'var(--cream)', borderLeft: `3px solid var(--green)` }}>
+                  <div className="subj-panel-title" style={{ color: 'var(--green)' }}>Study Materials</div>
+                  {rec.resourceList.length === 0 && <div className="subj-empty">No resources shared for {rec.name} yet — new materials appear here automatically.</div>}
+                  {rec.resourceList.slice(0, 10).map((r, i) => (
+                    <div className="subj-row" key={r.id} style={{ animationDelay: `${i * 40}ms` }}>
+                      <div className="subj-row-title">{r.title}</div>
+                      <span className="pill subj-fac" style={{ background: 'var(--green-dim)', color: 'var(--green)' }}>{r.type}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="subj-panel" style={{ background: 'var(--cream)', borderLeft: `3px solid var(--navy3)` }}>
+                  <div className="subj-panel-title" style={{ color: 'var(--navy3)' }}>Question Bank</div>
+                  {rec.qbList.length === 0 && <div className="subj-empty">No question bank items for {rec.name} yet — practice sets will land here.</div>}
+                  {rec.qbList.slice(0, 10).map((r, i) => (
+                    <div className="subj-row" key={r.id} style={{ animationDelay: `${i * 40}ms` }}>
+                      <div className="subj-row-title">{r.title}</div>
+                      <span className="pill subj-fac" style={{ background: 'rgba(15,31,61,0.08)', color: 'var(--navy)' }}>{r.type}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
-            <div className="card">
-              <div style={{ fontFamily: 'var(--font-serif)', fontSize: '17px', fontWeight: 700, marginBottom: '4px' }}>Lecture 24: Quantum Numbers &amp; Orbitals</div>
-              <div style={{ fontSize: '12px', color: 'var(--text3)', marginBottom: '16px' }}>47 min • Physical Chemistry{mentor ? ` • ${mentor}` : ''}</div>
-              <div className="tabs">
-                {['Overview', 'Notes', 'Resources'].map((t, i) => (
-                  <div key={t} className={`tab${videoTab === i ? ' on' : ''}`} onClick={() => setVideoTab(i)}>{t}</div>
-                ))}
+          );
+        })() : (
+          <div className="subj-grid" style={{ paddingTop: '4px' }}>
+            {subjectRecord.map((rec, i) => {
+              const th = SUBJ_THEME(rec.name);
+              return (
+                <div className="subj-card" key={rec.name}
+                  style={{ animation: 'subjRise .45s cubic-bezier(.22,1,.36,1) backwards', animationDelay: `${i * 60}ms` }}
+                  onMouseEnter={e => e.currentTarget.style.borderColor = th.color}
+                  onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}
+                  onClick={() => setCourseSubject(rec.name)}>
+                  <div className="subj-card-top">
+                    <div className="subj-avatar" style={{ background: th.grad }}>{rec.name[0]}</div>
+                    {rec.faculty
+                      ? <span className="pill subj-fac" style={{ background: 'var(--gold-dim)', color: 'var(--gold)', border: '1px solid var(--border-gold)' }}><span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: 'var(--gold)', marginRight: 6 }} />{rec.faculty}</span>
+                      : <span className="pill subj-fac" style={{ background: 'var(--cream2)', color: 'var(--text3)' }}>Awaiting faculty</span>}
+                  </div>
+                  <div className="subj-name">{rec.name}</div>
+                  <div className="subj-sub">{rec.sessionCount} session{rec.sessionCount !== 1 ? 's' : ''} · {rec.testCount} test{rec.testCount !== 1 ? 's' : ''} · {rec.resourceCount} resource{rec.resourceCount !== 1 ? 's' : ''} · {rec.qbCount} QB item{rec.qbCount !== 1 ? 's' : ''}</div>
+                  <div className="subj-tiles">
+                    {[
+                      ['Sessions', rec.sessionCount, th.color],
+                      ['Tests', rec.testCount, 'var(--gold)'],
+                      ['Resources', rec.resourceCount, 'var(--green)'],
+                      ['QB', rec.qbCount, 'var(--navy3)'],
+                    ].map(([label, val, col]) => (
+                      <div className="subj-tile" key={label}>
+                        <div className="subj-tile-val" style={{ color: col }}>{val}</div>
+                        <div className="subj-tile-lbl">{label}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+            {subjectRecord.length === 0 && (
+              <div className="card" style={{ gridColumn: '1 / -1', padding: '28px', textAlign: 'center', color: 'var(--text3)', fontSize: '13px' }}>
+                No subject data yet. Your subjects and records will appear here as sessions and tests get recorded.
               </div>
-              <div style={{ fontSize: '13.5px', color: 'var(--text2)', lineHeight: 1.85 }}>In this lecture, we cover the four quantum numbers — principal (n), azimuthal (l), magnetic (m<sub>l</sub>), and spin (m<sub>s</sub>) — and how they uniquely describe the state of every electron. We also explore orbital shapes and their significance for JEE problems.</div>
-            </div>
+            )}
           </div>
-          <div className="card" style={{ height: 'fit-content' }}>
-            <div className="sh-title" style={{ marginBottom: '14px' }}>Course Content</div>
-            <div className="ch-item done-ch"><span className="ch-num">✓</span><span className="ch-title">Bohr Model</span><span className="ch-dur">38m</span></div>
-            <div className="ch-item done-ch"><span className="ch-num">✓</span><span className="ch-title">De Broglie &amp; Wave Nature</span><span className="ch-dur">44m</span></div>
-            <div className="ch-item done-ch"><span className="ch-num">✓</span><span className="ch-title">Heisenberg's Principle</span><span className="ch-dur">52m</span></div>
-            <div className="ch-item active-ch"><span className="ch-num">24</span><span className="ch-title">Quantum Numbers</span><span className="ch-dur">47m</span></div>
-            <div className="ch-item"><span className="ch-num">25</span><span className="ch-title">Electronic Configuration</span><span className="ch-dur">41m</span></div>
-            <div className="ch-item"><span className="ch-num">26</span><span className="ch-title">Periodic Trends</span><span className="ch-dur">35m</span></div>
-            <div className="ch-item"><span className="ch-num">27</span><span className="ch-title">Ionic Radius &amp; Patterns</span><span className="ch-dur">29m</span></div>
-          </div>
-        </div>
+        )}
       </div>
 
       {/* ══════════ SESSIONS ══════════ */}

@@ -10,9 +10,9 @@ Completed items are removed from this file once done (kept out entirely so no tr
 
 ## B. Unimplemented / advertised-but-not-built features
 
-### B5. 🟠 Courses / video player and Tests tabs are hardcoded mockups
-`frontend/src/components/student-lms/StudentContent.jsx:631–693` (courses + video player), `:800–828` (test cards)
-Course cards show fabricated progress ("36 of 48 lectures"); the video player and lecture list are hardcoded; "Start Test →" only toasts `'Launching test environment...'`. No course content / test-engine data source exists. Advertised-but-unbuilt.
+### B5. 🟠 Tests tab's four "Start Test" cards are hardcoded mockups
+`frontend/src/components/student-lms/StudentContent.jsx:800–828` (test cards)
+The four test cards ("JEE Advanced Simulation", "Organic Chemistry — Targeted", "JEE Advanced 2023", "Calculus Integration") are hardcoded; "Start Test →" only toasts `'Launching test environment...'`. Two advertise semester/mentor-assigned tests that are **not wanted by design** — tests are weekly, curriculum-owned only (no faculty-created variants). The tab's stat row (`Tests Taken / Latest Score / Latest Accuracy / Weak Area`) is **real** — it reads `weeklyScore` from `/api/student/scores`. The test-engine itself is a future build (weekly tests).
 
 ---
 
@@ -35,7 +35,7 @@ Course cards show fabricated progress ("36 of 48 lectures"); the video player an
 
 ## Suggested fix order (highest-impact, cheapest first)
 
-1. **B5 / C1** — either build the course/test engines or replace the hardcoded mockups with honest "Coming Soon" placeholders and remove fabricated dashboards.
+1. **B5 / C1** — either build the weekly test engine or cut the fake test cards; either build the analytics or replace the fabricated admin dashboards with honest placeholders.
 2. **C3** — decide whether Apex or Anchor owns `subjectFaculty`, and wire the correct plan's admin panel.
 
 ---

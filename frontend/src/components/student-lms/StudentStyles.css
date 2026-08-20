@@ -375,6 +375,58 @@ body.student-mode .pbar-gold { background: var(--gold); }
 body.student-mode .pbar-green { background: var(--green); }
 body.student-mode .pbar-navy { background: var(--navy3); }
 
+/* ── SUBJECT RECORD (Courses) ──
+   Rich gradient cards, soft glassy detail panels, staggered entrance. */
+body.student-mode .subj-hero { padding: 2.2rem 2rem; border-radius: var(--r-xl); color: #FDF8F0; position: relative; overflow: hidden; border: 1px solid rgba(255,255,255,0.14); box-shadow: 0 18px 40px rgba(15,31,61,0.25); }
+body.student-mode .subj-hero::before { content: ''; position: absolute; inset: 0; background: radial-gradient(120% 120% at 100% 0%, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0) 55%); pointer-events: none; }
+body.student-mode .subj-hero-orb { position: absolute; width: 260px; height: 260px; border-radius: 50%; right: -60px; top: -80px; background: radial-gradient(circle, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0) 70%); pointer-events: none; }
+body.student-mode .subj-hero-eyebrow { font-size: 11px; letter-spacing: .18em; text-transform: uppercase; font-weight: 600; color: rgba(253,248,240,0.72); }
+body.student-mode .subj-hero-name { font-family: var(--font-serif); font-size: 30px; font-weight: 700; line-height: 1.08; margin-top: 4px; color: #FDF8F0; }
+body.student-mode .subj-hero-faculty { font-size: 13px; color: rgba(253,248,240,0.82); margin-top: 8px; font-weight: 500; }
+
+body.student-mode .subj-chips { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 22px; }
+body.student-mode .subj-chip { background: rgba(253,248,240,0.10); border: 1px solid rgba(253,248,240,0.16); border-radius: var(--r-lg); padding: 14px 16px; backdrop-filter: blur(4px); transition: transform .18s ease, background .18s ease; }
+body.student-mode .subj-chip:hover { transform: translateY(-3px); background: rgba(253,248,240,0.16); }
+body.student-mode .subj-chip-val { font-family: var(--font-serif); font-size: 26px; font-weight: 700; line-height: 1; color: #FDF8F0; }
+body.student-mode .subj-chip-lbl { font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: rgba(253,248,240,0.66); margin-top: 6px; font-weight: 600; }
+
+body.student-mode .subj-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 18px; }
+body.student-mode .subj-card { background: var(--cream); border: 1px solid var(--border); border-radius: var(--r-xl); padding: 22px 22px 20px; position: relative; overflow: hidden; cursor: pointer; box-shadow: var(--shadow); transition: transform .22s cubic-bezier(.22,1,.36,1), box-shadow .22s ease, border-color .22s ease; }
+body.student-mode .subj-card:hover { transform: translateY(-6px); box-shadow: 0 20px 40px rgba(15,31,61,0.16); }
+body.student-mode .subj-card::after { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 4px; opacity: 0; transition: opacity .22s ease; }
+body.student-mode .subj-card:hover::after { opacity: 1; }
+body.student-mode .subj-card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
+body.student-mode .subj-avatar { width: 44px; height: 44px; border-radius: 13px; display: flex; align-items: center; justify-content: center; color: #fff; font-family: var(--font-serif); font-size: 20px; font-weight: 700; box-shadow: inset 0 -10px 20px rgba(0,0,0,0.18), 0 4px 12px rgba(0,0,0,0.14); }
+body.student-mode .subj-name { font-family: var(--font-serif); font-size: 18px; font-weight: 700; color: var(--text); margin-bottom: 2px; }
+body.student-mode .subj-sub { font-size: 12.5px; color: var(--text3); font-weight: 500; margin-bottom: 16px; }
+body.student-mode .subj-tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+body.student-mode .subj-tile { text-align: center; background: var(--cream2); border-radius: var(--r-lg); padding: 12px 4px 10px; border: 1px solid transparent; transition: all .18s ease; }
+body.student-mode .subj-card:hover .subj-tile { border-color: var(--border); background: #fff; }
+body.student-mode .subj-tile-val { font-family: var(--font-serif); font-size: 21px; font-weight: 700; line-height: 1.1; }
+body.student-mode .subj-tile-lbl { font-size: 9px; letter-spacing: .07em; text-transform: uppercase; color: var(--text3); font-weight: 600; margin-top: 4px; }
+body.student-mode .subj-fac { font-size: 10.5px; font-weight: 700; letter-spacing: .02em; padding: 4px 11px; border-radius: 20px; }
+
+/* Detail panel — glassy on the hero colour */
+body.student-mode .subj-detail { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 20px; animation: subjRise .4s cubic-bezier(.22,1,.36,1); }
+@keyframes subjRise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+body.student-mode .subj-panel { border-radius: var(--r-lg); padding: 18px 20px; border: 1px solid var(--border); box-shadow: var(--shadow); }
+body.student-mode .subj-panel-title { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; font-weight: 700; margin-bottom: 6px; }
+body.student-mode .subj-row { display: flex; justify-content: space-between; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--border); flex-wrap: wrap; align-items: baseline; animation: subjRow .3s ease backwards; }
+body.student-mode .subj-row:last-child { border-bottom: none; }
+@keyframes subjRow { from { opacity: 0; transform: translateX(-6px); } to { opacity: 1; transform: translateX(0); } }
+body.student-mode .subj-row-title { font-size: 13px; font-weight: 600; color: var(--text); }
+body.student-mode .subj-row-meta { font-size: 12px; color: var(--text3); white-space: nowrap; }
+body.student-mode .subj-empty { font-size: 13px; color: var(--text3); padding: 8px 0; font-style: italic; }
+
+/* back button */
+body.student-mode .subj-back { display: inline-flex; align-items: center; gap: 7px; border: 1px solid var(--border); background: var(--cream); color: var(--text2); font-family: var(--font-sans); font-size: 12.5px; font-weight: 600; padding: 8px 16px; border-radius: 10px; cursor: pointer; transition: all .18s ease; }
+body.student-mode .subj-back:hover { background: var(--navy); color: var(--gold2); border-color: var(--navy); transform: translateX(-2px); }
+
+@media (max-width: 900px) {
+  body.student-mode .subj-detail { grid-template-columns: 1fr; }
+  body.student-mode .subj-chips { grid-template-columns: repeat(2, 1fr); }
+}
+
 /* ── DIVIDER ── */
 body.student-mode .div { height: 1px; background: var(--border); margin: 18px 0; }
 
