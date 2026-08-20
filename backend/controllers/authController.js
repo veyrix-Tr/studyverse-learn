@@ -92,6 +92,16 @@ const login = async (req, res) => {
         plan: user.studentProfile?.plan || null,
       },
     });
+
+    // Admin audit trail — record admin/superadmin sign-ins
+    if (user.role === 'admin' || user.role === 'superadmin') {
+      require('../services/auditLogService').logAction({
+        adminUserId: user.id,
+        action: 'auth.login',
+        target: user.name,
+        metadata: { role: user.role, email: user.email },
+      }).catch(() => {});
+    }
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Login failed' });

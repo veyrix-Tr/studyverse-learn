@@ -142,6 +142,7 @@ model AdminProfile {
   approvedResources Resource[]
   approvedReports   WeeklyReport[]
   adminNotifs       AdminNotification[]
+  accessLogs        AdminAccessLog[]
 }
 
 // Admin-facing assignment tasks (mentor / subject-faculty / session).
@@ -447,4 +448,21 @@ model SessionRequest {
 
   @@index([studentId])
   @@index([status])
+}
+
+// Real audit trail of admin activity, surfaced on the dashboard's
+// "Super Admin Access Log". Every meaningful admin action is logged here
+// with who did it (acting admin) and when.
+model AdminAccessLog {
+  id        Int      @id @default(autoincrement())
+  action    String   // e.g. resource.approve | resource.decline | mentor.assign | faculty.assign | message.send | admin.create | admin.deactivate | admin.reactivate
+  target    String?  // human description of what was acted on (e.g. resource title, student name)
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  adminId  Int? // acting admin (null for system/cron driven actions)
+  admin    AdminProfile? @relation(fields: [adminId], references: [id], onDelete: SetNull)
+
+  @@index([adminId])
+  @@index([createdAt])
 }

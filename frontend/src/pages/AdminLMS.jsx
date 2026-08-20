@@ -25,6 +25,8 @@ const AdminLMS = ({ expectedRole }) => {
   const [sessionRequests, setSessionRequests] = useState([]);
   const [adminNotifs, setAdminNotifs] = useState([]);
   const [deactivated, setDeactivated] = useState(false);
+  const [analytics, setAnalytics] = useState(null);
+  const [accessLog, setAccessLog] = useState([]);
   const toastTimer        = useRef(null);
   const reportsRef        = useRef([]);
   const resourcesRef      = useRef([]);
@@ -98,6 +100,16 @@ const AdminLMS = ({ expectedRole }) => {
     fetch(`${import.meta.env.VITE_API_URL}/api/admin/${userId}/notifications`, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.ok ? r.json() : [])
       .then(data => { if (Array.isArray(data)) setAdminNotifs(data); })
+      .catch(() => {});
+
+    fetch(`${import.meta.env.VITE_API_URL}/api/admin/${userId}/analytics`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data && !data.error) setAnalytics(data); })
+      .catch(() => {});
+
+    fetch(`${import.meta.env.VITE_API_URL}/api/admin/${userId}/access-log`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : [])
+      .then(data => { if (Array.isArray(data)) setAccessLog(data); })
       .catch(() => {});
   }, []);
 
@@ -499,6 +511,8 @@ const AdminLMS = ({ expectedRole }) => {
           adminNotifications={adminNotifs}
           onMarkNotifRead={markNotifRead}
           onMarkAllNotifsRead={markAllNotifsRead}
+          analytics={analytics}
+          accessLog={accessLog}
         />
       </div>
       <AdminModals

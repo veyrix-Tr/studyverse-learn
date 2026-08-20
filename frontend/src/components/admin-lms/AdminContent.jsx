@@ -186,24 +186,57 @@ const DiagnosticModal = ({ modal, loading, onClose, onReset }) => {
   );
 };
 
-const chartData = [95, 112, 128, 142, 156, 184];
-const chartMax = Math.max(...chartData);
-const chartLabels = ['Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr'];
+const inr = (n) => '₹' + Number(n).toLocaleString('en-IN');
 
-const RevenueChart = () => (
-  <div className="rev-chart">
-    {chartData.map((v, i) => {
-      const h = Math.round((v / chartMax) * 118);
-      const isLast = i === chartData.length - 1;
-      return (
-        <div key={i} className="rev-bar-wrap">
-          <div className="rev-val">₹{v}K</div>
-          <div className="rev-bar" style={{ height: `${h}px`, background: isLast ? 'var(--gold)' : 'var(--navy3)' }}></div>
-        </div>
-      );
-    })}
-  </div>
-);
+const fmtLogTime = (iso) => {
+  if (!iso) return '';
+  const d = new Date(iso);
+  const s = (Date.now() - d.getTime()) / 1000;
+  if (s < 60) return 'just now';
+  if (s < 3600) return Math.floor(s / 60) + 'm ago';
+  if (s < 86400) return Math.floor(s / 3600) + 'h ago';
+  if (s < 604800) return Math.floor(s / 86400) + 'd ago';
+  return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+};
+
+const ACTION_LABEL = {
+  'auth.login':        'signed in',
+  'faculty.create':    'created faculty',
+  'mentor.assign':     'assigned mentor to',
+  'mentor.clear':      'removed mentor from',
+  'faculty.assign':    'assigned faculty to',
+  'faculty.clear':     'removed faculty from',
+  'admin.create':      'created admin',
+  'admin.deactivate':  'deactivated admin',
+  'admin.reactivate':  'reactivated admin',
+  'message.send':      'sent a message',
+  'resource.approve':  'approved resource',
+  'resource.decline':  'declined resource',
+  'report.approve':    'approved report',
+  'report.reject':     'rejected report',
+  'report.send':       'sent reports',
+  'session.assign':    'assigned session',
+};
+
+const RevenueChart = ({ data = [], height = 118, goldLast = true }) => {
+  const vals = data.map(d => d.amount ?? 0);
+  const chartMax = Math.max(1, ...vals);
+  return (
+    <div className="rev-chart">
+      {vals.map((v, i) => {
+        const h = Math.round((v / chartMax) * height);
+        const isLast = goldLast && i === vals.length - 1;
+        const hasValue = v > 0;
+        return (
+          <div key={i} className="rev-bar-wrap">
+            {hasValue && <div className="rev-val">{inr(v)}</div>}
+            <div className="rev-bar" style={{ height: `${Math.max(hasValue ? 6 : 2, h)}px`, background: hasValue ? (isLast ? 'var(--gold)' : 'var(--navy3)') : 'rgba(15,31,61,0.07)' }}></div>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
 
 const getGreeting = () => { const h = new Date().getHours(); if (h < 12) return 'Good morning'; if (h < 17) return 'Good afternoon'; return 'Good evening'; };
 
@@ -215,9 +248,22 @@ const fmtWeekRange = (weekStartDate) => {
   return `${fmt(mon)} – ${fmt(sun)}`;
 };
 
-const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, students = [], facultyList = [], onOpenMessage, isSuperAdmin, adminAccounts = [], onDeactivateAdmin, onReactivateAdmin, resources = [], onApproveResource, onDeclineResource, sentMessages = [], onSendMessage, parentReports = [], onApproveReport, onRejectReport, onSendReports, onApproveAllReports, onStudentMentorUpdated, onStudentSubjectFacultyUpdated, sessionRequests = [], onSessionRequestsUpdated, adminNotifications = [], onMarkNotifRead, onMarkAllNotifsRead }) => {
+const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, students = [], facultyList = [], onOpenMessage, isSuperAdmin, adminAccounts = [], onDeactivateAdmin, onReactivateAdmin, resources = [], onApproveResource, onDeclineResource, sentMessages = [], onSendMessage, parentReports = [], onApproveReport, onRejectReport, onSendReports, onApproveAllReports, onStudentMentorUpdated, onStudentSubjectFacultyUpdated, sessionRequests = [], onSessionRequestsUpdated, adminNotifications = [], onMarkNotifRead, onMarkAllNotifsRead, analytics = null, accessLog = [] }) => {
   const firstName = profile?.name?.split(' ')[0] || 'there';
   const [studentsTab, setStudentsTab] = useState(0);
+
+  const activeStudents    = analytics?.activeStudents ?? students.filter(s => ['forge','apex','anchor'].includes(s.plan)).length;
+  const premiumStudents   = analytics?.premiumStudents ?? students.filter(s => ['forge','apex','anchor'].includes(s.plan)).length;
+  const diagnosticsDone   = analytics?.diagnosticsCompleted ?? students.filter(s => s.diagnosticScore != null).length;
+  const totalStudents     = analytics?.totalStudents ?? students.length;
+  const avgImprovement    = analytics?.avgImprovement ?? 0;
+  const thisMonthRevenue  = analytics?.thisMonthRevenue ?? 0;
+  const totalRevenue      = analytics?.totalRevenue ?? 0;
+  const newThisMonth      = analytics?.newThisMonth ?? 0;
+  const newLastMonth      = analytics?.newLastMonth ?? 0;
+  const monthlyRevenue    = analytics?.monthlyRevenue ?? [];
+  const revenueByPlan     = analytics?.revenueByPlan ?? [];
+  const pipeline          = analytics?.pipeline ?? [];
 
   const [diagModal, setDiagModal]   = useState(null);
   const [diagLoading, setDiagLoading] = useState(false);
@@ -435,45 +481,40 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
             <div style={{ fontSize: '11px', color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '.1em', fontWeight: '500', marginBottom: '4px' }}>{new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</div>
             <div style={{ fontFamily: 'var(--fs)', fontSize: '23px', fontWeight: '700' }}>{getGreeting()}, {firstName}.</div>
             <div style={{ fontSize: '13.5px', color: 'var(--text2)', marginTop: '3px' }}>
-              <strong style={{ color: 'var(--gold)' }}>3 new enquiries</strong> · <strong style={{ color: 'var(--green)' }}>{pendingResources.length} approval{pendingResources.length !== 1 ? 's' : ''} pending</strong>
+              <strong style={{ color: 'var(--gold)' }}>{newThisMonth} new enrolment{newThisMonth !== 1 ? 's' : ''} this month</strong> · <strong style={{ color: 'var(--green)' }}>{pendingResources.length} approval{pendingResources.length !== 1 ? 's' : ''} pending</strong>
             </div>
           </div>
         </div>
 
         <div className="g4 mb">
-          <div className="stat sa-navy"><div className="stat-l">Active Students</div><div className="stat-v">12</div><div className="stat-n up">↑ 2 this month</div></div>
+          <div className="stat sa-navy"><div className="stat-l">Active Students</div><div className="stat-v">{activeStudents}</div><div className="stat-n up">of {totalStudents} total <strong style={{ fontSize: '12px' }}>△ {newThisMonth}</strong> this mo</div></div>
           {isSuperAdmin
-            ? <div className="stat sa-gold"><div className="stat-l">Revenue (April)</div><div className="stat-v" style={{ fontSize: '22px' }}>₹1.84L</div><div className="stat-n up">↑ 18% vs March</div></div>
-            : <div className="stat sa-gold"><div className="stat-l">Diagnostics Done</div><div className="stat-v">{students.filter(s => s.diagnosticScore !== null && s.diagnosticScore !== undefined).length}</div><div className="stat-n up">of {students.length} students</div></div>
+            ? <div className="stat sa-gold"><div className="stat-l">Revenue (this month)</div><div className="stat-v" style={{ fontSize: '22px' }}>{inr(thisMonthRevenue)}</div><div className="stat-n up">{newThisMonth} new enrollments</div></div>
+            : <div className="stat sa-gold"><div className="stat-l">Diagnostics Done</div><div className="stat-v">{diagnosticsDone}</div><div className="stat-n up">of {totalStudents} students</div></div>
           }
-          <div className="stat sa-blue"><div className="stat-l">Premium Students</div><div className="stat-v">{students.filter(s => ['forge','apex','anchor'].includes(s.plan)).length}</div><div className="stat-n up">active subscriptions</div></div>
-          <div className="stat sa-green"><div className="stat-l">Avg Improvement</div><div className="stat-v">+76</div><div className="stat-n up">marks across cohort</div></div>
+          <div className="stat sa-blue"><div className="stat-l">Premium Students</div><div className="stat-v">{premiumStudents}</div><div className="stat-n up">{totalStudents - premiumStudents} on free tier</div></div>
+          <div className="stat sa-green"><div className="stat-l">Avg Improvement</div><div className="stat-v">{avgImprovement > 0 ? `+${avgImprovement}` : '0'}</div><div className="stat-n up">marks across cohort</div></div>
         </div>
 
         <div className="g2 mb">
           {isSuperAdmin && (
             <div className="card">
               <div className="sh"><div className="sh-t">Monthly Revenue</div><span className="sh-a" onClick={() => onNav('revenue')}>Full report →</span></div>
-              <RevenueChart />
+              <RevenueChart data={monthlyRevenue} />
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0 2px' }}>
-                {chartLabels.map(l => <span key={l} style={{ fontSize: '10px', color: 'var(--text3)' }}>{l}</span>)}
+                {monthlyRevenue.map(d => <span key={d.month} style={{ fontSize: '10px', color: 'var(--text3)' }}>{d.month}</span>)}
               </div>
             </div>
           )}
           <div className="card">
             <div className="sh"><div className="sh-t">Enrollment Pipeline</div><span className="sh-a" onClick={() => onNav('pipeline')}>Full pipeline →</span></div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {[
-                { label: 'Enquiry Received', count: 3, color: 'var(--text3)', btn: 'View →' },
-                { label: 'Diagnostic Scheduled', count: 2, color: 'var(--blue)', btn: 'View →' },
-                { label: 'Program Fit Review', count: 1, color: 'var(--orange)', btn: 'Review →' },
-                { label: 'Active Students', count: 12, color: 'var(--green)', btn: null }
-              ].map(({ label, count, color, btn }) => (
-                <div key={label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 12px', background: 'var(--cream2)', borderRadius: 'var(--r)', borderLeft: `3px solid ${color}` }}>
+              {pipeline.map(({ label, count }) => (
+                <div key={label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 12px', background: 'var(--cream2)', borderRadius: 'var(--r)', borderLeft: `3px solid ${label === 'Active Students' ? 'var(--green)' : label === 'Diagnostic Completed' ? 'var(--blue)' : label === 'Program Fit & Review' ? 'var(--orange)' : 'var(--text3)'}` }}>
                   <div style={{ fontSize: '13px', fontWeight: '500' }}>{label}</div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <span style={{ fontFamily: 'var(--fs)', fontSize: '16px', fontWeight: '700' }}>{count}</span>
-                    {btn && <button className="btn btn-ghost btn-sm" onClick={() => onNav('pipeline')}>{btn}</button>}
+                    {label !== 'Active Students' && <button className="btn btn-ghost btn-sm" onClick={() => onNav('pipeline')}>View →</button>}
                   </div>
                 </div>
               ))}
@@ -512,149 +553,79 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
         </div>
 
         <div className="pipeline">
-          <div className="pipe-col stage-enquiry">
-            <div className="pipe-header">
-              <div className="pipe-title" style={{ color: 'var(--text3)' }}>Enquiry</div>
-              <div className="pipe-count" style={{ background: 'rgba(15,31,61,0.07)', color: 'var(--text3)' }}>3</div>
-            </div>
-            <div className="pipe-cards">
-              {[
-                { name: 'Arjun Sharma', exam: 'JEE Mains 2026 · Delhi', date: 'Enquired Apr 15', msg: 'Diagnostic call scheduled for Arjun ✓' },
-                { name: 'Meera Pillai', exam: 'NEET 2026 · Chennai', date: 'Enquired Apr 14', msg: 'Diagnostic call scheduled ✓' },
-                { name: 'Rohan Tiwari', exam: 'JEE Advanced 2026 · Lucknow', date: 'Enquired Apr 13', msg: 'Diagnostic call scheduled ✓' }
-              ].map(({ name, exam, date, msg }) => (
-                <div key={name} className="pipe-card">
-                  <div className="pc-name">{name}</div>
-                  <div className="pc-exam">{exam}</div>
-                  <div className="pc-date">{date}</div>
-                  <div className="pc-action" style={{ background: 'var(--bdim)', color: 'var(--blue)' }} onClick={() => onShowToast(msg)}>Schedule Diagnostic →</div>
+          {[
+            { stage: 'Enquiry', color: 'var(--text3)', bg: 'rgba(15,31,61,0.07)', label: 'New registrations on the platform', key: 'Enquiry Received', action: 'View students →', sc: 'stage-enquiry' },
+            { stage: 'Diagnostic', color: 'var(--blue)', bg: 'var(--bdim)', label: 'Students who completed the diagnostic', key: 'Diagnostic Completed', action: 'View students →', sc: 'stage-diag' },
+            { stage: 'Fit Review', color: 'var(--orange)', bg: 'var(--odim)', label: 'Premium or session-booked students', key: 'Program Fit & Review', action: 'Review →', sc: 'stage-fit' },
+            { stage: 'Active', color: 'var(--green)', bg: 'var(--gd)', label: 'Currently enrolled & learning', key: 'Active Students', action: null, sc: 'stage-active' },
+          ].map(({ stage, color, bg, label, key, action, sc }) => {
+            const count = pipeline.find(p => p.label === key)?.count ?? 0;
+            return (
+              <div key={stage} className={`pipe-col ${sc}`}>
+                <div className="pipe-header">
+                  <div className="pipe-title" style={{ color }}>{stage}</div>
+                  <div className="pipe-count" style={{ background: bg, color }}>{count}</div>
                 </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="pipe-col stage-diag">
-            <div className="pipe-header">
-              <div className="pipe-title" style={{ color: 'var(--blue)' }}>Diagnostic</div>
-              <div className="pipe-count" style={{ background: 'var(--bdim)', color: 'var(--blue)' }}>2</div>
-            </div>
-            <div className="pipe-cards">
-              {[
-                { name: 'Ishaan Kapoor', exam: 'JEE Mains 2026 · Mumbai', date: 'Call: Apr 17, 3PM' },
-                { name: 'Tanvi Nair', exam: 'NEET 2026 · Bangalore', date: 'Call: Apr 18, 11AM' }
-              ].map(({ name, exam, date }) => (
-                <div key={name} className="pipe-card">
-                  <div className="pc-name">{name}</div>
-                  <div className="pc-exam">{exam}</div>
-                  <div className="pc-date">{date}</div>
-                  <div className="pc-action" style={{ background: 'var(--gdim)', color: 'var(--green)' }} onClick={() => onShowToast('Moved to Fit Review ✓')}>Mark Done → Fit Review</div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="pipe-col stage-fit">
-            <div className="pipe-header">
-              <div className="pipe-title" style={{ color: 'var(--orange)' }}>Fit Review</div>
-              <div className="pipe-count" style={{ background: 'var(--odim)', color: 'var(--orange)' }}>1</div>
-            </div>
-            <div className="pipe-cards">
-              <div className="pipe-card" style={{ borderColor: 'var(--orange)' }}>
-                <div className="pc-name">Devika Rao</div>
-                <div className="pc-exam">JEE Mains 2026 · Hyderabad</div>
-                <div className="pc-date">Diagnostic done Apr 12</div>
-                <div style={{ fontSize: '11px', color: 'var(--text2)', margin: '6px 0 4px', lineHeight: '1.5' }}>Score gap: 180 marks. Commitment: high. Fit: strong.</div>
-                <div style={{ display: 'flex', gap: '5px' }}>
-                  <div className="pc-action" style={{ flex: 1, background: 'var(--gdim)', color: 'var(--green)', fontSize: '10.5px' }} onClick={() => onShowToast('Devika enrolled. Assign faculty next. ✓')}>Enroll ✓</div>
-                  <div className="pc-action" style={{ flex: 1, background: 'var(--rdim)', color: 'var(--red)', fontSize: '10.5px' }} onClick={() => onShowToast('Declined with explanation sent.')}>Decline</div>
+                <div className="pipe-cards">
+                  <div className="pipe-card">
+                    <div className="pc-name">{label}</div>
+                    <div className="pc-date">{count === 1 ? `${count} student` : `${count} students`} at this stage</div>
+                    {action && <div className="pc-action" style={{ background: bg, color }} onClick={() => onNav('students')}>{action}</div>}
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
-
-          <div className="pipe-col stage-enrolled">
-            <div className="pipe-header">
-              <div className="pipe-title" style={{ color: 'var(--gold)' }}>Enrolled</div>
-              <div className="pipe-count" style={{ background: 'var(--gd)', color: 'var(--gold)' }}>2</div>
-            </div>
-            <div className="pipe-cards">
-              <div className="pipe-card">
-                <div className="pc-name">Vanya Rao</div>
-                <div className="pc-exam">JEE Mains 2026</div>
-                <div className="pc-date">Enrolled Apr 10 · Wk 1</div>
-                <div className="pc-action" style={{ background: 'var(--gd)', color: 'var(--gold)' }} onClick={() => onNav('assign')}>Assign Faculty & Mentor →</div>
-              </div>
-              <div className="pipe-card">
-                <div className="pc-name">Siddharth Jain</div>
-                <div className="pc-exam">JEE Mains 2026</div>
-                <div className="pc-date">Enrolled Apr 8 · Wk 2</div>
-                <div className="pc-action" style={{ background: 'var(--gdim)', color: 'var(--green)', fontSize: '10.5px' }}>Faculty: Ajay ✓</div>
-              </div>
-            </div>
-          </div>
-
-          <div className="pipe-col stage-active">
-            <div className="pipe-header">
-              <div className="pipe-title" style={{ color: 'var(--green)' }}>Active</div>
-              <div className="pipe-count" style={{ background: 'var(--gdim)', color: 'var(--green)' }}>12</div>
-            </div>
-            <div className="pipe-cards">
-              {[
-                { name: 'Rahul Mehta', detail: 'JEE • Wk 9 • Ajay', score: '388 → 462 (+74)' },
-                { name: 'Sneha Kapoor', detail: 'JEE • Wk 11 • Ajay', score: '420 → 511 (+91)' },
-                { name: 'Priya Desai', detail: 'NEET • Wk 7 • Ajay', score: '350 → 418 (+68)' },
-                { name: 'Kavya Menon', detail: 'NEET • Wk 12 • Ajay', score: '440 → 548 (+108)' }
-              ].map(({ name, detail, score }) => (
-                <div key={name} className="pipe-card">
-                  <div className="pc-name">{name}</div>
-                  <div className="pc-exam">{detail}</div>
-                  <div style={{ fontSize: '11px', color: 'var(--green)', marginTop: '4px' }}>{score}</div>
-                </div>
-              ))}
-              <div style={{ fontSize: '11px', color: 'var(--text3)', textAlign: 'center', padding: '8px 0' }}>+8 more active students</div>
-            </div>
-          </div>
+            );
+          })}
         </div>
       </div>
 
       {/* ══ REVENUE & FEES ══ */}
       <div className={pg(isSuperAdmin ? 'revenue' : '__never__')} id="p-revenue">
         <div className="g4 mb">
-          <div className="stat sa-gold"><div className="stat-l">Total Revenue (YTD)</div><div className="stat-v" style={{ fontSize: '22px' }}>₹14.2L</div><div className="stat-n up">↑ 34% vs last year</div></div>
-          <div className="stat sa-green"><div className="stat-l">April Collected</div><div className="stat-v" style={{ fontSize: '22px' }}>₹1.56L</div><div className="stat-n up">85% of target</div></div>
-          <div className="stat sa-blue"><div className="stat-l">Premium Subscribers</div><div className="stat-v" style={{ fontSize: '22px' }}>{students.filter(s => ['forge','apex','anchor'].includes(s.plan)).length}</div><div className="stat-n up">active this month</div></div>
-          <div className="stat sa-navy"><div className="stat-l">Avg Revenue/Student</div><div className="stat-v" style={{ fontSize: '22px' }}>₹15.3K</div><div className="stat-n neu">per month</div></div>
+          <div className="stat sa-gold"><div className="stat-l">Total Revenue</div><div className="stat-v" style={{ fontSize: '22px' }}>{inr(totalRevenue)}</div><div className="stat-n up">all-time collected</div></div>
+          <div className="stat sa-green"><div className="stat-l">This Month Collected</div><div className="stat-v" style={{ fontSize: '22px' }}>{inr(thisMonthRevenue)}</div><div className="stat-n up">{newThisMonth} new enrollment{newThisMonth !== 1 ? 's' : ''}</div></div>
+          <div className="stat sa-blue"><div className="stat-l">Premium Subscribers</div><div className="stat-v" style={{ fontSize: '22px' }}>{premiumStudents}</div><div className="stat-n up">of {totalStudents} total students</div></div>
+          <div className="stat sa-navy"><div className="stat-l">Avg Revenue/Student</div><div className="stat-v" style={{ fontSize: '22px' }}>{inr(premiumStudents ? Math.round(totalRevenue / premiumStudents) : 0)}</div><div className="stat-n neu">per premium student</div></div>
         </div>
 
         <div className="g2 mb">
           <div className="card">
             <div className="sh"><div className="sh-t">Revenue — Last 6 Months</div></div>
-            <RevenueChart />
+            <RevenueChart data={monthlyRevenue} />
             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0 2px' }}>
-              {chartLabels.map(l => <span key={l} style={{ fontSize: '10px', color: 'var(--text3)' }}>{l}</span>)}
+              {monthlyRevenue.map(d => <span key={d.month} style={{ fontSize: '10px', color: 'var(--text3)' }}>{d.month}</span>)}
             </div>
             <div style={{ display: 'flex', gap: '16px', marginTop: '14px', borderTop: '1px solid var(--b)', paddingTop: '12px' }}>
-              <div style={{ textAlign: 'center', flex: 1 }}><div style={{ fontFamily: 'var(--fs)', fontSize: '16px', fontWeight: '700', color: 'var(--text)' }}>₹1.84L</div><div style={{ fontSize: '10.5px', color: 'var(--text3)' }}>Apr target</div></div>
-              <div style={{ textAlign: 'center', flex: 1 }}><div style={{ fontFamily: 'var(--fs)', fontSize: '16px', fontWeight: '700', color: 'var(--green)' }}>₹1.56L</div><div style={{ fontSize: '10.5px', color: 'var(--text3)' }}>Collected</div></div>
-              <div style={{ textAlign: 'center', flex: 1 }}><div style={{ fontFamily: 'var(--fs)', fontSize: '16px', fontWeight: '700', color: 'var(--blue)' }}>{students.filter(s => ['forge','apex','anchor'].includes(s.plan)).length}</div><div style={{ fontSize: '10.5px', color: 'var(--text3)' }}>Premium Active</div></div>
+              <div style={{ textAlign: 'center', flex: 1 }}><div style={{ fontFamily: 'var(--fs)', fontSize: '16px', fontWeight: '700', color: 'var(--text)' }}>{inr(totalRevenue)}</div><div style={{ fontSize: '10.5px', color: 'var(--text3)' }}>Total revenue</div></div>
+              <div style={{ textAlign: 'center', flex: 1 }}><div style={{ fontFamily: 'var(--fs)', fontSize: '16px', fontWeight: '700', color: 'var(--green)' }}>{inr(thisMonthRevenue)}</div><div style={{ fontSize: '10.5px', color: 'var(--text3)' }}>This month</div></div>
+              <div style={{ textAlign: 'center', flex: 1 }}><div style={{ fontFamily: 'var(--fs)', fontSize: '16px', fontWeight: '700', color: 'var(--blue)' }}>{premiumStudents}</div><div style={{ fontSize: '10.5px', color: 'var(--text3)' }}>Premium Active</div></div>
             </div>
           </div>
           <div className="card">
             <div className="sh"><div className="sh-t">Revenue by Plan</div></div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {[
-                { label: 'Full Program (1-to-1)', value: '₹1.12L', width: '72%', barClass: 'pb-gold', sub: '8 students · ₹14,000/mo avg' },
-                { label: 'Unlock Plan', value: '₹32K', width: '21%', barClass: 'pb-navy', sub: '4 students · ₹8,000/mo avg' },
-                { label: 'Single Sessions', value: '₹12K', width: '8%', barClass: 'pb-green', sub: '6 sessions booked' }
-              ].map(({ label, value, width, barClass, sub }) => (
-                <div key={label}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12.5px', marginBottom: '5px' }}>
-                    <span style={{ fontWeight: '500' }}>{label}</span><span style={{ fontWeight: '700', color: 'var(--text)' }}>{value}</span>
+              {(revenueByPlan.length ? revenueByPlan : [
+                { plan: 'forge', amount: 0 },
+                { plan: 'apex', amount: 0 },
+                { plan: 'anchor', amount: 0 },
+              ]).map(({ plan, amount }) => {
+                const maxAmt = Math.max(1, ...revenueByPlan.map(p => p.amount));
+                const width = Math.max(4, Math.round((amount / maxAmt) * 100));
+                const barClass = plan === 'anchor' ? 'pb-gold' : plan === 'apex' ? 'pb-navy' : 'pb-green';
+                const label = plan.charAt(0).toUpperCase() + plan.slice(1);
+                return (
+                  <div key={plan}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12.5px', marginBottom: '5px' }}>
+                      <span style={{ fontWeight: '500' }}>{label}</span><span style={{ fontWeight: '700', color: 'var(--text)' }}>{inr(amount)}</span>
+                    </div>
+                    <div className="pbar" style={{ height: '8px' }}><div className={`pbar-inner ${barClass}`} style={{ width: `${width}%` }}></div></div>
+                    <div style={{ fontSize: '11px', color: 'var(--text3)', marginTop: '3px' }}>{amount > 0 ? 'active subscription revenue' : 'no paid subscriptions'}</div>
                   </div>
-                  <div className="pbar" style={{ height: '8px' }}><div className={`pbar-inner ${barClass}`} style={{ width }}></div></div>
-                  <div style={{ fontSize: '11px', color: 'var(--text3)', marginTop: '3px' }}>{sub}</div>
-                </div>
-              ))}
+                );
+              })}
+              {revenueByPlan.every(p => p.amount === 0) && (
+                <div style={{ fontSize: '12px', color: 'var(--text3)', padding: '8px 0' }}>No paid plan revenue recorded yet.</div>
+              )}
             </div>
           </div>
         </div>
@@ -1661,15 +1632,15 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
             <div className="card">
               <div className="sh-t" style={{ marginBottom: '14px' }}>Super Admin Access Log</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
-                {[
-                  { actor: 'Vinay', action: 'approved 2 resources', when: '2h ago' },
-                  { actor: 'Vinay', action: "updated Meera's permissions", when: 'Apr 13' },
-                  { actor: 'Vinay', action: 'created admin: Sanjay Pillai', when: 'Feb 3' }
-                ].map(({ actor, action, when }, i, arr) => (
-                  <div key={i} style={{ padding: '9px 0', borderBottom: i < arr.length - 1 ? '1px solid var(--b)' : 'none', fontSize: '12.5px' }}>
-                    <span style={{ color: 'var(--text)' }}>{actor}</span>{' '}
-                    <span style={{ color: 'var(--text3)' }}>{action}</span>
-                    <span style={{ color: 'var(--text3)', marginLeft: 'auto', float: 'right', fontSize: '11px' }}>{when}</span>
+                {accessLog.length === 0 ? (
+                  <div style={{ fontSize: '13px', color: 'var(--text3)', padding: '10px 0' }}>
+                    No admin activity recorded yet. Actions (logins, approvals, assignments, messages) will appear here automatically.
+                  </div>
+                ) : accessLog.slice(0, 8).map((e, i, arr) => (
+                  <div key={e.id} style={{ padding: '9px 0', borderBottom: i < arr.length - 1 ? '1px solid var(--b)' : 'none', fontSize: '12.5px' }}>
+                    <span style={{ color: 'var(--text)', fontWeight: '600' }}>{e.adminName}</span>{' '}
+                    <span style={{ color: 'var(--text3)' }}>{ACTION_LABEL[e.action] || e.action}{e.target ? ` ${e.target}` : ''}</span>
+                    <span style={{ color: 'var(--text3)', marginLeft: 'auto', float: 'right', fontSize: '11px' }}>{fmtLogTime(e.createdAt)}</span>
                   </div>
                 ))}
               </div>

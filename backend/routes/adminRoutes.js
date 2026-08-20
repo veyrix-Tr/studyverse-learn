@@ -3,6 +3,7 @@ const router   = express.Router({ mergeParams: true });
 const prisma   = require('../lib/prisma');
 const { requireAuth, requireAdmin } = require('../middleware/auth');
 const { ensureAssignmentTasks } = require('../services/adminTaskService');
+const { logAction } = require('../services/auditLogService');
 
 const EXAM_SUBJECTS = {
   'JEE Mains':    ['Physics', 'Chemistry', 'Maths'],
@@ -178,6 +179,7 @@ router.post('/faculty', requireAuth, requireAdmin, async (req, res) => {
       },
       credentials: { email, password },
     });
+    logAction({ adminUserId: req.params.userId, action: 'faculty.create', target: user.name, metadata: { subject, email, qualification: qualification || null } });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to create faculty' });
@@ -193,6 +195,7 @@ router.put('/student/:studentUserId/mentor', requireAuth, requireAdmin, async (r
     const { mentorId } = req.body; // null to clear, facultyProfile.id to assign
     const profile = await prisma.studentProfile.findUnique({
       where: { userId: req.params.studentUserId },
+      include: { user: { select: { name: true } } },
     });
     if (!profile) return res.status(404).json({ error: 'Student not found' });
 
@@ -215,6 +218,11 @@ router.put('/student/:studentUserId/mentor', requireAuth, requireAdmin, async (r
     }
 
     res.json({ mentorId: updated.mentorId, mentorName: updated.mentor?.user?.name || null });
+    if (mentorId != null && mentorId !== undefined && mentorId !== '') {
+      logAction({ adminUserId: req.params.userId, action: 'mentor.assign', target: profile.user.name, metadata: { mentorId: parseInt(mentorId), mentorName: updated.mentor?.user?.name || null } });
+    } else {
+      logAction({ adminUserId: req.params.userId, action: 'mentor.clear', target: profile.user.name });
+    }
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to update mentor assignment' });
@@ -230,7 +238,7 @@ router.put('/student/:studentUserId/subject-faculty', requireAuth, requireAdmin,
     const { subject, facultyId } = req.body; // subject: "Physics"|"Chemistry"|..., facultyId: number or null
     if (!subject) return res.status(400).json({ error: 'subject is required' });
 
-    const profile = await prisma.studentProfile.findUnique({ where: { userId: req.params.studentUserId } });
+    const profile = await prisma.studentProfile.findUnique({ where: { userId: req.params.studentUserId }, include: { user: { select: { name: true } } } });
     if (!profile) return res.status(404).json({ error: 'Student not found' });
 
     const current = (profile.subjectFaculty || {});
@@ -254,6 +262,11 @@ router.put('/student/:studentUserId/subject-faculty', requireAuth, requireAdmin,
     }
 
     res.json({ subjectFaculty: result.subjectFaculty });
+    if (facultyId) {
+      logAction({ adminUserId: req.params.userId, action: 'faculty.assign', target: profile.user.name, metadata: { subject, facultyId: parseInt(facultyId) } });
+    } else {
+      logAction({ adminUserId: req.params.userId, action: 'faculty.clear', target: profile.user.name, metadata: { subject } });
+    }
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to update subject faculty' });
@@ -395,6 +408,7 @@ router.post('/admins', requireAuth, requireAdmin, async (req, res) => {
       admin: { id: user.adminProfile.id, userId: user.id, name: user.name, email: user.email, isActive: true },
       credentials: { email: user.email, password },
     });
+    logAction({ adminUserId: req.params.userId, action: 'admin.create', target: user.name, metadata: { email: user.email, department: department || 'Operations' } });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to create admin' });
@@ -409,6 +423,8 @@ router.put('/admins/:id/deactivate', requireAuth, requireAdmin, async (req, res)
     if (!userId) return res.status(400).json({ error: 'Invalid ID' });
     await prisma.adminProfile.update({ where: { userId }, data: { isActive: false } });
     res.json({ success: true });
+    const targetAdmin = await prisma.user.findUnique({ where: { id: userId }, select: { name: true } });
+    logAction({ adminUserId: req.params.userId, action: 'admin.deactivate', target: targetAdmin?.name || userId });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to deactivate' });
@@ -423,6 +439,8 @@ router.put('/admins/:id/reactivate', requireAuth, requireAdmin, async (req, res)
     if (!userId) return res.status(400).json({ error: 'Invalid ID' });
     await prisma.adminProfile.update({ where: { userId }, data: { isActive: true } });
     res.json({ success: true });
+    const targetAdmin = await prisma.user.findUnique({ where: { id: userId }, select: { name: true } });
+    logAction({ adminUserId: req.params.userId, action: 'admin.reactivate', target: targetAdmin?.name || userId });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to reactivate' });
@@ -450,6 +468,7 @@ router.post('/messages', requireAuth, requireAdmin, async (req, res) => {
       await prisma.adminMessage.createMany({
         data: ids.map(sid => ({ content: msgContent, type: msgType, studentId: sid, adminId: ap.id, createdAt: sentAt })),
       });
+      logAction({ adminUserId: req.params.userId, action: 'message.send', target: `${msgType} to ${ids.length} selected student(s)`, metadata: { type: msgType, count: ids.length } });
       // Fix 5: return sentAt so frontend gets a consistent, real timestamp
       return res.json({ success: true, sent: ids.length, sentAt: sentAt.toISOString() });
     }
@@ -470,6 +489,7 @@ router.post('/messages', requireAuth, requireAdmin, async (req, res) => {
       await prisma.adminMessage.createMany({
         data: students.map(s => ({ content: msgContent, type: msgType, studentId: s.id, adminId: ap.id, createdAt: sentAt })),
       });
+      logAction({ adminUserId: req.params.userId, action: 'message.send', target: `${msgType} to ${students.length} student(s)${targetPlan ? ` (${targetPlan})` : ''}`, metadata: { type: msgType, count: students.length, targetPlan: targetPlan ?? null } });
       return res.json({ success: true, sent: students.length, sentAt: sentAt.toISOString() });
     }
 
@@ -479,6 +499,7 @@ router.post('/messages', requireAuth, requireAdmin, async (req, res) => {
       data: { content: msgContent, type: msgType, studentId: sid, adminId: ap.id },
     });
     res.json({ success: true, id: msg.id });
+    logAction({ adminUserId: req.params.userId, action: 'message.send', target: `${msgType} to student #${sid}`, metadata: { type: msgType } });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to send message' });
@@ -611,6 +632,7 @@ router.put('/resources/:id/approve', requireAuth, requireAdmin, async (req, res)
     }).catch(() => {});
 
     res.json({ success: true });
+    logAction({ adminUserId: req.params.userId, action: 'resource.approve', target: resource.title, metadata: { subject: resource.subject, type: resource.type } });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to approve resource' });
@@ -638,6 +660,7 @@ router.put('/resources/:id/decline', requireAuth, requireAdmin, async (req, res)
     }).catch(() => {});
 
     res.json({ success: true });
+    logAction({ adminUserId: req.params.userId, action: 'resource.decline', target: resource.title, metadata: { subject: resource.subject, type: resource.type, reason: reason || null } });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to decline resource' });
@@ -708,6 +731,7 @@ router.put('/reports/:id/approve', requireAuth, requireAdmin, async (req, res) =
     });
 
     res.json({ success: true, report: updated });
+    logAction({ adminUserId: req.params.userId, action: 'report.approve', target: `Weekly report #${id}`, metadata: { weekNumber: updated.weekNumber, studentId: updated.studentId } });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to approve report' });
@@ -734,6 +758,7 @@ router.put('/reports/:id/reject', requireAuth, requireAdmin, async (req, res) =>
     });
 
     res.json({ success: true, report: updated });
+    logAction({ adminUserId: req.params.userId, action: 'report.reject', target: `Weekly report #${id}`, metadata: { weekNumber: updated.weekNumber, studentId: updated.studentId, reason: reason || null } });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to reject report' });
@@ -752,6 +777,7 @@ router.post('/reports/approve-all', requireAuth, requireAdmin, async (req, res) 
     });
 
     res.json({ success: true, approved: result.count });
+    logAction({ adminUserId: req.params.userId, action: 'report.approve', target: `${result.count} weekly report(s)`, metadata: { count: result.count } });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to approve reports' });
@@ -788,6 +814,7 @@ router.post('/reports/send', requireAuth, requireAdmin, async (req, res) => {
     ]);
 
     res.json({ success: true, sent: approved.length });
+    logAction({ adminUserId: req.params.userId, action: 'report.send', target: `${approved.length} weekly report(s)`, metadata: { count: approved.length } });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to send reports' });
@@ -910,6 +937,7 @@ router.put('/session-requests/:id/assign', requireAuth, requireAdmin, async (req
     });
 
     res.json({ success: true, request: updated, conflicts: [] });
+    logAction({ adminUserId: req.params.userId, action: 'session.assign', target: request.student.user.name, metadata: { topic: request.topic, facultyId: parseInt(facultyId), scheduledAt, durationMin: parseInt(durationMin) } });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to assign session' });
@@ -979,6 +1007,125 @@ router.put('/notifications/:id/read', requireAuth, requireAdmin, async (req, res
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: 'Failed to mark read' });
+  }
+});
+
+// ── ANALYTICS ──────────────────────────────────────────────────────────────
+// GET /api/admin/:userId/analytics — real dashboard numbers computed live from
+// the actual database (students, payments, weekly scores, sessions).
+
+const PREMIUM_PLANS = ['forge', 'apex', 'anchor'];
+
+router.get('/analytics', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const [students, payments, weeklyScores] = await Promise.all([
+      prisma.studentProfile.findMany({
+        select: {
+          id: true, plan: true, createdAt: true, diagnosticScore: true,
+        },
+      }),
+      prisma.payment.findMany({
+        select: { orderAmount: true, orderStatus: true, plan: true, createdAt: true, paidAt: true, goal: true },
+      }),
+      prisma.weeklyScore.findMany({
+        select: { studentId: true, score: true, weekNumber: true },
+        orderBy: [{ studentId: 'asc' }, { weekNumber: 'asc' }],
+      }),
+    ]);
+
+    const sessionRows = await prisma.sessionStudent.findMany({ select: { studentId: true } });
+    const legacySessions = await prisma.session.findMany({ where: { studentId: { not: null } }, select: { studentId: true } });
+    const sessionStudentIds = new Set([...sessionRows.map(r => r.studentId), ...legacySessions.map(r => r.studentId)]);
+
+    const totalStudents = students.length;
+    const premiumStudents = students.filter(s => PREMIUM_PLANS.includes(s.plan)).length;
+    const activeStudents = new Set();
+    students.forEach(s => { if (PREMIUM_PLANS.includes(s.plan) || sessionStudentIds.has(s.id)) activeStudents.add(s.id); });
+    const diagnosticsCompleted = students.filter(s => s.diagnosticScore != null).length;
+
+    // Avg improvement across students who have weekly scores:
+    // (last week's score − first week's score), averaged over students.
+    const byStudent = {};
+    for (const w of weeklyScores) {
+      if (!byStudent[w.studentId]) byStudent[w.studentId] = { first: null, last: null };
+      if (byStudent[w.studentId].first === null) byStudent[w.studentId].first = w.score;
+      byStudent[w.studentId].last = w.score;
+    }
+    let impSum = 0, impCount = 0;
+    for (const k in byStudent) { if (byStudent[k].first !== null && byStudent[k].last !== null) { impSum += byStudent[k].last - byStudent[k].first; impCount++; } }
+    const avgImprovement = impCount > 0 ? Math.round(impSum / impCount) : 0;
+
+    // New enrollments this month / last month
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const newThisMonth  = students.filter(s => s.createdAt >= monthStart).length;
+    const newLastMonth  = students.filter(s => s.createdAt >= lastMonthStart && s.createdAt < monthStart).length;
+
+    // Revenue — only from actually PAID payments (plan upgrades + pay-per-session)
+    const paid = payments.filter(p => p.orderStatus === 'PAID');
+    const totalRevenue = paid.reduce((a, p) => a + p.orderAmount, 0);
+    const thisMonthRevenue = paid.filter(p => p.paidAt && p.paidAt >= monthStart).reduce((a, p) => a + p.orderAmount, 0);
+
+    // Revenue by plan (plan goal only)
+    const revByPlan = {};
+    paid.filter(p => p.goal === 'plan' && p.plan).forEach(p => {
+      revByPlan[p.plan] = (revByPlan[p.plan] || 0) + p.orderAmount;
+    });
+    const revenueByPlan = PREMIUM_PLANS.map(plan => ({ plan, amount: Math.round(revByPlan[plan] || 0) }));
+
+    // Monthly revenue last 6 months (by actual paid date), zero-filled
+    const monthlyRevenue = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const start = d;
+      const end = new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
+      const amount = paid.filter(p => p.paidAt && p.paidAt >= start && p.paidAt < end).reduce((a, p) => a + p.orderAmount, 0);
+      monthlyRevenue.push({ month: d.toLocaleString('en-IN', { month: 'short' }), amount: Math.round(amount) });
+    }
+
+    // Enrollment funnel — real stages derived from DB state
+    const withDiagnostic = students.filter(s => s.diagnosticScore != null).length;
+    const pipeline = [
+      { label: 'Enquiry Received', count: totalStudents },
+      { label: 'Diagnostic Completed', count: withDiagnostic },
+      { label: 'Program Fit & Review', count: premiumStudents + sessionStudentIds.size },
+      { label: 'Active Students', count: activeStudents.size },
+    ];
+
+    res.json({
+      totalStudents, premiumStudents, activeStudents: activeStudents.size,
+      diagnosticsCompleted, avgImprovement,
+      newThisMonth, newLastMonth,
+      totalRevenue: Math.round(totalRevenue),
+      thisMonthRevenue: Math.round(thisMonthRevenue),
+      revenueByPlan, monthlyRevenue, pipeline,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to compute analytics' });
+  }
+});
+
+// GET /api/admin/:userId/access-log — real admin audit trail, newest first
+router.get('/access-log', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const entries = await prisma.adminAccessLog.findMany({
+      include: { admin: { include: { user: { select: { name: true } } } } },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+    });
+    res.json(entries.map(e => ({
+      id: e.id,
+      action: e.action,
+      target: e.target,
+      metadata: e.metadata,
+      adminName: e.admin?.user?.name || 'System',
+      createdAt: e.createdAt,
+    })));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch access log' });
   }
 });
 
