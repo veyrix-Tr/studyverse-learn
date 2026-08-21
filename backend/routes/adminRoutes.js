@@ -1067,12 +1067,16 @@ router.get('/analytics', requireAuth, requireAdmin, async (req, res) => {
     const totalRevenue = paid.reduce((a, p) => a + p.orderAmount, 0);
     const thisMonthRevenue = paid.filter(p => p.paidAt && p.paidAt >= monthStart).reduce((a, p) => a + p.orderAmount, 0);
 
-    // Revenue by plan (plan goal only)
+    // Revenue by plan (plan goal + pay-per-session as "Session")
     const revByPlan = {};
-    paid.filter(p => p.goal === 'plan' && p.plan).forEach(p => {
+    paid.filter(p => p.plan && p.goal === 'plan').forEach(p => {
       revByPlan[p.plan] = (revByPlan[p.plan] || 0) + p.orderAmount;
     });
-    const revenueByPlan = PREMIUM_PLANS.map(plan => ({ plan, amount: Math.round(revByPlan[plan] || 0) }));
+    const sessionRev = paid.filter(p => p.goal === 'session').reduce((a, p) => a + p.orderAmount, 0);
+    const revenueByPlan = [
+      ...PREMIUM_PLANS.map(plan => ({ plan, amount: Math.round(revByPlan[plan] || 0) })),
+      ...(sessionRev > 0 ? [{ plan: 'session', amount: Math.round(sessionRev) }] : []),
+    ];
 
     // Monthly revenue last 6 months (by actual paid date), zero-filled
     const monthlyRevenue = [];
@@ -1089,7 +1093,7 @@ router.get('/analytics', requireAuth, requireAdmin, async (req, res) => {
     const pipeline = [
       { label: 'Enquiry Received', count: totalStudents },
       { label: 'Diagnostic Completed', count: withDiagnostic },
-      { label: 'Program Fit & Review', count: premiumStudents + sessionStudentIds.size },
+      { label: 'Program Fit & Review', count: activeStudents.size },
       { label: 'Active Students', count: activeStudents.size },
     ];
 

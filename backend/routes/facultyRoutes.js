@@ -41,6 +41,16 @@ const EXAM_SUBJECTS = {
   'NEET':         ['Physics', 'Chemistry', 'Biology'],
 };
 
+// A faculty "owns" an Apex student only when an admin explicitly assigned them
+// for at least one subject via the student's subjectFaculty map. There is no
+// automatic grade/subject matching — anything a faculty sees/schedules is scoped
+// to these explicit assignments plus their Anchor mentees (mentorId).
+const assignedTo = (fp, sp) => {
+  const sf = sp.subjectFaculty;
+  if (!sf || typeof sf !== 'object') return false;
+  return Object.values(sf).includes(fp.id);
+};
+
 // GET /api/faculty/sessions
 router.get('/sessions', requireAuth, async (req, res) => {
   try {
@@ -76,13 +86,8 @@ router.get('/sessions', requireAuth, async (req, res) => {
         enrolledStudents = [s.student.user.name];
       } else {
         const eligible = allPremiumStudents.filter(sp => {
-          if (sp.plan === 'apex') {
-            return sp.grade === s.grade && (EXAM_SUBJECTS[sp.examTarget] || []).includes(s.subject);
-          }
-          const sf = sp.subjectFaculty;
-          return sf && Object.entries(sf).some(([subj, facId]) =>
-            subj.toLowerCase() === s.subject.toLowerCase() && facId === fp.id
-          );
+          if (sp.plan === 'apex') return assignedTo(fp, sp);
+          return sp.mentorId === fp.id;
         });
         enrolledCount = eligible.length;
         enrolledStudents = eligible.map(sp => sp.user.name);
@@ -141,6 +146,11 @@ router.post('/sessions', requireAuth, async (req, res) => {
       if (!isApex && !isMentee) {
         return res.status(400).json({ error: `${st.user.name} is not eligible for this session (not an Apex student or your mentee)` });
       }
+      // Faculty can only schedule academic sessions with Apex students an admin
+      // has explicitly assigned to them; mentees are always reachable.
+      if (isApex && !isMentee && !assignedTo(fp, st)) {
+        return res.status(400).json({ error: `${st.user.name} has not been assigned to you. Ask an admin to assign this student to you.` });
+      }
       if (!st.grade) {
         return res.status(400).json({ error: `${st.user.name} has no grade set on their profile yet` });
       }
@@ -161,8 +171,14 @@ router.post('/sessions', requireAuth, async (req, res) => {
     }
     for (const st of students) {
       const isApex = st.plan === 'apex';
-      if (!allMentees && isApex && !(EXAM_SUBJECTS[st.examTarget] || []).includes(effectiveSubject)) {
-        return res.status(400).json({ error: `${st.user.name} does not study ${effectiveSubject}` });
+      if (!allMentees && isApex) {
+        if (!(EXAM_SUBJECTS[st.examTarget] || []).includes(effectiveSubject)) {
+          return res.status(400).json({ error: `${st.user.name} does not study ${effectiveSubject}` });
+        }
+        const at = (st.subjectFaculty || {})[effectiveSubject];
+        if (at !== fp.id) {
+          return res.status(400).json({ error: `You are not ${st.user.name}'s assigned ${effectiveSubject} faculty. Ask an admin to assign you.` });
+        }
       }
     }
 
@@ -327,44 +343,21 @@ router.get('/doubts', requireAuth, async (req, res) => {
 });
 
 // GET /api/faculty/students
-// Students whose grade + exam curriculum includes this faculty's subject (via sessions)
+// Apex students that an admin explicitly assigned to this faculty (via the
+// student's subjectFaculty map). No automatic grade/subject matching.
 router.get('/students', requireAuth, async (req, res) => {
   try {
     const fp = await prisma.facultyProfile.findUnique({ where: { userId: req.params.userId } });
     if (!fp || !fp.subject) return res.json([]);
 
-    // Grades this faculty teaches for their subject
-    const gradeSessions = await prisma.session.findMany({
-      where: { facultyId: fp.id, subject: fp.subject },
-      select: { grade: true },
-      distinct: ['grade'],
-    });
-    const grades = gradeSessions.map(s => s.grade);
-    if (grades.length === 0) return res.json([]);
-
-    // Apex students in those grades whose exam curriculum includes this faculty's subject
+    // Only Apex students the admin explicitly handed to this faculty.
     const apexStudents = await prisma.studentProfile.findMany({
-      where: { grade: { in: grades }, plan: 'apex' },
+      where: { plan: 'apex' },
       include: { user: { select: { name: true } } },
     });
-    const relevantApex = apexStudents.filter(sp =>
-      (EXAM_SUBJECTS[sp.examTarget] || []).includes(fp.subject)
-    );
+    const relevantApex = apexStudents.filter(sp => assignedTo(fp, sp));
 
-    // Anchor students where this faculty is assigned for this subject via subjectFaculty map
-    const anchorStudents = await prisma.studentProfile.findMany({
-      where: { plan: 'anchor' },
-      include: { user: { select: { name: true } } },
-    });
-    const relevantAnchor = anchorStudents.filter(sp => {
-      const sf = sp.subjectFaculty;
-      if (!sf || typeof sf !== 'object') return false;
-      return Object.entries(sf).some(([subj, facId]) =>
-        subj.toLowerCase() === fp.subject.toLowerCase() && facId === fp.id
-      );
-    });
-
-    const relevant = [...relevantApex, ...relevantAnchor];
+    const relevant = relevantApex;
 
     const now = new Date();
     const result = await Promise.all(relevant.map(async (sp) => {
@@ -398,19 +391,23 @@ router.get('/students', requireAuth, async (req, res) => {
 });
 
 // GET /api/faculty/apex-students — students a faculty can schedule a session with:
-// their Apex students (subject-filtered client-side) plus their own mentees.
+// their explicitly-assigned Apex students plus their own Anchor mentees.
 router.get('/apex-students', requireAuth, async (req, res) => {
   try {
     const fp = await prisma.facultyProfile.findUnique({ where: { userId: req.params.userId } });
     if (!fp) return res.json([]);
 
     const students = await prisma.studentProfile.findMany({
-      where: { OR: [{ plan: 'apex', grade: { not: null } }, { mentorId: fp.id }] },
+      where: { OR: [{ plan: 'apex' }, { mentorId: fp.id }] },
       include: { user: { select: { name: true } } },
       orderBy: { user: { name: 'asc' } },
     });
 
-    res.json(students.map(sp => ({
+    const reachable = students.filter(sp =>
+      sp.mentorId === fp.id || sp.plan === 'apex' && assignedTo(fp, sp)
+    );
+
+    res.json(reachable.map(sp => ({
       id: sp.id,
       name: sp.user.name,
       grade: sp.grade,
@@ -533,23 +530,13 @@ router.post('/broadcast', requireAuth, async (req, res) => {
     });
     if (!fp || !fp.subject) return res.status(403).json({ error: 'Not a faculty member' });
 
-    // Find all eligible premium students (same logic as /students)
-    const gradeSessions = await prisma.session.findMany({
-      where: { facultyId: fp.id, subject: fp.subject },
-      select: { grade: true },
-      distinct: ['grade'],
-    });
-    const grades = gradeSessions.map(s => s.grade);
-    if (grades.length === 0) return res.json({ success: true, notified: 0 });
-
+    // Notify only the faculty's explicitly-assigned students + their mentees.
     const students = await prisma.studentProfile.findMany({
       where: { plan: { in: ['apex', 'anchor'] } },
     });
-    const eligible = students.filter(sp => {
-      if (sp.plan === 'apex') return grades.includes(sp.grade) && (EXAM_SUBJECTS[sp.examTarget] || []).includes(fp.subject);
-      const sf = sp.subjectFaculty;
-      return sf && Object.entries(sf).some(([subj, facId]) => subj.toLowerCase() === fp.subject.toLowerCase() && facId === fp.id);
-    });
+    const eligible = students.filter(sp =>
+      sp.mentorId === fp.id || assignedTo(fp, sp)
+    );
     if (eligible.length === 0) return res.json({ success: true, notified: 0 });
 
     await prisma.facultyNotification.createMany({

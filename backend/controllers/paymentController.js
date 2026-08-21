@@ -13,7 +13,7 @@
 
 const prisma        = require('../lib/prisma');
 const cashfree      = require('../services/cashfreeService');
-const { sendOtpEmail } = require('../services/emailService'); // reused for receipts
+const { sendReceiptEmail } = require('../services/emailService');
 
 // ── Config from env ─────────────────────────────────────────────────────────
 
@@ -145,7 +145,7 @@ const applyPaymentSuccess = async (payment) => {
         ? `your new ${payment.plan} plan`
         : 'your 1-on-1 session request';
       if (payment.customerEmail) {
-        await sendOtpEmail(payment.customerEmail, `Payment received for ${label}.`);
+        await sendReceiptEmail(payment.customerEmail, label, payment.orderAmount);
       }
     } catch (e) { /* ignore */ }
   }

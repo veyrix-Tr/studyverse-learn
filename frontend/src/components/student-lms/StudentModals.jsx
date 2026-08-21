@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
+import CashfreePayModal from '../payment/CashfreePayModal';
 
 const EXAM_SUBJECTS = {
   'JEE Mains':    ['Physics', 'Chemistry', 'Maths'],
@@ -19,12 +20,27 @@ const StudentModals = ({ openModal, onClose, onShowToast, toast, profile, onDoub
   const [sessionTopic, setSessionTopic] = useState('');
   const [sessionDate, setSessionDate] = useState('');
   const [sessionTime, setSessionTime] = useState('Morning (9–12)');
+  const [sessionPhone, setSessionPhone] = useState('');
   const [sessionNote, setSessionNote] = useState('');
   const [sending, setSending] = useState(false);
+  const [payOpen, setPayOpen] = useState(false);
 
-  const handleSendSession = async () => {
+  const isApex = profile?.studentProfile?.plan === 'apex' || false;
+
+  // Apex students get a free request; everyone else pays ₹99 via Cashfree
+  // (the backend /session-request only serves Apex, pay-per-session is ₹99).
+  const startBooking = async () => {
     if (!sessionTopic.trim()) { onShowToast('Please enter a topic'); return; }
     if (!sessionDate) { onShowToast('Please pick a preferred date'); return; }
+    if (!isApex) {
+      if (!/^\d{10}$/.test(sessionPhone.replace(/\D/g, ''))) { onShowToast('Please enter a valid 10-digit phone number so we can reach you'); return; }
+      setPayOpen(true);
+      return;
+    }
+    await submitFreeRequest();
+  };
+
+  const submitFreeRequest = async () => {
     setSending(true);
     try {
       const token = localStorage.getItem('token');
@@ -94,12 +110,25 @@ const StudentModals = ({ openModal, onClose, onShowToast, toast, profile, onDoub
             </div>
           </div>
           <div className="fg"><label>Any specific doubt to address?</label><textarea className="fi" rows="2" placeholder="Optional — helps your faculty prepare before the session" value={sessionNote} onChange={e => setSessionNote(e.target.value)} /></div>
+          {!isApex && (
+            <div className="fg"><label>Phone number (for the faculty to reach you)</label><input className="fi" type="tel" inputMode="numeric" maxLength={10} placeholder="10-digit number" value={sessionPhone} onChange={e => setSessionPhone(e.target.value.replace(/\D/g, ''))} /></div>
+          )}
           <div className="ma">
             <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
-            <button className="btn btn-primary" onClick={handleSendSession} disabled={sending}>{sending ? 'Sending…' : 'Send Request'}</button>
+            <button className="btn btn-primary" onClick={startBooking} disabled={sending}>{sending ? 'Sending…' : (isApex ? 'Send Request' : 'Continue to Payment ₹99')}</button>
           </div>
         </div>
       </div>
+
+      <CashfreePayModal
+        open={payOpen}
+        onClose={() => setPayOpen(false)}
+        mode="session"
+        userId={userId}
+        profile={profile}
+        sessionData={{ topic: sessionTopic.trim(), phone: sessionPhone, preferredTime: `${sessionDate} — ${sessionTime}${sessionNote ? ' · ' + sessionNote : ''}` }}
+        onSuccess={() => { setPayOpen(false); setSessionTopic(''); setSessionDate(''); setSessionTime('Morning (9–12)'); setSessionNote(''); setSessionPhone(''); onClose(); onShowToast('Payment received! We\'ll reach out within 24h ✓'); }}
+      />
 
       {/* Doubt Modal */}
       <div className={`overlay${isOpen('doubt-modal')}`} onClick={e => e.target.classList.contains('overlay') && onClose()}>

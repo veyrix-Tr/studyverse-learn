@@ -49,4 +49,43 @@ const sendOtpEmail = async (toEmail, otp, purpose = 'registration') => {
   }
 };
 
-module.exports = { sendOtpEmail };
+// Sends a payment receipt to a paying customer (distinct from the OTP template).
+const sendReceiptEmail = async (toEmail, label, amount) => {
+  try {
+    await axios.post(
+      'https://api.brevo.com/v3/smtp/email',
+      {
+        sender: {
+          name:  'Studyverse',
+          email: process.env.BREVO_SENDER_EMAIL,
+        },
+        to: [{ email: toEmail }],
+        subject: 'Payment received — Studyverse',
+        htmlContent: `
+        <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px;">
+          <h2 style="color:#0F1F3D;margin-bottom:8px;">Payment received</h2>
+          <p style="color:#4A5568;margin-bottom:24px;">Thanks for your payment! Here's your confirmation for ${label}.</p>
+          <div style="background:#F5EFE3;border-radius:10px;padding:24px;margin-bottom:24px;">
+            <div style="color:#8896B3;font-size:13px;margin-bottom:6px;">Amount paid</div>
+            <div style="font-size:28px;font-weight:700;color:#0F1F3D;">₹${Number(amount || 0).toLocaleString('en-IN')}</div>
+          </div>
+          <p style="color:#8896B3;font-size:13px;">If you have any questions, contact the Studyverse team.</p>
+        </div>`,
+      },
+      {
+        headers: {
+          'api-key':      process.env.BREVO_API_KEY,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    console.log(`Payment receipt sent to ${toEmail}`);
+    return true;
+  } catch (error) {
+    console.error('Receipt email send failed:', error.response?.data || error.message);
+    return false;
+  }
+};
+
+module.exports = { sendOtpEmail, sendReceiptEmail };

@@ -265,7 +265,7 @@ router.get('/sessions', requireAuth, async (req, res) => {
       duration: s.duration,
       note: s.note || null,
       facultyName: s.faculty.user.name,
-      enrolledCount: s.students.length || 1,
+      enrolledCount: s.students.length || (s.studentId ? 1 : 0),
       enrolledStudents: s.students.length ? s.students.map(ss => ss.student.user.name) : (s.student?.user?.name ? [s.student.user.name] : []),
       hasZoom: !!s.zoomMeetingId,
     })));
