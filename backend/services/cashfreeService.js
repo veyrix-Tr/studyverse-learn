@@ -4,8 +4,7 @@
 // All credentials come from environment variables:
 //   CASHFREE_MODE          = "TEST" (sandbox) | "PROD" (live)
 //   CASHFREE_APP_ID        = Cashfree client id (x-client-id)
-//   CASHFREE_SECRET_KEY    = Cashfree client secret (x-client-secret)
-//   CASHFREE_WEBHOOK_SECRET= shared secret used to verify webhook signatures
+//   CASHFREE_SECRET_KEY    = Cashfree client secret (x-client-secret) — also used for webhook signature verification
 //
 // In TEST mode we talk to https://sandbox.cashfree.com, in PROD https://api.cashfree.com.
 // When CASHFREE_MODE is not TEST, we default to PROD so live traffic is never
@@ -27,11 +26,25 @@ const mode = () => String(process.env.CASHFREE_MODE || '').toUpperCase() === 'TE
 const baseURL = () => CASHFREE_BASE_URLS[mode()];
 
 // Config is read lazily so tests / env overrides work after require-time.
-const config = () => ({
-  appId:     process.env.CASHFREE_APP_ID,
-  secretKey: process.env.CASHFREE_SECRET_KEY,
-  apiVersion: process.env.CASHFREE_API_VERSION || CASHFREE_API_VERSION,
-});
+// In PROD mode, validates that keys are not sandbox credentials.
+const config = () => {
+  const appId     = process.env.CASHFREE_APP_ID;
+  const secretKey = process.env.CASHFREE_SECRET_KEY;
+  const apiVersion = process.env.CASHFREE_API_VERSION || CASHFREE_API_VERSION;
+
+  if (mode() === 'PROD') {
+    if (!appId || !secretKey) {
+      throw new Error('CASHFREE: PROD mode requires CASHFREE_APP_ID and CASHFREE_SECRET_KEY');
+    }
+    if (String(appId).startsWith('TEST') || String(secretKey).startsWith('cfsk_ma_test')) {
+      const err = new Error('CASHFREE: PROD mode active but keys look like TEST/sandbox credentials. Aborting.');
+      err.cashfree_config_error = true;
+      throw err;
+    }
+  }
+
+  return { appId, secretKey, apiVersion };
+};
 
 const headers = () => {
   const { appId, secretKey, apiVersion } = config();
@@ -96,12 +109,15 @@ const getOrder = async (orderId) => {
 
 // ── Signature / webhook verification ────────────────────────────────────────
 
-// Cashfree signs webhooks by HMAC-SHA256 of the raw request body using the
-// webhook secret. The signature arrives in the "x-webhook-signature" header.
-const verifyWebhookSignature = (rawBody, signature) => {
-  const secret = process.env.CASHFREE_WEBHOOK_SECRET;
-  if (!secret || !rawBody || !signature) return false;
-  const expected = crypto.createHmac('sha256', secret).update(rawBody).digest('hex');
+// Cashfree signs webhooks as: Base64(HMAC-SHA256(timestamp + rawBody, clientSecret))
+// The signature arrives in "x-webhook-signature", timestamp in "x-webhook-timestamp".
+// The secret used is the PG Client Secret (CASHFREE_SECRET_KEY), NOT a separate key.
+const verifyWebhookSignature = (rawBody, signature, timestamp) => {
+  const secret = process.env.CASHFREE_SECRET_KEY;
+  if (!secret || !rawBody || !signature || !timestamp) return false;
+
+  const signedPayload = String(timestamp) + String(rawBody);
+  const expected = crypto.createHmac('sha256', secret).update(signedPayload).digest('base64');
 
   // Constant-time comparison to avoid timing attacks.
   const a = Buffer.from(String(expected));

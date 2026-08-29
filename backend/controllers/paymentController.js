@@ -297,14 +297,16 @@ const verifyOrder = async (req, res) => {
 
 // POST /api/payment/webhook  (public, signature-verified)
 // Cashfree posts order events here. We verify the HMAC before trusting it.
+// Signature = Base64(HMAC-SHA256(timestamp + rawBody, clientSecret))
 const webhook = async (req, res) => {
   const signature = req.get('x-webhook-signature');
+  const timestamp = req.get('x-webhook-timestamp');
   const raw = req.rawBody || JSON.stringify(req.body);
 
-  // If no webhook secret is configured we still allow processing (dev mode) but
-  // warn loudly. In production always set CASHFREE_WEBHOOK_SECRET.
-  const secretSet = !!process.env.CASHFREE_WEBHOOK_SECRET;
-  if (secretSet && !cashfree.verifyWebhookSignature(raw, signature)) {
+  // If no client secret is configured we still allow processing (dev mode) but
+  // warn loudly. In production always set CASHFREE_SECRET_KEY.
+  const secretSet = !!process.env.CASHFREE_SECRET_KEY;
+  if (secretSet && !cashfree.verifyWebhookSignature(raw, signature, timestamp)) {
     return res.status(401).json({ error: 'Invalid webhook signature' });
   }
 
