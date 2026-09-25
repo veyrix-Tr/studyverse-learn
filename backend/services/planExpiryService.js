@@ -13,6 +13,19 @@ const { resolveExpiredPlan } = require('./planAccessService');
 async function downgradeExpiredPlans() {
   const now = new Date();
 
+  // Close out the ledger rows whose window has passed. durationDays > 0 keeps
+  // immediate actions (a manual move to Spark) marked as active until they are
+  // superseded, rather than flipping them to 'expired' on the next sweep.
+  //
+  // This runs on every sweep, *before* the no-op early return below: a payment
+  // can push planEndDate past a comp's endDate, so a grant may lapse while its
+  // profile is still live. Skipping the close-out there left the row 'active'
+  // indefinitely (wrong history, plus a Revoke button that always 400s).
+  await prisma.planGrant.updateMany({
+    where: { status: 'active', durationDays: { gt: 0 }, endDate: { lt: now } },
+    data: { status: 'expired' },
+  });
+
   const expired = await prisma.studentProfile.findMany({
     where: {
       plan: { not: 'spark' },
@@ -41,14 +54,6 @@ async function downgradeExpiredPlans() {
     if (next.plan === 'spark') downgraded += 1;
     else restored += 1;
   }
-
-  // Close out the ledger rows whose window has passed. durationDays > 0 keeps
-  // immediate actions (a manual move to Spark) marked as active until they are
-  // superseded, rather than flipping them to 'expired' on the next sweep.
-  await prisma.planGrant.updateMany({
-    where: { status: 'active', durationDays: { gt: 0 }, endDate: { lt: now } },
-    data: { status: 'expired' },
-  });
 
   if (downgraded || restored) {
     console.log(
