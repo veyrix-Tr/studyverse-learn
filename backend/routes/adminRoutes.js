@@ -4,6 +4,7 @@ const prisma   = require('../lib/prisma');
 const { requireAuth, requireAdmin } = require('../middleware/auth');
 const { ensureAssignmentTasks } = require('../services/adminTaskService');
 const { logAction } = require('../services/auditLogService');
+const { getEffectivePlan } = require('../services/planAccessService');
 
 const EXAM_SUBJECTS = {
   'JEE Mains':    ['Physics', 'Chemistry', 'Maths'],
@@ -357,6 +358,254 @@ router.get('/student/:studentUserId/diagnostic', requireAuth, requireAdmin, asyn
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to fetch diagnostic' });
+  }
+});
+
+// ── Manual plan grants (superadmin only) ─────────────────────────────────────
+// A superadmin can hand a student an Apex upgrade for a fixed number of days,
+// or put them back on the free Spark plan. Whatever the student was on — and
+// any time left on it — is captured as a fallback on their profile, so it is
+// handed straight back when the grant expires or is revoked. Every change is
+// written to the PlanGrant ledger, to the student's notifications and to the
+// Super Admin access log.
+
+// Manual grants are deliberately narrow: Apex is the only upgrade, plus Spark
+// for putting any student back on the free plan.
+// Plans a superadmin may assign. A free student can be put on any of them; a
+// student already on a paid plan can only go up to Apex (or back to Spark).
+const MANUAL_GRANT_PLANS = ['forge', 'apex', 'anchor', 'spark'];
+const PLAN_LABEL = { forge: 'Forge', apex: 'Apex', anchor: 'Anchor', spark: 'Spark' };
+
+const planSummary = (profile) => ({
+  plan: profile.plan,
+  planEndDate: profile.planEndDate,
+  fallbackPlan: profile.fallbackPlan,
+  fallbackEndDate: profile.fallbackEndDate,
+  effectivePlan: getEffectivePlan(profile),
+});
+
+// PUT /api/admin/student/:studentUserId/plan — grant Apex for N days, or move to Spark
+router.put('/student/:studentUserId/plan', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    if (req.user.role !== 'superadmin') return res.status(403).json({ error: 'Superadmin only' });
+    const ap = await prisma.adminProfile.findUnique({ where: { userId: req.params.userId } });
+    if (!ap) return res.status(403).json({ error: 'Not an admin' });
+
+    const { plan, durationDays, reason } = req.body;
+
+    const profile = await prisma.studentProfile.findUnique({
+      where: { userId: req.params.studentUserId },
+      include: { user: { select: { name: true } } },
+    });
+    if (!profile) return res.status(404).json({ error: 'Student not found' });
+
+    // Free students can be assigned any plan. A student already on a paid plan
+    // can only be upgraded to Apex (or moved back to Spark) — never swapped
+    // onto a different paid tier.
+    const currentlyFree = getEffectivePlan(profile) === 'spark';
+    const allowedPlans = currentlyFree ? MANUAL_GRANT_PLANS : ['apex', 'spark'];
+    if (!allowedPlans.includes(plan)) {
+      return res.status(400).json({
+        error: currentlyFree
+          ? `Plan must be ${PLAN_LABEL.forge}, ${PLAN_LABEL.apex} or ${PLAN_LABEL.anchor}`
+          : 'Only an Apex upgrade or a move to Spark is allowed on top of an active plan',
+      });
+    }
+
+    const now = new Date();
+    const adminNote = { adminId: ap.id, studentId: profile.id, type: 'Announcement' };
+
+    // Move to the free plan — immediate, keeps nothing to restore.
+    if (plan === 'spark') {
+      await prisma.$transaction([
+        prisma.studentProfile.update({
+          where: { id: profile.id },
+          data: { plan: 'spark', planEndDate: null, fallbackPlan: null, fallbackEndDate: null },
+        }),
+        prisma.planGrant.updateMany({
+          where: { studentId: profile.id, source: 'manual', status: 'active' },
+          data: { status: 'replaced' },
+        }),
+        prisma.planGrant.create({
+          data: {
+            studentId: profile.id, plan: 'spark', source: 'manual', durationDays: 0,
+            startDate: now, endDate: now, reason: reason || null,
+            grantedBy: req.params.userId, status: 'active',
+          },
+        }),
+        prisma.adminMessage.create({
+          data: { ...adminNote, content: 'Your account has been moved to the free Spark plan by our team.' },
+        }),
+      ]);
+
+      logAction({ adminUserId: req.params.userId, action: 'plan.spark', target: profile.user.name, metadata: { reason: reason || null } });
+      return res.json(planSummary({ ...profile, plan: 'spark', planEndDate: null, fallbackPlan: null, fallbackEndDate: null }));
+    }
+
+    // Time-boxed upgrade for a fixed number of days.
+    const days = parseInt(durationDays, 10);
+    if (!Number.isFinite(days) || days < 1 || days > 365) {
+      return res.status(400).json({ error: 'durationDays must be between 1 and 365' });
+    }
+
+    const effective = getEffectivePlan(profile);
+    const currentEnd = profile.planEndDate ? new Date(profile.planEndDate) : null;
+    const fallbackLive = profile.fallbackPlan
+      && profile.fallbackEndDate
+      && new Date(profile.fallbackEndDate) > now;
+
+    // Keep an already-stored restore target when grants are chained, so the
+    // student still ends up back on the plan they were actually paying for.
+    let fallbackPlan = null;
+    let fallbackEndDate = null;
+    if (fallbackLive) {
+      fallbackPlan = profile.fallbackPlan;
+      fallbackEndDate = profile.fallbackEndDate;
+    } else if (effective !== 'spark' && currentEnd && currentEnd > now) {
+      fallbackPlan = effective;
+      fallbackEndDate = currentEnd;
+    }
+
+    const endDate = new Date(now);
+    endDate.setDate(endDate.getDate() + days);
+
+    await prisma.$transaction([
+      prisma.studentProfile.update({
+        where: { id: profile.id },
+        data: { plan, planEndDate: endDate, fallbackPlan, fallbackEndDate },
+      }),
+      prisma.planGrant.updateMany({
+        where: { studentId: profile.id, source: 'manual', status: 'active', durationDays: { gt: 0 } },
+        data: { status: 'replaced' },
+      }),
+      prisma.planGrant.create({
+        data: {
+          studentId: profile.id, plan, source: 'manual', durationDays: days,
+          startDate: now, endDate, reason: reason || null,
+          grantedBy: req.params.userId, status: 'active',
+        },
+      }),
+      prisma.adminMessage.create({
+        data: { ...adminNote, content: `You have been granted the ${PLAN_LABEL[plan]} plan for ${days} day${days === 1 ? '' : 's'} by our team.` },
+      }),
+    ]);
+
+    // Anchor/Apex students need a mentor and (Apex) subject faculty — same
+    // side effects as a paid upgrade, so a comped student is never unassigned.
+    await ensureAssignmentTasks(prisma);
+
+    logAction({
+      adminUserId: req.params.userId, action: 'plan.grant', target: profile.user.name,
+      metadata: { plan, durationDays: days, reason: reason || null, fallbackPlan },
+    });
+
+    return res.json(planSummary({ ...profile, plan, planEndDate: endDate, fallbackPlan, fallbackEndDate }));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to apply plan change' });
+  }
+});
+
+// PUT /api/admin/student/:studentUserId/plan/revoke — end an active manual grant now
+router.put('/student/:studentUserId/plan/revoke', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    if (req.user.role !== 'superadmin') return res.status(403).json({ error: 'Superadmin only' });
+    const ap = await prisma.adminProfile.findUnique({ where: { userId: req.params.userId } });
+    if (!ap) return res.status(403).json({ error: 'Not an admin' });
+
+    const profile = await prisma.studentProfile.findUnique({
+      where: { userId: req.params.studentUserId },
+      include: { user: { select: { name: true } } },
+    });
+    if (!profile) return res.status(404).json({ error: 'Student not found' });
+
+    const now = new Date();
+    const grant = await prisma.planGrant.findFirst({
+      where: { studentId: profile.id, source: 'manual', status: 'active', durationDays: { gt: 0 } },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (!grant) return res.status(400).json({ error: 'No active manual grant to revoke' });
+
+    // Only revoke if the student's current window really is that grant — a
+    // later self-serve payment must never be thrown away by a stale revoke.
+    const currentEnd = profile.planEndDate ? new Date(profile.planEndDate).getTime() : null;
+    if (currentEnd !== new Date(grant.endDate).getTime()) {
+      return res.status(400).json({ error: 'The current plan was not granted manually' });
+    }
+
+    const restore = profile.fallbackPlan && profile.fallbackEndDate && new Date(profile.fallbackEndDate) > now;
+    const next = restore
+      ? { plan: profile.fallbackPlan, planEndDate: profile.fallbackEndDate, fallbackPlan: null, fallbackEndDate: null }
+      : { plan: 'spark', planEndDate: null, fallbackPlan: null, fallbackEndDate: null };
+
+    await prisma.$transaction([
+      prisma.studentProfile.update({ where: { id: profile.id }, data: next }),
+      prisma.planGrant.updateMany({
+        where: { studentId: profile.id, source: 'manual', status: 'active', durationDays: { gt: 0 } },
+        data: { status: 'revoked', revokedAt: now },
+      }),
+      prisma.adminMessage.create({
+        data: {
+          adminId: ap.id, studentId: profile.id, type: 'Announcement',
+          content: restore
+            ? 'Your temporary Apex grant has ended and your previous plan has been restored.'
+            : 'Your temporary Apex grant has been removed. You are now on the free Spark plan.',
+        },
+      }),
+    ]);
+
+    logAction({
+      adminUserId: req.params.userId, action: 'plan.revoke', target: profile.user.name,
+      metadata: { grantId: grant.id, restoredPlan: next.plan },
+    });
+
+    return res.json(planSummary({ ...profile, ...next }));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to revoke plan grant' });
+  }
+});
+
+// GET /api/admin/student/:studentUserId/plan-grants — full grant history
+router.get('/student/:studentUserId/plan-grants', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const profile = await prisma.studentProfile.findUnique({
+      where: { userId: req.params.studentUserId },
+      select: { id: true, plan: true, planEndDate: true, fallbackPlan: true, fallbackEndDate: true },
+    });
+    if (!profile) return res.status(404).json({ error: 'Student not found' });
+
+    const grants = await prisma.planGrant.findMany({
+      where: { studentId: profile.id },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+    });
+
+    const granterIds = [...new Set(grants.map(g => g.grantedBy).filter(Boolean))];
+    const granters = granterIds.length
+      ? await prisma.user.findMany({ where: { id: { in: granterIds } }, select: { id: true, name: true } })
+      : [];
+    const granterName = Object.fromEntries(granters.map(g => [g.id, g.name]));
+
+    res.json({
+      current: planSummary(profile),
+      grants: grants.map(g => ({
+        id: g.id,
+        plan: g.plan,
+        source: g.source,
+        durationDays: g.durationDays,
+        startDate: g.startDate,
+        endDate: g.endDate,
+        reason: g.reason,
+        status: g.status,
+        grantedByName: granterName[g.grantedBy] || null,
+        createdAt: g.createdAt,
+        revokedAt: g.revokedAt,
+      })),
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch plan history' });
   }
 });
 

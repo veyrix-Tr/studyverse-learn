@@ -92,12 +92,45 @@ const applyPaymentSuccess = async (payment) => {
 
     if (latest.goal === 'plan' && latest.plan) {
       const months = Number(process.env.CASHFREE_PLAN_MONTHS) || 1;
-      const planEndDate = new Date();
+      const now = new Date();
+
+      // Renewing the same plan carries the remaining time forward, so paying a
+      // few days early never costs the student those days. Switching to a
+      // different plan starts the new period from now.
+      const current = await tx.studentProfile.findUnique({
+        where: { id: latest.studentId },
+        select: { plan: true, planEndDate: true },
+      });
+      const carryOver = Boolean(
+        current
+        && current.plan === latest.plan
+        && current.planEndDate
+        && new Date(current.planEndDate) > now
+      );
+
+      const planEndDate = new Date(carryOver ? current.planEndDate : now);
       planEndDate.setMonth(planEndDate.getMonth() + months);
+      const durationDays = Math.max(1, Math.round((planEndDate.getTime() - now.getTime()) / 86400000));
 
       await tx.studentProfile.update({
         where: { id: latest.studentId },
         data: { plan: latest.plan, planEndDate },
+      });
+
+      // Same ledger the superadmin's manual grants are written to, so plan
+      // history shows paid and comped periods side by side.
+      await tx.planGrant.create({
+        data: {
+          studentId: latest.studentId,
+          plan: latest.plan,
+          source: 'paid',
+          durationDays,
+          startDate: now,
+          endDate: planEndDate,
+          grantedBy: null,
+          reason: carryOver ? 'Renewal (remaining days carried over)' : 'Plan purchase',
+          status: 'active',
+        },
       });
 
       if (latest.plan === 'anchor' || latest.plan === 'apex') {

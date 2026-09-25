@@ -2,6 +2,12 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const prisma = require('../lib/prisma');
 const { sendOtpEmail } = require('../services/emailService');
+const { getEffectivePlan } = require('../services/planAccessService');
+
+// The plan claim in the token is what the frontend route guards read, so it
+// must reflect the plan the student is actually on right now — including a
+// restored fallback after a manual grant expires — not just the raw column.
+const planClaim = (user) => (user.studentProfile ? getEffectivePlan(user.studentProfile) : null);
 
 const generateOtp = () => Math.floor(100000 + Math.random() * 900000).toString();
 
@@ -75,8 +81,9 @@ const login = async (req, res) => {
     }
 
     // Create a JWT token with user id, role, and plan inside
+    const plan = planClaim(user);
     const token = jwt.sign(
-      { id: user.id, role: user.role, plan: user.studentProfile?.plan || null },
+      { id: user.id, role: user.role, plan },
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
@@ -89,7 +96,7 @@ const login = async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role,
-        plan: user.studentProfile?.plan || null,
+        plan,
       },
     });
 
@@ -133,8 +140,9 @@ const refresh = async (req, res) => {
     });
     if (!user) return res.status(404).json({ error: 'User not found' });
 
+    const plan = planClaim(user);
     const token = jwt.sign(
-      { id: user.id, role: user.role, plan: user.studentProfile?.plan || null },
+      { id: user.id, role: user.role, plan },
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
@@ -147,7 +155,7 @@ const refresh = async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role,
-        plan: user.studentProfile?.plan || null,
+        plan,
       },
     });
   } catch (error) {
@@ -251,4 +259,4 @@ const resetPassword = async (req, res) => {
   }
 };
 
-module.exports = { register, login, checkEmail, refresh, forgotPassword, verifyOtp, resetPassword };
+module.exports = { register, login, checkEmail, refresh, forgotPassword, verifyOtp, resetPassword, planClaim };

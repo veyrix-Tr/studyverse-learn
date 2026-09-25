@@ -33,6 +33,14 @@ model StudentProfile {
   city            String?
   parentPhone     String?
   planEndDate     DateTime?
+
+  // Restore target for a superadmin manual grant that replaced an active paid
+  // plan. Kept on the profile (not only in PlanGrant) so getEffectivePlan() can
+  // fall back to it synchronously the moment the manual grant expires, instead
+  // of waiting for the next expiry sweep to persist the restore.
+  fallbackPlan    String?
+  fallbackEndDate DateTime?
+
   diagnosticScore   Int?
   diagnosticTakenAt DateTime?
   diagnosticAnswers Json?
@@ -60,6 +68,7 @@ model StudentProfile {
   sessions             Session[]
   sessionStudents      SessionStudent[]
   payments             Payment[]
+  planGrants           PlanGrant[]
 }
 
 // Payment = a single Cashfree order. Same order is referenced by both the
@@ -92,6 +101,30 @@ model Payment {
 
   @@index([orderStatus])
   @@index([studentId])
+}
+
+// PlanGrant = one row per plan assignment, whether the student paid for it or
+// a superadmin granted it by hand. Pure audit ledger: the live state lives on
+// StudentProfile (plan / planEndDate / fallback*), this table only records
+// history so the superadmin can see who changed what and why.
+model PlanGrant {
+  id           Int      @id @default(autoincrement())
+  plan         String   // plan that was granted
+  source       String   // 'paid' | 'manual'
+  durationDays Int
+  startDate    DateTime
+  endDate      DateTime
+  reason       String? // why a superadmin granted it
+  grantedBy    String? // superadmin userId (null when the student paid)
+  status       String   @default("active") // active | expired | revoked | replaced
+  createdAt    DateTime @default(now())
+  revokedAt    DateTime?
+
+  studentId Int
+  student   StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([studentId, endDate])
+  @@index([status])
 }
 
 model FacultyProfile {

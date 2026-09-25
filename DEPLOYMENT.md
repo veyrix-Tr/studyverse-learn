@@ -7,7 +7,7 @@ Everything deploys to **Vercel** (free) + **Supabase** (free database).
 | Database (PostgreSQL) | [Supabase](https://supabase.com) | Free |
 | Backend (Node.js/Express) | [Vercel](https://vercel.com) | Free |
 | Frontend (React/Vite) | [Vercel](https://vercel.com) | Free |
-| Scheduled reports | [cron-job.org](https://cron-job.org) | Free |
+| Scheduled jobs | Vercel Cron | Free |
 
 Push your code to GitHub before starting. Vercel and Supabase connect directly to GitHub.
 
@@ -50,7 +50,7 @@ Push your code to GitHub before starting. Vercel and Supabase connect directly t
    | `FRONTEND_URL` | Leave blank for now — fill in after frontend deploys |
    | `CLIENT_URL` | Leave blank for now — same as FRONTEND_URL |
    | `NODE_ENV` | `production` |
-   | `CRON_SECRET` | Any random string (e.g. `cronSecret456!`) — secures the cron endpoint |
+   | `CRON_SECRET` | Any random string (e.g. `cronSecret456!`) — Vercel Cron sends it automatically as `Authorization: Bearer <value>`; required, the cron endpoints return 401 without it |
    | `CLOUDINARY_CLOUD_NAME` | From your Cloudinary dashboard |
    | `CLOUDINARY_API_KEY` | From your Cloudinary dashboard |
    | `CLOUDINARY_API_SECRET` | From your Cloudinary dashboard |
@@ -114,25 +114,32 @@ Click **Save** — Vercel will redeploy the backend automatically.
 
 ---
 
-## Step 5 — Set Up the Weekly Report Cron Job
+## Step 5 — Scheduled Jobs (Vercel Cron)
 
-Vercel uses serverless functions, so background processes cannot run. Instead, an external scheduler calls a protected API endpoint on a schedule.
+Vercel uses serverless functions, so background processes cannot run. Instead **Vercel Cron** calls protected API endpoints on a schedule — no third-party service needed.
 
-1. Go to [cron-job.org](https://cron-job.org) → create a free account.
-2. Click **Create Cronjob**.
-3. Fill in:
+The jobs are declared in **`backend/vercel.json`** and are created automatically on every production deploy:
 
-   | Field | Value |
-   |-------|-------|
-   | **URL** | `https://studyverse-backend.vercel.app/api/cron/send-reports` |
-   | **Request method** | `POST` |
-   | **Schedule** | Custom — every Saturday and Sunday at 6:00 AM |
-   | **Timezone** | Asia/Kolkata |
-   | **Headers** | Add: `x-cron-secret` = the value you set for `CRON_SECRET` |
+| Path | Schedule (UTC) | What it does |
+|------|----------------|--------------|
+| `/api/cron/expire-plans` | `0 0 * * *`, `0 6 * * *`, `0 12 * * *`, `0 18 * * *` | Drops expired plans back to Spark (restoring a paid plan first if a manual grant had replaced one). Every 6 hours. |
+| `/api/cron/plan-warnings` | `30 0 * * *` (06:00 IST) | "Your plan expires in 3 days" notice, once per day per student |
+| `/api/cron/send-reports` | `30 0 * * 6,0` (Sat/Sun 06:00 IST) | Marks approved weekly reports as sent + notifies faculty |
 
-4. Save the cronjob.
+**Why four entries for the same path?** The Vercel **Hobby** plan allows at most *one run per day per cron job* — expressions like `*/6 * * * *` are rejected at deploy time. Listing the same path at four different times gives a sweep every 6 hours while staying inside that limit.
 
-This replicates the original node-cron behaviour — approved reports are marked as sent and faculty notifications are created every weekend morning.
+**Verify it's registered:** Vercel → backend project → **Cron Jobs** tab should list all six entries after the first deploy.
+
+**Verify it's authorized** (Vercel Cron sends `Authorization: Bearer <CRON_SECRET>`):
+
+```bash
+curl https://studyverse-backend.vercel.app/api/cron/expire-plans \
+  -H "Authorization: Bearer YOUR_CRON_SECRET"
+# → {"message":"Settled expired plans: 0 → spark, 0 restored", ...}
+# 401 = CRON_SECRET missing/mismatched in Vercel env (redeploy after fixing)
+```
+
+The endpoints accept **both** `Authorization: Bearer` (Vercel Cron) and `x-cron-secret` (an external scheduler), and work over **GET and POST**, so you can still point cron-job.org at them later if you ever want sub-daily schedules on Pro.
 
 ---
 
@@ -185,7 +192,7 @@ The backend runs on port 5000, the frontend on port 5173. node-cron runs normall
 GitHub
   ├── Vercel (backend)  ← Supabase (database)
   │         ↑
-  │   cron-job.org (weekend report cron)
+  │   Vercel Cron (expiry sweep / warnings / weekend reports)
   │
   └── Vercel (frontend)
 ```

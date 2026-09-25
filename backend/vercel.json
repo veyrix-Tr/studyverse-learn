@@ -11,5 +11,13 @@
   ],
   "routes": [
     { "src": "/(.*)", "dest": "server.js" }
+  ],
+  "crons": [
+    { "path": "/api/cron/expire-plans", "schedule": "0 0 * * *" },
+    { "path": "/api/cron/expire-plans", "schedule": "0 6 * * *" },
+    { "path": "/api/cron/expire-plans", "schedule": "0 12 * * *" },
+    { "path": "/api/cron/expire-plans", "schedule": "0 18 * * *" },
+    { "path": "/api/cron/plan-warnings", "schedule": "30 0 * * *" },
+    { "path": "/api/cron/send-reports", "schedule": "30 0 * * 6,0" }
   ]
 }

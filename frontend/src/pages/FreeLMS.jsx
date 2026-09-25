@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useActivePage } from '../hooks/useActivePage';
+import usePlanRefresh from '../hooks/usePlanRefresh';
 import '../components/free-lms/FreeStyles.css';
 import FreeSidebar from '../components/free-lms/FreeSidebar';
 import FreeTopbar from '../components/free-lms/FreeTopbar';
@@ -8,6 +9,7 @@ import FreeModals from '../components/free-lms/FreeModals';
 
 const FreeLMS = () => {
   const [activePage, setActivePage, userId] = useActivePage('/student', 'home');
+  usePlanRefresh();
   const [navOpen, setNavOpen] = useState(false);
   const [openModal, setOpenModal] = useState(null);
   const [toast, setToast] = useState({ show: false, msg: '' });

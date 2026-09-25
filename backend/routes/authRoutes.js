@@ -2,7 +2,7 @@ const express  = require('express');
 const router   = express.Router();
 const passport = require('passport');
 const jwt      = require('jsonwebtoken');
-const { register, login, checkEmail, refresh, forgotPassword, verifyOtp, resetPassword } = require('../controllers/authController');
+const { register, login, checkEmail, refresh, forgotPassword, verifyOtp, resetPassword, planClaim } = require('../controllers/authController');
 const { requireAuth } = require('../middleware/auth');
 
 router.post('/register', register);
@@ -32,20 +32,20 @@ router.get('/google/callback',
 
       // ── Existing user → login directly ──────────────────
       if (existingUser && existingUser.password !== '') {
+        const plan = planClaim(existingUser);
 
         const token = jwt.sign(
-          { id: existingUser.id, role: existingUser.role, plan: existingUser.studentProfile?.plan || null },
+          { id: existingUser.id, role: existingUser.role, plan },
           process.env.JWT_SECRET,
           { expiresIn: '7d' }
         );
 
-        const plan = existingUser.studentProfile?.plan || 'spark';
         const user = encodeURIComponent(JSON.stringify({
           id:    existingUser.id,
           name:  existingUser.name,
           email: existingUser.email,
           role:  existingUser.role,
-          plan,
+          plan: plan || 'spark',
         }));
 
         return res.redirect(`${process.env.CLIENT_URL}/auth/google?token=${token}&user=${user}`);

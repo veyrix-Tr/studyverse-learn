@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useActivePage } from '../hooks/useActivePage';
+import usePlanRefresh from '../hooks/usePlanRefresh';
 import '../components/student-lms/StudentStyles.css';
 import '../components/free-lms/FreeStyles.css';
 import StudentSidebar from '../components/student-lms/StudentSidebar';
@@ -24,6 +25,7 @@ const NOTIF_NAV = {
 
 const StudentLMS = () => {
   const [activePage, setActivePage, userId] = useActivePage('/student-v2', 'dashboard');
+  usePlanRefresh();
   const [openModal, setOpenModal] = useState(null);
   const [navOpen, setNavOpen] = useState(false);
   const [toast, setToast] = useState({ show: false, msg: '' });
@@ -153,7 +155,7 @@ const StudentLMS = () => {
     toastTimer.current = setTimeout(() => setToast(t => ({ ...t, show: false })), onClick ? 6000 : 3000);
   };
 
-// Poll doubts + sessions + notifications every 15s only after student profile is confirmed loaded
+  // Poll doubts + sessions + notifications every 15s only after student profile is confirmed loaded
   useEffect(() => {
     if (!profile) return;
     const token = localStorage.getItem('token');
@@ -184,7 +186,7 @@ const StudentLMS = () => {
         .then(fresh => {
           if (Array.isArray(fresh)) setSessions(fresh);
         })
-        .catch(() -> {});
+        .catch(() => {});
 
       fetch(`${import.meta.env.VITE_API_URL}/api/student/${userId}/notifications`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -207,28 +209,28 @@ const StudentLMS = () => {
             fetch(`${import.meta.env.VITE_API_URL}/api/student/${userId}/reports`, { headers: { Authorization: `Bearer ${token}` } })
               .then(r => r.ok ? r.json() : null)
               .then(rd => { if (rd && (rd.subjects || rd.reports)) setParentReports(rd); })
-              .catch(() -> {});
+              .catch(() => {});
           }
           if (hasNewResource) {
             fetch(`${import.meta.env.VITE_API_URL}/api/student/${userId}/resources`, { headers: { Authorization: `Bearer ${token}` } })
               .then(r => r.ok ? r.json() : null)
               .then(rd => { if (Array.isArray(rd)) setResources(rd); })
-              .catch(() -> {});
+              .catch(() => {});
           }
           if (hasNewQuestionBank) {
             fetch(`${import.meta.env.VITE_API_URL}/api/student/${userId}/question-bank`, { headers: { Authorization: `Bearer ${token}` } })
               .then(r => r.ok ? r.json() : null)
               .then(rd => { if (Array.isArray(rd)) setQuestionBank(rd); })
-              .catch(() -> {});
+              .catch(() => {});
           }
           if (hasSessionNote) {
             fetch(`${import.meta.env.VITE_API_URL}/api/student/${userId}/sessions`, { headers: { Authorization: `Bearer ${token}` } })
               .then(r => r.ok ? r.json() : null)
               .then(rd => { if (Array.isArray(rd)) setSessions(rd); })
-              .catch(() -> {});
+              .catch(() => {});
           }
         })
-        .catch(() -> {});
+        .catch(() => {});
     }, 15000);
     return () => clearInterval(id);
   }, [profile]); // starts only once profile is loaded, cleans up on unmount

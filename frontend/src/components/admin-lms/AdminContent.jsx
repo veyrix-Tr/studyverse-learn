@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import AdminPlanGrantModal from './AdminPlanGrantModal';
 
 const UC = { red:'#EF4444', orange:'#F97316', yellow:'#D97706', green:'#22C55E', gray:'#94A3B8' };
 const UB = { red:'rgba(239,68,68,0.1)', orange:'rgba(249,115,22,0.1)', yellow:'rgba(245,158,11,0.1)', green:'rgba(34,197,94,0.1)', gray:'rgba(148,163,184,0.1)' };
@@ -301,9 +302,10 @@ const fmtWeekRange = (weekStartDate) => {
   return `${fmt(mon)} – ${fmt(sun)}`;
 };
 
-const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, students = [], facultyList = [], onOpenMessage, isSuperAdmin, adminAccounts = [], onDeactivateAdmin, onReactivateAdmin, resources = [], onApproveResource, onDeclineResource, sentMessages = [], onSendMessage, parentReports = [], onApproveReport, onRejectReport, onSendReports, onApproveAllReports, onStudentMentorUpdated, onStudentSubjectFacultyUpdated, sessionRequests = [], onSessionRequestsUpdated, adminNotifications = [], onMarkNotifRead, onMarkAllNotifsRead, analytics = null, accessLog = [] }) => {
+const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, students = [], facultyList = [], onOpenMessage, isSuperAdmin, adminAccounts = [], onDeactivateAdmin, onReactivateAdmin, resources = [], onApproveResource, onDeclineResource, sentMessages = [], onSendMessage, parentReports = [], onApproveReport, onRejectReport, onSendReports, onApproveAllReports, onStudentMentorUpdated, onStudentSubjectFacultyUpdated, onStudentPlanUpdated, sessionRequests = [], onSessionRequestsUpdated, adminNotifications = [], onMarkNotifRead, onMarkAllNotifsRead, analytics = null, accessLog = [] }) => {
   const firstName = profile?.name?.split(' ')[0] || 'there';
   const [studentsTab, setStudentsTab] = useState(0);
+  const [planGrantStudent, setPlanGrantStudent] = useState(null);
 
   const activeStudents    = analytics?.activeStudents ?? students.filter(s => ['forge','apex','anchor'].includes(s.plan)).length;
   const premiumStudents   = analytics?.premiumStudents ?? students.filter(s => ['forge','apex','anchor'].includes(s.plan)).length;
@@ -878,6 +880,7 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
                     ? <button className="btn btn-ghost btn-sm" onClick={() => openDiagModal(s.userId, s.name)}>Diagnostic</button>
                     : <span style={{ fontSize:'11px', fontWeight:600, color:'#F97316', background:'rgba(249,115,22,0.1)', padding:'2px 9px', borderRadius:'99px', whiteSpace:'nowrap' }}>No Diagnostic</span>
                   }
+                  {isSuperAdmin && <button className="btn btn-ghost btn-sm" onClick={() => setPlanGrantStudent(s)}>Plan</button>}
                   <button className="btn btn-ghost btn-sm" onClick={() => onOpenMessage(s.id)}>Message</button>
                 </td>
               </tr>
@@ -906,6 +909,7 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
                 </td>
                 <td style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
                   {diagDone && <button className="btn btn-ghost btn-sm" onClick={() => openDiagModal(s.userId, s.name)}>Diagnostic</button>}
+                  {isSuperAdmin && <button className="btn btn-ghost btn-sm" onClick={() => setPlanGrantStudent(s)}>Plan</button>}
                   <button className="btn btn-ghost btn-sm" onClick={() => onOpenMessage(s.id)}>Message</button>
                 </td>
               </tr>
@@ -1961,6 +1965,17 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
           userId={profile?.id}
           onShowToast={onShowToast}
           onUpdated={onSessionRequestsUpdated}
+        />
+      )}
+
+      {/* ══════════ PLAN GRANT (superadmin) ══════════ */}
+      {planGrantStudent && (
+        <AdminPlanGrantModal
+          student={planGrantStudent}
+          adminUserId={profile?.id}
+          onClose={() => setPlanGrantStudent(null)}
+          onShowToast={onShowToast}
+          onPlanUpdated={onStudentPlanUpdated}
         />
       )}
     </div>

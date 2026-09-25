@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useActivePage } from '../hooks/useActivePage';
+import usePlanRefresh from '../hooks/usePlanRefresh';
 import '../components/free-lms/FreeStyles.css';
 import '../components/anchor-lms/AnchorStyles.css';
 import AnchorSidebar from '../components/anchor-lms/AnchorSidebar';
@@ -11,6 +12,7 @@ const STUDY_PAGES = ['diagnostic', 'topics', 'guidance'];
 
 const AnchorLMS = () => {
   const [activePage, setActivePage, userId] = useActivePage('/anchor', 'dashboard');
+  usePlanRefresh();
   const [navOpen, setNavOpen] = useState(false);
   const [toast, setToast] = useState({ show: false, msg: '' });
   const [profile, setProfile] = useState(null);
