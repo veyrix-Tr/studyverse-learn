@@ -18,6 +18,15 @@ const LoginForm = ({ onSwitchToRegister }) => {
   const [resetVerifying, setResetVerifying] = useState(false);
   const [resetMsg, setResetMsg] = useState('');
   const [resetDone, setResetDone] = useState(false);
+  const [showEnroll, setShowEnroll] = useState(false);
+  const [enrollName, setEnrollName] = useState('');
+  const [enrollEmail, setEnrollEmail] = useState('');
+  const [enrollSubject, setEnrollSubject] = useState('');
+  const [enrollQualification, setEnrollQualification] = useState('');
+  const [enrollDepartment, setEnrollDepartment] = useState('');
+  const [enrollMsg, setEnrollMsg] = useState('');
+  const [enrollSubmitting, setEnrollSubmitting] = useState(false);
+  const [enrollDone, setEnrollDone] = useState(false);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -169,6 +178,55 @@ const LoginForm = ({ onSwitchToRegister }) => {
     }
   };
 
+  const handleEnrollSubmit = async (e) => {
+    e.preventDefault();
+    if (!enrollName || !enrollEmail || !enrollSubject) {
+      setEnrollMsg('Please fill in all required fields');
+      return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(enrollEmail)) {
+      setEnrollMsg('Please enter a valid email address');
+      return;
+    }
+    setEnrollSubmitting(true);
+    setEnrollMsg('');
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/faculty-enroll`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: enrollName,
+          email: enrollEmail,
+          subject: enrollSubject,
+          qualification: enrollQualification,
+          department: enrollDepartment,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setEnrollMsg(data.error || 'Something went wrong');
+      } else {
+        setEnrollDone(true);
+      }
+    } catch {
+      setEnrollMsg('Cannot connect to server');
+    } finally {
+      setEnrollSubmitting(false);
+    }
+  };
+
+  const closeEnroll = () => {
+    setShowEnroll(false);
+    setEnrollDone(false);
+    setEnrollMsg('');
+    setEnrollName('');
+    setEnrollEmail('');
+    setEnrollSubject('');
+    setEnrollQualification('');
+    setEnrollDepartment('');
+  };
+
   const closeReset = () => {
     setShowReset(false);
     setResetDone(false);
@@ -299,6 +357,12 @@ const LoginForm = ({ onSwitchToRegister }) => {
         New to Studyverse? <a href="#" onClick={(e) => { e.preventDefault(); onSwitchToRegister(); }}>Create a free account →</a>
       </div>
 
+      <div className="signup-row" style={{ marginTop: '8px' }}>
+        <a href="#" onClick={(e) => { e.preventDefault(); setShowEnroll(true); setEnrollDone(false); setEnrollMsg(''); }}>
+          Are you a faculty member? Enroll here →
+        </a>
+      </div>
+
       <div className="security-note">
         <svg className="lock-icon" width="12" height="12" viewBox="0 0 20 20" fill="none">
           <rect x="3.333" y="9.167" width="13.334" height="9.166" rx="2" stroke="currentColor" strokeWidth="1.5"/>
@@ -401,6 +465,92 @@ const LoginForm = ({ onSwitchToRegister }) => {
                     </button>
                   </form>
                 )}
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {showEnroll && (
+        <div className="reset-modal-overlay" onClick={closeEnroll}>
+          <div className="reset-modal" onClick={(e) => e.stopPropagation()}>
+            <button type="button" className="reset-modal-close" onClick={closeEnroll} aria-label="Close">×</button>
+            <div className="reset-modal-title">Faculty Enrollment</div>
+
+            {enrollDone ? (
+              <>
+                <p className="reset-modal-sub">Application submitted successfully! An admin will review your request. You will receive an email with login credentials once approved.</p>
+                <button type="button" className="btn-primary" style={{ width: '100%' }} onClick={closeEnroll}>
+                  Back to sign in
+                </button>
+              </>
+            ) : (
+              <>
+                {enrollMsg && <p className="reset-msg">{enrollMsg}</p>}
+                <p className="reset-modal-sub">Fill in your details to request a faculty account. An admin will review and approve your application.</p>
+                <form onSubmit={handleEnrollSubmit}>
+                  <div className="form-group">
+                    <label className="form-label">Full Name *</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      value={enrollName}
+                      onChange={(e) => setEnrollName(e.target.value)}
+                      placeholder="Dr. Ananya Singh"
+                      required
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Email Address *</label>
+                    <input
+                      type="email"
+                      className="form-input"
+                      value={enrollEmail}
+                      onChange={(e) => setEnrollEmail(e.target.value)}
+                      placeholder="you@example.com"
+                      required
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Subject *</label>
+                    <select
+                      className="form-input"
+                      value={enrollSubject}
+                      onChange={(e) => setEnrollSubject(e.target.value)}
+                      required
+                    >
+                      <option value="">Select subject</option>
+                      <option>Physics</option>
+                      <option>Chemistry</option>
+                      <option>Mathematics</option>
+                      <option>Biology</option>
+                      <option>Maths</option>
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Qualification</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      value={enrollQualification}
+                      onChange={(e) => setEnrollQualification(e.target.value)}
+                      placeholder="Ph.D, M.Sc..."
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Department</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      value={enrollDepartment}
+                      onChange={(e) => setEnrollDepartment(e.target.value)}
+                      placeholder="Science"
+                    />
+                  </div>
+                  <button type="submit" className="btn-primary" style={{ width: '100%' }} disabled={enrollSubmitting}>
+                    {enrollSubmitting ? 'Submitting…' : 'Submit Application'}
+                  </button>
+                </form>
               </>
             )}
           </div>

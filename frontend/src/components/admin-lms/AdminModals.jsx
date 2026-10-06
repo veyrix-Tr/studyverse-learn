@@ -10,9 +10,9 @@ const PermToggleRow = ({ label, defaultOn, last }) => {
   );
 };
 
-const AdminModals = ({ openModal, onClose, onShowToast, toast, students = [], messageStudentId = null, onSendMessage, userId, onFacultyAdded }) => {
+const AdminModals = ({ openModal, onClose, onShowToast, toast, students = [], messageStudentId = null, onSendMessage, userId, onFacultyAdded, facultyApplications = [], onApproveApplication, onRejectApplication }) => {
   const isOpen = (id) => openModal === id ? ' open' : '';
-  const [newFaculty, setNewFaculty] = useState({ name: '', subject: '', qualification: '', department: 'Science' });
+  const [newFaculty, setNewFaculty] = useState({ name: '', email: '', subject: '', qualification: '', department: 'Science' });
   const [addingFaculty, setAddingFaculty] = useState(false);
   const [createdCredentials, setCreatedCredentials] = useState(null);
   const [newAdmin, setNewAdmin] = useState({ name: '', email: '', department: 'Operations' });
@@ -20,8 +20,13 @@ const AdminModals = ({ openModal, onClose, onShowToast, toast, students = [], me
   const [adminCredentials, setAdminCredentials] = useState(null);
 
   const handleAddFaculty = async () => {
-    if (!newFaculty.name.trim() || !newFaculty.subject.trim()) {
-      onShowToast('Name and subject are required');
+    if (!newFaculty.name.trim() || !newFaculty.email.trim() || !newFaculty.subject.trim()) {
+      onShowToast('Name, email, and subject are required');
+      return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(newFaculty.email.trim())) {
+      onShowToast('Please enter a valid email address');
       return;
     }
     setAddingFaculty(true);
@@ -65,6 +70,39 @@ const AdminModals = ({ openModal, onClose, onShowToast, toast, students = [], me
       onShowToast('Failed to create admin: ' + e.message);
     }
     setAddingAdmin(false);
+  };
+
+  const handleApproveApplication = async (id) => {
+    const token = localStorage.getItem('token');
+    try {
+      const r = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/${userId}/faculty-applications/${id}/approve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error || 'Failed');
+      onShowToast(`${data.faculty.name} approved — credentials sent to ${data.faculty.email} ✓`);
+      onFacultyAdded?.({ ...data.faculty, subjects: [data.faculty.subject], sessionsPerWeek: 0, reportCount: 0, avgRating: null });
+      onClose();
+    } catch (e) {
+      onShowToast('Failed to approve: ' + e.message);
+    }
+  };
+
+  const handleRejectApplication = async (id) => {
+    const token = localStorage.getItem('token');
+    try {
+      const r = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/${userId}/faculty-applications/${id}/reject`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error || 'Failed');
+      onShowToast('Application rejected');
+      onClose();
+    } catch (e) {
+      onShowToast('Failed to reject: ' + e.message);
+    }
   };
 
   const [msgStudent, setMsgStudent] = useState('all');
@@ -167,12 +205,12 @@ const AdminModals = ({ openModal, onClose, onShowToast, toast, students = [], me
       </div>
 
       {/* Add Faculty */}
-      <div className={`overlay${isOpen('add-faculty-modal')}`} id="add-faculty-modal" onClick={e => { if (e.target.classList.contains('overlay')) { onClose(); setCreatedCredentials(null); setNewFaculty({ name:'', subject:'', qualification:'', department:'Science' }); }}}>
+      <div className={`overlay${isOpen('add-faculty-modal')}`} id="add-faculty-modal" onClick={e => { if (e.target.classList.contains('overlay')) { onClose(); setCreatedCredentials(null); setNewFaculty({ name:'', email:'', subject:'', qualification:'', department:'Science' }); }}}>
         <div className="modal">
           {createdCredentials ? (
             <>
               <div className="mt">Faculty Added ✓</div>
-              <div className="ms">Share these login credentials with the faculty member. They can change their password after first login.</div>
+              <div className="ms">A welcome email with login credentials has been sent to {createdCredentials.email}. You can also copy the credentials below to share manually.</div>
               <div style={{ background: 'var(--cream2)', border: '1px solid var(--b)', borderRadius: 'var(--r)', padding: '16px', marginBottom: '16px' }}>
                 <div style={{ marginBottom: '10px' }}>
                   <div style={{ fontSize: '11px', color: 'var(--text3)', marginBottom: '3px' }}>EMAIL</div>
@@ -188,24 +226,27 @@ const AdminModals = ({ openModal, onClose, onShowToast, toast, students = [], me
                   navigator.clipboard?.writeText(`Email: ${createdCredentials.email}\nPassword: ${createdCredentials.password}`);
                   onShowToast('Credentials copied to clipboard ✓');
                 }}>Copy Credentials</button>
-                <button className="btn btn-ghost btn-sm" onClick={() => { onClose(); setCreatedCredentials(null); setNewFaculty({ name:'', subject:'', qualification:'', department:'Science' }); }}>Done</button>
+                <button className="btn btn-ghost btn-sm" onClick={() => { onClose(); setCreatedCredentials(null); setNewFaculty({ name:'', email:'', subject:'', qualification:'', department:'Science' }); }}>Done</button>
               </div>
             </>
           ) : (
             <>
               <div className="mt">Add Faculty Member</div>
-              <div className="ms">A faculty account will be created. Login credentials will be generated for you to share.</div>
+              <div className="ms">Enter the faculty's real email address. A welcome email with login credentials will be sent to them automatically.</div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
                 <div className="fg"><label>Full Name *</label><input className="fi" type="text" placeholder="Dr. Ananya Singh" value={newFaculty.name} onChange={e => setNewFaculty(p => ({ ...p, name: e.target.value }))} /></div>
+                <div className="fg"><label>Email *</label><input className="fi" type="email" placeholder="faculty@gmail.com" value={newFaculty.email} onChange={e => setNewFaculty(p => ({ ...p, email: e.target.value }))} /></div>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
                 <div className="fg"><label>Subject *</label>
                   <select className="fi" value={newFaculty.subject} onChange={e => setNewFaculty(p => ({ ...p, subject: e.target.value }))}>
                     <option value="">Select subject</option>
                     <option>Physics</option><option>Chemistry</option><option>Mathematics</option><option>Biology</option><option>Maths</option>
                   </select>
                 </div>
+                <div className="fg"><label>Qualification</label><input className="fi" type="text" placeholder="Ph.D, M.Sc..." value={newFaculty.qualification} onChange={e => setNewFaculty(p => ({ ...p, qualification: e.target.value }))} /></div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
-                <div className="fg"><label>Qualification</label><input className="fi" type="text" placeholder="Ph.D, M.Sc..." value={newFaculty.qualification} onChange={e => setNewFaculty(p => ({ ...p, qualification: e.target.value }))} /></div>
                 <div className="fg"><label>Department</label><input className="fi" type="text" placeholder="Science" value={newFaculty.department} onChange={e => setNewFaculty(p => ({ ...p, department: e.target.value }))} /></div>
               </div>
               <div className="ma">
@@ -214,6 +255,44 @@ const AdminModals = ({ openModal, onClose, onShowToast, toast, students = [], me
               </div>
             </>
           )}
+        </div>
+      </div>
+
+      {/* Faculty Applications */}
+      <div className={`overlay${isOpen('faculty-applications-modal')}`} id="faculty-applications-modal" onClick={e => e.target.classList.contains('overlay') && onClose()}>
+        <div className="modal" style={{ maxWidth: '640px' }}>
+          <div className="mt">Faculty Applications</div>
+          <div className="ms">Review faculty self-enrollment requests. Approving creates their account and sends them login credentials.</div>
+          <div style={{ maxHeight: '400px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {facultyApplications.length === 0 && (
+              <div style={{ textAlign: 'center', color: 'var(--text3)', fontSize: '13px', padding: '24px' }}>No applications yet</div>
+            )}
+            {facultyApplications.map(app => (
+              <div key={app.id} style={{ background: 'var(--cream2)', border: '1px solid var(--b)', borderRadius: 'var(--r)', padding: '14px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                  <div>
+                    <div style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text)' }}>{app.name}</div>
+                    <div style={{ fontSize: '12px', color: 'var(--text2)', marginTop: '2px' }}>{app.email}</div>
+                  </div>
+                  <span style={{ fontSize: '11px', fontWeight: '600', padding: '3px 10px', borderRadius: '20px', background: app.status === 'pending' ? 'rgba(245,158,11,0.15)' : app.status === 'approved' ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)', color: app.status === 'pending' ? '#D97706' : app.status === 'approved' ? '#16A34A' : '#DC2626' }}>
+                    {app.status}
+                  </span>
+                </div>
+                <div style={{ fontSize: '12px', color: 'var(--text2)', marginBottom: '10px' }}>
+                  {app.subject}{app.qualification ? ` · ${app.qualification}` : ''}{app.department ? ` · ${app.department}` : ''}
+                </div>
+                {app.status === 'pending' && (
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button className="btn btn-gold btn-sm" style={{ flex: 1 }} onClick={() => handleApproveApplication(app.id)}>Approve</button>
+                    <button className="btn btn-ghost btn-sm" style={{ flex: 1 }} onClick={() => handleRejectApplication(app.id)}>Reject</button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+          <div className="ma">
+            <button className="btn btn-ghost btn-sm" onClick={onClose}>Close</button>
+          </div>
         </div>
       </div>
 

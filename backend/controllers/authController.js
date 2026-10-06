@@ -63,7 +63,7 @@ const login = async (req, res) => {
     // Find user by email, include student profile to know free/premium
     const user = await prisma.user.findUnique({
       where: { email },
-      include: { studentProfile: true, adminProfile: true },
+      include: { studentProfile: true, adminProfile: true, facultyProfile: true },
     });
     if (!user) {
       return res.status(401).json({ error: 'Invalid email or password' });
@@ -78,6 +78,11 @@ const login = async (req, res) => {
     // Block deactivated admin accounts
     if ((user.role === 'admin' || user.role === 'superadmin') && user.adminProfile?.isActive === false) {
       return res.status(403).json({ error: 'Your account has been deactivated. Please contact your superadmin.' });
+    }
+
+    // Block inactive faculty accounts
+    if (user.role === 'faculty' && user.facultyProfile?.isActive === false) {
+      return res.status(403).json({ error: 'Your account has been deactivated. Please contact your administrator.' });
     }
 
     // Create a JWT token with user id, role, and plan inside
@@ -259,4 +264,51 @@ const resetPassword = async (req, res) => {
   }
 };
 
-module.exports = { register, login, checkEmail, refresh, forgotPassword, verifyOtp, resetPassword, planClaim };
+// POST /api/auth/faculty-enroll
+// Faculty self-enrollment — creates a pending application for admin approval
+const facultyEnroll = async (req, res) => {
+  try {
+    const { name, email, subject, qualification, department } = req.body;
+
+    if (!name || !email || !subject) {
+      return res.status(400).json({ error: 'name, email, and subject are required' });
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ error: 'Invalid email address' });
+    }
+
+    const existingUser = await prisma.user.findUnique({ where: { email } });
+    if (existingUser) {
+      return res.status(409).json({ error: 'An account with this email already exists' });
+    }
+
+    const existingApplication = await prisma.facultyApplication.findUnique({ where: { email } });
+    if (existingApplication && existingApplication.status === 'pending') {
+      return res.status(409).json({ error: 'An application with this email is already pending review' });
+    }
+
+    if (existingApplication && existingApplication.status === 'rejected') {
+      await prisma.facultyApplication.delete({ where: { email } });
+    }
+
+    await prisma.facultyApplication.create({
+      data: {
+        name,
+        email,
+        subject,
+        qualification: qualification || null,
+        department: department || null,
+        status: 'pending',
+      },
+    });
+
+    res.status(201).json({ message: 'Application submitted successfully. You will be notified once an admin reviews it.' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to submit application' });
+  }
+};
+
+module.exports = { register, login, checkEmail, refresh, forgotPassword, verifyOtp, resetPassword, facultyEnroll, planClaim };

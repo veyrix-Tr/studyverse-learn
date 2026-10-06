@@ -115,7 +115,7 @@ router.get('/faculty', requireAuth, requireAdmin, async (req, res) => {
         subject: f.subject,
         department: f.department,
         qualification: f.qualification,
-        subjects: uniqueSubjects.length > 0 ? uniqueSubjects : [f.subject].filter(Boolean),
+        subjects: [...new Set([f.subject, ...uniqueSubjects].filter(Boolean))],
         sessionsPerWeek,
         totalSessions: f.sessions.length,
         avgRating,
@@ -131,22 +131,143 @@ router.get('/faculty', requireAuth, requireAdmin, async (req, res) => {
   }
 });
 
+// GET /api/admin/:userId/faculty/:id/performance — full activity dashboard for one faculty
+router.get('/faculty/:id/performance', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const fp = await prisma.facultyProfile.findUnique({
+      where: { id: parseInt(req.params.id) },
+      include: {
+        user: { select: { id: true, name: true, email: true } },
+        sessions: { select: { id: true, title: true, subject: true, grade: true, scheduledAt: true, duration: true } },
+        doubts: { select: { id: true, question: true, subject: true, answer: true, answeredAt: true, createdAt: true, student: { include: { user: { select: { name: true } } } } } },
+        resources: { select: { id: true, title: true, subject: true, grade: true, type: true, status: true, createdAt: true } },
+        weeklyReports: { select: { id: true, weekNumber: true, weekStartDate: true, overallRating: true, status: true, student: { include: { user: { select: { name: true } } } } } },
+        mentorStudents: { select: { id: true, user: { select: { name: true } }, plan: true, examTarget: true } },
+        mentorNotes: { select: { id: true, content: true, weekOf: true, createdAt: true } },
+        mentorCalls: { select: { id: true, scheduledAt: true, durationMin: true, completed: true, notes: true } },
+        _count: { select: { sessions: true, doubts: true, resources: true, weeklyReports: true, mentorStudents: true, mentorNotes: true, mentorCalls: true } },
+      },
+    });
+    if (!fp) return res.status(404).json({ error: 'Faculty not found' });
+
+    const now = new Date();
+    const startOfWeek = new Date(now); startOfWeek.setHours(0, 0, 0, 0); startOfWeek.setDate(startOfWeek.getDate() - ((startOfWeek.getDay() + 6) % 7));
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const startOfYear = new Date(now.getFullYear(), 0, 1);
+
+    const inRange = (d, start) => new Date(d) >= start;
+
+    const sessions = fp.sessions;
+    const sessionsThisWeek = sessions.filter(s => inRange(s.scheduledAt, startOfWeek));
+    const sessionsThisMonth = sessions.filter(s => inRange(s.scheduledAt, startOfMonth));
+    const sessionsThisYear = sessions.filter(s => inRange(s.scheduledAt, startOfYear));
+
+    const doubts = fp.doubts;
+    const pendingDoubts = doubts.filter(d => !d.answer);
+    const resolvedDoubts = doubts.filter(d => d.answer);
+
+    const resources = fp.resources;
+    const approvedResources = resources.filter(r => r.status === 'approved');
+    const pendingResources = resources.filter(r => r.status === 'pending');
+
+    const reports = fp.weeklyReports;
+    const sentReports = reports.filter(r => r.status === 'sent');
+
+    const assignedStudents = fp.mentorStudents;
+    const activeStudents = assignedStudents.filter(s => s.plan === 'apex' || s.plan === 'anchor');
+
+    const calls = fp.mentorCalls;
+    const completedCalls = calls.filter(c => c.completed);
+
+    const bySubject = {};
+    sessions.forEach(s => {
+      if (!bySubject[s.subject]) bySubject[s.subject] = { total: 0, week: 0, month: 0 };
+      bySubject[s.subject].total++;
+      if (inRange(s.scheduledAt, startOfWeek)) bySubject[s.subject].week++;
+      if (inRange(s.scheduledAt, startOfMonth)) bySubject[s.subject].month++;
+    });
+
+    const byResourceType = {};
+    resources.forEach(r => {
+      if (!byResourceType[r.type]) byResourceType[r.type] = { total: 0, approved: 0 };
+      byResourceType[r.type].total++;
+      if (r.status === 'approved') byResourceType[r.type].approved++;
+    });
+
+    res.json({
+      id: fp.id,
+      userId: fp.userId,
+      name: fp.user.name,
+      email: fp.user.email,
+      subject: fp.subject,
+      department: fp.department,
+      qualification: fp.qualification,
+      classActivity: {
+        thisWeek: sessionsThisWeek.length,
+        thisMonth: sessionsThisMonth.length,
+        thisYear: sessionsThisYear.length,
+        total: sessions.length,
+        bySubject: Object.entries(bySubject).map(([subject, c]) => ({ subject, ...c })),
+      },
+      studentActivity: {
+        assigned: assignedStudents.length,
+        active: activeStudents.length,
+        pendingDoubts: pendingDoubts.length,
+        resolvedDoubts: resolvedDoubts.length,
+        totalDoubts: doubts.length,
+        students: assignedStudents.map(s => ({ id: s.id, name: s.user.name, plan: s.plan, examTarget: s.examTarget })),
+      },
+      homeworkActivity: {
+        assignmentsGiven: resources.filter(r => r.type === 'Practice Set' || r.type === 'Previous Year Papers').length,
+        homeworkGiven: resources.filter(r => r.type === 'Study Material' || r.type === 'Formula Sheet').length,
+        studentsReached: new Set(resources.map(r => r.grade)).size,
+        byType: Object.entries(byResourceType).map(([type, c]) => ({ type, ...c })),
+      },
+      resourceActivity: {
+        uploaded: resources.length,
+        approved: approvedResources.length,
+        pending: pendingResources.length,
+        notesShared: resources.filter(r => r.type === 'Session Notes').length,
+        handoutsShared: resources.filter(r => r.type === 'Study Material' || r.type === 'Formula Sheet').length,
+        recent: resources.slice(0, 5).map(r => ({ id: r.id, title: r.title, subject: r.subject, type: r.type, status: r.status, createdAt: r.createdAt })),
+      },
+      reportActivity: {
+        total: reports.length,
+        sent: sentReports.length,
+        avgRating: reports.length ? (reports.reduce((a, r) => a + (r.overallRating || 0), 0) / reports.filter(r => r.overallRating).length || 0).toFixed(1) : null,
+        recent: reports.slice(0, 5).map(r => ({ id: r.id, weekNumber: r.weekNumber, studentName: r.student.user.name, overallRating: r.overallRating, status: r.status })),
+      },
+      mentorActivity: {
+        notes: fp.mentorNotes.length,
+        calls: calls.length,
+        completedCalls: completedCalls.length,
+        recentNotes: fp.mentorNotes.slice(0, 3).map(n => ({ id: n.id, content: n.content.slice(0, 80), weekOf: n.weekOf })),
+      },
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch faculty performance' });
+  }
+});
+
 // POST /api/admin/faculty — create a new faculty member
 router.post('/faculty', requireAuth, requireAdmin, async (req, res) => {
   try {
-    const { name, subject, qualification, department } = req.body;
-    if (!name || !subject) return res.status(400).json({ error: 'name and subject required' });
+    const { name, email, subject, qualification, department } = req.body;
+    if (!name || !email || !subject) return res.status(400).json({ error: 'name, email, and subject are required' });
 
-    // Auto-generate email and password
-    const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '.').replace(/^\.+|\.+$/g, '');
-    const baseEmail = `${slug}@studyverse.faculty`;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) return res.status(400).json({ error: 'Invalid email address' });
+
+    const existingUser = await prisma.user.findUnique({ where: { email } });
+    if (existingUser) return res.status(409).json({ error: 'A user with this email already exists' });
+
+    const existingApplication = await prisma.facultyApplication.findUnique({ where: { email } });
+    if (existingApplication && existingApplication.status === 'pending') {
+      return res.status(409).json({ error: 'A faculty application with this email is already pending' });
+    }
+
     const password = Math.random().toString(36).slice(2, 10) + Math.random().toString(36).slice(2, 6).toUpperCase() + '!';
-
-    // Check email uniqueness
-    const existing = await prisma.user.findUnique({ where: { email: baseEmail } });
-    const email = existing
-      ? `${slug}.${Date.now().toString(36)}@studyverse.faculty`
-      : baseEmail;
 
     const bcrypt = require('bcrypt');
     const hashed = await bcrypt.hash(password, 10);
@@ -162,11 +283,15 @@ router.post('/faculty', requireAuth, requireAdmin, async (req, res) => {
             subject,
             qualification: qualification || null,
             department: department || 'Science',
+            isActive: true,
           },
         },
       },
       include: { facultyProfile: true },
     });
+
+    const { sendFacultyWelcomeEmail } = require('../services/emailService');
+    sendFacultyWelcomeEmail(email, name, password).catch(() => {});
 
     res.json({
       success: true,
@@ -184,6 +309,109 @@ router.post('/faculty', requireAuth, requireAdmin, async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to create faculty' });
+  }
+});
+
+// GET /api/admin/faculty-applications — list faculty self-enrollment applications
+router.get('/faculty-applications', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const applications = await prisma.facultyApplication.findMany({
+      orderBy: { createdAt: 'desc' },
+    });
+    res.json({ applications });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch faculty applications' });
+  }
+});
+
+// POST /api/admin/faculty-applications/:id/approve — approve and create faculty account
+router.post('/faculty-applications/:id/approve', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const application = await prisma.facultyApplication.findUnique({
+      where: { id: parseInt(req.params.id) },
+    });
+    if (!application) return res.status(404).json({ error: 'Application not found' });
+    if (application.status !== 'pending') return res.status(400).json({ error: 'Application already processed' });
+
+    const existingUser = await prisma.user.findUnique({ where: { email: application.email } });
+    if (existingUser) {
+      await prisma.facultyApplication.update({
+        where: { id: application.id },
+        data: { status: 'rejected', reviewedAt: new Date(), reviewedBy: req.params.userId },
+      });
+      return res.status(409).json({ error: 'A user with this email already exists' });
+    }
+
+    const password = Math.random().toString(36).slice(2, 10) + Math.random().toString(36).slice(2, 6).toUpperCase() + '!';
+
+    const bcrypt = require('bcrypt');
+    const hashed = await bcrypt.hash(password, 10);
+
+    const user = await prisma.user.create({
+      data: {
+        name: application.name,
+        email: application.email,
+        password: hashed,
+        role: 'faculty',
+        facultyProfile: {
+          create: {
+            subject: application.subject,
+            qualification: application.qualification || null,
+            department: application.department || 'Science',
+            isActive: true,
+          },
+        },
+      },
+      include: { facultyProfile: true },
+    });
+
+    await prisma.facultyApplication.update({
+      where: { id: application.id },
+      data: { status: 'approved', reviewedAt: new Date(), reviewedBy: req.params.userId },
+    });
+
+    const { sendFacultyApprovalEmail } = require('../services/emailService');
+    sendFacultyApprovalEmail(application.email, application.name, password).catch(() => {});
+
+    res.json({
+      success: true,
+      faculty: {
+        id: user.facultyProfile.id,
+        userId: user.id,
+        name: user.name,
+        email: user.email,
+        subject: application.subject,
+        qualification: application.qualification || null,
+      },
+      credentials: { email: application.email, password },
+    });
+    logAction({ adminUserId: req.params.userId, action: 'faculty.approve', target: application.name, metadata: { email: application.email, subject: application.subject } });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to approve faculty application' });
+  }
+});
+
+// POST /api/admin/faculty-applications/:id/reject — reject a faculty application
+router.post('/faculty-applications/:id/reject', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const application = await prisma.facultyApplication.findUnique({
+      where: { id: parseInt(req.params.id) },
+    });
+    if (!application) return res.status(404).json({ error: 'Application not found' });
+    if (application.status !== 'pending') return res.status(400).json({ error: 'Application already processed' });
+
+    await prisma.facultyApplication.update({
+      where: { id: application.id },
+      data: { status: 'rejected', reviewedAt: new Date(), reviewedBy: req.params.userId },
+    });
+
+    res.json({ success: true, message: 'Application rejected' });
+    logAction({ adminUserId: req.params.userId, action: 'faculty.reject', target: application.name, metadata: { email: application.email } });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to reject faculty application' });
   }
 });
 

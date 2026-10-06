@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import AdminPlanGrantModal from './AdminPlanGrantModal';
+import FacultyPerformance from './FacultyPerformance';
 
 const UC = { red:'#EF4444', orange:'#F97316', yellow:'#D97706', green:'#22C55E', gray:'#94A3B8' };
 const UB = { red:'rgba(239,68,68,0.1)', orange:'rgba(249,115,22,0.1)', yellow:'rgba(245,158,11,0.1)', green:'rgba(34,197,94,0.1)', gray:'rgba(148,163,184,0.1)' };
@@ -302,10 +303,11 @@ const fmtWeekRange = (weekStartDate) => {
   return `${fmt(mon)} – ${fmt(sun)}`;
 };
 
-const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, students = [], facultyList = [], onOpenMessage, isSuperAdmin, adminAccounts = [], onDeactivateAdmin, onReactivateAdmin, resources = [], onApproveResource, onDeclineResource, sentMessages = [], onSendMessage, parentReports = [], onApproveReport, onRejectReport, onSendReports, onApproveAllReports, onStudentMentorUpdated, onStudentSubjectFacultyUpdated, onStudentPlanUpdated, sessionRequests = [], onSessionRequestsUpdated, adminNotifications = [], onMarkNotifRead, onMarkAllNotifsRead, analytics = null, accessLog = [] }) => {
+const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, students = [], facultyList = [], onOpenMessage, isSuperAdmin, adminAccounts = [], onDeactivateAdmin, onReactivateAdmin, resources = [], onApproveResource, onDeclineResource, sentMessages = [], onSendMessage, parentReports = [], onApproveReport, onRejectReport, onSendReports, onApproveAllReports, onStudentMentorUpdated, onStudentSubjectFacultyUpdated, onStudentPlanUpdated, sessionRequests = [], onSessionRequestsUpdated, adminNotifications = [], onMarkNotifRead, onMarkAllNotifsRead, analytics = null, accessLog = [], facultyApplications = [] }) => {
   const firstName = profile?.name?.split(' ')[0] || 'there';
   const [studentsTab, setStudentsTab] = useState(0);
   const [planGrantStudent, setPlanGrantStudent] = useState(null);
+  const [perfFaculty, setPerfFaculty] = useState(null);
 
   const activeStudents    = analytics?.activeStudents ?? students.filter(s => ['forge','apex','anchor'].includes(s.plan)).length;
   const premiumStudents   = analytics?.premiumStudents ?? students.filter(s => ['forge','apex','anchor'].includes(s.plan)).length;
@@ -962,7 +964,14 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
       <div className={pg('faculty')} id="p-faculty">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px', flexWrap: 'wrap', gap: '10px' }}>
             <div style={{ fontSize: '13px', color: 'var(--text2)' }}>{facultyList.length} active faculty member{facultyList.length !== 1 ? 's' : ''}</div>
-          <button className="btn btn-gold btn-sm" onClick={() => onOpenModal('add-faculty-modal')}>+ Add Faculty</button>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            {facultyApplications.length > 0 && (
+              <button className="btn btn-purple btn-sm" onClick={() => onOpenModal('faculty-applications-modal')}>
+                Applications ({facultyApplications.filter(a => a.status === 'pending').length})
+              </button>
+            )}
+            <button className="btn btn-gold btn-sm" onClick={() => onOpenModal('add-faculty-modal')}>+ Add Faculty</button>
+          </div>
         </div>
         <div className="g3 mb">
           {facultyList.map(f => {
@@ -1010,7 +1019,7 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
                 </div>
                 <div style={{ display: 'flex', gap: '7px' }}>
                   <button className="btn btn-ghost btn-sm" style={{ flex: 1, justifyContent: 'center' }} onClick={() => onNav('assign')}>Assign Student</button>
-                  <button className="btn btn-gold btn-sm" style={{ flex: 1, justifyContent: 'center' }} onClick={() => { onShowToast(`Message to ${f.name}: use Messages tab to reach faculty`); }}>Message</button>
+                  <button className="btn btn-gold btn-sm" style={{ flex: 1, justifyContent: 'center' }} onClick={() => setPerfFaculty(f)}>Performance</button>
                 </div>
               </div>
             );
@@ -2202,6 +2211,14 @@ const SessionRequestsPage = ({ requests, facultyList, userId, onShowToast, onUpd
           </div>
         ))}
       </div>
+
+      {perfFaculty && (
+        <FacultyPerformance
+          faculty={perfFaculty}
+          onClose={() => setPerfFaculty(null)}
+          onShowToast={onShowToast}
+        />
+      )}
     </div>
   );
 };

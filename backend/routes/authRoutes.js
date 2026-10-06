@@ -2,10 +2,11 @@ const express  = require('express');
 const router   = express.Router();
 const passport = require('passport');
 const jwt      = require('jsonwebtoken');
-const { register, login, checkEmail, refresh, forgotPassword, verifyOtp, resetPassword, planClaim } = require('../controllers/authController');
+const { register, login, checkEmail, refresh, forgotPassword, verifyOtp, resetPassword, facultyEnroll, planClaim } = require('../controllers/authController');
 const { requireAuth } = require('../middleware/auth');
 
 router.post('/register', register);
+router.post('/faculty-enroll', facultyEnroll);
 router.post('/login', login);
 router.post('/check-email', checkEmail);
 router.post('/refresh', requireAuth, refresh);

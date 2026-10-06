@@ -27,6 +27,7 @@ const AdminLMS = ({ expectedRole }) => {
   const [deactivated, setDeactivated] = useState(false);
   const [analytics, setAnalytics] = useState(null);
   const [accessLog, setAccessLog] = useState([]);
+  const [facultyApplications, setFacultyApplications] = useState([]);
   const toastTimer        = useRef(null);
   const reportsRef        = useRef([]);
   const resourcesRef      = useRef([]);
@@ -110,6 +111,11 @@ const AdminLMS = ({ expectedRole }) => {
     fetch(`${import.meta.env.VITE_API_URL}/api/admin/${userId}/access-log`, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.ok ? r.json() : [])
       .then(data => { if (Array.isArray(data)) setAccessLog(data); })
+      .catch(() => {});
+
+    fetch(`${import.meta.env.VITE_API_URL}/api/admin/${userId}/faculty-applications`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : {})
+      .then(data => { if (Array.isArray(data.applications)) setFacultyApplications(data.applications); })
       .catch(() => {});
   }, []);
 
@@ -514,6 +520,7 @@ const AdminLMS = ({ expectedRole }) => {
           onMarkAllNotifsRead={markAllNotifsRead}
           analytics={analytics}
           accessLog={accessLog}
+          facultyApplications={facultyApplications}
         />
       </div>
       <AdminModals
@@ -526,6 +533,29 @@ const AdminLMS = ({ expectedRole }) => {
         onSendMessage={sendMessage}
         userId={userId}
         onFacultyAdded={f => setFacultyList(prev => [...prev, f])}
+        facultyApplications={facultyApplications}
+        onApproveApplication={async (id) => {
+          const token = localStorage.getItem('token');
+          const res = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/${userId}/faculty-applications/${id}/approve`, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          const data = await res.json();
+          if (res.ok) {
+            setFacultyApplications(prev => prev.filter(a => a.id !== id));
+            setFacultyList(prev => [...prev, { ...data.faculty, subjects: [data.faculty.subject], sessionsPerWeek: 0, reportCount: 0, avgRating: null }]);
+          }
+        }}
+        onRejectApplication={async (id) => {
+          const token = localStorage.getItem('token');
+          const res = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/${userId}/faculty-applications/${id}/reject`, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (res.ok) {
+            setFacultyApplications(prev => prev.filter(a => a.id !== id));
+          }
+        }}
       />
     </div>
   );

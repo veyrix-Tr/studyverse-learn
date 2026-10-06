@@ -88,4 +88,86 @@ const sendReceiptEmail = async (toEmail, label, amount) => {
   }
 };
 
-module.exports = { sendOtpEmail, sendReceiptEmail };
+const sendFacultyWelcomeEmail = async (toEmail, name, password) => {
+  try {
+    await axios.post(
+      'https://api.brevo.com/v3/smtp/email',
+      {
+        sender: {
+          name:  'Studyverse',
+          email: process.env.BREVO_SENDER_EMAIL,
+        },
+        to: [{ email: toEmail }],
+        subject: 'Welcome to Studyverse — Your Faculty Account',
+        htmlContent: `
+        <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px;">
+          <h2 style="color:#0F1F3D;margin-bottom:8px;">Welcome to Studyverse, ${name}!</h2>
+          <p style="color:#4A5568;margin-bottom:24px;">Your faculty account has been created. Use the credentials below to sign in.</p>
+          <div style="background:#F5EFE3;border-radius:10px;padding:24px;margin-bottom:24px;">
+            <div style="color:#8896B3;font-size:13px;margin-bottom:6px;">Email</div>
+            <div style="font-size:16px;font-weight:700;color:#0F1F3D;margin-bottom:16px;">${toEmail}</div>
+            <div style="color:#8896B3;font-size:13px;margin-bottom:6px;">Temporary Password</div>
+            <div style="font-size:16px;font-weight:700;color:#0F1F3D;">${password}</div>
+          </div>
+          <p style="color:#4A5568;margin-bottom:24px;">Please change your password after your first login.</p>
+          <p style="color:#8896B3;font-size:13px;">If you have any questions, contact the Studyverse team.</p>
+        </div>`,
+      },
+      {
+        headers: {
+          'api-key':      process.env.BREVO_API_KEY,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    console.log(`Faculty welcome email sent to ${toEmail}`);
+    return true;
+  } catch (error) {
+    console.error('Faculty welcome email failed:', error.response?.data || error.message);
+    return false;
+  }
+};
+
+const sendFacultyApprovalEmail = async (toEmail, name, password) => {
+  try {
+    await axios.post(
+      'https://api.brevo.com/v3/smtp/email',
+      {
+        sender: {
+          name:  'Studyverse',
+          email: process.env.BREVO_SENDER_EMAIL,
+        },
+        to: [{ email: toEmail }],
+        subject: 'Your Studyverse Faculty Account is Ready',
+        htmlContent: `
+        <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px;">
+          <h2 style="color:#0F1F3D;margin-bottom:8px;">You're approved, ${name}!</h2>
+          <p style="color:#4A5568;margin-bottom:24px;">Your faculty enrollment has been approved. Use the credentials below to sign in.</p>
+          <div style="background:#F5EFE3;border-radius:10px;padding:24px;margin-bottom:24px;">
+            <div style="color:#8896B3;font-size:13px;margin-bottom:6px;">Email</div>
+            <div style="font-size:16px;font-weight:700;color:#0F1F3D;margin-bottom:16px;">${toEmail}</div>
+            <div style="color:#8896B3;font-size:13px;margin-bottom:6px;">Temporary Password</div>
+            <div style="font-size:16px;font-weight:700;color:#0F1F3D;">${password}</div>
+          </div>
+          <p style="color:#4A5568;margin-bottom:24px;">Please change your password after your first login.</p>
+          <p style="color:#8896B3;font-size:13px;">If you have any questions, contact the Studyverse team.</p>
+        </div>`,
+      },
+      {
+        headers: {
+          'api-key':      process.env.BREVO_API_KEY,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    console.log(`Faculty approval email sent to ${toEmail}`);
+    return true;
+  } catch (error) {
+    console.error('Faculty approval email failed:', error.response?.data || error.message);
+    return false;
+  }
+};
+
+module.exports = { sendOtpEmail, sendReceiptEmail, sendFacultyWelcomeEmail, sendFacultyApprovalEmail };
