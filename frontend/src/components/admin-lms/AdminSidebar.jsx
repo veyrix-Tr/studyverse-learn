@@ -1,5 +1,3 @@
-import React from 'react';
-
 const AdminSidebar = ({ activePage, isSuperAdmin, onNav, onShowToast, profile, studentsCount = 0, facultyCount = 0, pendingApprovalsCount = 0, pendingReportsCount = 0, pendingSessionRequests = 0, pendingTasksCount = 0, isOpen = false, onClose }) => {
   const name = profile?.name || (isSuperAdmin ? 'Super Admin' : 'Admin');
   const initial = name.charAt(0).toUpperCase();

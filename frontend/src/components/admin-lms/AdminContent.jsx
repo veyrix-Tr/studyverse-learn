@@ -1,13 +1,19 @@
-import { useState, useEffect } from 'react';
+import { Fragment, useState, useEffect } from 'react';
 import AdminPlanGrantModal from './AdminPlanGrantModal';
 import AdminMentorAssignModal from './AdminMentorAssignModal';
 import AdminFacultyAssignModal from './AdminFacultyAssignModal';
 import FacultyPerformance from './FacultyPerformance';
-import { Check, ChevronDown, Lock, FileText, Phone, Clock, Calendar } from 'lucide-react';
+import { Check, ChevronDown, Lock, FileText, Phone, Clock, Calendar, Search } from 'lucide-react';
 
 const UC = { red:'#EF4444', orange:'#F97316', yellow:'#D97706', green:'#22C55E', gray:'#94A3B8' };
 const UB = { red:'rgba(239,68,68,0.1)', orange:'rgba(249,115,22,0.1)', yellow:'rgba(245,158,11,0.1)', green:'rgba(34,197,94,0.1)', gray:'rgba(148,163,184,0.1)' };
 
+const PLAN_NAME = { apex: 'Apex', forge: 'Forge', anchor: 'Anchor', spark: 'Spark' };
+const PLAN_ORDER = ['apex', 'forge', 'anchor', 'spark'];
+const subjectList = (s) => (s.examTarget || '').toLowerCase().includes('neet')
+  ? ['Physics', 'Chemistry', 'Biology']
+  : ['Physics', 'Chemistry', 'Maths'];
+const fmtDate = (d) => new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
 const DiagnosticModal = ({ modal, loading, onClose, onReset }) => {
   useEffect(() => {
     if (!modal) return;
@@ -102,7 +108,7 @@ const DiagnosticModal = ({ modal, loading, onClose, onReset }) => {
                     ['Syllabus done',d.digest.syllabus_coverage],
                     ['Reviews mistakes', d.digest.review_mistakes],
                     ['Same-day revision',d.digest.same_day_revision],
-                  ].filter(([_,v]) => v).map(([label, value], i, arr) => (
+                  ].filter(([,v]) => v).map(([label, value], i, arr) => (
                     <div key={i} style={{ padding:'9px 13px', borderBottom: i < arr.length-2 ? '1px solid rgba(15,31,61,0.06)' : 'none', borderRight: i%2===0 ? '1px solid rgba(15,31,61,0.06)' : 'none' }}>
                       <div style={{ fontSize:'10px', color:'#8896B3', textTransform:'uppercase', letterSpacing:'.05em', marginBottom:'3px' }}>{label}</div>
                       <div style={{ fontSize:'12px', fontWeight:600, color:'#0F1F3D' }}>{value}</div>
@@ -198,7 +204,6 @@ const useCountUp = (target, dur = 900) => {
   useEffect(() => {
     if (target == null) return;
     let raf, start = null;
-    const t0 = performance.now();
     const step = (now) => {
       if (!start) start = now;
       const p = Math.min(1, (now - start) / dur);
@@ -308,7 +313,9 @@ const fmtWeekRange = (weekStartDate) => {
 
 const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, students = [], facultyList = [], onOpenMessage, isSuperAdmin, adminAccounts = [], onDeactivateAdmin, onReactivateAdmin, resources = [], onApproveResource, onDeclineResource, sentMessages = [], onSendMessage, parentReports = [], onApproveReport, onRejectReport, onSendReports, onApproveAllReports, onStudentMentorUpdated, onStudentSubjectFacultyUpdated, onStudentPlanUpdated, sessionRequests = [], onSessionRequestsUpdated, adminNotifications = [], onMarkNotifRead, onMarkAllNotifsRead, analytics = null, accessLog = [], facultyApplications = [] }) => {
   const firstName = profile?.name?.split(' ')[0] || 'there';
-  const [studentsTab, setStudentsTab] = useState(0);
+  const [stuQuery, setStuQuery] = useState('');
+  const [stuPlan, setStuPlan] = useState('all');
+  const [assignView, setAssignView] = useState('needs');
   const [planGrantStudent, setPlanGrantStudent] = useState(null);
   const [perfFaculty, setPerfFaculty] = useState(null);
 
@@ -320,7 +327,6 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
   const thisMonthRevenue  = analytics?.thisMonthRevenue ?? 0;
   const totalRevenue      = analytics?.totalRevenue ?? 0;
   const newThisMonth      = analytics?.newThisMonth ?? 0;
-  const newLastMonth      = analytics?.newLastMonth ?? 0;
   const monthlyRevenue    = analytics?.monthlyRevenue ?? [];
   const revenueByPlan     = analytics?.revenueByPlan ?? [];
   const pipeline          = analytics?.pipeline ?? [];
@@ -453,7 +459,6 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
       {/* ══ TASKS (assignment inbox) ══ */}
       {(() => {
         const pending = adminNotifications.filter(n => n.status === 'pending');
-        const undone  = adminNotifications.filter(n => n.status !== 'done');
         const unread  = adminNotifications.filter(n => !n.readAt);
         const LABEL = { mentor: 'Assign Mentor', faculty: 'Assign Faculty', session: 'Session Request' };
         const tileLabel = (n) => n.type === 'session' ? '1:1' : (n.student?.plan || 'STU').toUpperCase();
@@ -821,156 +826,101 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
       {/* ══ STUDENTS ══ */}
       <div className={pg('students')} id="p-students">
         {(() => {
-          const premium  = students.filter(s => ['forge','apex','anchor'].includes(s.plan));
-          const free     = students.filter(s => !['forge','apex','anchor'].includes(s.plan));
-          const premJee  = premium.filter(s => s.examTarget?.toLowerCase().includes('jee'));
-          const premNeet = premium.filter(s => s.examTarget?.toLowerCase().includes('neet'));
-
-          // tab 0=All(premium) 1=JEE 2=NEET 3=Free Tier
-          const rows = studentsTab === 1 ? premJee : studentsTab === 2 ? premNeet : studentsTab === 3 ? free : premium;
-
-          const tabs = [
-            { label: `All (${premium.length})`, i: 0 },
-            { label: `JEE (${premJee.length})`,  i: 1 },
-            { label: `NEET (${premNeet.length})`, i: 2 },
-            { label: `Free Tier (${free.length})`, i: 3, gold: true },
-          ];
-
-          const isFreeTab = studentsTab === 3;
-
-          const PremiumRow = ({ s }) => {
-            const av = s.name?.[0]?.toUpperCase() || '?';
-            const examClass = s.examTarget?.includes('NEET') ? 'pp' : 'pn';
-            const hasScores = Number.isFinite(s.lastScore) && Number.isFinite(s.lastTotalMarks) && s.lastTotalMarks > 0;
-            const mentorAv = s.mentorName?.[0]?.toUpperCase() || '?';
-            const mentorLabel = s.mentorName || null;
-            return (
-              <tr>
-                <td><div className="av-row"><div className="av">{av}</div>{s.name}</div></td>
-                <td><span className={`pill ${examClass}`}>{s.examTarget || 'Not set'}</span></td>
-                <td>
-                  {mentorLabel
-                    ? <div className="av-row"><div className="av" style={{ background: 'transparent', borderColor: 'var(--text3)', color: 'var(--text3)' }}>{mentorAv}</div>{mentorLabel}</div>
-                    : <span style={{ color: 'var(--text3)', fontSize: '12px' }}>Unassigned</span>}
-                </td>
-                <td>
-                  {hasScores
-                    ? <span style={{ fontFamily: 'var(--fs)', color: 'var(--gold)', fontWeight: '700' }}>{s.lastScore}<span style={{ color: 'var(--text3)', fontWeight: '400' }}>/{s.lastTotalMarks}</span></span>
-                    : <span style={{ color: 'var(--text3)', fontSize: '12px' }}>No scores yet</span>}
-                </td>
-                <td>
-                  {s.latestFeedback ? (
-                    <div>
-                      <div style={{ display: 'flex', gap: '2px', marginBottom: '3px' }}>
-                        {[1,2,3,4,5].map(n => (
-                          <span key={n} style={{ fontSize: '12px', color: n <= (s.latestFeedback.rating || 0) ? '#E8A830' : 'var(--cream3)' }}>★</span>
-                        ))}
-                        <span style={{ fontSize: '11px', color: 'var(--text3)', marginLeft: '4px' }}>{s.latestFeedback.rating}/5</span>
-                      </div>
-                      {s.latestFeedback.comment && (
-                        <div style={{ fontSize: '11px', color: 'var(--text2)', maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={s.latestFeedback.comment}>
-                          "{s.latestFeedback.comment}"
-                        </div>
-                      )}
-                      <div style={{ fontSize: '10px', color: 'var(--text3)', marginTop: '2px' }}>
-                        {new Date(s.latestFeedback.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
-                      </div>
-                    </div>
-                  ) : (
-                    <span style={{ fontSize: '12px', color: 'var(--text3)' }}>No feedback yet</span>
-                  )}
-                </td>
-                <td style={{ display:'flex', gap:'6px', alignItems:'center', flexWrap:'wrap' }}>
-                  {s.diagnosticScore !== null && s.diagnosticScore !== undefined
-                    ? <button className="btn btn-ghost btn-sm" onClick={() => openDiagModal(s.userId, s.name)}>Diagnostic</button>
-                    : <span style={{ fontSize:'11px', fontWeight:600, color:'#F97316', background:'rgba(249,115,22,0.1)', padding:'2px 9px', borderRadius:'99px', whiteSpace:'nowrap' }}>No Diagnostic</span>
-                  }
-                  <button
-                    className="btn btn-ghost btn-sm"
-                    style={s.mentorId ? { color: 'var(--gold)', borderColor: 'var(--gb)' } : { color: '#F87171', borderColor: 'rgba(248,113,113,.3)' }}
-                    onClick={() => setMentorModalStudent(s)}
-                  >
-                    {s.mentorId ? 'Mentor ✓' : 'Mentor'}
-                  </button>
-                  {s.plan === 'apex' && (
-                    <button
-                      className="btn btn-ghost btn-sm"
-                      style={Object.keys(s.subjectFaculty || {}).length > 0 ? { color: 'var(--blue)', borderColor: 'rgba(59,130,246,.3)' } : { color: '#F87171', borderColor: 'rgba(248,113,113,.3)' }}
-                      onClick={() => setFacultyModalStudent(s)}
-                    >
-                      {Object.keys(s.subjectFaculty || {}).length > 0 ? 'Faculty ✓' : 'Faculty'}
-                    </button>
-                  )}
-                  {isSuperAdmin && <button className="btn btn-ghost btn-sm" onClick={() => setPlanGrantStudent(s)}>Plan</button>}
-                  <button className="btn btn-ghost btn-sm" onClick={() => onOpenMessage(s.id)}>Message</button>
-                </td>
-              </tr>
-            );
-          };
-
-          const FreeRow = ({ s }) => {
-            const av = s.name?.[0]?.toUpperCase() || '?';
-            const examClass = s.examTarget?.includes('NEET') ? 'pp' : 'pn';
-            const diagDone = s.diagnosticScore !== null && s.diagnosticScore !== undefined;
-            const diagDate = s.diagnosticTakenAt
-              ? new Date(s.diagnosticTakenAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: '2-digit' })
-              : null;
-            return (
-              <tr>
-                <td><div className="av-row"><div className="av">{av}</div>{s.name}</div></td>
-                <td><span className={`pill ${examClass}`}>{s.examTarget || 'Not set'}</span></td>
-                <td style={{ color: 'var(--text2)', fontSize: '13px' }}>{s.grade || 'Not set'}</td>
-                <td>
-                  {diagDone
-                    ? <div>
-                        <span style={{ fontSize: '12px', fontWeight: '600', color: 'var(--green)' }}>Done — {s.diagnosticScore}% complete</span>
-                        {diagDate && <div style={{ fontSize: '11px', color: 'var(--text3)', marginTop: '2px' }}>{diagDate}</div>}
-                      </div>
-                    : <span style={{ fontSize: '12px', color: 'var(--text3)' }}>Pending</span>}
-                </td>
-                <td style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                  {diagDone && <button className="btn btn-ghost btn-sm" onClick={() => openDiagModal(s.userId, s.name)}>Diagnostic</button>}
-                  {isSuperAdmin && <button className="btn btn-ghost btn-sm" onClick={() => setPlanGrantStudent(s)}>Plan</button>}
-                  <button className="btn btn-ghost btn-sm" onClick={() => onOpenMessage(s.id)}>Message</button>
-                </td>
-              </tr>
-            );
-          };
+          const q = stuQuery.trim().toLowerCase();
+          const match = s => !q || s.name?.toLowerCase().includes(q) || (s.examTarget || '').toLowerCase().includes(q) || String(s.grade || '').toLowerCase() === q;
+          const countFor = key => students.filter(s => (key === 'all' || s.plan === key) && match(s)).length;
+          const filtered = students.filter(s => (stuPlan === 'all' || s.plan === stuPlan) && match(s));
+          const groups = stuPlan === 'all'
+            ? PLAN_ORDER.map(k => ({ key: k, list: filtered.filter(s => s.plan === k) })).filter(g => g.list.length)
+            : [{ key: stuPlan, list: filtered }];
 
           return (
             <>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px', flexWrap: 'wrap', gap: '10px' }}>
-                <div className="tabs" style={{ marginBottom: '0' }}>
-                  {tabs.map(({ label, i, gold }) => (
-                    <div key={i}
-                      className={`tab${studentsTab === i ? ' on' : ''}`}
-                      style={gold ? {
-                        color: 'var(--black)',
-                        background: studentsTab === i ? 'rgb(252, 210, 80)' : 'rgb(252, 238, 180)',
-                        borderColor: studentsTab === i ? 'rgb(252, 210, 80)' : 'rgb(252, 238, 180)',
-                        borderWidth: '1px',
-                        borderStyle: 'solid',
-                        borderRadius: 'var(--r)',
-                      } : studentsTab === i ? {
-                        background: 'var(--blue)',
-                        color: '#fff',
-                      } : {}}
-                      onClick={() => setStudentsTab(i)}
-                    >{label}</div>
-                  ))}
+              <div className="adm-head">
+                <div>
+                  <div className="adm-title">Students</div>
+                  <div className="adm-sub">{filtered.length === students.length ? `${students.length} students` : `${filtered.length} of ${students.length} students`}</div>
                 </div>
+                <label className="adm-search">
+                  <Search size={14} />
+                  <input placeholder="Search name, exam or grade" value={stuQuery} onChange={e => setStuQuery(e.target.value)} />
+                </label>
               </div>
-              <div className="card" style={{ padding: '0', overflow: 'hidden' }}>
+
+              <div className="seg">
+                {[{ key: 'all', label: 'All students' }, ...PLAN_ORDER.map(k => ({ key: k, label: PLAN_NAME[k] }))].map(opt => (
+                  <button key={opt.key} className={`seg-b${stuPlan === opt.key ? ' on' : ''}`} onClick={() => setStuPlan(opt.key)}>
+                    {opt.label} <em>{countFor(opt.key)}</em>
+                  </button>
+                ))}
+              </div>
+
+              <div className="card tbl-wrap" style={{ padding: 0 }}>
                 <table className="tbl">
                   <thead>
-                    {isFreeTab
-                      ? <tr><th>Student</th><th>Exam</th><th>Grade</th><th>Diagnostic</th><th>Actions</th></tr>
-                      : <tr><th>Student</th><th>Exam</th><th>Mentor</th><th>Score Progress</th><th>Faculty Feedback</th><th>Actions</th></tr>}
+                    <tr>
+                      <th>Student</th>
+                      <th>Plan</th>
+                      <th>Mentor</th>
+                      <th>Subject faculty</th>
+                      <th>Feedback</th>
+                      <th>Diagnostic</th>
+                      <th style={{ textAlign: 'right' }}>Actions</th>
+                    </tr>
                   </thead>
                   <tbody>
-                    {rows.length === 0
-                      ? <tr><td colSpan={5} style={{ textAlign: 'center', color: 'var(--text3)', padding: '24px' }}>No students found.</td></tr>
-                      : rows.map(s => isFreeTab ? <FreeRow key={s.id} s={s} /> : <PremiumRow key={s.id} s={s} />)}
+                    {filtered.length === 0 && (
+                      <tr><td colSpan={7} className="st-empty">No students match{q ? ` “${stuQuery}”` : ''}.</td></tr>
+                    )}
+                    {groups.map(g => (
+                      <Fragment key={g.key}>
+                        <tr className="grp">
+                          <td colSpan={7}>{PLAN_NAME[g.key] || g.key} <em>{g.list.length} student{g.list.length !== 1 ? 's' : ''}</em></td>
+                        </tr>
+                        {g.list.map(s => {
+                          const isApex = s.plan === 'apex';
+                          const assigned = isApex ? subjectList(s).filter(sub => (s.subjectFaculty || {})[sub]) : [];
+                          const missing = isApex ? subjectList(s).filter(sub => !(s.subjectFaculty || {})[sub]) : [];
+                          const fb = s.latestFeedback;
+                          return (
+                            <tr key={s.userId}>
+                              <td>
+                                <div className="st-cell">
+                                  <div className="av">{s.name?.[0]?.toUpperCase() || '?'}</div>
+                                  <div>
+                                    <div className="st-name">{s.name}</div>
+                                    <div className="st-sub">{s.examTarget || 'Exam not set'}{s.grade ? ` · Grade ${s.grade}` : ''}</div>
+                                  </div>
+                                </div>
+                              </td>
+                              <td><span className={`st-plan p-${s.plan}`}>{PLAN_NAME[s.plan] || s.plan}</span></td>
+                              <td>{s.mentorName ? <span className="st-val">{s.mentorName}</span> : <span className="st-na">Not assigned</span>}</td>
+                              <td>
+                                {!isApex
+                                  ? <span className="st-na">—</span>
+                                  : assigned.length === 0
+                                    ? <span className="st-na">Not assigned</span>
+                                    : <>
+                                        <span className="st-val">{assigned.length} of {subjectList(s).length} subjects</span>
+                                        {missing.length > 0 && <div className="st-sub">Missing: {missing.join(', ')}</div>}
+                                      </>}
+                              </td>
+                              <td>
+                                {fb
+                                  ? <span className="st-val">{fb.rating}/5<div className="st-sub">{fmtDate(fb.createdAt)}</div></span>
+                                  : <span className="st-na">—</span>}
+                              </td>
+                              <td>{s.diagnosticScore != null ? <span className="st-val">{s.diagnosticScore}%</span> : <span className="st-na">Pending</span>}</td>
+                              <td className="ar">
+                                {s.diagnosticScore != null && <button className="btn btn-ghost btn-sm" onClick={() => openDiagModal(s.userId, s.name)}>Diagnostic</button>}
+                                {isSuperAdmin && <button className="btn btn-ghost btn-sm" onClick={() => setPlanGrantStudent(s)}>Plan</button>}
+                                <button className="btn btn-ghost btn-sm" onClick={() => onOpenMessage(s.id)}>Message</button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </Fragment>
+                    ))}
                   </tbody>
                 </table>
               </div>
@@ -981,234 +931,203 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
 
       {/* ══ FACULTY ══ */}
       <div className={pg('faculty')} id="p-faculty">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px', flexWrap: 'wrap', gap: '10px' }}>
-            <div style={{ fontSize: '13px', color: 'var(--text2)' }}>{facultyList.length} active faculty member{facultyList.length !== 1 ? 's' : ''}</div>
-          <div style={{ display: 'flex', gap: '8px' }}>
+        <div className="adm-head">
+          <div>
+            <div className="adm-title">Faculty</div>
+            <div className="adm-sub">{facultyList.length} active member{facultyList.length !== 1 ? 's' : ''}</div>
+          </div>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
             {facultyApplications.length > 0 && (
-              <button className="btn btn-purple btn-sm" onClick={() => onOpenModal('faculty-applications-modal')}>
+              <button className="btn btn-ghost btn-sm" onClick={() => onOpenModal('faculty-applications-modal')}>
                 Applications ({facultyApplications.filter(a => a.status === 'pending').length})
               </button>
             )}
             <button className="btn btn-gold btn-sm" onClick={() => onOpenModal('add-faculty-modal')}>+ Add Faculty</button>
           </div>
         </div>
-        <div className="g3 mb">
-          {facultyList.map(f => {
-            const subjectPill = s => {
-              const l = s.toLowerCase();
-              if (l.includes('physics')) return 'pn';
-              if (l.includes('chem'))   return 'po';
-              if (l.includes('math'))   return 'pp';
-              if (l.includes('bio'))    return 'ppu';
-              if (l.includes('neet'))   return 'ppu';
-              if (l.includes('jee'))    return 'pg';
-              return 'pn';
-            };
-            const assignedStudents = f.mentorStudentCount || 0;
-            return (
-              <div key={f.id} className="card" style={{ transition: 'all .2s' }}
-                onMouseOver={e => e.currentTarget.style.borderColor = 'var(--gold)'}
-                onMouseOut={e => e.currentTarget.style.borderColor = 'var(--b)'}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
-                  <div className="av av-lg" style={{ borderColor: 'var(--gold)', color: 'var(--gold)', background: 'var(--gd)' }}>{f.name.charAt(0)}</div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: '15px', fontWeight: '700', fontFamily: 'var(--fs)' }}>{f.name}</div>
-                    <div style={{ fontSize: '11.5px', color: 'var(--text3)' }}>{f.subject}{f.qualification ? ` • ${f.qualification}` : ''}</div>
-                  </div>
-                  {assignedStudents > 0 && (
-                    <span style={{ fontSize: '11px', fontWeight: '700', padding: '3px 9px', borderRadius: '99px', background: 'rgba(34,197,94,0.1)', color: '#16A34A', flexShrink: 0 }}>
-                      {assignedStudents} student{assignedStudents > 1 ? 's' : ''}
-                    </span>
-                  )}
-                </div>
-                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
-                  {f.subjects.map(s => <span key={s} className={`pill ${subjectPill(s)}`}>{s}</span>)}
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(84px, 1fr))', gap: '8px', marginBottom: '12px' }}>
-                  {[
-                    { val: f.sessionsPerWeek || 0, lbl: 'Sessions/wk' },
-                    { val: f.reportCount, lbl: 'Reports' },
-                    { val: f.avgRating ? f.avgRating + '★' : 'No reviews', lbl: 'Avg rating', gold: true },
-                  ].map(({ val, lbl, gold }) => (
-                    <div key={lbl} style={{ textAlign: 'center', padding: '8px', background: 'var(--cream2)', borderRadius: 'var(--r)' }}>
-                      <div style={{ fontFamily: 'var(--fs)', fontSize: '18px', fontWeight: '700', color: gold ? 'var(--gold)' : undefined }}>{val}</div>
-                      <div style={{ fontSize: '10.5px', color: 'var(--text3)' }}>{lbl}</div>
+
+        <div className="card tbl-wrap" style={{ padding: 0 }}>
+          <table className="tbl tbl-wide">
+            <thead>
+              <tr>
+                <th>Faculty</th>
+                <th>Subjects</th>
+                <th>Mentees</th>
+                <th>Sessions / week</th>
+                <th>Rating</th>
+                <th style={{ textAlign: 'right' }}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {facultyList.map(f => (
+                <tr key={f.id}>
+                  <td>
+                    <div className="st-cell">
+                      <div className="av">{f.name?.charAt(0)}</div>
+                      <div>
+                        <div className="st-name">{f.name}{f.isActive === false && <span className="am-tag" style={{ marginLeft: 7 }}>Inactive</span>}</div>
+                        <div className="st-sub">{f.email}{f.qualification ? ` · ${f.qualification}` : ''}</div>
+                      </div>
                     </div>
-                  ))}
-                </div>
-                <div style={{ display: 'flex', gap: '7px' }}>
-                  <button className="btn btn-ghost btn-sm" style={{ flex: 1, justifyContent: 'center' }} onClick={() => onNav('assign')}>Assign Student</button>
-                  <button className="btn btn-gold btn-sm" style={{ flex: 1, justifyContent: 'center' }} onClick={() => setPerfFaculty(f)}>Performance</button>
-                </div>
-              </div>
-            );
-          })}
-          <div className="card" style={{ border: '1px dashed var(--b)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '12px', minHeight: '220px', cursor: 'pointer', transition: 'all .2s' }}
-            onMouseOver={e => e.currentTarget.style.borderColor = 'var(--gold)'}
-            onMouseOut={e => e.currentTarget.style.borderColor = 'var(--b)'}
-            onClick={() => onOpenModal('add-faculty-modal')}>
-            <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'var(--cream2)', border: '1.5px dashed var(--b)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px', color: 'var(--text3)' }}>+</div>
-            <div style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text3)', textAlign: 'center' }}>Add a Faculty Member</div>
-            <div style={{ fontSize: '12px', color: 'var(--text3)', textAlign: 'center', maxWidth: '160px', lineHeight: '1.6' }}>Keep cohort size intentionally small per faculty</div>
-          </div>
+                  </td>
+                  <td><span className="st-val">{(f.subjects || [f.subject]).filter(Boolean).join(', ') || '—'}</span></td>
+                  <td><span className="st-val">{f.mentorStudentCount || 0} of 10</span></td>
+                  <td><span className="st-val">{f.sessionsPerWeek || 0}</span></td>
+                  <td>
+                    {f.avgRating
+                      ? <span className="st-val">{f.avgRating} / 5<div className="st-sub">{f.reportCount} report{f.reportCount !== 1 ? 's' : ''}</div></span>
+                      : <span className="st-na">No ratings yet</span>}
+                  </td>
+                  <td className="ar">
+                    <button className="btn btn-green btn-md" onClick={() => setPerfFaculty(f)}>View performance</button>
+                  </td>
+                </tr>
+              ))}
+              {facultyList.length === 0 && (
+                <tr><td colSpan={6} className="st-empty">No faculty yet. Use “+ Add Faculty” to create the first account.</td></tr>
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
 
       {/* ══ ASSIGN ══ */}
       <div className={pg('assign')} id="p-assign">
         {(() => {
-          const isNEET = (t) => (t || '').toLowerCase().includes('neet');
-          const subjectList = (student) => isNEET(student.examTarget)
-            ? ['Physics', 'Chemistry', 'Biology']
-            : ['Physics', 'Chemistry', 'Maths'];
-
-          const PLAN_COLOR = { forge:'#6366F1', apex:'#E8A830', anchor:'#4ADE80', spark:'#94A3B8' };
-          const PLAN_BG   = { forge:'rgba(99,102,241,.1)', apex:'rgba(232,168,48,.1)', anchor:'rgba(74,222,128,.1)', spark:'rgba(148,163,184,.1)' };
-
-          const assignableStudents = students.filter(s => s.plan !== 'spark');
+          const assignable = students.filter(s => s.plan !== 'spark');
           const sparkStudents = students.filter(s => s.plan === 'spark');
-          const needsAssignment = s => !s.mentorId || (s.plan === 'apex' && subjectList(s).some(subj => !(s.subjectFaculty || {})[subj]));
+          const missingFaculty = s => s.plan === 'apex' ? subjectList(s).filter(sub => !(s.subjectFaculty || {})[sub]) : [];
+          const needsAction = s => !s.mentorId || missingFaculty(s).length > 0;
+          const needCount = assignable.filter(needsAction).length;
+          const rows = assignView === 'needs' ? assignable.filter(needsAction) : assignable;
 
           return (
             <>
-              <style dangerouslySetInnerHTML={{ __html:
-                '@keyframes asgCard{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}' +
-                '.asg-row{transition:background .15s,box-shadow .15s;}' +
-                '.asg-row:hover{background:rgba(15,31,61,0.035)!important;box-shadow:inset 3px 0 0 var(--gold);}'
-              }} />
-
-              {/* Summary bar */}
-              <div style={{ display:'flex', gap:'12px', marginBottom:'22px', flexWrap:'wrap' }}>
-                {[
-                  { label:'Need assignment', val: assignableStudents.filter(needsAssignment).length, color:'#F87171', bg:'rgba(248,113,113,.1)', border:'rgba(248,113,113,.25)', show: assignableStudents.some(needsAssignment) },
-                  { label:'Fully assigned', val: assignableStudents.filter(s => !needsAssignment(s)).length, color:'#22C55E', bg:'rgba(34,197,94,.1)', border:'rgba(34,197,94,.25)', show: true },
-                  { label:'Total eligible', val: assignableStudents.length, color:'var(--text2)', bg:'var(--cream2)', border:'var(--b)', show: true },
-                ].filter(s => s.show).map(s => (
-                  <div key={s.label} style={{ background:s.bg, border:`1px solid ${s.border}`, borderRadius:'10px', padding:'10px 16px', display:'flex', alignItems:'center', gap:'10px' }}>
-                    <div style={{ fontFamily:'var(--fs)', fontSize:'22px', fontWeight:700, color:s.color, lineHeight:1 }}>{s.val}</div>
-                    <div style={{ fontSize:'12px', color:'var(--text3)', fontWeight:500 }}>{s.label}</div>
-                  </div>
-                ))}
+              <div className="adm-head">
+                <div>
+                  <div className="adm-title">Assignments</div>
+                  <div className="adm-sub">One mentor per paid student · subject faculty for Apex students</div>
+                </div>
               </div>
 
-              {/* Student list with separate Mentor/Faculty buttons */}
-              <div className="card" style={{ padding:0, overflow:'hidden', marginBottom:'20px' }}>
-                {assignableStudents.map((s, i) => {
-                  const hasMentor = !!s.mentorId;
-                  const facultyCount = Object.keys(s.subjectFaculty || {}).length;
-                  const planC = PLAN_COLOR[s.plan] || '#94A3B8';
-                  const planB = PLAN_BG[s.plan] || 'rgba(148,163,184,.1)';
+              <div className="stat-row">
+                <div className="stat-n">
+                  <b>{needCount}</b>
+                  <span>Need action</span>
+                </div>
+                <div className="stat-n">
+                  <b>{assignable.length - needCount}</b>
+                  <span>Fully assigned</span>
+                </div>
+                <div className="stat-n">
+                  <b>{assignable.length}</b>
+                  <span>Eligible students</span>
+                </div>
+                {sparkStudents.length > 0 && (
+                  <div className="stat-n">
+                    <b>{sparkStudents.length}</b>
+                    <span>Spark · free, no assignment</span>
+                  </div>
+                )}
+              </div>
+
+              <div className="seg">
+                <button className={`seg-b${assignView === 'needs' ? ' on' : ''}`} onClick={() => setAssignView('needs')}>Needs action <em>{needCount}</em></button>
+                <button className={`seg-b${assignView === 'all' ? ' on' : ''}`} onClick={() => setAssignView('all')}>All eligible <em>{assignable.length}</em></button>
+              </div>
+
+              <div className="card asg-list">
+                {rows.map(s => {
+                  const miss = missingFaculty(s);
+                  const isApex = s.plan === 'apex';
                   return (
-                    <div
-                      key={s.userId}
-                      className="asg-row"
-                      style={{ display:'flex', alignItems:'center', gap:'14px', padding:'14px 18px', borderBottom: i < assignableStudents.length - 1 ? '1px solid var(--b)' : 'none', animation:`asgCard .3s ease ${i * 0.03}s both` }}
-                    >
-                      <div className="av" style={{ flexShrink:0 }}>{s.name?.[0]}</div>
-                      <div style={{ flex:1, minWidth:0 }}>
-                        <div style={{ fontWeight:600, fontSize:'14px', color:'var(--text)' }}>{s.name}</div>
-                        <div style={{ fontSize:'11.5px', color:'var(--text3)', marginTop:'2px' }}>{s.examTarget || 'Exam not set'}{s.grade ? ` · Grade ${s.grade}` : ''}</div>
+                    <div className="asg-row" key={s.userId}>
+                      <div className="st-cell asg-who">
+                        <div className="av">{s.name?.[0]?.toUpperCase() || '?'}</div>
+                        <div>
+                          <div className="st-name">{s.name}</div>
+                          <div className="st-sub">{s.examTarget || 'Exam not set'}{s.grade ? ` · Grade ${s.grade}` : ''} · {PLAN_NAME[s.plan] || s.plan}</div>
+                        </div>
                       </div>
-                      <span style={{ background:planB, color:planC, border:`1px solid ${planC}33`, fontSize:'10.5px', fontWeight:700, padding:'3px 10px', borderRadius:'99px', textTransform:'uppercase', letterSpacing:'.05em', flexShrink:0 }}>{s.plan}</span>
-                      <div style={{ display:'flex', gap:'8px', flexShrink:0, alignItems:'center' }}>
-                        <button
-                          className="btn btn-sm"
-                          style={{
-                            fontSize:'12px',
-                            fontWeight:600,
-                            padding:'6px 14px',
-                            borderRadius:'8px',
-                            border: hasMentor ? '1px solid var(--gb)' : '1px solid rgba(248,113,113,.3)',
-                            background: hasMentor ? 'var(--gdim)' : 'rgba(248,113,113,.06)',
-                            color: hasMentor ? 'var(--gold)' : '#F87171',
-                            cursor:'pointer',
-                            transition:'all .15s',
-                          }}
-                          onClick={() => setMentorModalStudent(s)}
-                        >
-                          {hasMentor ? `✓ ${s.mentorName?.split(' ')[0] || 'Mentor'}` : 'Assign Mentor'}
-                        </button>
-                        {s.plan === 'apex' && (
-                          <button
-                            className="btn btn-sm"
-                            style={{
-                              fontSize:'12px',
-                              fontWeight:600,
-                              padding:'6px 14px',
-                              borderRadius:'8px',
-                              border: facultyCount > 0 ? '1px solid rgba(59,130,246,.3)' : '1px solid rgba(248,113,113,.3)',
-                              background: facultyCount > 0 ? 'rgba(59,130,246,.06)' : 'rgba(248,113,113,.06)',
-                              color: facultyCount > 0 ? 'var(--blue)' : '#F87171',
-                              cursor:'pointer',
-                              transition:'all .15s',
-                            }}
-                            onClick={() => setFacultyModalStudent(s)}
-                          >
-                            {facultyCount > 0 ? `✓ Faculty (${facultyCount})` : 'Assign Faculty'}
-                          </button>
-                        )}
+
+                      <div className="slot">
+                        <div className="slot-k">Mentor</div>
+                        {s.mentorName
+                          ? <div className="slot-v"><span className="chk">✓</span>{s.mentorName}</div>
+                          : <button className="btn btn-gold btn-sm" onClick={() => setMentorModalStudent(s)}>Assign mentor</button>}
+                      </div>
+
+                      <div className="slot">
+                        <div className="slot-k">Subject faculty</div>
+                        {!isApex
+                          ? <div className="slot-v st-na">Not applicable on {PLAN_NAME[s.plan] || s.plan}</div>
+                          : miss.length === 0
+                            ? <div className="slot-v"><span className="chk">✓</span>All {subjectList(s).length} subjects assigned</div>
+                            : <button className="btn btn-navy btn-sm" onClick={() => setFacultyModalStudent(s)}>
+                                {miss.length === subjectList(s).length ? 'Assign subject faculty' : `Assign remaining (${miss.length})`}
+                              </button>}
                       </div>
                     </div>
                   );
                 })}
+                {rows.length === 0 && (
+                  <div className="st-empty">
+                    {assignView === 'needs'
+                      ? 'Every eligible student has a mentor and subject faculty.'
+                      : 'No eligible students yet.'}
+                  </div>
+                )}
               </div>
 
-              {/* Spark info */}
-              {sparkStudents.length > 0 && (
-                <div style={{ fontSize:'12.5px', color:'var(--text3)', padding:'10px 14px', background:'var(--cream2)', borderRadius:'8px', border:'1px solid var(--b)' }}>
-                  {sparkStudents.length} Spark student{sparkStudents.length > 1 ? 's' : ''} ({sparkStudents.map(s => s.name).join(', ')}) — no assignments needed on the free plan.
+              {/* Faculty workload */}
+              <div style={{ marginTop: '28px' }}>
+                <div className="sh" style={{ marginBottom: '14px' }}>
+                  <div className="sh-t">Faculty workload</div>
+                  <span style={{ fontSize: '12px', color: 'var(--text3)' }}>Mentee capacity 10 per faculty · subject students across Apex assignments</span>
                 </div>
-              )}
-
-              {/* Faculty overview — always shown */}
-              <div style={{ marginTop:'28px' }}>
-                <div className="sh" style={{ marginBottom:'14px' }}>
-                  <div className="sh-t">Faculty Overview</div>
-                  <span style={{ fontSize:'12px', color:'var(--text3)' }}>Sessions taught · Anchor mentees · Suggested max 10 mentees</span>
-                </div>
-                <div className="g3">
-                  {facultyList.map(f => {
-                    const mentees = f.mentorStudentCount || 0;
-                    const assigned = students.filter(s => Object.values(s.subjectFaculty || {}).includes(f.id)).length;
-                    const pct = Math.min(Math.round((mentees / 10) * 100), 100);
-                    const barColor = pct >= 80 ? '#EF4444' : pct >= 50 ? '#F59E0B' : '#22C55E';
-                    return (
-                      <div key={f.id} className="card" style={{ padding:'16px 18px' }}>
-                        <div style={{ display:'flex', alignItems:'center', gap:'10px', marginBottom:'12px' }}>
-                          <div className="av" style={{ flexShrink:0 }}>{f.name?.[0]}</div>
-                          <div style={{ flex:1, minWidth:0 }}>
-                            <div style={{ fontWeight:600, fontSize:'13.5px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{f.name}</div>
-                            <div style={{ fontSize:'11px', color:'var(--text3)', marginTop:'1px' }}>{(f.subjects || [f.subject]).filter(Boolean).join(' · ')}</div>
-                          </div>
-                        </div>
-                        <div style={{ display:'flex', gap:'8px', marginBottom:'12px' }}>
-                          <div style={{ flex:1, background:'var(--cream2)', borderRadius:'8px', padding:'8px 10px', textAlign:'center' }}>
-                            <div style={{ fontFamily:'var(--fs)', fontSize:'18px', fontWeight:700, color:'var(--text)' }}>{assigned}</div>
-                            <div style={{ fontSize:'10px', color:'var(--text3)', marginTop:'2px' }}>students</div>
-                          </div>
-                          <div style={{ flex:1, background: mentees > 0 ? 'var(--gdim)' : 'var(--cream2)', borderRadius:'8px', padding:'8px 10px', textAlign:'center', border: mentees > 0 ? '1px solid var(--gb)' : '1px solid transparent' }}>
-                            <div style={{ fontFamily:'var(--fs)', fontSize:'18px', fontWeight:700, color: mentees > 0 ? 'var(--gold)' : 'var(--text3)' }}>{mentees}</div>
-                            <div style={{ fontSize:'10px', color:'var(--text3)', marginTop:'2px' }}>mentees</div>
-                          </div>
-                        </div>
-                        <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
-                          <div style={{ flex:1, height:'4px', background:'var(--b)', borderRadius:'2px', overflow:'hidden' }}>
-                            <div style={{ height:'100%', width: pct + '%', background: barColor, borderRadius:'2px', transition:'width .4s ease' }} />
-                          </div>
-                          <span style={{ fontSize:'10.5px', color:'var(--text3)', flexShrink:0, minWidth:'30px', textAlign:'right' }}>{mentees}/10</span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                  {facultyList.length === 0 && (
-                    <div style={{ gridColumn:'1/-1', fontSize:'13px', color:'var(--text3)', padding:'20px 0', textAlign:'center' }}>No faculty added yet.</div>
-                  )}
+                <div className="card tbl-wrap" style={{ padding: 0 }}>
+                  <table className="tbl tbl-wide">
+                    <thead>
+                      <tr><th>Faculty</th><th>Subjects</th><th>Subject students</th><th>Mentees</th><th>Mentee load</th></tr>
+                    </thead>
+                    <tbody>
+                      {facultyList.map(f => {
+                        const mentees = f.mentorStudentCount || 0;
+                        const subjectStudents = students.filter(s => Object.values(s.subjectFaculty || {}).includes(f.id)).length;
+                        const pct = Math.min(Math.round((mentees / 10) * 100), 100);
+                        const barColor = pct >= 80 ? '#EF4444' : pct >= 50 ? '#F59E0B' : '#22C55E';
+                        return (
+                          <tr key={f.id}>
+                            <td>
+                              <div className="st-cell">
+                                <div className="av">{f.name?.[0]}</div>
+                                <div className="st-name">{f.name}</div>
+                              </div>
+                            </td>
+                            <td><span className="st-val">{(f.subjects || [f.subject]).filter(Boolean).join(', ') || '—'}</span></td>
+                            <td><span className="st-val">{subjectStudents}</span></td>
+                            <td><span className="st-val">{mentees}</span></td>
+                            <td>
+                              <div className="load">
+                                <div className="load-bar"><i style={{ width: pct + '%', background: barColor }} /></div>
+                                <span>{mentees}/10</span>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                      {facultyList.length === 0 && (
+                        <tr><td colSpan={5} className="st-empty">No faculty added yet.</td></tr>
+                      )}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             </>
           );
         })()}
       </div>
+
 
       {/* ══ APPROVALS ══ */}
       <div className={pg('approvals')} id="p-approvals">
@@ -1837,6 +1756,7 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
       {perfFaculty && (
         <FacultyPerformance
           faculty={perfFaculty}
+          adminId={profile?.id}
           onClose={() => setPerfFaculty(null)}
           onShowToast={onShowToast}
         />

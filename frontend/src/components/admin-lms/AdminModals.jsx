@@ -10,7 +10,7 @@ const PermToggleRow = ({ label, defaultOn, last }) => {
   );
 };
 
-const AdminModals = ({ openModal, onClose, onShowToast, toast, students = [], messageStudentId = null, onSendMessage, userId, onFacultyAdded, facultyApplications = [], onApproveApplication, onRejectApplication }) => {
+const AdminModals = ({ openModal, onClose, onShowToast, toast, students = [], messageStudentId = null, onSendMessage, userId, onFacultyAdded, facultyApplications = [] }) => {
   const isOpen = (id) => openModal === id ? ' open' : '';
   const [newFaculty, setNewFaculty] = useState({ name: '', email: '', subject: '', qualification: '', department: 'Science' });
   const [addingFaculty, setAddingFaculty] = useState(false);

@@ -1,34 +1,33 @@
 import { useState, useMemo } from 'react';
 import { Check, SearchX, UserRound } from 'lucide-react';
 import Modal from '../common/Modal';
+import { facultySubjects, teachesSubject, isActiveFaculty } from './facultyFilters';
 import './AssignModals.css';
 
 const NEET_SUBJECTS = ['physics', 'chemistry', 'biology', 'zoology', 'botany'];
-const OTHER_SUBJECTS = ['physics', 'chemistry', 'mathematics', 'maths', 'math'];
+const OTHER_SUBJECTS = ['physics', 'chemistry', 'maths'];
 
 const AdminMentorAssignModal = ({ student, facultyList, onSave, onClose, saving }) => {
   const [search, setSearch] = useState('');
   const [selectedId, setSelectedId] = useState(student?.mentorId || null);
   const [filterSubject, setFilterSubject] = useState('all');
+  const [activeOnly, setActiveOnly] = useState(true);
 
   const isNEET = (student?.examTarget || '').toLowerCase().includes('neet');
 
   const compatibleFaculty = useMemo(() => {
     if (!student) return [];
     const allowed = isNEET ? NEET_SUBJECTS : OTHER_SUBJECTS;
-    return facultyList.filter(f => {
-      const subs = (f.subjects || [f.subject]).filter(Boolean).map(x => x.toLowerCase());
-      return subs.some(x => allowed.some(a => x.includes(a)));
-    });
-  }, [facultyList, student, isNEET]);
+    return facultyList.filter(f =>
+      (activeOnly ? isActiveFaculty(f) : true) &&
+      allowed.some(a => teachesSubject(f, a))
+    );
+  }, [facultyList, student, isNEET, activeOnly]);
 
   const filtered = useMemo(() => {
     let list = compatibleFaculty;
     if (filterSubject !== 'all') {
-      list = list.filter(f => {
-        const subs = (f.subjects || [f.subject]).filter(Boolean).map(x => x.toLowerCase());
-        return subs.some(x => x.includes(filterSubject));
-      });
+      list = list.filter(f => facultySubjects(f).some(x => x.toLowerCase().includes(filterSubject)));
     }
     if (search.trim()) {
       const q = search.toLowerCase();
@@ -39,7 +38,7 @@ const AdminMentorAssignModal = ({ student, facultyList, onSave, onClose, saving 
 
   if (!student) return null;
 
-  const subjects = ['all', ...new Set(compatibleFaculty.flatMap(f => (f.subjects || [f.subject]).filter(Boolean)))];
+  const subjects = ['all', ...new Set(compatibleFaculty.flatMap(f => facultySubjects(f)))];
   const currentMentor = facultyList.find(f => f.id === student.mentorId);
   const unchanged = selectedId === (student.mentorId || null);
 
@@ -92,6 +91,11 @@ const AdminMentorAssignModal = ({ student, facultyList, onSave, onClose, saving 
             {sub === 'all' ? 'All subjects' : sub}
           </button>
         ))}
+        <span style={{ flex: 1 }} />
+        <div className="am-seg">
+          <button type="button" className={activeOnly ? 'on' : ''} onClick={() => setActiveOnly(true)}>Active</button>
+          <button type="button" className={!activeOnly ? 'on' : ''} onClick={() => setActiveOnly(false)}>All</button>
+        </div>
       </div>
 
       <div className="am-list" style={{ marginTop: '16px' }}>
@@ -120,6 +124,7 @@ const AdminMentorAssignModal = ({ student, facultyList, onSave, onClose, saving 
 
         {filtered.map((f, i) => {
           const sel = selectedId === f.id;
+          const active = isActiveFaculty(f);
           const count = f.mentorStudentCount || 0;
           const pct = Math.min(count * 10, 100);
           const isCurrent = student.mentorId === f.id;
@@ -127,15 +132,19 @@ const AdminMentorAssignModal = ({ student, facultyList, onSave, onClose, saving 
             <button
               key={f.id}
               type="button"
-              className={`am-card${sel ? ' on' : ''}`}
+              className={`am-card${sel ? ' on' : ''}${active ? '' : ' off'}`}
               style={{ animationDelay: `${i * 0.03}s` }}
+              disabled={!active}
               onClick={() => setSelectedId(f.id)}
             >
               <span className="am-av">{f.name?.[0]}</span>
               <span className="am-meta">
-                <span className="am-name">{f.name}</span>
+                <span className="am-name">
+                  {f.name}
+                  {!active && <span className="am-tag">Inactive</span>}
+                </span>
                 <span className="am-sub">
-                  {(f.subjects || [f.subject]).filter(Boolean).join(' · ')}
+                  {facultySubjects(f).join(' · ')}
                   {isCurrent && <span className="am-tag">Current</span>}
                 </span>
                 <span className="am-work" style={{ marginTop: '7px' }}>

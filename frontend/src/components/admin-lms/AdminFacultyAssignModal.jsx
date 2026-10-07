@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Check, SearchX, UserRound, X } from 'lucide-react';
 import Modal from '../common/Modal';
+import { facultySubjects, teachesSubject, isActiveFaculty } from './facultyFilters';
 import './AssignModals.css';
 
 const NEET_SUBJECTS = ['Physics', 'Chemistry', 'Biology'];
@@ -9,21 +10,30 @@ const JEE_SUBJECTS = ['Physics', 'Chemistry', 'Maths'];
 const AdminFacultyAssignModal = ({ student, facultyList, onSave, onClose, saving }) => {
   const [selections, setSelections] = useState({});
   const [search, setSearch] = useState('');
+  const [grade, setGrade] = useState('all');
+  const [activeOnly, setActiveOnly] = useState(true);
 
   const isNEET = (student?.examTarget || '').toLowerCase().includes('neet');
-  const subjectList = isNEET ? NEET_SUBJECTS : JEE_SUBJECTS;
+  const subjectList = useMemo(() => (isNEET ? NEET_SUBJECTS : JEE_SUBJECTS), [isNEET]);
 
+  const gradeOptions = useMemo(
+    () => [...new Set(facultyList.flatMap(f => (f.grades || []).map(String)))].sort(),
+    [facultyList]
+  );
+
+  // Every active, grade-eligible faculty — no other gate, so nobody can drop out
+  // of a subject section because of a label mismatch.
   const facultyForSubject = useMemo(() => {
     const map = {};
     subjectList.forEach(subj => {
-      const key = subj.toLowerCase();
       map[subj] = facultyList.filter(f => {
-        const subs = (f.subjects || [f.subject]).filter(Boolean).map(s => s.toLowerCase());
-        return subs.some(s => s.includes(key) || (key === 'mathematics' && (s.includes('math') || s.includes('maths'))));
+        if (activeOnly && !isActiveFaculty(f)) return false;
+        if (grade !== 'all' && !(f.grades || []).map(String).includes(String(grade))) return false;
+        return teachesSubject(f, subj);
       });
     });
     return map;
-  }, [facultyList, subjectList]);
+  }, [facultyList, subjectList, grade, activeOnly]);
 
   useEffect(() => {
     if (student?.subjectFaculty) setSelections({ ...student.subjectFaculty });
@@ -89,6 +99,17 @@ const AdminFacultyAssignModal = ({ student, facultyList, onSave, onClose, saving
         onChange={e => setSearch(e.target.value)}
       />
 
+      <div className="am-filters">
+        <select className="am-select" value={grade} onChange={e => setGrade(e.target.value)}>
+          <option value="all">All grades</option>
+          {gradeOptions.map(g => <option key={g} value={g}>Grade {g}</option>)}
+        </select>
+        <div className="am-seg">
+          <button type="button" className={activeOnly ? 'on' : ''} onClick={() => setActiveOnly(true)}>Active</button>
+          <button type="button" className={!activeOnly ? 'on' : ''} onClick={() => setActiveOnly(false)}>All</button>
+        </div>
+      </div>
+
       <div style={{ marginTop: '16px' }}>
         {subjectList.map((subj, si) => {
           const opts = facultyForSubject[subj] || [];
@@ -103,6 +124,7 @@ const AdminFacultyAssignModal = ({ student, facultyList, onSave, onClose, saving
               <div className={`am-subject-hd${selId ? ' on' : ''}`}>
                 <span className="am-subject-ic">{subj[0]}</span>
                 <span className="am-subject-name">{subj}</span>
+                <span className="am-subject-count">{filtered.length} eligible</span>
                 {selFaculty && <span className="am-subject-picked">{selFaculty.name}</span>}
                 {selId && (
                   <button type="button" className="am-remove" onClick={() => handleSelect(subj, null)}>
@@ -115,26 +137,32 @@ const AdminFacultyAssignModal = ({ student, facultyList, onSave, onClose, saving
               {filtered.length === 0 ? (
                 <div className="am-empty" style={{ padding: '22px 14px' }}>
                   <SearchX size={26} strokeWidth={1.6} />
-                  <strong>{filteredSearch ? 'No match in your search' : `No ${subj} faculty yet`}</strong>
+                  <strong>{filteredSearch ? 'No match in your search' : `No eligible ${subj} faculty${grade !== 'all' ? ` for grade ${grade}` : ''}`}</strong>
+                  <span>{grade !== 'all' ? 'Try “All grades”' : 'Add faculty or check the Active/All filter'}</span>
                 </div>
               ) : (
                 <div className="am-list">
                   {filtered.map((f, i) => {
                     const sel = selId === f.id;
+                    const active = isActiveFaculty(f);
                     const count = f.mentorStudentCount || 0;
                     const pct = Math.min(count * 10, 100);
                     return (
                       <button
                         key={f.id}
                         type="button"
-                        className={`am-card${sel ? ' on' : ''}`}
+                        className={`am-card${sel ? ' on' : ''}${active ? '' : ' off'}`}
                         style={{ animationDelay: `${i * 0.03}s` }}
+                        disabled={!active}
                         onClick={() => handleSelect(subj, f.id)}
                       >
                         <span className="am-av">{f.name?.[0]}</span>
                         <span className="am-meta">
-                          <span className="am-name">{f.name}</span>
-                          <span className="am-sub">{(f.subjects || [f.subject]).filter(Boolean).join(' · ')}</span>
+                          <span className="am-name">
+                            {f.name}
+                            {!active && <span className="am-tag">Inactive</span>}
+                          </span>
+                          <span className="am-sub">{facultySubjects(f).join(' · ')}</span>
                           <span className="am-work" style={{ marginTop: '7px' }}>
                             <span className="am-bar">
                               <i style={{ width: `${pct}%`, background: barColor(count) }} />

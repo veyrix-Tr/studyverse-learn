@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useActivePage } from '../hooks/useActivePage';
 import '../components/admin-lms/AdminStyles.css';
@@ -118,6 +118,26 @@ const AdminLMS = ({ expectedRole }) => {
       .then(data => { if (Array.isArray(data.applications)) setFacultyApplications(data.applications); })
       .catch(() => {});
   }, []);
+
+  // Refresh faculty + enrollment applications every 20s: a stale faculty list
+  // is what hides newly created faculty from the assign dropdowns, and a new
+  // self-enrollment should reach the admin without a reload.
+  useEffect(() => {
+    if (!profile) return;
+    const token = localStorage.getItem('token');
+    const load = () => {
+      fetch(`${import.meta.env.VITE_API_URL}/api/admin/${userId}/faculty`, { headers: { Authorization: `Bearer ${token}` } })
+        .then(r => r.ok ? r.json() : [])
+        .then(data => { if (Array.isArray(data)) setFacultyList(data); })
+        .catch(() => {});
+      fetch(`${import.meta.env.VITE_API_URL}/api/admin/${userId}/faculty-applications`, { headers: { Authorization: `Bearer ${token}` } })
+        .then(r => r.ok ? r.json() : {})
+        .then(data => { if (Array.isArray(data.applications)) setFacultyApplications(data.applications); })
+        .catch(() => {});
+    };
+    const id = setInterval(load, 20000);
+    return () => clearInterval(id);
+  }, [profile, userId]);
 
   // Poll reports every 20s — show toast when new submissions arrive
   useEffect(() => {
@@ -263,7 +283,6 @@ const AdminLMS = ({ expectedRole }) => {
       body: JSON.stringify({ studentId: to, content: content.trim(), type, targetPlan: targetPlan && targetPlan !== 'all' ? targetPlan : null }),
     });
     if (!res.ok) throw new Error('Failed to send');
-    const data = await res.json();
     const PLAN_LABEL = { spark: 'Spark only', forge: 'Forge & above', apex: 'Apex only', anchor: 'Anchor only' };
     let recipient;
     if (Array.isArray(to)) {
@@ -534,28 +553,6 @@ const AdminLMS = ({ expectedRole }) => {
         userId={userId}
         onFacultyAdded={f => setFacultyList(prev => [...prev, f])}
         facultyApplications={facultyApplications}
-        onApproveApplication={async (id) => {
-          const token = localStorage.getItem('token');
-          const res = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/${userId}/faculty-applications/${id}/approve`, {
-            method: 'POST',
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          const data = await res.json();
-          if (res.ok) {
-            setFacultyApplications(prev => prev.filter(a => a.id !== id));
-            setFacultyList(prev => [...prev, { ...data.faculty, subjects: [data.faculty.subject], sessionsPerWeek: 0, reportCount: 0, avgRating: null }]);
-          }
-        }}
-        onRejectApplication={async (id) => {
-          const token = localStorage.getItem('token');
-          const res = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/${userId}/faculty-applications/${id}/reject`, {
-            method: 'POST',
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          if (res.ok) {
-            setFacultyApplications(prev => prev.filter(a => a.id !== id));
-          }
-        }}
       />
     </div>
   );

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { Check, X } from 'lucide-react';
 
@@ -532,6 +532,21 @@ const FacultyModals = ({ openModal, onClose, onShowToast, toast, detailOpen, sel
                 ? 'Everyone eligible for this subject & grade sees it once approved.'
                 : 'Only the students you pick see it once approved.'}
             </div>
+            {resTargetMode === 'selected' && eligibleStudents.length > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '5px' }}>
+                <button type="button"
+                  onClick={() => setResSelectedStudents(
+                    resSelectedStudents.length === eligibleStudents.length
+                      ? []
+                      : eligibleStudents.map(st => st.id)
+                  )}
+                  style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '11.5px', fontWeight: 600, color: 'var(--gold)', padding: '2px 4px' }}>
+                  {resSelectedStudents.length === eligibleStudents.length
+                    ? 'Clear selection'
+                    : `Select all assigned (${eligibleStudents.length})`}
+                </button>
+              </div>
+            )}
             {resTargetMode === 'selected' && (
               <div style={{ maxHeight: '190px', overflowY: 'auto', overscrollBehavior: 'contain', border: '1px solid var(--b)', borderRadius: '10px', padding: '5px', background: 'var(--cream2)' }}>
                 {eligibleStudents.length === 0

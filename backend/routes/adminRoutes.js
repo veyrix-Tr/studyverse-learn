@@ -109,6 +109,8 @@ router.get('/faculty', requireAuth, requireAdmin, async (req, res) => {
         department: f.department,
         qualification: f.qualification,
         subjects: [...new Set([f.subject, ...uniqueSubjects].filter(Boolean))],
+        isActive: f.isActive,
+        grades: [...new Set(f.sessions.map(s => s.grade).filter(Boolean))],
         sessionsPerWeek,
         totalSessions: f.sessions.length,
         avgRating,
@@ -131,14 +133,16 @@ router.get('/faculty/:id/performance', requireAuth, requireAdmin, async (req, re
       where: { id: parseInt(req.params.id) },
       include: {
         user: { select: { id: true, name: true, email: true } },
-        sessions: { select: { id: true, title: true, subject: true, grade: true, scheduledAt: true, duration: true } },
-        doubts: { select: { id: true, question: true, subject: true, answer: true, answeredAt: true, createdAt: true, student: { include: { user: { select: { name: true } } } } } },
-        resources: { select: { id: true, title: true, subject: true, grade: true, type: true, status: true, createdAt: true } },
-        weeklyReports: { select: { id: true, weekNumber: true, weekStartDate: true, overallRating: true, status: true, student: { include: { user: { select: { name: true } } } } } },
+        sessions: { select: { id: true, scheduledAt: true } },
+        doubts: { select: { id: true, answer: true, createdAt: true } },
+        resources: {
+          select: {
+            id: true, title: true, subject: true, grade: true, type: true, status: true, createdAt: true,
+            recipients: { select: { studentId: true, student: { select: { user: { select: { name: true } } } } } },
+          },
+        },
+        weeklyReports: { select: { id: true, weekNumber: true, overallRating: true, status: true, createdAt: true } },
         mentorStudents: { select: { id: true, user: { select: { name: true } }, plan: true, examTarget: true } },
-        mentorNotes: { select: { id: true, content: true, weekOf: true, createdAt: true } },
-        mentorCalls: { select: { id: true, scheduledAt: true, durationMin: true, completed: true, notes: true } },
-        _count: { select: { sessions: true, doubts: true, resources: true, weeklyReports: true, mentorStudents: true, mentorNotes: true, mentorCalls: true } },
       },
     });
     if (!fp) return res.status(404).json({ error: 'Faculty not found' });
@@ -151,6 +155,12 @@ router.get('/faculty/:id/performance', requireAuth, requireAdmin, async (req, re
     const inRange = (d, start) => new Date(d) >= start;
 
     const sessions = fp.sessions;
+    const conductedSessions = sessions.filter(s => new Date(s.scheduledAt) <= now);
+    const period = (arr, dateOf) => ({
+      week:   arr.filter(x => inRange(dateOf(x), startOfWeek)).length,
+      month:  arr.filter(x => inRange(dateOf(x), startOfMonth)).length,
+      year:   arr.filter(x => inRange(dateOf(x), startOfYear)).length,
+    });
     const sessionsThisWeek = sessions.filter(s => inRange(s.scheduledAt, startOfWeek));
     const sessionsThisMonth = sessions.filter(s => inRange(s.scheduledAt, startOfMonth));
     const sessionsThisYear = sessions.filter(s => inRange(s.scheduledAt, startOfYear));
@@ -169,23 +179,23 @@ router.get('/faculty/:id/performance', requireAuth, requireAdmin, async (req, re
     const assignedStudents = fp.mentorStudents;
     const activeStudents = assignedStudents.filter(s => s.plan === 'apex' || s.plan === 'anchor');
 
-    const calls = fp.mentorCalls;
-    const completedCalls = calls.filter(c => c.completed);
-
-    const bySubject = {};
-    sessions.forEach(s => {
-      if (!bySubject[s.subject]) bySubject[s.subject] = { total: 0, week: 0, month: 0 };
-      bySubject[s.subject].total++;
-      if (inRange(s.scheduledAt, startOfWeek)) bySubject[s.subject].week++;
-      if (inRange(s.scheduledAt, startOfMonth)) bySubject[s.subject].month++;
+    // Distinct students who actually receive this faculty's homework: named
+    // recipients for targeted sends, entitlement rules for grade-wide ones.
+    const HW_TYPES = ['Study Material', 'Formula Sheet', 'Practice Set', 'Previous Year Papers'];
+    const hwResources = resources.filter(r => HW_TYPES.includes(r.type));
+    const studentRows = await prisma.studentProfile.findMany({
+      select: { id: true, plan: true, planEndDate: true, fallbackPlan: true, fallbackEndDate: true, grade: true, examTarget: true, subjectFaculty: true },
     });
-
-    const byResourceType = {};
-    resources.forEach(r => {
-      if (!byResourceType[r.type]) byResourceType[r.type] = { total: 0, approved: 0 };
-      byResourceType[r.type].total++;
-      if (r.status === 'approved') byResourceType[r.type].approved++;
-    });
+    const hwReceived = new Set();
+    for (const r of hwResources) {
+      if (r.recipients.length) {
+        r.recipients.forEach(x => hwReceived.add(x.studentId));
+      } else {
+        for (const st of studentRows) {
+          if (canReceive(st, { subject: r.subject, grade: r.grade, type: r.type, targeted: false })) hwReceived.add(st.id);
+        }
+      }
+    }
 
     res.json({
       id: fp.id,
@@ -200,7 +210,8 @@ router.get('/faculty/:id/performance', requireAuth, requireAdmin, async (req, re
         thisMonth: sessionsThisMonth.length,
         thisYear: sessionsThisYear.length,
         total: sessions.length,
-        bySubject: Object.entries(bySubject).map(([subject, c]) => ({ subject, ...c })),
+        conducted: conductedSessions.length,
+        upcoming: sessions.length - conductedSessions.length,
       },
       studentActivity: {
         assigned: assignedStudents.length,
@@ -208,13 +219,13 @@ router.get('/faculty/:id/performance', requireAuth, requireAdmin, async (req, re
         pendingDoubts: pendingDoubts.length,
         resolvedDoubts: resolvedDoubts.length,
         totalDoubts: doubts.length,
-        students: assignedStudents.map(s => ({ id: s.id, name: s.user.name, plan: s.plan, examTarget: s.examTarget })),
       },
       homeworkActivity: {
         assignmentsGiven: resources.filter(r => r.type === 'Practice Set' || r.type === 'Previous Year Papers').length,
         homeworkGiven: resources.filter(r => r.type === 'Study Material' || r.type === 'Formula Sheet').length,
-        studentsReached: new Set(resources.map(r => r.grade)).size,
-        byType: Object.entries(byResourceType).map(([type, c]) => ({ type, ...c })),
+        studentsReceived: hwReceived.size,
+        given: hwResources.length,
+        byPeriod: period(hwResources, r => r.createdAt),
       },
       resourceActivity: {
         uploaded: resources.length,
@@ -222,19 +233,22 @@ router.get('/faculty/:id/performance', requireAuth, requireAdmin, async (req, re
         pending: pendingResources.length,
         notesShared: resources.filter(r => r.type === 'Session Notes').length,
         handoutsShared: resources.filter(r => r.type === 'Study Material' || r.type === 'Formula Sheet').length,
-        recent: resources.slice(0, 5).map(r => ({ id: r.id, title: r.title, subject: r.subject, type: r.type, status: r.status, createdAt: r.createdAt })),
+        recent: resources.slice(0, 6).map(r => ({
+          id: r.id, title: r.title, subject: r.subject, type: r.type, status: r.status, createdAt: r.createdAt,
+          targeted: r.recipients.length > 0,
+          recipients: r.recipients.map(x => x.student.user.name),
+        })),
       },
       reportActivity: {
         total: reports.length,
         sent: sentReports.length,
         avgRating: reports.length ? (reports.reduce((a, r) => a + (r.overallRating || 0), 0) / reports.filter(r => r.overallRating).length || 0).toFixed(1) : null,
-        recent: reports.slice(0, 5).map(r => ({ id: r.id, weekNumber: r.weekNumber, studentName: r.student.user.name, overallRating: r.overallRating, status: r.status })),
       },
-      mentorActivity: {
-        notes: fp.mentorNotes.length,
-        calls: calls.length,
-        completedCalls: completedCalls.length,
-        recentNotes: fp.mentorNotes.slice(0, 3).map(n => ({ id: n.id, content: n.content.slice(0, 80), weekOf: n.weekOf })),
+      timeAnalytics: {
+        classes:   period(sessions, s => s.scheduledAt),
+        resources: period(resources, r => r.createdAt),
+        doubts:    period(doubts, d => d.createdAt),
+        reports:   period(reports, r => r.createdAt),
       },
     });
   } catch (err) {
