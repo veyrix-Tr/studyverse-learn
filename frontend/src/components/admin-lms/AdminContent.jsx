@@ -266,6 +266,9 @@ const fmtLogTime = (iso) => {
 const ACTION_LABEL = {
   'auth.login':        'signed in',
   'faculty.create':    'created faculty',
+  'faculty.password_reset': 'reset password for',
+  'faculty.deactivate': 'deactivated faculty',
+  'faculty.reactivate': 'reactivated faculty',
   'mentor.assign':     'assigned mentor to',
   'mentor.clear':      'removed mentor from',
   'faculty.assign':    'assigned faculty to',
@@ -311,13 +314,51 @@ const fmtWeekRange = (weekStartDate) => {
   return `${fmt(mon)} – ${fmt(sun)}`;
 };
 
-const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, students = [], facultyList = [], onOpenMessage, isSuperAdmin, adminAccounts = [], onDeactivateAdmin, onReactivateAdmin, resources = [], onApproveResource, onDeclineResource, sentMessages = [], onSendMessage, parentReports = [], onApproveReport, onRejectReport, onSendReports, onApproveAllReports, onStudentMentorUpdated, onStudentSubjectFacultyUpdated, onStudentPlanUpdated, sessionRequests = [], onSessionRequestsUpdated, adminNotifications = [], onMarkNotifRead, onMarkAllNotifsRead, analytics = null, accessLog = [], facultyApplications = [] }) => {
+const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, students = [], facultyList = [], onOpenMessage, isSuperAdmin, adminAccounts = [], onDeactivateAdmin, onReactivateAdmin, resources = [], onApproveResource, onDeclineResource, sentMessages = [], onSendMessage, parentReports = [], onApproveReport, onRejectReport, onSendReports, onApproveAllReports, onStudentMentorUpdated, onStudentSubjectFacultyUpdated, onStudentPlanUpdated, sessionRequests = [], onSessionRequestsUpdated, adminNotifications = [], onMarkNotifRead, onMarkAllNotifsRead, analytics = null, accessLog = [], facultyApplications = [], onFacultyStatusUpdated }) => {
   const firstName = profile?.name?.split(' ')[0] || 'there';
   const [stuQuery, setStuQuery] = useState('');
   const [stuPlan, setStuPlan] = useState('all');
   const [assignView, setAssignView] = useState('needs');
   const [planGrantStudent, setPlanGrantStudent] = useState(null);
   const [perfFaculty, setPerfFaculty] = useState(null);
+  const [resetResult, setResetResult] = useState(null); // one-time { email, password }
+
+  const handleFacultyResetPassword = async (f) => {
+    if (!window.confirm(`Generate a temporary password for ${f.name}? Their old password will stop working immediately.`)) return;
+    const token = localStorage.getItem('token');
+    try {
+      const r = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/${profile?.id}/faculty/${f.id}/reset-password`, {
+        method: 'POST', headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error || 'Failed');
+      setResetResult(data);
+      onShowToast?.('Temporary password generated and emailed to faculty ✓');
+    } catch (e) {
+      onShowToast?.('Reset failed: ' + e.message);
+    }
+  };
+
+  const handleFacultyStatusToggle = async (f) => {
+    const next = f.isActive === false;
+    if (!window.confirm(next
+      ? `Reactivate ${f.name}'s account? They will be able to log in again.`
+      : `Deactivate ${f.name}'s account? They will not be able to log in.`)) return;
+    const token = localStorage.getItem('token');
+    try {
+      const r = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/${profile?.id}/faculty/${f.id}/status`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ isActive: next }),
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error || 'Failed');
+      onFacultyStatusUpdated?.(f.id, next);
+      onShowToast?.(`${f.name} ${next ? 'reactivated' : 'deactivated'} ✓`);
+    } catch (e) {
+      onShowToast?.('Update failed: ' + e.message);
+    }
+  };
 
   const activeStudents    = analytics?.activeStudents ?? students.filter(s => ['forge','apex','anchor'].includes(s.plan)).length;
   const premiumStudents   = analytics?.premiumStudents ?? students.filter(s => ['forge','apex','anchor'].includes(s.plan)).length;
@@ -968,6 +1009,8 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
                 <th>Mentees</th>
                 <th>Sessions / week</th>
                 <th>Rating</th>
+                <th>Created</th>
+                <th>Last login</th>
                 <th style={{ textAlign: 'right' }}>Actions</th>
               </tr>
             </thead>
@@ -984,20 +1027,35 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
                     </div>
                   </td>
                   <td><span className="st-val">{(f.subjects || [f.subject]).filter(Boolean).join(', ') || '—'}</span></td>
-                  <td><span className="st-val">{f.mentorStudentCount || 0} of 10</span></td>
+                  <td>
+                    <span className="st-val">{f.mentorStudentCount || 0} of 10</span>
+                    {f.subjectAssignedCount > 0 && <div className="st-sub">{f.subjectAssignedCount} subject-assigned</div>}
+                  </td>
                   <td><span className="st-val">{f.sessionsPerWeek || 0}</span></td>
                   <td>
                     {f.avgRating
                       ? <span className="st-val">{f.avgRating} / 5<div className="st-sub">{f.reportCount} report{f.reportCount !== 1 ? 's' : ''}</div></span>
                       : <span className="st-na">No ratings yet</span>}
                   </td>
+                  <td><span className="st-val">{f.createdAt ? new Date(f.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: '2-digit' }) : '—'}</span></td>
+                  <td>
+                    {f.lastLoginAt
+                      ? <span className="st-val">{new Date(f.lastLoginAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: '2-digit' })}<div className="st-sub">{fmtLogTime(f.lastLoginAt)}</div></span>
+                      : <span className="st-na">Never</span>}
+                  </td>
                   <td className="ar">
-                    <button className="btn btn-green btn-md" onClick={() => setPerfFaculty(f)}>View performance</button>
+                    <div style={{ display: 'flex', gap: '7px', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                      <button className="btn btn-ghost btn-md" onClick={() => handleFacultyResetPassword(f)}>Reset password</button>
+                      {f.isActive === false
+                        ? <button className="btn btn-green btn-md" onClick={() => handleFacultyStatusToggle(f)}>Reactivate</button>
+                        : <button className="btn btn-red btn-md" onClick={() => handleFacultyStatusToggle(f)}>Deactivate</button>}
+                      <button className="btn btn-green btn-md" onClick={() => setPerfFaculty(f)}>View performance</button>
+                    </div>
                   </td>
                 </tr>
               ))}
               {facultyList.length === 0 && (
-                <tr><td colSpan={6} className="st-empty">No faculty yet. Use “+ Add Faculty” to create the first account.</td></tr>
+                <tr><td colSpan={8} className="st-empty">No faculty yet. Use “+ Add Faculty” to create the first account.</td></tr>
               )}
             </tbody>
           </table>
@@ -1743,6 +1801,33 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
           if (r.ok) { setDiagModal(null); onShowToast?.('Diagnostic reset. Student can retake now.'); }
         }}
       />
+
+      {/* Faculty temp-password reveal — shown exactly once, never retrievable */}
+      {resetResult && (
+        <div className="overlay open" onClick={e => { if (e.target.classList.contains('overlay')) setResetResult(null); }}>
+          <div className="modal">
+            <div className="mt">Temporary Password ✓</div>
+            <div className="ms">Share it with <b>{resetResult.email}</b> securely. It was also emailed to them — and it can never be shown again from here.</div>
+            <div style={{ background: 'var(--cream2)', border: '1px solid var(--b)', borderRadius: 'var(--r)', padding: '16px', marginBottom: '16px' }}>
+              <div style={{ marginBottom: '10px' }}>
+                <div style={{ fontSize: '11px', color: 'var(--text3)', marginBottom: '3px' }}>EMAIL</div>
+                <div style={{ fontSize: '13px', fontWeight: '600', fontFamily: 'monospace', userSelect: 'all' }}>{resetResult.email}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: '11px', color: 'var(--text3)', marginBottom: '3px' }}>TEMPORARY PASSWORD</div>
+                <div style={{ fontSize: '15px', fontWeight: '700', fontFamily: 'monospace', userSelect: 'all' }}>{resetResult.password}</div>
+              </div>
+            </div>
+            <div className="ma">
+              <button className="btn btn-gold btn-sm" onClick={() => {
+                navigator.clipboard?.writeText(`Email: ${resetResult.email}\nPassword: ${resetResult.password}`);
+                onShowToast?.('Credentials copied to clipboard ✓');
+              }}>Copy credentials</button>
+              <button className="btn btn-ghost btn-sm" onClick={() => setResetResult(null)}>Done</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ══════════ SESSION REQUESTS ══════════ */}
       {activePage === 'session-requests' && (

@@ -209,13 +209,17 @@ router.get('/faculty', requireAuth, requireAdmin, async (req, res) => {
     const fourWeeksAgo = new Date(Date.now() - 28 * 86400000);
     const faculty = await prisma.facultyProfile.findMany({
       include: {
-        user: { select: { id: true, name: true, email: true } },
+        user: { select: { id: true, name: true, email: true, lastLoginAt: true } },
         sessions: { select: { id: true, subject: true, grade: true, scheduledAt: true } },
         weeklyReports: { select: { overallRating: true }, orderBy: { createdAt: 'desc' }, take: 20 },
         mentorStudents: { select: { id: true } },
       },
       orderBy: { user: { name: 'asc' } },
     });
+
+    // Subject-faculty assignments live as { subject: facultyId } maps on
+    // students — counted here so the credentials table can show them.
+    const studentMaps = await prisma.studentProfile.findMany({ select: { subjectFaculty: true } });
 
     const result = faculty.map(f => {
       const ratings = f.weeklyReports.map(r => r.overallRating).filter(Boolean);
@@ -225,6 +229,9 @@ router.get('/faculty', requireAuth, requireAdmin, async (req, res) => {
       const recentSessions = f.sessions.filter(s => new Date(s.scheduledAt) >= fourWeeksAgo);
       const sessionsPerWeek = Math.round(recentSessions.length / 4) || 0;
       const uniqueSubjects = [...new Set(f.sessions.map(s => s.subject))];
+      const subjectAssignedCount = studentMaps.filter(sm =>
+        sm.subjectFaculty && typeof sm.subjectFaculty === 'object' && Object.values(sm.subjectFaculty).includes(f.id)
+      ).length;
       return {
         id: f.id,
         userId: f.userId,
@@ -235,12 +242,15 @@ router.get('/faculty', requireAuth, requireAdmin, async (req, res) => {
         qualification: f.qualification,
         subjects: [...new Set([f.subject, ...uniqueSubjects].filter(Boolean))],
         isActive: f.isActive,
+        createdAt: f.createdAt,
+        lastLoginAt: f.user.lastLoginAt || null,
         grades: [...new Set(f.sessions.map(s => s.grade).filter(Boolean))],
         sessionsPerWeek,
         totalSessions: f.sessions.length,
         avgRating,
         reportCount: f.weeklyReports.length,
         mentorStudentCount: f.mentorStudents.length,
+        subjectAssignedCount,
       };
     });
 
@@ -425,6 +435,8 @@ router.post('/faculty', requireAuth, requireAdmin, async (req, res) => {
     const { sendFacultyWelcomeEmail } = require('../services/emailService');
     sendFacultyWelcomeEmail(email, name, password).catch(() => {});
 
+    // Password is never returned — the welcome email is the only delivery
+    // channel; admin intervention later goes through reset-password.
     res.json({
       success: true,
       faculty: {
@@ -435,12 +447,61 @@ router.post('/faculty', requireAuth, requireAdmin, async (req, res) => {
         subject,
         qualification: qualification || null,
       },
-      credentials: { email, password },
+      credentials: { email },
     });
     logAction({ adminUserId: req.params.userId, action: 'faculty.create', target: user.name, metadata: { subject, email, qualification: qualification || null } });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to create faculty' });
+  }
+});
+
+// POST /api/admin/faculty/:id/reset-password — generate a temporary password.
+// The stored password is a bcrypt hash (unreadable by design); this creates a
+// brand-new secret, shows it to the admin exactly once, and emails it to the
+// faculty member as well.
+router.post('/faculty/:id/reset-password', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const fp = await prisma.facultyProfile.findUnique({
+      where: { id: parseInt(req.params.id) },
+      include: { user: { select: { id: true, name: true, email: true } } },
+    });
+    if (!fp) return res.status(404).json({ error: 'Faculty not found' });
+
+    const password = Math.random().toString(36).slice(2, 10) + Math.random().toString(36).slice(2, 6).toUpperCase() + '!';
+    const bcrypt = require('bcrypt');
+    const hashed = await bcrypt.hash(password, 10);
+    await prisma.user.update({ where: { id: fp.userId }, data: { password: hashed } });
+
+    const { sendFacultyPasswordResetEmail } = require('../services/emailService');
+    sendFacultyPasswordResetEmail(fp.user.email, fp.user.name, password).catch(() => {});
+
+    logAction({ adminUserId: req.params.userId, action: 'faculty.password_reset', target: fp.user.name, metadata: { email: fp.user.email } });
+    res.json({ success: true, email: fp.user.email, password, emailed: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to reset password' });
+  }
+});
+
+// PUT /api/admin/faculty/:id/status — activate/deactivate a faculty account.
+// Deactivated accounts are already blocked at login.
+router.put('/faculty/:id/status', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const { isActive } = req.body;
+    if (typeof isActive !== 'boolean') return res.status(400).json({ error: 'isActive must be boolean' });
+    const fp = await prisma.facultyProfile.findUnique({
+      where: { id: parseInt(req.params.id) },
+      include: { user: { select: { name: true, email: true } } },
+    });
+    if (!fp) return res.status(404).json({ error: 'Faculty not found' });
+
+    await prisma.facultyProfile.update({ where: { id: fp.id }, data: { isActive } });
+    logAction({ adminUserId: req.params.userId, action: isActive ? 'faculty.reactivate' : 'faculty.deactivate', target: fp.user.name, metadata: { email: fp.user.email } });
+    res.json({ success: true, isActive });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to update account status' });
   }
 });
 
@@ -516,7 +577,7 @@ router.post('/faculty-applications/:id/approve', requireAuth, requireAdmin, asyn
         subject: application.subject,
         qualification: application.qualification || null,
       },
-      credentials: { email: application.email, password },
+      credentials: { email: application.email },
     });
     logAction({ adminUserId: req.params.userId, action: 'faculty.approve', target: application.name, metadata: { email: application.email, subject: application.subject } });
   } catch (err) {

@@ -79,6 +79,10 @@ const login = async (req, res) => {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
+    // Record last login for the admin's credentials dashboard — best effort,
+    // never able to fail an actual login.
+    prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } }).catch(() => {});
+
     // Block deactivated admin accounts
     if ((user.role === 'admin' || user.role === 'superadmin') && user.adminProfile?.isActive === false) {
       return res.status(403).json({ error: 'Your account has been deactivated. Please contact your superadmin.' });

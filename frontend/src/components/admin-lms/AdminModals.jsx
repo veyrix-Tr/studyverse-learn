@@ -286,22 +286,18 @@ const AdminModals = ({ openModal, onClose, onShowToast, toast, students = [], me
           {createdCredentials ? (
             <>
               <div className="mt">Faculty Added ✓</div>
-              <div className="ms">A welcome email with login credentials has been sent to {createdCredentials.email}. You can also copy the credentials below to share manually.</div>
+              <div className="ms">A welcome email with login credentials has been sent to {createdCredentials.email}. The password is only in that email — never shown here.</div>
               <div style={{ background: 'var(--cream2)', border: '1px solid var(--b)', borderRadius: 'var(--r)', padding: '16px', marginBottom: '16px' }}>
                 <div style={{ marginBottom: '10px' }}>
                   <div style={{ fontSize: '11px', color: 'var(--text3)', marginBottom: '3px' }}>EMAIL</div>
                   <div style={{ fontSize: '13px', fontWeight: '600', fontFamily: 'monospace', userSelect: 'all' }}>{createdCredentials.email}</div>
                 </div>
-                <div>
-                  <div style={{ fontSize: '11px', color: 'var(--text3)', marginBottom: '3px' }}>PASSWORD</div>
-                  <div style={{ fontSize: '13px', fontWeight: '600', fontFamily: 'monospace', userSelect: 'all' }}>{createdCredentials.password}</div>
-                </div>
               </div>
               <div className="ma">
                 <button className="btn btn-gold btn-sm" onClick={() => {
-                  navigator.clipboard?.writeText(`Email: ${createdCredentials.email}\nPassword: ${createdCredentials.password}`);
-                  onShowToast('Credentials copied to clipboard ✓');
-                }}>Copy Credentials</button>
+                  navigator.clipboard?.writeText(createdCredentials.email);
+                  onShowToast('Email copied to clipboard ✓');
+                }}>Copy Email</button>
                 <button className="btn btn-ghost btn-sm" onClick={() => { onClose(); setCreatedCredentials(null); setNewFaculty({ name:'', email:'', subject:'', qualification:'', department:'Science' }); }}>Done</button>
               </div>
             </>
