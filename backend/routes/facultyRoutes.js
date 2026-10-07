@@ -137,8 +137,8 @@ router.post('/sessions', requireAuth, async (req, res) => {
     for (const st of students) {
       const isApex = st.plan === 'apex';
       const isMentee = st.mentorId === fp.id;
-      if (!isApex && !isMentee) {
-        return res.status(400).json({ error: `${st.user.name} is not eligible for this session (not an Apex student or your mentee)` });
+      if (!isApex && !(isMentee && st.plan === 'anchor')) {
+        return res.status(400).json({ error: `${st.user.name} is not eligible for this session (not an Apex student or your Anchor mentee)` });
       }
       // Faculty can only schedule academic sessions with Apex students an admin
       // has explicitly assigned to them; mentees are always reachable.
@@ -165,6 +165,9 @@ router.post('/sessions', requireAuth, async (req, res) => {
     }
     for (const st of students) {
       const isApex = st.plan === 'apex';
+      if (!allMentees && st.plan === 'anchor') {
+        return res.status(400).json({ error: `${st.user.name} is an Anchor mentee — book Anchor-only selections for mentorship check-ins.` });
+      }
       if (!allMentees && isApex) {
         if (!(EXAM_SUBJECTS[st.examTarget] || []).includes(effectiveSubject)) {
           return res.status(400).json({ error: `${st.user.name} does not study ${effectiveSubject}` });
@@ -385,14 +388,14 @@ router.get('/students', requireAuth, async (req, res) => {
 });
 
 // GET /api/faculty/apex-students — students a faculty can schedule a session with:
-// their explicitly-assigned Apex students plus their own Anchor mentees.
+// their Apex students plus their own Anchor mentees (Forge = content only, no sessions).
 router.get('/apex-students', requireAuth, async (req, res) => {
   try {
     const fp = await prisma.facultyProfile.findUnique({ where: { userId: req.params.userId } });
     if (!fp) return res.json([]);
 
     const students = await prisma.studentProfile.findMany({
-      where: { OR: [{ plan: 'apex' }, { mentorId: fp.id }] },
+      where: { OR: [{ plan: 'apex' }, { plan: 'anchor', mentorId: fp.id }] },
       include: { user: { select: { name: true } } },
       orderBy: { user: { name: 'asc' } },
     });
@@ -831,6 +834,7 @@ router.post('/reports', requireAuth, async (req, res) => {
       include: { user: { select: { name: true } } },
     });
     if (!student) return res.status(404).json({ error: 'Student not found' });
+    if (!['apex', 'anchor'].includes(student.plan)) return res.status(403).json({ error: 'Weekly parent reports are available on the Apex and Anchor plans only' });
 
     const { weekNumber, weekStartDate } = wsdOverride
       ? getWeekInfo(new Date(wsdOverride))
@@ -1017,7 +1021,7 @@ router.get('/mentor-daily-reports', requireAuth, async (req, res) => {
     if (!fp) return res.json([]);
 
     const students = await prisma.studentProfile.findMany({
-      where: { mentorId: fp.id },
+      where: { mentorId: fp.id, plan: { in: ['apex', 'anchor'] } },
       include: {
         user:         { select: { name: true } },
         dailyReports: { orderBy: { date: 'desc' }, take: 62 },
@@ -1042,14 +1046,16 @@ router.get('/mentor-daily-reports', requireAuth, async (req, res) => {
   }
 });
 
-// GET /api/faculty/:userId/mentor-students — anchor students assigned to this faculty as mentor
+// GET /api/faculty/:userId/mentor-students — Apex/Anchor mentees of this faculty.
+// Forge mentors only deliver content (targeted resources / question bank) —
+// no reports, notes or calls, matching the pricing page (no dedicated mentor).
 router.get('/mentor-students', requireAuth, async (req, res) => {
   try {
     const fp = await prisma.facultyProfile.findUnique({ where: { userId: req.params.userId } });
     if (!fp) return res.status(403).json({ error: 'Not a faculty' });
 
     const students = await prisma.studentProfile.findMany({
-      where: { mentorId: fp.id },
+      where: { mentorId: fp.id, plan: { in: ['apex', 'anchor'] } },
       include: {
         user:        { select: { name: true, email: true } },
         dailyReports:{ orderBy: { date: 'desc' }, take: 1 },
@@ -1096,6 +1102,7 @@ router.get('/mentor-student/:studentId', requireAuth, async (req, res) => {
       },
     });
     if (!s || s.mentorId !== fp.id) return res.status(403).json({ error: 'Not your mentee' });
+    if (!['apex', 'anchor'].includes(s.plan)) return res.status(403).json({ error: 'Mentor detail is not available for this plan' });
 
     res.json({
       id: s.id,
@@ -1126,8 +1133,9 @@ router.post('/mentor-student/:studentId/note', requireAuth, async (req, res) => 
 
     const s = await prisma.studentProfile.findUnique({ where: { id: sid }, include: { user: { select: { name: true } } } });
     if (!s) return res.status(404).json({ error: 'Student not found' });
-    // Reachable pool = faculty's own mentees + Apex students (same as /apex-students)
-    const reachable = s.mentorId === fp.id || (s.plan === 'apex' && s.grade !== null);
+    // Reachable pool = Apex/Anchor mentees + assigned Apex students (Forge gets content only)
+    const reachable = (s.mentorId === fp.id && ['apex', 'anchor'].includes(s.plan))
+      || (s.plan === 'apex' && s.grade !== null && assignedTo(fp, s));
     if (!reachable) return res.status(403).json({ error: 'Not your mentee or Apex student' });
 
     const wof = weekOf || (() => {
@@ -1169,7 +1177,7 @@ router.post('/mentor-student/:studentId/call', requireAuth, async (req, res) => 
     if (!scheduledAt) return res.status(400).json({ error: 'scheduledAt required' });
 
     const s = await prisma.studentProfile.findUnique({ where: { id: sid }, include: { user: { select: { name: true } } } });
-    if (!s || s.mentorId !== fp.id) return res.status(403).json({ error: 'Not your mentee' });
+    if (!s || s.mentorId !== fp.id || !['apex', 'anchor'].includes(s.plan)) return res.status(403).json({ error: 'Not your mentee, or their plan excludes mentor calls' });
 
     // Mentor calls run on Zoom, exactly like live sessions — auto-create a meeting.
     let zoomFields = {};

@@ -399,8 +399,6 @@ const RegisterForm = ({ onSwitchToLogin, googleName = '', googleEmail = '', isGo
                 <option>JEE Mains</option>
                 <option>JEE Advanced</option>
                 <option>NEET</option>
-                <option>UPSC</option>
-                <option>Other</option>
               </select>
             </div>
           </div>

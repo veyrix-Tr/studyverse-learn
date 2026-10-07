@@ -60,7 +60,7 @@ router.get('/students', requireAuth, requireAdmin, async (req, res) => {
       return {
         id: s.id, userId: s.userId,
         name: s.user.name,
-        plan: s.plan, examTarget: s.examTarget, grade: s.grade,
+        plan: s.plan, planEndDate: s.planEndDate, examTarget: s.examTarget, grade: s.grade,
         diagnosticScore: s.diagnosticScore,
         diagnosticTakenAt: s.diagnosticTakenAt,
         mentorId: s.mentorId || null,
@@ -75,6 +75,131 @@ router.get('/students', requireAuth, requireAdmin, async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to fetch students' });
+  }
+});
+
+// POST /api/admin/:userId/students — manually create a student account (admin/superadmin)
+router.post('/students', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const { name, email, password, phone, grade, examTarget, mentorId, subjectFaculty, plan, durationDays } = req.body;
+
+    if (!name || !email || !password || !grade || !examTarget) {
+      return res.status(400).json({ error: 'name, email, password, grade, and course are required' });
+    }
+    const PLANS = ['spark', 'forge', 'apex', 'anchor'];
+    const studentPlan = plan || 'spark';
+    if (!PLANS.includes(studentPlan)) return res.status(400).json({ error: 'Invalid plan' });
+
+    // Paid plans always expire — manual creation never hands out a lifetime plan.
+    let planDays = null;
+    if (studentPlan !== 'spark') {
+      planDays = parseInt(durationDays, 10);
+      if (!Number.isInteger(planDays) || planDays < 1 || planDays > 365) {
+        return res.status(400).json({ error: 'durationDays must be between 1 and 365 for a paid plan' });
+      }
+    }
+    const planEndDate = planDays ? new Date(Date.now() + planDays * 24 * 60 * 60 * 1000) : null;
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(String(email).trim())) return res.status(400).json({ error: 'Invalid email address' });
+    if (String(password).length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters' });
+
+    const digits = String(phone || '').replace(/\D/g, '');
+    if (phone && !(digits.length === 10 || (digits.length === 12 && digits.startsWith('91')))) {
+      return res.status(400).json({ error: 'Mobile number must be 10 digits' });
+    }
+
+    const EXAMS = ['JEE Mains', 'JEE Advanced', 'NEET'];
+    if (!EXAMS.includes(examTarget)) return res.status(400).json({ error: 'Invalid course / exam target' });
+
+    if (await prisma.user.findUnique({ where: { email: String(email).trim() } })) {
+      return res.status(409).json({ error: 'A user with this email already exists' });
+    }
+
+    // Optional subject→faculty pairs; each faculty must exist.
+    const sfMap = {};
+    if (Array.isArray(subjectFaculty)) {
+      for (const pair of subjectFaculty) {
+        if (!pair?.subject || !pair?.facultyId) continue;
+        const fp = await prisma.facultyProfile.findUnique({ where: { id: parseInt(pair.facultyId) } });
+        if (!fp) return res.status(400).json({ error: `Faculty not found for ${pair.subject}` });
+        sfMap[pair.subject] = fp.id;
+      }
+    }
+
+    let mentorName = null;
+    if (mentorId) {
+      const fp = await prisma.facultyProfile.findUnique({ where: { id: parseInt(mentorId) }, include: { user: { select: { name: true } } } });
+      if (!fp) return res.status(400).json({ error: 'Mentor faculty not found' });
+      mentorName = fp.user.name;
+    }
+
+    const bcrypt = require('bcrypt');
+    const hashed = await bcrypt.hash(String(password), 10);
+
+    const user = await prisma.user.create({
+      data: {
+        name: String(name).trim(),
+        email: String(email).trim(),
+        password: hashed,
+        role: 'student',
+        studentProfile: {
+          create: {
+            plan: studentPlan,
+            planEndDate,
+            grade,
+            examTarget,
+            parentPhone: phone ? digits.slice(-10) : null,
+            mentorId: mentorId ? parseInt(mentorId) : null,
+            subjectFaculty: Object.keys(sfMap).length ? sfMap : null,
+          },
+        },
+      },
+      select: { id: true, name: true, email: true, studentProfile: { select: { id: true } } },
+    });
+
+    // Audit ledger so manual premium students show up in plan history.
+    if (planDays) {
+      await prisma.planGrant.create({
+        data: {
+          plan: studentPlan, source: 'manual', durationDays: planDays,
+          startDate: new Date(), endDate: planEndDate,
+          grantedBy: req.params.userId, status: 'active',
+          reason: 'Manual student creation', studentId: user.studentProfile.id,
+        },
+      });
+    }
+
+    const { sendStudentWelcomeEmail } = require('../services/emailService');
+    sendStudentWelcomeEmail(user.email, user.name, String(password)).catch(() => {});
+
+    res.status(201).json({
+      success: true,
+      student: {
+        id: user.studentProfile.id,
+        userId: user.id,
+        name: user.name,
+        plan: studentPlan,
+        planEndDate,
+        examTarget,
+        grade,
+        diagnosticScore: null,
+        diagnosticTakenAt: null,
+        mentorId: mentorId ? parseInt(mentorId) : null,
+        mentorName,
+        subjectFaculty: sfMap,
+        lastWeek: null,
+        lastScore: null,
+        lastTotalMarks: null,
+        latestFeedback: null,
+      },
+      credentials: { email: user.email, password },
+    });
+    logAction({ adminUserId: req.params.userId, action: 'student.create', target: String(name).trim(), metadata: { email: user.email, examTarget } });
+  } catch (err) {
+    if (err.code === 'P2002') return res.status(409).json({ error: 'A user with this email already exists' });
+    console.error(err);
+    res.status(500).json({ error: 'Failed to create student' });
   }
 });
 
@@ -686,8 +811,7 @@ router.put('/student/:studentUserId/plan', requireAuth, requireAdmin, async (req
     const effective = getEffectivePlan(profile);
     const currentEnd = profile.planEndDate ? new Date(profile.planEndDate) : null;
     const fallbackLive = profile.fallbackPlan
-      && profile.fallbackEndDate
-      && new Date(profile.fallbackEndDate) > now;
+      && (!profile.fallbackEndDate || new Date(profile.fallbackEndDate) > now);
 
     // Keep an already-stored restore target when grants are chained, so the
     // student still ends up back on the plan they were actually paying for.
@@ -696,6 +820,10 @@ router.put('/student/:studentUserId/plan', requireAuth, requireAdmin, async (req
     if (fallbackLive) {
       fallbackPlan = profile.fallbackPlan;
       fallbackEndDate = profile.fallbackEndDate;
+    } else if (effective !== 'spark' && !currentEnd) {
+      // Lifetime premium (manually-created) — restore it as a lifetime plan.
+      fallbackPlan = effective;
+      fallbackEndDate = null;
     } else if (effective !== 'spark' && currentEnd && currentEnd > now) {
       fallbackPlan = effective;
       fallbackEndDate = currentEnd;
@@ -782,9 +910,12 @@ router.put('/student/:studentUserId/plan/revoke', requireAuth, requireAdmin, asy
       prisma.adminMessage.create({
         data: {
           adminId: ap.id, studentId: profile.id, type: 'Announcement',
-          content: restore
-            ? 'Your temporary Apex grant has ended and your previous plan has been restored.'
-            : 'Your temporary Apex grant has been removed. You are now on the free Spark plan.',
+          content: (() => {
+            const planName = { forge: 'Forge', apex: 'Apex', anchor: 'Anchor' }[grant.plan] || grant.plan;
+            return restore
+              ? `Your temporary ${planName} grant has ended and your previous plan has been restored.`
+              : `Your temporary ${planName} grant has been removed. You are now on the free Spark plan.`;
+          })(),
         },
       }),
     ]);

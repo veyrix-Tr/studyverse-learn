@@ -595,7 +595,7 @@ const FacultyModals = ({ openModal, onClose, onShowToast, toast, detailOpen, sel
       <div className={`overlay${isOpen('broadcast-modal')}`} onClick={e => e.target.classList.contains('overlay') && onClose()}>
         <div className="modal">
           <div className="mt">Message All Students</div>
-          <div className="ms">Sends a notification to all your assigned students instantly.</div>
+          <div className="ms">Sends a notification to all your assigned Apex and Anchor students instantly.</div>
           <div className="fg">
             <label>Message</label>
             <textarea className="finput" rows="4" placeholder="e.g. No session this Friday. Revise chapters 3–5 before Monday." value={broadcastText} onChange={e => setBroadcastText(e.target.value)} />

@@ -193,7 +193,7 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
       fetch(`${import.meta.env.VITE_API_URL}/api/student/${userId}/scores`, { headers: { Authorization: `Bearer ${token}` } })
         .then(r => r.ok ? r.json() : { weeks: [] }).then(d => { if (Array.isArray(d?.weeks)) setScores(d.weeks); }).catch(() => {});
     }
-  }, [userId]);
+  }, [userId, isForge]);
 
   // Diagnostic done state (from DB)
   const [diagDone, setDiagDone]         = useState(false);
@@ -1704,7 +1704,7 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
                             <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text)', marginBottom: '3px' }}>Mixed Problem Practice</div>
                             <div style={{ fontSize: '12.5px', color: 'var(--text3)', lineHeight: 1.6, marginBottom: '10px' }}>Solve problems across different topics from this week, not one subject at a time. Interleaving feels harder but produces 2x better long-term results.</div>
                             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                              <button className="btn btn-sm btn-ghost" onClick={() => onNav('questions')}>Question Bank</button>
+                              {!isAnchor && <button className="btn btn-sm btn-ghost" onClick={() => onNav('questions')}>Question Bank</button>}
                             </div>
                           </div>
                         </div>
@@ -1912,6 +1912,7 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
                 </>
               )}
 
+              {!isAnchor && (
               <div className="upgrade-banner" style={{ marginTop: '20px' }}>
                 <div className="ub-text">
                   <div className="ub-label">Next Level</div>
@@ -1922,6 +1923,7 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
                   <button className="btn btn-gold" onClick={() => onNav('sessions')}>Book a Session</button>
                 </div>
               </div>
+              )}
             </>
           );
         })() : (
@@ -2424,12 +2426,12 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
         {isForge ? (
           <>
             <div className="tabs" style={{ marginBottom: '16px' }}>
-              {['All', 'Study Material', 'Formula Sheet', 'Session Notes'].map((t, i) => (
+              {['All', 'Study Material', 'Formula Sheet'].map((t, i) => (
                 <div key={t} className={`tab${resTab === i ? ' on' : ''}`} onClick={() => setResTab(i)}>{t}</div>
               ))}
             </div>
             {(() => {
-              const typeMap = [null, 'Study Material', 'Formula Sheet', 'Session Notes'];
+              const typeMap = [null, 'Study Material', 'Formula Sheet'];
               const filtered = resTab === 0 ? resources : resources.filter(r => r.type === typeMap[resTab]);
               if (filtered.length === 0) return (
                 <div>

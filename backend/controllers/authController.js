@@ -19,6 +19,10 @@ const register = async (req, res) => {
     if (!name || !email || !password) {
       return res.status(400).json({ error: 'name, email, and password are required' });
     }
+    const EXAMS = ['JEE Mains', 'JEE Advanced', 'NEET'];
+    if (examTarget && !EXAMS.includes(examTarget)) {
+      return res.status(400).json({ error: 'Invalid course / exam target' });
+    }
 
     const hashedPassword = await bcrypt.hash(password, 10);
 

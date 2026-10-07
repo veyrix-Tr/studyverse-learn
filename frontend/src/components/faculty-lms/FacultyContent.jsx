@@ -1278,7 +1278,7 @@ const MentorPanel = ({ userId, mentorStudents, onMentorStudentUpdated, onShowToa
           <Users size={30} strokeWidth={1.5} />
         </div>
         <div className="mp-empty-title">No mentees yet</div>
-        <div className="mp-empty-sub">When admin assigns you as a mentor to Anchor students, they'll appear here with their reports and progress.</div>
+        <div className="mp-empty-sub">When admin assigns you as a mentor to Apex or Anchor students, they'll appear here with their reports and progress.</div>
       </div>
     );
   }

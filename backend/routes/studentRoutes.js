@@ -231,13 +231,14 @@ router.get('/sessions', requireAuth, async (req, res) => {
     const subjects = EXAM_SUBJECTS[profile.examTarget] || [];
 
     // Sessions shown to this student: those they're explicitly enrolled in
-    // (1:1 via studentId, or group via the SessionStudent roster), plus any
-    // legacy broadcast sessions (no roster) matching grade/subject.
+    // (1:1 via studentId, or group via the SessionStudent roster), plus legacy
+    // broadcast sessions (no roster) — those are Apex-only (Forge/Anchor/Spark
+    // don't include live teaching sessions).
     const enrolledWhere = [
       { studentId: profile.id },
       { students: { some: { studentId: profile.id } } },
     ];
-    const legacyWhere = (profile.grade && subjects.length)
+    const legacyWhere = (getEffectivePlan(profile) === 'apex' && profile.grade && subjects.length)
       ? [{ students: { none: {} }, studentId: null, grade: profile.grade, subject: { in: subjects } }]
       : [];
 
@@ -288,7 +289,7 @@ router.post('/sessions/:id/zoom-signature', requireAuth, async (req, res) => {
     const enrolled = session.studentId === profile.id || session.students.some(x => x.studentId === profile.id);
     const eligible = session.studentId || session.students.length > 0
       ? enrolled
-      : (profile.grade === session.grade && subjects.includes(session.subject));
+      : (getEffectivePlan(profile) === 'apex' && profile.grade === session.grade && subjects.includes(session.subject));
     if (!eligible) return res.status(403).json({ error: 'Not eligible for this session' });
 
     if (!session.zoomMeetingId) return res.status(400).json({ error: 'This session has no Zoom meeting set up' });
@@ -649,6 +650,8 @@ router.get('/reports', requireAuth, async (req, res) => {
   try {
     const profile = await prisma.studentProfile.findUnique({ where: { userId: req.params.userId } });
     if (!profile) return res.json({ subjects: [], reports: [] });
+    // Weekly parent reports are an Apex/Anchor feature.
+    if (!['apex', 'anchor'].includes(getEffectivePlan(profile))) return res.json({ subjects: [], reports: [] });
 
     const subjects = EXAM_SUBJECTS[profile.examTarget] || [];
 
@@ -848,6 +851,8 @@ router.get('/daily-reports', requireAuth, validateUrlUser, async (req, res) => {
   try {
     const profile = await prisma.studentProfile.findUnique({ where: { userId: req.params.userId } });
     if (!profile) return res.json([]);
+    // Daily accountability is an Apex/Anchor feature — Forge/Spark have no UI for it.
+    if (!['apex', 'anchor'].includes(getEffectivePlan(profile))) return res.json([]);
     const reports = await prisma.dailyReport.findMany({
       where: { studentId: profile.id },
       orderBy: { date: 'desc' },
@@ -878,6 +883,9 @@ router.post('/daily-reports', requireAuth, validateUrlUser, async (req, res) => 
       include: { user: { select: { name: true } } },
     });
     if (!profile) return res.status(404).json({ error: 'Profile not found' });
+    // Daily accountability is an Apex/Anchor feature.
+    if (!['apex', 'anchor'].includes(getEffectivePlan(profile)))
+      return res.status(403).json({ error: 'Daily reports are available on the Apex and Anchor plans only' });
 
     const existing = await prisma.dailyReport.findUnique({
       where: { studentId_date: { studentId: profile.id, date } },

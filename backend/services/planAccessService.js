@@ -15,6 +15,8 @@
 // `where: { plan: { in: [...] } }` filters also settle.
 
 const isFuture = (value) => value && new Date(value) > new Date();
+// null end date = lifetime (mirrors the primary planEndDate rule above).
+const isLive = (value) => !value || isFuture(value);
 
 function getEffectivePlan(profile) {
   if (!profile) return 'spark';
@@ -23,7 +25,7 @@ function getEffectivePlan(profile) {
   if (!profile.planEndDate || isFuture(profile.planEndDate)) return profile.plan;
 
   // Current period is over — hand back the plan the manual grant replaced.
-  if (profile.fallbackPlan && isFuture(profile.fallbackEndDate)) return profile.fallbackPlan;
+  if (profile.fallbackPlan && isLive(profile.fallbackEndDate)) return profile.fallbackPlan;
   return 'spark';
 }
 
@@ -37,7 +39,7 @@ function resolveExpiredPlan(profile) {
     && new Date(profile.planEndDate) <= now;
   if (!expired) return null;
 
-  const restore = profile.fallbackPlan && isFuture(profile.fallbackEndDate);
+  const restore = profile.fallbackPlan && isLive(profile.fallbackEndDate);
   return restore
     ? { plan: profile.fallbackPlan, planEndDate: profile.fallbackEndDate, fallbackPlan: null, fallbackEndDate: null }
     : { plan: 'spark', planEndDate: null, fallbackPlan: null, fallbackEndDate: null };

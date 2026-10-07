@@ -460,7 +460,7 @@ const AnchorContent = ({
           </div>
           <div style={{ flex: 1 }}>
             <div style={{ fontFamily: 'var(--fs)', fontSize: '16px', fontWeight: 700, color: 'var(--t1)', marginBottom: '4px' }}>Upgrade your plan</div>
-            <div style={{ fontSize: '13px', color: 'var(--t2)' }}>Get question bank, weekly tests, and live sessions with Forge or Apex.</div>
+            <div style={{ fontSize: '13px', color: 'var(--t2)' }}>Get the question bank, weekly tests, and premium resources with Forge or Apex.</div>
           </div>
           <button className="btn btn-gold" onClick={() => onNav('plans')}>View Plans →</button>
         </div>
@@ -781,12 +781,12 @@ const AnchorContent = ({
       {/* ══════════ RESOURCES ══════════ */}
       <div className={pg('resources')}>
         <div className="ac-res-tabs" style={{ display: 'flex', gap: '2px', background: 'var(--bg3)', border: '1px solid var(--b)', padding: '4px', borderRadius: '9px', width: 'fit-content', marginBottom: '20px' }}>
-          {['All', 'Study Material', 'Formula Sheet', 'Session Notes'].map((t, i) => (
+          {['All', 'Study Material', 'Formula Sheet'].map((t, i) => (
             <div key={t} onClick={() => setResTab(i)} style={{ padding: '7px 17px', borderRadius: '6px', fontSize: '13px', fontWeight: resTab === i ? 600 : 500, cursor: 'pointer', transition: 'all .15s', background: resTab === i ? 'var(--bg4)' : 'transparent', color: resTab === i ? 'var(--t1)' : 'var(--t3)', boxShadow: resTab === i ? '0 1px 4px rgba(0,0,0,0.3)' : 'none', whiteSpace: 'nowrap', flexShrink: 0 }}>{t}</div>
           ))}
         </div>
         {(() => {
-          const TYPE_MAP = [null, 'Study Material', 'Formula Sheet', 'Session Notes'];
+          const TYPE_MAP = [null, 'Study Material', 'Formula Sheet'];
           const filtered = resTab === 0 ? resources : resources.filter(r => r.type === TYPE_MAP[resTab]);
           if (filtered.length === 0 && resources.length === 0) {
             return (

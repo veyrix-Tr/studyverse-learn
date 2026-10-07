@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { facultySubjects, isActiveFaculty, teachesSubject } from './facultyFilters';
 
 const PermToggleRow = ({ label, defaultOn, last }) => {
   const [on, setOn] = useState(defaultOn);
@@ -10,7 +11,14 @@ const PermToggleRow = ({ label, defaultOn, last }) => {
   );
 };
 
-const AdminModals = ({ openModal, onClose, onShowToast, toast, students = [], messageStudentId = null, onSendMessage, userId, onFacultyAdded, facultyApplications = [] }) => {
+const FormSection = ({ label }) => (
+  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: '16px 0 12px' }}>
+    <span style={{ fontSize: '10.5px', fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--gold)' }}>{label}</span>
+    <span style={{ flex: 1, height: '1px', background: 'var(--b)' }} />
+  </div>
+);
+
+const AdminModals = ({ openModal, onClose, onShowToast, toast, students = [], messageStudentId = null, onSendMessage, userId, onFacultyAdded, facultyApplications = [], facultyList = [], onStudentAdded }) => {
   const isOpen = (id) => openModal === id ? ' open' : '';
   const [newFaculty, setNewFaculty] = useState({ name: '', email: '', subject: '', qualification: '', department: 'Science' });
   const [addingFaculty, setAddingFaculty] = useState(false);
@@ -18,6 +26,17 @@ const AdminModals = ({ openModal, onClose, onShowToast, toast, students = [], me
   const [newAdmin, setNewAdmin] = useState({ name: '', email: '', department: 'Operations' });
   const [addingAdmin, setAddingAdmin] = useState(false);
   const [adminCredentials, setAdminCredentials] = useState(null);
+  const [newStudent, setNewStudent] = useState({ name: '', email: '', password: '', phone: '', grade: '', examTarget: '', mentorId: '', plan: '', durationDays: '' });
+  const [sfRows, setSfRows] = useState([{ subject: '', facultyId: '' }]);
+  const [addingStudent, setAddingStudent] = useState(false);
+  const [studentCredentials, setStudentCredentials] = useState(null);
+  const [studentMoreBelow, setStudentMoreBelow] = useState(true);
+  const resetStudentForm = () => {
+    setStudentCredentials(null);
+    setNewStudent({ name: '', email: '', password: '', phone: '', grade: '', examTarget: '', mentorId: '', plan: '', durationDays: '' });
+    setSfRows([{ subject: '', facultyId: '' }]);
+    setStudentMoreBelow(true);
+  };
 
   const handleAddFaculty = async () => {
     if (!newFaculty.name.trim() || !newFaculty.email.trim() || !newFaculty.subject.trim()) {
@@ -72,6 +91,64 @@ const AdminModals = ({ openModal, onClose, onShowToast, toast, students = [], me
     setAddingAdmin(false);
   };
 
+  const handleAddStudent = async () => {
+    if (!newStudent.plan) {
+      onShowToast('Select a plan first');
+      return;
+    }
+    const isPaid = ['forge', 'apex', 'anchor'].includes(newStudent.plan);
+    if (isPaid) {
+      const days = parseInt(newStudent.durationDays, 10);
+      if (!Number.isInteger(days) || days < 1 || days > 365) {
+        onShowToast('Plan duration must be between 1 and 365 days');
+        return;
+      }
+    }
+    if (!newStudent.name.trim() || !newStudent.email.trim() || !newStudent.password || !newStudent.grade || !newStudent.examTarget) {
+      onShowToast('Name, email, password, grade, and course are required');
+      return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(newStudent.email.trim())) {
+      onShowToast('Please enter a valid email address');
+      return;
+    }
+    if (newStudent.password.length < 6) {
+      onShowToast('Password must be at least 6 characters');
+      return;
+    }
+    const digits = newStudent.phone.replace(/\D/g, '');
+    if (newStudent.phone && !(digits.length === 10 || (digits.length === 12 && digits.startsWith('91')))) {
+      onShowToast('Mobile number must be 10 digits');
+      return;
+    }
+    setAddingStudent(true);
+    const token = localStorage.getItem('token');
+    try {
+      const r = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/${userId}/students`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          ...newStudent,
+          durationDays: isPaid ? parseInt(newStudent.durationDays, 10) : null,
+          mentorId: ['forge', 'apex', 'anchor'].includes(newStudent.plan) && newStudent.mentorId ? parseInt(newStudent.mentorId) : null,
+          subjectFaculty: newStudent.plan === 'apex'
+            ? sfRows.filter(row => row.subject && row.facultyId).map(row => ({ subject: row.subject, facultyId: parseInt(row.facultyId) }))
+            : [],
+        }),
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error || 'Failed');
+      setStudentCredentials(data.credentials);
+      setStudentMoreBelow(false);
+      onStudentAdded?.(data.student);
+      onShowToast(`${data.student.name} added successfully ✓`);
+    } catch (e) {
+      onShowToast('Failed to add student: ' + e.message);
+    }
+    setAddingStudent(false);
+  };
+
   const handleApproveApplication = async (id) => {
     const token = localStorage.getItem('token');
     try {
@@ -105,26 +182,25 @@ const AdminModals = ({ openModal, onClose, onShowToast, toast, students = [], me
     }
   };
 
-  const [msgStudent, setMsgStudent] = useState('all');
+  const [msgStudent, setMsgStudent] = useState(null);
   const [msgType, setMsgType] = useState('Announcement');
   const [msgContent, setMsgContent] = useState('');
   const [sending, setSending] = useState(false);
 
-  useEffect(() => {
-    if (openModal === 'message-modal') {
-      setMsgStudent(messageStudentId !== null ? String(messageStudentId) : 'all');
-      setMsgType('Announcement');
-      setMsgContent('');
-    }
-  }, [openModal, messageStudentId]);
+  const msgTarget = msgStudent ?? (messageStudentId !== null ? String(messageStudentId) : 'all');
+  const closeMsgModal = () => {
+    setMsgStudent(null);
+    setMsgType('Announcement');
+    setMsgContent('');
+    onClose();
+  };
 
   const handleSendMessage = async () => {
     if (!msgContent.trim()) { onShowToast('Please write a message'); return; }
     setSending(true);
     try {
-      await onSendMessage(msgStudent, msgType, msgContent);
-      setMsgContent('');
-      onClose();
+      await onSendMessage(msgTarget, msgType, msgContent);
+      closeMsgModal();
     } catch {
       onShowToast('Failed to send message. Try again.');
     } finally {
@@ -135,12 +211,12 @@ const AdminModals = ({ openModal, onClose, onShowToast, toast, students = [], me
   return (
     <>
       {/* Message Modal */}
-      <div className={`overlay${isOpen('message-modal')}`} id="message-modal" onClick={e => e.target.classList.contains('overlay') && onClose()}>
+      <div className={`overlay${isOpen('message-modal')}`} id="message-modal" onClick={e => e.target.classList.contains('overlay') && closeMsgModal()}>
         <div className="modal">
           <div className="mt">Send Message to Student</div>
           <div className="ms">Appears as a notification on their dashboard immediately.</div>
           <div className="fg"><label>Student</label>
-            <select className="fi" value={msgStudent} onChange={e => setMsgStudent(e.target.value)}>
+            <select className="fi" value={msgTarget} onChange={e => setMsgStudent(e.target.value)}>
               <option value="all">All Students</option>
               {students.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
@@ -157,7 +233,7 @@ const AdminModals = ({ openModal, onClose, onShowToast, toast, students = [], me
             <textarea className="fi" rows="4" placeholder="Write message..." value={msgContent} onChange={e => setMsgContent(e.target.value)}></textarea>
           </div>
           <div className="ma">
-            <button className="btn btn-ghost btn-sm" onClick={onClose}>Cancel</button>
+            <button className="btn btn-ghost btn-sm" onClick={closeMsgModal}>Cancel</button>
             <button className="btn btn-gold btn-sm" onClick={handleSendMessage} disabled={sending}>{sending ? 'Sending…' : 'Send →'}</button>
           </div>
         </div>
@@ -255,6 +331,146 @@ const AdminModals = ({ openModal, onClose, onShowToast, toast, students = [], me
               </div>
             </>
           )}
+        </div>
+      </div>
+
+      {/* Add Student */}
+      <div className={`overlay${isOpen('add-student-modal')}`} id="add-student-modal" onClick={e => { if (e.target.classList.contains('overlay')) { onClose(); resetStudentForm(); } }}>
+        <div style={{ position: 'relative', width: '720px', maxWidth: '95vw' }}>
+        <div className="modal" style={{ width: '100%', maxHeight: 'calc(100vh - 48px)', overflowY: 'auto' }} onScroll={e => { const el = e.currentTarget; setStudentMoreBelow(el.scrollTop + el.clientHeight < el.scrollHeight - 6); }}>
+          {studentCredentials ? (
+            <>
+              <div className="mt">Student Added ✓</div>
+              <div className="ms">A welcome email with these login credentials has been sent to {studentCredentials.email}. You can also copy them below to share with the student directly.</div>
+              <div style={{ background: 'var(--cream2)', border: '1px solid var(--b)', borderRadius: 'var(--r)', padding: '16px', marginBottom: '16px' }}>
+                <div style={{ marginBottom: '10px' }}>
+                  <div style={{ fontSize: '11px', color: 'var(--text3)', marginBottom: '3px' }}>EMAIL</div>
+                  <div style={{ fontSize: '13px', fontWeight: '600', fontFamily: 'monospace', userSelect: 'all' }}>{studentCredentials.email}</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '11px', color: 'var(--text3)', marginBottom: '3px' }}>PASSWORD</div>
+                  <div style={{ fontSize: '13px', fontWeight: '600', fontFamily: 'monospace', userSelect: 'all' }}>{studentCredentials.password}</div>
+                </div>
+              </div>
+              <div className="ma">
+                <button className="btn btn-gold btn-sm" onClick={() => {
+                  navigator.clipboard?.writeText(`Email: ${studentCredentials.email}\nPassword: ${studentCredentials.password}`);
+                  onShowToast('Credentials copied to clipboard ✓');
+                }}>Copy Credentials</button>
+                <button className="btn btn-ghost btn-sm" onClick={() => { onClose(); resetStudentForm(); }}>Done</button>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="mt">Add Student</div>
+              <div className="ms">Create the account manually — the student signs in with this email and password. A welcome email is sent to them automatically.</div>
+
+              <FormSection label="Plan" />
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '14px' }}>
+                <select className="fi" value={newStudent.plan} onChange={e => setNewStudent(p => ({ ...p, plan: e.target.value }))}>
+                  <option value="">Select plan…</option>
+                  <option value="spark">Spark — Free</option>
+                  <option value="forge">Forge</option>
+                  <option value="apex">Apex</option>
+                  <option value="anchor">Anchor</option>
+                </select>
+                {['forge', 'apex', 'anchor'].includes(newStudent.plan) && (
+                  <div className="fg">
+                    <label>Duration (days) *</label>
+                    <input className="fi" type="number" min="1" max="365" placeholder="e.g. 30" value={newStudent.durationDays} onChange={e => setNewStudent(p => ({ ...p, durationDays: e.target.value }))} />
+                  </div>
+                )}
+              </div>
+              {newStudent.plan && (
+                <div style={{ fontSize: '11.5px', color: 'var(--text3)', marginTop: '8px' }}>
+                  {{
+                    spark: 'Free plan — no mentor or subject faculty.',
+                    forge: 'Content mentor only — assigns Question Bank, tests & resources (no 1:1 calls).',
+                    apex: 'Includes mentor and subject faculty assignment below.',
+                    anchor: 'Includes a mentor below (no subject faculty on Anchor).',
+                  }[newStudent.plan]}
+                </div>
+              )}
+
+              <FormSection label="Account" />
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '14px' }}>
+                <div className="fg"><label>Student name *</label><input className="fi" type="text" placeholder="Aarav Sharma" value={newStudent.name} onChange={e => setNewStudent(p => ({ ...p, name: e.target.value }))} /></div>
+                <div className="fg"><label>Email *</label><input className="fi" type="email" placeholder="student@gmail.com" value={newStudent.email} onChange={e => setNewStudent(p => ({ ...p, email: e.target.value }))} /></div>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '14px' }}>
+                <div className="fg"><label>Password * <span style={{ color: 'var(--text3)', fontWeight: 400 }}>(min 6)</span></label><input className="fi" type="text" placeholder="Set login password" value={newStudent.password} onChange={e => setNewStudent(p => ({ ...p, password: e.target.value }))} /></div>
+                <div className="fg"><label>Mobile <span style={{ color: 'var(--text3)', fontWeight: 400 }}>(optional)</span></label><input className="fi" type="tel" placeholder="10-digit mobile" value={newStudent.phone} onChange={e => setNewStudent(p => ({ ...p, phone: e.target.value }))} /></div>
+              </div>
+
+              <FormSection label="Student details" />
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '14px' }}>
+                <div className="fg"><label>Class / Grade *</label>
+                  <select className="fi" value={newStudent.grade} onChange={e => setNewStudent(p => ({ ...p, grade: e.target.value }))}>
+                    <option value="">Select grade</option><option>11</option><option>12</option><option>Dropper</option><option>Other</option>
+                  </select>
+                </div>
+                <div className="fg"><label>Course *</label>
+                  <select className="fi" value={newStudent.examTarget} onChange={e => setNewStudent(p => ({ ...p, examTarget: e.target.value }))}>
+                    <option value="">Select course</option><option>JEE Mains</option><option>JEE Advanced</option><option>NEET</option>
+                  </select>
+                </div>
+              </div>
+
+              {['forge', 'apex', 'anchor'].includes(newStudent.plan) && (
+                <>
+                  <FormSection label="Assignment" />
+                  <div className="fg"><label>Assigned faculty (mentor) <span style={{ color: 'var(--text3)', fontWeight: 400 }}>(optional)</span></label>
+                    <select className="fi" value={newStudent.mentorId} onChange={e => setNewStudent(p => ({ ...p, mentorId: e.target.value }))}>
+                      <option value="">No mentor yet</option>
+                      {facultyList.filter(isActiveFaculty).map(f => (
+                        <option key={f.id} value={f.id}>{f.name}{facultySubjects(f).length ? ` — ${facultySubjects(f).join(', ')}` : ''}</option>
+                      ))}
+                    </select>
+                  </div>
+                </>
+              )}
+              {newStudent.plan === 'apex' && (
+                <div className="fg">
+                  <label>Subject faculty <span style={{ color: 'var(--text3)', fontWeight: 400 }}>(optional)</span></label>
+                  <div style={{ fontSize: '11.5px', color: 'var(--text3)', marginBottom: '8px' }}>Map each subject to the faculty who handles it.</div>
+                  {sfRows.map((row, i) => {
+                    const rowFaculty = facultyList.filter(f => isActiveFaculty(f) && (!row.subject || teachesSubject(f, row.subject)));
+                    return (
+                    <div key={i} style={{ display: 'flex', gap: '8px', marginBottom: '8px', background: 'var(--cream2)', border: '1px solid var(--b)', borderRadius: '10px', padding: '9px 10px', alignItems: 'center' }}>
+                      <select className="fi" style={{ flex: 1, background: 'var(--cream)', border: 'none' }} value={row.subject} onChange={e => setSfRows(prev => prev.map((r, j) => {
+                        if (j !== i) return r;
+                        const stillValid = r.facultyId && facultyList.find(f => String(f.id) === String(r.facultyId) && teachesSubject(f, e.target.value));
+                        return { ...r, subject: e.target.value, facultyId: stillValid ? r.facultyId : '' };
+                      }))}>
+                        <option value="">Subject</option><option>Physics</option><option>Chemistry</option><option>Maths</option><option>Biology</option>
+                      </select>
+                      <span style={{ color: 'var(--text3)', fontSize: '13px' }}>→</span>
+                      <select className="fi" style={{ flex: 1.4, background: 'var(--cream)', border: 'none' }} value={row.facultyId} onChange={e => setSfRows(prev => prev.map((r, j) => j === i ? { ...r, facultyId: e.target.value } : r))}>
+                        <option value="">{row.subject && rowFaculty.length === 0 ? 'No faculty for this subject' : 'Faculty'}</option>
+                        {rowFaculty.map(f => (
+                          <option key={f.id} value={f.id}>{f.name}</option>
+                        ))}
+                      </select>
+                      {sfRows.length > 1 && (
+                        <button className="btn btn-ghost btn-sm" style={{ padding: '0 9px', lineHeight: '1' }} onClick={() => setSfRows(prev => prev.filter((_, j) => j !== i))}>×</button>
+                      )}
+                    </div>
+                    );
+                  })}
+                  <button className="btn btn-ghost btn-sm" onClick={() => setSfRows(prev => [...prev, { subject: '', facultyId: '' }])}>+ Add subject</button>
+                </div>
+              )}
+
+              <div className="ma">
+                <button className="btn btn-ghost btn-sm" onClick={() => { setStudentMoreBelow(true); onClose(); }} disabled={addingStudent}>Cancel</button>
+                <button className="btn btn-gold btn-sm" onClick={handleAddStudent} disabled={addingStudent}>{addingStudent ? 'Creating…' : 'Create student →'}</button>
+              </div>
+            </>
+          )}
+        </div>
+        {studentMoreBelow && (
+          <div style={{ position: 'absolute', left: '1px', right: '1px', bottom: '1px', height: '64px', borderRadius: '0 0 var(--rxl) var(--rxl)', background: 'linear-gradient(to bottom, rgba(253,248,240,0), var(--cream) 88%)', pointerEvents: 'none' }} />
+        )}
         </div>
       </div>
 

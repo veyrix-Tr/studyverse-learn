@@ -170,4 +170,45 @@ const sendFacultyApprovalEmail = async (toEmail, name, password) => {
   }
 };
 
-module.exports = { sendOtpEmail, sendReceiptEmail, sendFacultyWelcomeEmail, sendFacultyApprovalEmail };
+const sendStudentWelcomeEmail = async (toEmail, name, password) => {
+  try {
+    await axios.post(
+      'https://api.brevo.com/v3/smtp/email',
+      {
+        sender: {
+          name:  'Studyverse',
+          email: process.env.BREVO_SENDER_EMAIL,
+        },
+        to: [{ email: toEmail }],
+        subject: 'Welcome to Studyverse — Your Student Account',
+        htmlContent: `
+        <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px;">
+          <h2 style="color:#0F1F3D;margin-bottom:8px;">Welcome to Studyverse, ${name}!</h2>
+          <p style="color:#4A5568;margin-bottom:24px;">Your student account has been created. Use the credentials below to sign in.</p>
+          <div style="background:#F5EFE3;border-radius:10px;padding:24px;margin-bottom:24px;">
+            <div style="color:#8896B3;font-size:13px;margin-bottom:6px;">Email</div>
+            <div style="font-size:16px;font-weight:700;color:#0F1F3D;margin-bottom:16px;">${toEmail}</div>
+            <div style="color:#8896B3;font-size:13px;margin-bottom:6px;">Password</div>
+            <div style="font-size:16px;font-weight:700;color:#0F1F3D;">${password}</div>
+          </div>
+          <p style="color:#4A5568;margin-bottom:24px;">Please change your password after your first login. If you ever forget it, use "Forgot password" on the login page to get an OTP by email.</p>
+          <p style="color:#8896B3;font-size:13px;">If you have any questions, contact the Studyverse team.</p>
+        </div>`,
+      },
+      {
+        headers: {
+          'api-key':      process.env.BREVO_API_KEY,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    console.log(`Student welcome email sent to ${toEmail}`);
+    return true;
+  } catch (error) {
+    console.error('Student welcome email failed:', error.response?.data || error.message);
+    return false;
+  }
+};
+
+module.exports = { sendOtpEmail, sendReceiptEmail, sendFacultyWelcomeEmail, sendFacultyApprovalEmail, sendStudentWelcomeEmail };

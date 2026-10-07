@@ -14,6 +14,7 @@
 const prisma        = require('../lib/prisma');
 const cashfree      = require('../services/cashfreeService');
 const { sendReceiptEmail } = require('../services/emailService');
+const { getEffectivePlan } = require('../services/planAccessService');
 
 // ── Config from env ─────────────────────────────────────────────────────────
 
@@ -52,7 +53,10 @@ const getStudent = async (userId) => {
     include: { user: { select: { name: true, email: true } } },
   });
   if (!profile) return null;
-  return { id: profile.id, userId, user: profile.user, plan: profile.plan, parentPhone: profile.parentPhone };
+  return {
+    id: profile.id, userId, user: profile.user, plan: profile.plan, parentPhone: profile.parentPhone,
+    planEndDate: profile.planEndDate, fallbackPlan: profile.fallbackPlan, fallbackEndDate: profile.fallbackEndDate,
+  };
 };
 
 // Creates an admin assignment task (persistent inbox) for all active admins.
@@ -112,9 +116,17 @@ const applyPaymentSuccess = async (payment) => {
       planEndDate.setMonth(planEndDate.getMonth() + months);
       const durationDays = Math.max(1, Math.round((planEndDate.getTime() - now.getTime()) / 86400000));
 
+      // A lifetime premium student (manually-created, planEndDate = null) who
+      // switches plans must get that lifetime plan back when this one lapses.
+      const keepLifetime = current && current.plan !== 'spark' && !current.planEndDate && current.plan !== latest.plan;
+
       await tx.studentProfile.update({
         where: { id: latest.studentId },
-        data: { plan: latest.plan, planEndDate },
+        data: {
+          plan: latest.plan,
+          planEndDate,
+          ...(keepLifetime ? { fallbackPlan: current.plan, fallbackEndDate: null } : {}),
+        },
       });
 
       // Same ledger the superadmin's manual grants are written to, so plan
@@ -215,7 +227,7 @@ const createPlanOrder = async (req, res) => {
 
     const student = await getStudent(req.params.userId);
     if (!student) return res.status(404).json({ error: 'Student profile not found' });
-    if (student.plan === plan) return res.status(400).json({ error: `You are already on the ${plan} plan` });
+    if (getEffectivePlan(student) === plan) return res.status(400).json({ error: `You are already on the ${plan} plan` });
 
     const orderId = orderIdFor('PLAN', req.params.userId);
     const order = await cashfree.createOrder({

@@ -841,10 +841,13 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
                   <div className="adm-title">Students</div>
                   <div className="adm-sub">{filtered.length === students.length ? `${students.length} students` : `${filtered.length} of ${students.length} students`}</div>
                 </div>
-                <label className="adm-search">
-                  <Search size={14} />
-                  <input placeholder="Search name, exam or grade" value={stuQuery} onChange={e => setStuQuery(e.target.value)} />
-                </label>
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <label className="adm-search">
+                    <Search size={14} />
+                    <input placeholder="Search name, exam or grade" value={stuQuery} onChange={e => setStuQuery(e.target.value)} />
+                  </label>
+                  <button className="btn btn-gold btn-sm" onClick={() => onOpenModal('add-student-modal')}>+ Add Student</button>
+                </div>
               </div>
 
               <div className="seg">
@@ -893,7 +896,17 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
                                   </div>
                                 </div>
                               </td>
-                              <td><span className={`st-plan p-${s.plan}`}>{PLAN_NAME[s.plan] || s.plan}</span></td>
+                              <td>
+                                <span className={`st-plan p-${s.plan}`}>{PLAN_NAME[s.plan] || s.plan}</span>
+                                {['forge','apex','anchor'].includes(s.plan) && s.planEndDate && (
+                                  <div style={{ fontSize: '10.5px', color: 'var(--text3)', marginTop: '3px' }}>
+                                    {(() => {
+                                      const days = Math.ceil((new Date(s.planEndDate).getTime() - Date.now()) / 86400000);
+                                      return days > 0 ? `ends in ${days}d` : 'expired';
+                                    })()}
+                                  </div>
+                                )}
+                              </td>
                               <td>{s.mentorName ? <span className="st-val">{s.mentorName}</span> : <span className="st-na">Not assigned</span>}</td>
                               <td>
                                 {!isApex
@@ -1283,7 +1296,7 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
                   <div className="fg">
                     <label>Target plan <span style={{ fontWeight: 400, color: 'var(--text3)' }}>— {recipientCount} student{recipientCount !== 1 ? 's' : ''} will receive this</span></label>
                     <div className="target-chips">
-                      {[{ k: 'all', l: 'All plans' }, { k: 'spark', l: 'Spark only' }, { k: 'forge', l: 'Forge & above' }, { k: 'apex', l: 'Apex only' }, { k: 'anchor', l: 'Anchor only' }].map(p => (
+                      {[{ k: 'all', l: 'All plans' }, { k: 'spark', l: 'Spark only' }, { k: 'forge', l: 'All paid plans' }, { k: 'apex', l: 'Apex only' }, { k: 'anchor', l: 'Anchor only' }].map(p => (
                         <div key={p.k} className={'chip chip-nv' + (msgPlan === p.k ? ' on' : '')} onClick={() => setMsgPlan(p.k)}>{p.l}</div>
                       ))}
                     </div>

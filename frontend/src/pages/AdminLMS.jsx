@@ -553,6 +553,8 @@ const AdminLMS = ({ expectedRole }) => {
         userId={userId}
         onFacultyAdded={f => setFacultyList(prev => [...prev, f])}
         facultyApplications={facultyApplications}
+        facultyList={facultyList}
+        onStudentAdded={s => setStudents(prev => [...prev, s])}
       />
     </div>
   );
