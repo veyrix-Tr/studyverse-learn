@@ -1,0 +1,222 @@
+/* Shared list UI for the admin assign sheets (mentor + subject faculty). */
+
+.am-search {
+  width: 100%;
+  padding: 11px 14px;
+  font-size: 14px;
+  color: var(--navy);
+  background: var(--cream2, #f5f0e6);
+  border: 1.5px solid var(--b, #e7dfcf);
+  border-radius: 11px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.am-search:focus {
+  outline: none;
+  border-color: var(--gold);
+  box-shadow: 0 0 0 4px rgba(232, 168, 48, 0.16);
+  background: var(--cream);
+}
+.am-search::placeholder { color: var(--text3); }
+
+.am-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.am-chip {
+  padding: 6px 13px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: capitalize;
+  color: var(--text2);
+  background: var(--cream3, #ede5d4);
+  border: 1.5px solid transparent;
+  border-radius: 99px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.am-chip:hover { background: var(--gold-dim, rgba(232, 168, 48, 0.12)); }
+.am-chip.on { color: #fff; background: var(--navy); border-color: var(--navy); }
+
+.am-list { display: flex; flex-direction: column; gap: 10px; }
+
+.am-card {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 14px 16px;
+  text-align: left;
+  width: 100%;
+  color: inherit;
+  font: inherit;
+  background: var(--cream2, #f5f0e6);
+  border: 1.5px solid var(--b, #e7dfcf);
+  border-radius: 14px;
+  cursor: pointer;
+  animation: amIn 0.2s ease both;
+  transition: border-color 0.15s, background 0.15s, transform 0.15s, box-shadow 0.15s;
+}
+.am-card:hover {
+  border-color: var(--gold);
+  background: var(--cream);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(15, 31, 61, 0.08);
+}
+.am-card.on {
+  border-color: var(--gold);
+  background: var(--gold-dim, rgba(232, 168, 48, 0.12));
+  box-shadow: 0 6px 18px rgba(232, 168, 48, 0.16);
+}
+
+.am-av {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 42px;
+  height: 42px;
+  font-family: var(--fs, inherit);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text2);
+  background: var(--cream3, #ede5d4);
+  border: 1.5px solid var(--b, #e7dfcf);
+  border-radius: 50%;
+  transition: all 0.15s;
+}
+.am-card.on .am-av { color: var(--navy); background: var(--gold); border-color: var(--gold); }
+
+.am-meta { flex: 1; min-width: 0; }
+.am-name {
+  display: block;
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--navy);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.am-sub {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 3px;
+  font-size: 12px;
+  color: var(--text3);
+}
+.am-tag {
+  padding: 2px 8px;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #166534;
+  background: rgba(34, 197, 94, 0.14);
+  border-radius: 99px;
+}
+.am-tag.gold { color: #8a5a00; background: rgba(232, 168, 48, 0.18); }
+
+.am-work { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.am-bar { flex: 1; min-width: 44px; height: 5px; background: var(--b, #e7dfcf); border-radius: 3px; overflow: hidden; }
+.am-bar > i { display: block; height: 100%; border-radius: 3px; transition: width 0.3s ease; }
+.am-count { font-size: 11px; color: var(--text3); white-space: nowrap; }
+
+.am-check { flex-shrink: 0; color: var(--gold); }
+
+.am-empty { padding: 44px 16px; text-align: center; color: var(--text3); }
+.am-empty strong { display: block; margin-top: 12px; font-size: 15px; color: var(--text2); }
+.am-empty span { display: block; margin-top: 5px; font-size: 12.5px; }
+
+/* Subject blocks (faculty-assign sheet) */
+.am-subject {
+  margin-bottom: 18px;
+  animation: amIn 0.22s ease both;
+}
+.am-subject:last-child { margin-bottom: 0; }
+.am-subject-hd {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 12px 14px;
+  margin-bottom: 9px;
+  background: var(--cream2, #f5f0e6);
+  border: 1px solid var(--b, #e7dfcf);
+  border-radius: 12px;
+}
+.am-subject-hd.on { background: var(--gold-dim, rgba(232, 168, 48, 0.12)); border-color: rgba(232, 168, 48, 0.4); }
+.am-subject-ic {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text3);
+  background: var(--cream3, #ede5d4);
+  border-radius: 9px;
+}
+.am-subject-hd.on .am-subject-ic { color: var(--navy); background: var(--gold); }
+.am-subject-name { flex: 1; min-width: 0; font-size: 13.5px; font-weight: 700; color: var(--navy); }
+.am-subject-picked { font-size: 12px; font-weight: 600; color: #8a5a00; }
+.am-subject .am-card { background: var(--cream); }
+
+.am-remove {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 11px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--red, #dc2626);
+  background: transparent;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  border-radius: 99px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.am-remove:hover { background: rgba(239, 68, 68, 0.1); }
+
+/* Progress strip sits inside the dark header */
+.am-progress { display: flex; align-items: center; gap: 10px; margin-top: 14px; }
+.am-progress .track {
+  flex: 1;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.14);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.am-progress .track > i {
+  display: block;
+  height: 100%;
+  background: var(--gold, #e8a830);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+.am-progress .label {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: rgba(253, 248, 240, 0.7);
+  white-space: nowrap;
+}
+
+.am-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+  padding: 10px 13px;
+  font-size: 12px;
+  color: var(--text3);
+  background: var(--cream2, #f5f0e6);
+  border: 1px dashed var(--b, #e7dfcf);
+  border-radius: 10px;
+}
+.am-note svg { flex-shrink: 0; color: var(--gold); }
+
+@keyframes amIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Narrow screens: drop the workload bar, keep the numbers. */
+@media (max-width: 520px) {
+  .am-bar { display: none; }
+  .am-card { padding: 12px 13px; gap: 11px; }
+  .am-chips { gap: 6px; }
+}

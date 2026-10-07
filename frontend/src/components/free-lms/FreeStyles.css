@@ -183,6 +183,7 @@ body.free-mode .btn-sm { padding: 6px 14px; font-size: 12px; }
 body.free-mode .btn-full { width: 100%; justify-content: center; }
 
 body.free-mode .pill { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; letter-spacing: .03em; }
+body.free-mode .pill-gold { background: var(--gold-dim); color: var(--gold); border: 1px solid var(--gold-b); }
 body.free-mode .pg { background: var(--gold-dim); color: var(--gold); border: 1px solid var(--gold-b); }
 body.free-mode .pn { background: rgba(15,31,61,0.07); color: var(--navy); }
 body.free-mode .pp { background: var(--green-dim); color: var(--green); }

@@ -326,6 +326,7 @@ body.anchor-mode .btn-sm { padding: 6px 14px; font-size: 12px; }
 body.anchor-mode .btn-full { width: 100%; justify-content: center; }
 
 body.anchor-mode .pill { display: inline-flex; align-items: center; padding: 3px 9px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+body.anchor-mode .pill-gold { background: var(--gd); color: var(--gold); border: 1px solid var(--gb); }
 body.anchor-mode .pg { background: var(--gd); color: var(--gold); border: 1px solid var(--gb); }
 body.anchor-mode .pp { background: var(--grdim); color: var(--green); }
 

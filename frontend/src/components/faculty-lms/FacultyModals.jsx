@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
+import { Check, X } from 'lucide-react';
 
 const CLOUD_NAME    = 'dnotkgppz';
 const UPLOAD_PRESET = 'faculty_resources';
@@ -122,11 +123,43 @@ const FacultyModals = ({ openModal, onClose, onShowToast, toast, detailOpen, sel
   const [resType, setResType] = useState('');
   const [resFile, setResFile] = useState(null);
   const [resUploading, setResUploading] = useState(false);
+  const [resTargetMode, setResTargetMode] = useState('all');
+  const [resSelectedStudents, setResSelectedStudents] = useState([]);
+  const [assignedStudents, setAssignedStudents] = useState([]);
   const fileInputRef = useRef(null);
+
+  useEffect(() => {
+    if (openModal !== 'suggest-res-modal') return;
+    const token = localStorage.getItem('token');
+    fetch(`${import.meta.env.VITE_API_URL}/api/faculty/${userId}/assigned-students`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.ok ? r.json() : [])
+      .then(data => { if (Array.isArray(data)) setAssignedStudents(data); })
+      .catch(() => {});
+  }, [openModal, userId]);
+
+  // Mirror of the backend's targetEligibility() so the picker only offers
+  // students the upload will actually accept (subject / grade / plan-for-type).
+  const canReceiveResource = (st) => {
+    const subjects = st.subjects || EXAM_SUBJECTS[st.examTarget] || [];
+    if (!subjects.includes(resSubject)) return false;
+    if (st.grade && resGrade) {
+      const allowed = String(st.grade) === 'Dropper' ? ['11', '12', 'Dropper'] : [String(st.grade)];
+      if (!allowed.includes(String(resGrade))) return false;
+    }
+    if (!resType) return st.plan !== 'spark';
+    if (resType === 'Session Notes') return st.plan === 'apex';
+    if (['MCQ Bank', 'Previous Year Papers', 'Practice Set'].includes(resType)) return st.plan === 'apex' || st.plan === 'forge';
+    if (['Study Material', 'Formula Sheet'].includes(resType)) return ['apex', 'forge', 'anchor'].includes(st.plan);
+    return false;
+  };
+  const eligibleStudents = assignedStudents.filter(canReceiveResource);
+  const eligibleIds = new Set(eligibleStudents.map(s => s.id));
+  const selectedCount = resSelectedStudents.filter(id => eligibleIds.has(id)).length;
 
   const resetResForm = () => {
     setResTitle(''); setResDescription(''); setResSubject(facultySubject || 'Physics');
     setResGrade('11'); setResType(''); setResFile(null);
+    setResTargetMode('all'); setResSelectedStudents([]);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -134,6 +167,15 @@ const FacultyModals = ({ openModal, onClose, onShowToast, toast, detailOpen, sel
     if (!resTitle.trim()) { onShowToast('Please enter a title'); return; }
     if (!resType) { onShowToast('Please select a type'); return; }
     if (!resFile) { onShowToast('Please select a file to upload'); return; }
+    const targetIds = resTargetMode === 'selected'
+      ? resSelectedStudents.filter(id => eligibleIds.has(id))
+      : [];
+    if (resTargetMode === 'selected' && !targetIds.length) {
+      onShowToast(eligibleStudents.length
+        ? 'Select at least one student to send this to'
+        : `No assigned student matches ${resSubject} · Grade ${resGrade}`);
+      return;
+    }
     setResUploading(true);
     try {
       // 1. Upload to Cloudinary
@@ -162,16 +204,25 @@ const FacultyModals = ({ openModal, onClose, onShowToast, toast, detailOpen, sel
           type:         resType,
           cloudinaryUrl: cdnData.secure_url,
           cloudinaryId:  cdnData.public_id,
+          studentIds:   targetIds,
         }),
       });
-      if (!res.ok) throw new Error('Backend save failed');
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({}));
+        throw new Error(errBody.error || 'Backend save failed');
+      }
       const data = await res.json();
       onResourceAdded?.(data.resource);
+      const skipped = Array.isArray(data.skipped) ? data.skipped : [];
       resetResForm();
       onClose();
-      onShowToast('Resource submitted — pending admin approval ✓');
+      if (skipped.length) {
+        onShowToast(`Submitted ✓ — ${skipped.length} selected student${skipped.length > 1 ? 's were' : ' was'} skipped (${skipped[0].reason})`);
+      } else {
+        onShowToast('Resource submitted — pending admin approval ✓');
+      }
     } catch (err) {
-      onShowToast('Upload failed. Try again.');
+      onShowToast(err?.message || 'Upload failed. Try again.');
     } finally {
       setResUploading(false);
     }
@@ -259,9 +310,7 @@ const FacultyModals = ({ openModal, onClose, onShowToast, toast, detailOpen, sel
       <div className={`detail-panel${detailOpen ? ' open' : ''}`}>
         <div className="dp-header" style={{ position: 'relative' }}>
           <div className="dp-close" onClick={onCloseDetail}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <path d="M18 6L6 18M6 6l12 12"/>
-            </svg>
+            <X size={14} strokeWidth={2.4} />
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
             <div className="sc-av" style={{ width: '48px', height: '48px', fontSize: '19px' }}>{s.init}</div>
@@ -469,11 +518,55 @@ const FacultyModals = ({ openModal, onClose, onShowToast, toast, detailOpen, sel
             </select>
           </div>
           <div className="fg">
+            <label>Send To</label>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '8px', marginBottom: '9px' }}>
+              {[{ v: 'all', l: 'All Students' }, { v: 'selected', l: 'Specific Students' }].map(opt => (
+                <button key={opt.v} type="button" onClick={() => setResTargetMode(opt.v)}
+                  style={{ padding: '9px 12px', borderRadius: '9px', border: `1.5px solid ${resTargetMode === opt.v ? 'var(--gold)' : 'var(--b)'}`, background: resTargetMode === opt.v ? 'var(--gd)' : 'transparent', cursor: 'pointer', fontSize: '12.5px', fontWeight: 600, color: resTargetMode === opt.v ? 'var(--gold)' : 'var(--text2)', transition: 'all .15s' }}>
+                  {opt.l}
+                </button>
+              ))}
+            </div>
+            <div style={{ fontSize: '11px', color: 'var(--text3)', marginBottom: resTargetMode === 'selected' ? '9px' : 0 }}>
+              {resTargetMode === 'all'
+                ? 'Everyone eligible for this subject & grade sees it once approved.'
+                : 'Only the students you pick see it once approved.'}
+            </div>
+            {resTargetMode === 'selected' && (
+              <div style={{ maxHeight: '190px', overflowY: 'auto', overscrollBehavior: 'contain', border: '1px solid var(--b)', borderRadius: '10px', padding: '5px', background: 'var(--cream2)' }}>
+                {eligibleStudents.length === 0
+                  ? <div style={{ padding: '14px 12px', fontSize: '12px', color: 'var(--text3)', textAlign: 'center', lineHeight: 1.6 }}>
+                      {assignedStudents.length === 0
+                        ? 'No assigned students yet'
+                        : `No assigned student matches ${resSubject} · Grade ${resGrade}${resType ? ` · ${resType}` : ''}`}
+                    </div>
+                  : eligibleStudents.map(st => {
+                    const sel = resSelectedStudents.includes(st.id);
+                    return (
+                      <button key={st.id} type="button"
+                        onClick={() => setResSelectedStudents(prev => sel ? prev.filter(id => id !== st.id) : [...prev, st.id])}
+                        style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '100%', padding: '8px 9px', cursor: 'pointer', borderRadius: '8px', border: 'none', font: 'inherit', textAlign: 'left', background: sel ? 'var(--gd)' : 'transparent', transition: 'background .12s' }}>
+                        <span style={{ width: '28px', height: '28px', borderRadius: '50%', background: sel ? 'var(--gold)' : 'var(--cream3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 700, color: sel ? '#0F1F3D' : 'var(--text2)', flexShrink: 0 }}>{st.name?.charAt(0)}</span>
+                        <span style={{ flex: 1, minWidth: 0 }}>
+                          <span style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, color: 'var(--text)' }}>{st.name}</span>
+                          <span style={{ display: 'block', fontSize: '10.5px', color: 'var(--text3)' }}>{st.plan}{st.grade ? ` · Grade ${st.grade}` : ''}{st.isMentee ? ' · Mentee' : ''}</span>
+                        </span>
+                        {sel && <Check size={15} strokeWidth={2.6} style={{ color: 'var(--gold)', flexShrink: 0 }} />}
+                      </button>
+                    );
+                  })}
+              </div>
+            )}
+            {resTargetMode === 'selected' && selectedCount > 0 && (
+              <div style={{ fontSize: '11px', color: 'var(--gold)', marginTop: '7px', fontWeight: 600 }}>{selectedCount} student{selectedCount !== 1 ? 's' : ''} selected</div>
+            )}
+          </div>
+          <div className="fg">
             <label>File <span style={{ fontWeight: 400, color: 'var(--text3)' }}>(PDF, DOC, etc.)</span></label>
             <input ref={fileInputRef} className="finput" type="file" accept=".pdf,.doc,.docx,.ppt,.pptx,.png,.jpg" onChange={e => setResFile(e.target.files[0] || null)} />
             {resFile && <div style={{ fontSize: '11px', color: 'var(--green)', marginTop: '4px' }}>✓ {resFile.name} ({(resFile.size / 1024 / 1024).toFixed(1)} MB)</div>}
           </div>
-          <div className="approval-notice">⏳ Admin will review and approve — students see it only after approval.</div>
+          <div className="approval-notice">Admin will review and approve — students see it only after approval.</div>
           <div className="ma">
             <button className="btn btn-ghost btn-sm" onClick={() => { resetResForm(); onClose(); }}>Cancel</button>
             <button className="btn btn-gold btn-sm" disabled={resUploading} onClick={submitResource}>
@@ -486,7 +579,7 @@ const FacultyModals = ({ openModal, onClose, onShowToast, toast, detailOpen, sel
       {/* Broadcast Modal */}
       <div className={`overlay${isOpen('broadcast-modal')}`} onClick={e => e.target.classList.contains('overlay') && onClose()}>
         <div className="modal">
-          <div className="mt">📢 Message All Students</div>
+          <div className="mt">Message All Students</div>
           <div className="ms">Sends a notification to all your assigned students instantly.</div>
           <div className="fg">
             <label>Message</label>

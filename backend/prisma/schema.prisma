@@ -67,6 +67,7 @@ model StudentProfile {
   sessionRequests      SessionRequest[]
   sessions             Session[]
   sessionStudents      SessionStudent[]
+  resourceRecipients   ResourceRecipient[]
   payments             Payment[]
   planGrants           PlanGrant[]
 }
@@ -311,6 +312,21 @@ model Resource {
   faculty     FacultyProfile @relation(fields: [facultyId], references: [id], onDelete: Cascade)
   approvedById Int?
   approvedBy   AdminProfile? @relation(fields: [approvedById], references: [id])
+  recipients  ResourceRecipient[]
+}
+
+model ResourceRecipient {
+  id         Int      @id @default(autoincrement())
+  resourceId Int
+  studentId  Int
+  createdAt  DateTime @default(now())
+
+  resource Resource        @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  student  StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([resourceId, studentId])
+  @@index([studentId])
+  @@index([resourceId])
 }
 
 model WeeklyReport {

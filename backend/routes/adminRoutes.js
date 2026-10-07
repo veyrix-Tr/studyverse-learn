@@ -5,14 +5,7 @@ const { requireAuth, requireAdmin } = require('../middleware/auth');
 const { ensureAssignmentTasks } = require('../services/adminTaskService');
 const { logAction } = require('../services/auditLogService');
 const { getEffectivePlan } = require('../services/planAccessService');
-
-const EXAM_SUBJECTS = {
-  'JEE Mains':    ['Physics', 'Chemistry', 'Maths'],
-  'JEE Advanced': ['Physics', 'Chemistry', 'Maths'],
-  'NEET':         ['Physics', 'Chemistry', 'Biology'],
-};
-
-const QUESTION_BANK_TYPES = ['MCQ Bank', 'Previous Year Papers', 'Practice Set'];
+const { canReceive, allowedTypes, QUESTION_BANK_TYPES } = require('../services/resourceAccess');
 
 // GET /api/admin/me
 router.get('/me', requireAuth, requireAdmin, async (req, res) => {
@@ -1045,7 +1038,10 @@ router.get('/resources', requireAuth, requireAdmin, async (req, res) => {
     if (!ap) return res.status(403).json({ error: 'Not an admin' });
 
     const resources = await prisma.resource.findMany({
-      include: { faculty: { include: { user: { select: { name: true } } } } },
+      include: {
+        faculty: { include: { user: { select: { name: true } } } },
+        recipients: { include: { student: { include: { user: { select: { name: true } } } } } },
+      },
       orderBy: { createdAt: 'desc' },
     });
 
@@ -1055,6 +1051,8 @@ router.get('/resources', requireAuth, requireAdmin, async (req, res) => {
       cloudinaryUrl: r.cloudinaryUrl, status: r.status,
       declineReason: r.declineReason, createdAt: r.createdAt, approvedAt: r.approvedAt,
       facultyName: r.faculty.user.name,
+      recipients: r.recipients.map(rec => ({ id: rec.student.id, name: rec.student.user.name })),
+      targeted: r.recipients.length > 0,
     })));
   } catch (err) {
     console.error(err);
@@ -1071,27 +1069,55 @@ router.put('/resources/:id/approve', requireAuth, requireAdmin, async (req, res)
     const id = parseInt(req.params.id);
     if (isNaN(id)) return res.status(400).json({ error: 'Invalid ID' });
 
+    const existing = await prisma.resource.findUnique({
+      where: { id },
+      include: {
+        recipients: {
+          select: {
+            studentId: true,
+            student: {
+              select: {
+                examTarget: true, grade: true, plan: true,
+                planEndDate: true, fallbackPlan: true, fallbackEndDate: true,
+              },
+            },
+          },
+        },
+      },
+    });
+    if (!existing) return res.status(404).json({ error: 'Resource not found' });
+
     const resource = await prisma.resource.update({
       where: { id },
       data: { status: 'approved', approvedAt: new Date(), approvedById: ap.id },
     });
 
-    // Fix 4: explicit type-to-plan mapping — no implicit fallthrough
-    const APEX_ONLY_RESOURCE_TYPES   = ['Session Notes'];
-    const FORGE_ABOVE_RESOURCE_TYPES = ['MCQ Bank', 'Previous Year Papers', 'Practice Set', 'Study Material', 'Formula Sheet'];
-    const isKnownType = APEX_ONLY_RESOURCE_TYPES.includes(resource.type) || FORGE_ABOVE_RESOURCE_TYPES.includes(resource.type);
-
-    const allStudents = isKnownType ? await prisma.studentProfile.findMany({
-      select: { id: true, examTarget: true, plan: true },
-    }) : [];
-
-    const relevantStudents = allStudents.filter(s => {
-      const subjects = EXAM_SUBJECTS[s.examTarget] || [];
-      if (!subjects.includes(resource.subject)) return false;
-      if (APEX_ONLY_RESOURCE_TYPES.includes(resource.type))   return s.plan === 'apex';
-      if (FORGE_ABOVE_RESOURCE_TYPES.includes(resource.type)) return s.plan === 'forge' || s.plan === 'apex';
-      return false; // unknown type — no notification
-    });
+    // Notify exactly the students who will see it — named recipients for a
+    // targeted send, otherwise everyone the broadcast rules match — using the
+    // same plan/subject/grade gates the student feed applies, so an alert can
+    // never point at a resource that feed hides.
+    const gate = { subject: resource.subject, grade: resource.grade, type: resource.type };
+    let relevantStudents = [];
+    if (existing.recipients.length > 0) {
+      relevantStudents = existing.recipients
+        .filter(rec => canReceive(rec.student, { ...gate, targeted: true }))
+        .map(rec => ({ id: rec.studentId }));
+    } else {
+      const pool = QUESTION_BANK_TYPES.includes(resource.type) ? 'question-bank' : 'library';
+      const someoneCanReceive = ['spark', 'forge', 'apex', 'anchor']
+        .some(plan => allowedTypes(plan, { targeted: false, pool }).includes(resource.type));
+      if (someoneCanReceive) {
+        const allStudents = await prisma.studentProfile.findMany({
+          select: {
+            id: true, examTarget: true, grade: true, plan: true,
+            planEndDate: true, fallbackPlan: true, fallbackEndDate: true,
+          },
+        });
+        relevantStudents = allStudents
+          .filter(s => canReceive(s, { ...gate, targeted: false }))
+          .map(s => ({ id: s.id }));
+      }
+    }
     if (relevantStudents.length > 0) {
       await prisma.facultyNotification.createMany({
         data: relevantStudents.map(s => ({

@@ -4,11 +4,7 @@
 // when a payment/session event fires AND when an admin opens the inbox, so the
 // list is always current even if a past upgrade was made before tasks existed.
 
-const EXAM_SUBJECTS = {
-  'JEE Mains':    ['Physics', 'Chemistry', 'Maths'],
-  'JEE Advanced': ['Physics', 'Chemistry', 'Maths'],
-  'NEET':         ['Physics', 'Chemistry', 'Biology'],
-};
+const { EXAM_SUBJECTS } = require('./resourceAccess');
 
 const coreSubjectsFor = (student) => {
   for (const key of Object.keys(EXAM_SUBJECTS)) {

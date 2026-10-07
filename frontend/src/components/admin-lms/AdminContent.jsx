@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import AdminPlanGrantModal from './AdminPlanGrantModal';
+import AdminMentorAssignModal from './AdminMentorAssignModal';
+import AdminFacultyAssignModal from './AdminFacultyAssignModal';
 import FacultyPerformance from './FacultyPerformance';
+import { Check, ChevronDown, Lock, FileText, Phone, Clock, Calendar } from 'lucide-react';
 
 const UC = { red:'#EF4444', orange:'#F97316', yellow:'#D97706', green:'#22C55E', gray:'#94A3B8' };
 const UB = { red:'rgba(239,68,68,0.1)', orange:'rgba(249,115,22,0.1)', yellow:'rgba(245,158,11,0.1)', green:'rgba(34,197,94,0.1)', gray:'rgba(148,163,184,0.1)' };
@@ -340,10 +343,10 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
 
   const [diagModal, setDiagModal]   = useState(null);
   const [diagLoading, setDiagLoading] = useState(false);
-  const [assigningId, setAssigningId] = useState(null);
-  const [expandedStudent, setExpandedStudent] = useState(null);
-  const [pendingMentor, setPendingMentor] = useState({});
-  const [savingSubject, setSavingSubject] = useState(null); // "studentUserId:Subject"
+  const [mentorModalStudent, setMentorModalStudent] = useState(null);
+  const [facultyModalStudent, setFacultyModalStudent] = useState(null);
+  const [savingMentor, setSavingMentor] = useState(false);
+  const [savingFaculty, setSavingFaculty] = useState(false);
 
   const openDiagModal = async (userId, name) => {
     setDiagLoading(true);
@@ -480,7 +483,7 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
             {adminNotifications.length === 0 ? (
               <div className="card" style={{ textAlign: 'center', padding: '42px 20px' }}>
                 <div style={{ width: '56px', height: '56px', margin: '0 auto 14px', borderRadius: '50%', background: 'rgba(22,163,74,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#16A34A" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+                  <Check size={26} strokeWidth={2.4} style={{ color: '#16A34A' }} />
                 </div>
                 <div style={{ fontFamily: 'var(--fs)', fontSize: '16px', fontWeight: '700', color: 'var(--text)', marginBottom: '6px' }}>All caught up!</div>
                 <div style={{ fontSize: '13px', color: 'var(--text2)' }}>New mentor/faculty assignments and session bookings will appear here as a highlighted prompt.</div>
@@ -882,6 +885,22 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
                     ? <button className="btn btn-ghost btn-sm" onClick={() => openDiagModal(s.userId, s.name)}>Diagnostic</button>
                     : <span style={{ fontSize:'11px', fontWeight:600, color:'#F97316', background:'rgba(249,115,22,0.1)', padding:'2px 9px', borderRadius:'99px', whiteSpace:'nowrap' }}>No Diagnostic</span>
                   }
+                  <button
+                    className="btn btn-ghost btn-sm"
+                    style={s.mentorId ? { color: 'var(--gold)', borderColor: 'var(--gb)' } : { color: '#F87171', borderColor: 'rgba(248,113,113,.3)' }}
+                    onClick={() => setMentorModalStudent(s)}
+                  >
+                    {s.mentorId ? 'Mentor ✓' : 'Mentor'}
+                  </button>
+                  {s.plan === 'apex' && (
+                    <button
+                      className="btn btn-ghost btn-sm"
+                      style={Object.keys(s.subjectFaculty || {}).length > 0 ? { color: 'var(--blue)', borderColor: 'rgba(59,130,246,.3)' } : { color: '#F87171', borderColor: 'rgba(248,113,113,.3)' }}
+                      onClick={() => setFacultyModalStudent(s)}
+                    >
+                      {Object.keys(s.subjectFaculty || {}).length > 0 ? 'Faculty ✓' : 'Faculty'}
+                    </button>
+                  )}
                   {isSuperAdmin && <button className="btn btn-ghost btn-sm" onClick={() => setPlanGrantStudent(s)}>Plan</button>}
                   <button className="btn btn-ghost btn-sm" onClick={() => onOpenMessage(s.id)}>Message</button>
                 </td>
@@ -1043,86 +1062,19 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
             ? ['Physics', 'Chemistry', 'Biology']
             : ['Physics', 'Chemistry', 'Maths'];
 
-          const facultyForSubject = (student, subject) => {
-            const key = subject.toLowerCase();
-            return facultyList.filter(f => {
-              const subs = (f.subjects || [f.subject]).filter(Boolean).map(s => s.toLowerCase());
-              return subs.some(s => s.includes(key) || (key === 'mathematics' && (s.includes('math') || s.includes('maths'))));
-            });
-          };
-
-          const saveSubjectFaculty = async (studentUserId, subject, facultyId) => {
-            const key = studentUserId + ':' + subject;
-            setSavingSubject(key);
-            try {
-              const token = localStorage.getItem('token');
-              const r = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/${profile?.id}/student/${studentUserId}/subject-faculty`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                body: JSON.stringify({ subject, facultyId: facultyId || null }),
-              });
-              const data = await r.json();
-              if (!r.ok) throw new Error(data.error || 'Failed');
-              onStudentSubjectFacultyUpdated?.(studentUserId, data.subjectFaculty);
-              onShowToast(facultyId ? subject + ' faculty assigned ✓' : subject + ' faculty removed ✓');
-            } catch {
-              onShowToast('Failed to save');
-            } finally {
-              setSavingSubject(null);
-            }
-          };
-
-          const saveMentor = async (studentUserId, mentorFacultyId) => {
-            setAssigningId(studentUserId);
-            try {
-              const token = localStorage.getItem('token');
-              const r = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/${profile?.id}/student/${studentUserId}/mentor`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-                body: JSON.stringify({ mentorId: mentorFacultyId || null }),
-              });
-              const data = await r.json();
-              if (!r.ok) throw new Error(data.error || 'Failed');
-              onStudentMentorUpdated?.(studentUserId, data.mentorId, data.mentorName);
-              onShowToast(data.mentorName ? `Mentor: ${data.mentorName} ✓` : 'Mentor removed ✓');
-            } catch {
-              onShowToast('Failed to save');
-            } finally {
-              setAssigningId(null);
-            }
-          };
-
           const PLAN_COLOR = { forge:'#6366F1', apex:'#E8A830', anchor:'#4ADE80', spark:'#94A3B8' };
           const PLAN_BG   = { forge:'rgba(99,102,241,.1)', apex:'rgba(232,168,48,.1)', anchor:'rgba(74,222,128,.1)', spark:'rgba(148,163,184,.1)' };
 
           const assignableStudents = students.filter(s => s.plan !== 'spark');
           const sparkStudents = students.filter(s => s.plan === 'spark');
-          const noMentor = assignableStudents.filter(s => !s.mentorId).length;
           const needsAssignment = s => !s.mentorId || (s.plan === 'apex' && subjectList(s).some(subj => !(s.subjectFaculty || {})[subj]));
-
-          const drawerStudent = assignableStudents.find(s => s.userId === expandedStudent) || null;
-          const curMentor = drawerStudent
-            ? (pendingMentor[drawerStudent.userId] !== undefined ? pendingMentor[drawerStudent.userId] : (drawerStudent.mentorId || ''))
-            : '';
-          const compatMentor = drawerStudent ? facultyList.filter(f => {
-            const subs = (f.subjects || [f.subject]).filter(Boolean).map(x => x.toLowerCase());
-            const allowed = isNEET(drawerStudent.examTarget)
-              ? ['physics','chemistry','biology','zoology','botany']
-              : ['physics','chemistry','mathematics','maths','math'];
-            return subs.some(x => allowed.some(a => x.includes(a)));
-          }) : [];
 
           return (
             <>
               <style dangerouslySetInnerHTML={{ __html:
-                '@keyframes asgBackdrop{from{opacity:0}to{opacity:1}}' +
-                '@keyframes asgDrawer{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}' +
                 '@keyframes asgCard{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}' +
                 '.asg-row{transition:background .15s,box-shadow .15s;}' +
-                '.asg-row:hover{background:rgba(15,31,61,0.035)!important;box-shadow:inset 3px 0 0 var(--gold);}' +
-                '.asg-fcard{transition:all .15s;cursor:pointer;border:2px solid transparent;}' +
-                '.asg-fcard:hover{border-color:rgba(232,168,48,.35);background:rgba(232,168,48,.05)!important;}' +
-                '.asg-fcard.selected{border-color:var(--gold)!important;background:var(--gdim)!important;}'
+                '.asg-row:hover{background:rgba(15,31,61,0.035)!important;box-shadow:inset 3px 0 0 var(--gold);}'
               }} />
 
               {/* Summary bar */}
@@ -1139,18 +1091,18 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
                 ))}
               </div>
 
-              {/* Student list */}
+              {/* Student list with separate Mentor/Faculty buttons */}
               <div className="card" style={{ padding:0, overflow:'hidden', marginBottom:'20px' }}>
                 {assignableStudents.map((s, i) => {
                   const hasMentor = !!s.mentorId;
+                  const facultyCount = Object.keys(s.subjectFaculty || {}).length;
                   const planC = PLAN_COLOR[s.plan] || '#94A3B8';
                   const planB = PLAN_BG[s.plan] || 'rgba(148,163,184,.1)';
                   return (
                     <div
                       key={s.userId}
                       className="asg-row"
-                      style={{ display:'flex', alignItems:'center', gap:'14px', padding:'14px 18px', borderBottom: i < assignableStudents.length - 1 ? '1px solid var(--b)' : 'none', cursor:'pointer', background: expandedStudent === s.userId ? 'rgba(232,168,48,.04)' : undefined }}
-                      onClick={() => setExpandedStudent(expandedStudent === s.userId ? null : s.userId)}
+                      style={{ display:'flex', alignItems:'center', gap:'14px', padding:'14px 18px', borderBottom: i < assignableStudents.length - 1 ? '1px solid var(--b)' : 'none', animation:`asgCard .3s ease ${i * 0.03}s both` }}
                     >
                       <div className="av" style={{ flexShrink:0 }}>{s.name?.[0]}</div>
                       <div style={{ flex:1, minWidth:0 }}>
@@ -1158,21 +1110,44 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
                         <div style={{ fontSize:'11.5px', color:'var(--text3)', marginTop:'2px' }}>{s.examTarget || 'Exam not set'}{s.grade ? ` · Grade ${s.grade}` : ''}</div>
                       </div>
                       <span style={{ background:planB, color:planC, border:`1px solid ${planC}33`, fontSize:'10.5px', fontWeight:700, padding:'3px 10px', borderRadius:'99px', textTransform:'uppercase', letterSpacing:'.05em', flexShrink:0 }}>{s.plan}</span>
-                      <div style={{ flexShrink:0, textAlign:'right' }}>
-                        {hasMentor
-                          ? <div style={{ display:'flex', alignItems:'center', gap:'7px' }}>
-                              <div style={{ width:'26px', height:'26px', borderRadius:'50%', background:'var(--gdim)', border:'1.5px solid var(--gold)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'11px', fontWeight:700, color:'var(--gold)' }}>{s.mentorName?.[0]}</div>
-                              <span style={{ fontSize:'12.5px', color:'var(--text2)', fontWeight:500 }}>{s.mentorName}</span>
-                            </div>
-                          : <span style={{ fontSize:'12px', color:'#F87171', fontWeight:600, background:'rgba(248,113,113,.1)', padding:'3px 10px', borderRadius:'99px', border:'1px solid rgba(248,113,113,.2)' }}>No mentor</span>}
+                      <div style={{ display:'flex', gap:'8px', flexShrink:0, alignItems:'center' }}>
+                        <button
+                          className="btn btn-sm"
+                          style={{
+                            fontSize:'12px',
+                            fontWeight:600,
+                            padding:'6px 14px',
+                            borderRadius:'8px',
+                            border: hasMentor ? '1px solid var(--gb)' : '1px solid rgba(248,113,113,.3)',
+                            background: hasMentor ? 'var(--gdim)' : 'rgba(248,113,113,.06)',
+                            color: hasMentor ? 'var(--gold)' : '#F87171',
+                            cursor:'pointer',
+                            transition:'all .15s',
+                          }}
+                          onClick={() => setMentorModalStudent(s)}
+                        >
+                          {hasMentor ? `✓ ${s.mentorName?.split(' ')[0] || 'Mentor'}` : 'Assign Mentor'}
+                        </button>
+                        {s.plan === 'apex' && (
+                          <button
+                            className="btn btn-sm"
+                            style={{
+                              fontSize:'12px',
+                              fontWeight:600,
+                              padding:'6px 14px',
+                              borderRadius:'8px',
+                              border: facultyCount > 0 ? '1px solid rgba(59,130,246,.3)' : '1px solid rgba(248,113,113,.3)',
+                              background: facultyCount > 0 ? 'rgba(59,130,246,.06)' : 'rgba(248,113,113,.06)',
+                              color: facultyCount > 0 ? 'var(--blue)' : '#F87171',
+                              cursor:'pointer',
+                              transition:'all .15s',
+                            }}
+                            onClick={() => setFacultyModalStudent(s)}
+                          >
+                            {facultyCount > 0 ? `✓ Faculty (${facultyCount})` : 'Assign Faculty'}
+                          </button>
+                        )}
                       </div>
-                      <button
-                        className="btn btn-gold btn-sm"
-                        style={{ flexShrink:0, minWidth:'80px' }}
-                        onClick={e => { e.stopPropagation(); setExpandedStudent(expandedStudent === s.userId ? null : s.userId); }}
-                      >
-                        {expandedStudent === s.userId ? 'Close' : 'Assign →'}
-                      </button>
                     </div>
                   );
                 })}
@@ -1182,147 +1157,6 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
               {sparkStudents.length > 0 && (
                 <div style={{ fontSize:'12.5px', color:'var(--text3)', padding:'10px 14px', background:'var(--cream2)', borderRadius:'8px', border:'1px solid var(--b)' }}>
                   {sparkStudents.length} Spark student{sparkStudents.length > 1 ? 's' : ''} ({sparkStudents.map(s => s.name).join(', ')}) — no assignments needed on the free plan.
-                </div>
-              )}
-
-              {/* Drawer */}
-              {drawerStudent && (
-                <div
-                  style={{ position:'fixed', inset:0, background:'rgba(15,31,61,0.55)', backdropFilter:'blur(4px)', zIndex:300, display:'flex', justifyContent:'flex-end', animation:'asgBackdrop .2s ease' }}
-                  onClick={() => setExpandedStudent(null)}
-                >
-                  <div
-                    style={{ width:'480px', maxWidth:'95vw', background:'var(--cream)', height:'100%', overflowY:'auto', boxShadow:'-8px 0 40px rgba(15,31,61,0.2)', display:'flex', flexDirection:'column', animation:'asgDrawer .28s cubic-bezier(0.4,0,0.2,1)' }}
-                    onClick={e => e.stopPropagation()}
-                  >
-                    {/* Drawer header */}
-                    <div style={{ background:'linear-gradient(135deg,#0F1F3D,#1C2E50)', padding:'22px 24px', flexShrink:0 }}>
-                      <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:'12px' }}>
-                        <div>
-                          <div style={{ fontSize:'10.5px', color:'rgba(253,248,240,.45)', textTransform:'uppercase', letterSpacing:'.1em', marginBottom:'4px' }}>Assignments</div>
-                          <div style={{ fontFamily:'var(--fs)', fontSize:'19px', fontWeight:700, color:'#FDF8F0' }}>{drawerStudent.name}</div>
-                          <div style={{ fontSize:'12px', color:'rgba(253,248,240,.55)', marginTop:'3px' }}>{drawerStudent.examTarget || 'Exam not set'} · {drawerStudent.plan?.charAt(0).toUpperCase() + drawerStudent.plan?.slice(1)}</div>
-                        </div>
-                        <button onClick={() => setExpandedStudent(null)} style={{ background:'rgba(255,255,255,.1)', border:'none', borderRadius:'8px', width:'32px', height:'32px', cursor:'pointer', fontSize:'16px', color:'rgba(253,248,240,.7)', flexShrink:0 }}>×</button>
-                      </div>
-                      {drawerStudent.mentorId && (
-                        <div style={{ display:'flex', alignItems:'center', gap:'8px', background:'rgba(232,168,48,.15)', border:'1px solid rgba(232,168,48,.3)', borderRadius:'8px', padding:'8px 12px' }}>
-                          <div style={{ width:'24px', height:'24px', borderRadius:'50%', background:'rgba(232,168,48,.2)', border:'1.5px solid #E8A830', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'11px', fontWeight:700, color:'#E8A830' }}>{drawerStudent.mentorName?.[0]}</div>
-                          <span style={{ fontSize:'12.5px', color:'#E8A830', fontWeight:600 }}>Mentor: {drawerStudent.mentorName}</span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Drawer body */}
-                    <div style={{ flex:1, padding:'22px 24px', display:'flex', flexDirection:'column', gap:'24px' }}>
-
-                      {/* Mentor section */}
-                      <div>
-                        <div style={{ fontSize:'11px', fontWeight:700, color:'var(--text3)', textTransform:'uppercase', letterSpacing:'.09em', marginBottom:'14px', display:'flex', alignItems:'center', gap:'8px' }}>
-                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                          Mentor
-                        </div>
-                        {compatMentor.length === 0
-                          ? <div style={{ fontSize:'13px', color:'var(--text3)', padding:'16px', background:'var(--cream2)', borderRadius:'10px', textAlign:'center' }}>No compatible faculty for {drawerStudent.examTarget || 'this exam'}</div>
-                          : (
-                            <div style={{ display:'flex', flexDirection:'column', gap:'8px' }}>
-                              {/* Remove option */}
-                              <div
-                                className={'asg-fcard' + (curMentor === '' ? ' selected' : '')}
-                                style={{ display:'flex', alignItems:'center', gap:'12px', padding:'11px 14px', borderRadius:'10px', background:'var(--cream2)' }}
-                                onClick={() => setPendingMentor(p => ({ ...p, [drawerStudent.userId]: '' }))}
-                              >
-                                <div style={{ width:'36px', height:'36px', borderRadius:'50%', background:'var(--b)', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                                </div>
-                                <span style={{ fontSize:'13px', color:'var(--text3)', fontStyle:'italic' }}>No mentor</span>
-                                {curMentor === '' && <svg style={{ marginLeft:'auto' }} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}
-                              </div>
-                              {compatMentor.map((f, fi) => {
-                                const sel = String(curMentor) === String(f.id);
-                                const count = f.mentorStudentCount || 0;
-                                const pct = Math.min(count * 10, 100);
-                                return (
-                                  <div
-                                    key={f.id}
-                                    className={'asg-fcard' + (sel ? ' selected' : '')}
-                                    style={{ display:'flex', alignItems:'center', gap:'12px', padding:'12px 14px', borderRadius:'10px', background:'var(--cream2)', animation:`asgCard .2s ease ${fi * 0.04}s both` }}
-                                    onClick={() => setPendingMentor(p => ({ ...p, [drawerStudent.userId]: f.id }))}
-                                  >
-                                    <div style={{ width:'40px', height:'40px', borderRadius:'50%', background: sel ? 'var(--gdim)' : 'var(--cream3)', border: sel ? '2px solid var(--gold)' : '1.5px solid var(--b)', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:'var(--fs)', fontSize:'15px', fontWeight:700, color: sel ? 'var(--gold)' : 'var(--text2)', flexShrink:0, transition:'all .15s' }}>{f.name?.[0]}</div>
-                                    <div style={{ flex:1, minWidth:0 }}>
-                                      <div style={{ fontWeight:600, fontSize:'13.5px', color:'var(--text)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{f.name}</div>
-                                      <div style={{ fontSize:'11px', color:'var(--text3)', marginTop:'2px' }}>{(f.subjects || [f.subject]).filter(Boolean).join(' · ')}</div>
-                                      <div style={{ display:'flex', alignItems:'center', gap:'6px', marginTop:'5px' }}>
-                                        <div style={{ flex:1, height:'3px', background:'var(--b)', borderRadius:'2px', overflow:'hidden' }}>
-                                          <div style={{ height:'100%', width: pct + '%', background: pct >= 80 ? '#EF4444' : pct >= 50 ? '#F59E0B' : '#22C55E', borderRadius:'2px', transition:'width .3s ease' }} />
-                                        </div>
-                                        <span style={{ fontSize:'10px', color:'var(--text3)', flexShrink:0 }}>{count}/10</span>
-                                      </div>
-                                    </div>
-                                    {sel && <svg style={{ flexShrink:0 }} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          )}
-                      </div>
-
-                      {/* Subject faculty — Apex only */}
-                      {drawerStudent.plan === 'apex' && (
-                        <div>
-                          <div style={{ fontSize:'11px', fontWeight:700, color:'var(--text3)', textTransform:'uppercase', letterSpacing:'.09em', marginBottom:'14px', display:'flex', alignItems:'center', gap:'8px' }}>
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
-                            Subject Faculty
-                          </div>
-                          {subjectList(drawerStudent).map(subj => {
-                            const opts = facultyForSubject(drawerStudent, subj);
-                            const curFacId = (drawerStudent.subjectFaculty || {})[subj] || '';
-                            const key = drawerStudent.userId + ':' + subj;
-                            const isSaving = savingSubject === key;
-                            return (
-                              <div key={subj} style={{ display:'flex', alignItems:'center', gap:'14px', flexWrap:'wrap' }}>
-                                <div style={{ width:'110px', flexShrink:0, fontSize:'12.5px', fontWeight:600, color:'var(--text2)' }}>{subj}</div>
-                                {opts.length === 0
-                                  ? <div style={{ flex:1, fontSize:'12px', color:'var(--text3)', padding:'9px 12px', background:'var(--cream2)', borderRadius:'8px' }}>No {subj} faculty added yet</div>
-                                  : (
-                                    <select
-                                      style={{ flex:1, minWidth:'160px', fontSize:'13px', padding:'8px 12px', borderRadius:'8px', border:'1px solid var(--b)', background:'var(--cream)', color:'var(--text)', cursor:'pointer' }}
-                                      value={curFacId}
-                                      disabled={isSaving}
-                                      onChange={e => saveSubjectFaculty(drawerStudent.userId, subj, e.target.value ? parseInt(e.target.value) : null)}
-                                    >
-                                      <option value="">— Not assigned</option>
-                                      {opts.map(f => (
-                                        <option key={f.id} value={f.id}>{f.name} · {(f.subjects||[f.subject]).filter(Boolean).join(', ')}</option>
-                                      ))}
-                                    </select>
-                                  )}
-                                {isSaving && <span style={{ fontSize:'12px', color:'var(--text3)' }}>Saving…</span>}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Drawer footer */}
-                    <div style={{ padding:'16px 24px', borderTop:'1px solid var(--b)', display:'flex', gap:'10px', flexShrink:0, background:'var(--cream)' }}>
-                      <button
-                        className="btn btn-ghost"
-                        style={{ flex:1 }}
-                        onClick={() => setExpandedStudent(null)}
-                      >Cancel</button>
-                      <button
-                        className="btn btn-gold"
-                        style={{ flex:2 }}
-                        disabled={assigningId === drawerStudent.userId || String(curMentor) === String(drawerStudent.mentorId || '')}
-                        onClick={() => saveMentor(drawerStudent.userId, curMentor || null).then(() => setExpandedStudent(null))}
-                      >
-                        {assigningId === drawerStudent.userId ? 'Saving…' : 'Save Assignment →'}
-                      </button>
-                    </div>
-                  </div>
                 </div>
               )}
 
@@ -1409,6 +1243,20 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
                   className="btn btn-ghost btn-sm"
                   style={{ display: 'inline-block', marginBottom: '12px' }}
                 >↓ View / Download</a>
+              )}
+              {item.targeted && (
+                <div style={{ marginBottom: '10px' }}>
+                  <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: '5px' }}>
+                    Sent to {item.recipients?.length || 0} student{(item.recipients?.length || 0) !== 1 ? 's' : ''}
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
+                    {(item.recipients || []).map(rec => (
+                      <span key={rec.id} style={{ fontSize: '11px', fontWeight: 600, padding: '3px 9px', borderRadius: '99px', background: 'var(--gd)', color: 'var(--gold)', border: '1px solid var(--gb)' }}>
+                        {rec.name}
+                      </span>
+                    ))}
+                  </div>
+                </div>
               )}
               {item.status === 'declined' && item.declineReason && (
                 <div style={{ fontSize: '12.5px', color: 'rgba(239,68,68,0.8)', marginBottom: '8px' }}>Reason: {item.declineReason}</div>
@@ -1571,7 +1419,7 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
                             return (
                               <div key={s.id} className={'ms-row' + (isSel ? ' on' : '')} onClick={() => toggleMsgStudent(s.id)}>
                                 <div className={'ms-cb' + (isSel ? ' on' : '')}>
-                                  {isSel && <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#FDF8F0" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}
+                                  {isSel && <Check size={9} strokeWidth={3} style={{ color: '#FDF8F0' }} />}
                                 </div>
                                 <div style={{ flex: 1, minWidth: 0 }}>
                                   <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.name}</div>
@@ -1631,9 +1479,7 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
                     {sentMessages.length > 0 && !showHistory && (
                       <span style={{ fontSize: '12px', color: 'var(--text3)' }}>Click to view</span>
                     )}
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" strokeWidth="2" style={{ transition: 'transform .2s', transform: showHistory ? 'rotate(180deg)' : '' }}>
-                      <path d="M6 9l6 6 6-6"/>
-                    </svg>
+                    <ChevronDown size={16} strokeWidth={2} style={{ color: 'var(--text3)', transition: 'transform .2s', transform: showHistory ? 'rotate(180deg)' : '' }} />
                   </div>
                 </div>
 
@@ -1717,7 +1563,7 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
       {/* ══ ADMIN ACCOUNTS (SUPER ONLY) ══ */}
       <div className={pg(isSuperAdmin ? 'admins' : '__never__')} id="p-admins">
         <div style={{ background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.25)', borderRadius: 'var(--rl)', padding: '14px 18px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          <Lock size={16} strokeWidth={2} style={{ color: '#7c3aed' }} />
           <div style={{ fontSize: '13px', color: '#5b21b6', fontWeight: '500' }}>Super Admin view only. You can create admins, toggle their permissions, and deactivate accounts.</div>
         </div>
 
@@ -1772,7 +1618,7 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
       {/* ══ PLATFORM SETTINGS (SUPER ONLY) ══ */}
       <div className={pg(isSuperAdmin ? 'settings' : '__never__')} id="p-settings">
         <div style={{ background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.25)', borderRadius: 'var(--rl)', padding: '14px 18px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          <Lock size={16} strokeWidth={2} style={{ color: '#7c3aed' }} />
           <div style={{ fontSize: '13px', color: '#5b21b6', fontWeight: '500' }}>Platform-level settings. Changes apply across all dashboards immediately.</div>
         </div>
 
@@ -1987,6 +1833,75 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
           onPlanUpdated={onStudentPlanUpdated}
         />
       )}
+
+      {perfFaculty && (
+        <FacultyPerformance
+          faculty={perfFaculty}
+          onClose={() => setPerfFaculty(null)}
+          onShowToast={onShowToast}
+        />
+      )}
+
+      {mentorModalStudent && (
+        <AdminMentorAssignModal
+          student={mentorModalStudent}
+          facultyList={facultyList}
+          saving={savingMentor}
+          onClose={() => setMentorModalStudent(null)}
+          onSave={async (mentorId) => {
+            setSavingMentor(true);
+            try {
+              const token = localStorage.getItem('token');
+              const r = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/${profile?.id}/student/${mentorModalStudent.userId}/mentor`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ mentorId: mentorId || null }),
+              });
+              const data = await r.json();
+              if (!r.ok) throw new Error(data.error || 'Failed');
+              onStudentMentorUpdated?.(mentorModalStudent.userId, data.mentorId, data.mentorName);
+              onShowToast(data.mentorName ? `Mentor: ${data.mentorName} ✓` : 'Mentor removed ✓');
+              setMentorModalStudent(null);
+            } catch {
+              onShowToast('Failed to save');
+            } finally {
+              setSavingMentor(false);
+            }
+          }}
+        />
+      )}
+
+      {facultyModalStudent && (
+        <AdminFacultyAssignModal
+          student={facultyModalStudent}
+          facultyList={facultyList}
+          saving={savingFaculty}
+          onClose={() => setFacultyModalStudent(null)}
+          onSave={async (selections) => {
+            setSavingFaculty(true);
+            try {
+              const token = localStorage.getItem('token');
+              const entries = Object.entries(selections);
+              for (const [subject, facultyId] of entries) {
+                const r = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/${profile?.id}/student/${facultyModalStudent.userId}/subject-faculty`, {
+                  method: 'PUT',
+                  headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                  body: JSON.stringify({ subject, facultyId: facultyId || null }),
+                });
+                const data = await r.json();
+                if (!r.ok) throw new Error(data.error || 'Failed');
+                onStudentSubjectFacultyUpdated?.(facultyModalStudent.userId, data.subjectFaculty);
+              }
+              onShowToast('Faculty assignments saved ✓');
+              setFacultyModalStudent(null);
+            } catch {
+              onShowToast('Failed to save');
+            } finally {
+              setSavingFaculty(false);
+            }
+          }}
+        />
+      )}
     </div>
     </>
   )
@@ -2090,7 +2005,7 @@ const SessionRequestsPage = ({ requests, facultyList, userId, onShowToast, onUpd
       {filtered.length === 0 && (
         <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--text3)' }}>
           <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'var(--cream2)', border: '1px solid var(--b)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px', opacity: .5 }}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            <FileText size={20} strokeWidth={1.5} />
           </div>
           <div style={{ fontWeight: 600, marginBottom: '4px', color: 'var(--text2)' }}>No {statusFilter !== 'all' ? statusFilter : ''} requests</div>
           <div style={{ fontSize: '12.5px' }}>Student session requests will show up here.</div>
@@ -2117,19 +2032,19 @@ const SessionRequestsPage = ({ requests, facultyList, userId, onShowToast, onUpd
                 <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', fontSize: '12px', color: 'var(--text3)', alignItems: 'center' }}>
                   {req.phone && (
                     <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.39 2 2 0 0 1 3.6 1.21h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.38a16 16 0 0 0 6 6l.94-.94a2 2 0 0 1 2.25-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.73 16z"/></svg>
+                      <Phone size={11} strokeWidth={2} />
                       {req.phone}
                     </span>
                   )}
                   {req.preferredTime && (
                     <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                      <Clock size={11} strokeWidth={2} />
                       {req.preferredTime}
                     </span>
                   )}
                   {req.status === 'assigned' && req.scheduledAt && (
                     <span style={{ display: 'flex', alignItems: 'center', gap: '5px', color: '#3B82F6', fontWeight: 600 }}>
-                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+                      <Calendar size={11} strokeWidth={2} />
                       {fmtDt(req.scheduledAt)} · {req.durationMin}min · {req.facultyName}
                     </span>
                   )}
@@ -2141,7 +2056,7 @@ const SessionRequestsPage = ({ requests, facultyList, userId, onShowToast, onUpd
                 )}
                 {req.status === 'assigned' && (
                   <button className="btn btn-ghost btn-sm" onClick={() => updateStatus(req.id, 'done')} style={{ color: '#22C55E', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                    <Check size={12} strokeWidth={2.5} />
                     Mark Done</button>
                 )}
                 {(req.status === 'pending' || req.status === 'assigned') && (
@@ -2157,7 +2072,7 @@ const SessionRequestsPage = ({ requests, facultyList, userId, onShowToast, onUpd
                   <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '.07em' }}>Assign Session</div>
                   {req.preferredTime && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--gold)', background: 'var(--gold-dim)', border: '1px solid var(--gold-b)', borderRadius: '20px', padding: '3px 10px', fontWeight: 600 }}>
-                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                      <Clock size={11} strokeWidth={2} />
                       Student prefers: {req.preferredTime}
                     </div>
                   )}
@@ -2212,13 +2127,6 @@ const SessionRequestsPage = ({ requests, facultyList, userId, onShowToast, onUpd
         ))}
       </div>
 
-      {perfFaculty && (
-        <FacultyPerformance
-          faculty={perfFaculty}
-          onClose={() => setPerfFaculty(null)}
-          onShowToast={onShowToast}
-        />
-      )}
     </div>
   );
 };

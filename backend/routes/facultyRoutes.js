@@ -4,6 +4,10 @@ const prisma     = require('../lib/prisma');
 const { requireAuth } = require('../middleware/auth');
 const { v2: cloudinary } = require('cloudinary');
 const zoom       = require('../lib/zoom');
+const { getEffectivePlan } = require('../services/planAccessService');
+const {
+  EXAM_SUBJECTS, assignedFaculty, targetEligibility,
+} = require('../services/resourceAccess');
 require('dotenv').config();
 
 cloudinary.config({
@@ -35,21 +39,11 @@ router.get('/me', requireAuth, async (req, res) => {
   }
 });
 
-const EXAM_SUBJECTS = {
-  'JEE Mains':    ['Physics', 'Chemistry', 'Maths'],
-  'JEE Advanced': ['Physics', 'Chemistry', 'Maths'],
-  'NEET':         ['Physics', 'Chemistry', 'Biology'],
-};
-
 // A faculty "owns" an Apex student only when an admin explicitly assigned them
 // for at least one subject via the student's subjectFaculty map. There is no
 // automatic grade/subject matching — anything a faculty sees/schedules is scoped
 // to these explicit assignments plus their Anchor mentees (mentorId).
-const assignedTo = (fp, sp) => {
-  const sf = sp.subjectFaculty;
-  if (!sf || typeof sf !== 'object') return false;
-  return Object.values(sf).includes(fp.id);
-};
+const assignedTo = assignedFaculty;
 
 // GET /api/faculty/sessions
 router.get('/sessions', requireAuth, async (req, res) => {
@@ -641,27 +635,73 @@ router.put('/doubts/:id/answer', requireAuth, async (req, res) => {
 });
 
 // POST /api/faculty/resources — submit a resource (URL from Cloudinary)
+// Accepts an optional studentIds array for targeted distribution. Every id is
+// validated against the same rules the student feed enforces, so a send can
+// never leak to someone the faculty doesn't teach or paywall-wise shouldn't see it.
 router.post('/resources', requireAuth, async (req, res) => {
   try {
-    const { title, description, subject, grade, type, cloudinaryUrl, cloudinaryId } = req.body;
+    const { title, description, subject, grade, type, cloudinaryUrl, cloudinaryId, studentIds } = req.body;
     if (!title || !subject || !grade || !type || !cloudinaryUrl || !cloudinaryId)
       return res.status(400).json({ error: 'Missing required fields' });
 
     const fp = await prisma.facultyProfile.findUnique({ where: { userId: req.params.userId } });
     if (!fp) return res.status(403).json({ error: 'Not a faculty member' });
 
+    // De-dupe + sanitise the target list before touching the DB (invalid or
+    // duplicate ids would otherwise blow up on the unique(resourceId, studentId)).
+    const requestedIds = [...new Set((Array.isArray(studentIds) ? studentIds : [])
+      .map(Number)
+      .filter(n => Number.isInteger(n) && n > 0))];
+
+    const recipients = [];
+    const skipped = [];
+    if (requestedIds.length) {
+      const profiles = await prisma.studentProfile.findMany({
+        where: { id: { in: requestedIds } },
+        include: { user: { select: { name: true } } },
+      });
+      const byId = new Map(profiles.map(p => [p.id, p]));
+
+      for (const id of requestedIds) {
+        const sp = byId.get(id);
+        if (!sp) { skipped.push({ id, name: `Student #${id}`, reason: 'account not found' }); continue; }
+        const check = targetEligibility(fp, sp, { subject, grade, type });
+        if (!check.ok) { skipped.push({ id, name: sp.user?.name || `Student #${id}`, reason: check.reason }); continue; }
+        recipients.push({ studentId: id });
+      }
+
+      // Never silently turn a "specific students" send into a broadcast.
+      if (!recipients.length) {
+        return res.status(400).json({
+          error: 'None of the selected students can receive this resource',
+          skipped,
+        });
+      }
+    }
+
     const resource = await prisma.resource.create({
-      data: { title, description: description || null, subject, grade, type, cloudinaryUrl, cloudinaryId, facultyId: fp.id },
+      data: {
+        title,
+        description: description || null,
+        subject,
+        grade,
+        type,
+        cloudinaryUrl,
+        cloudinaryId,
+        facultyId: fp.id,
+        ...(recipients.length ? { recipients: { create: recipients } } : {}),
+      },
+      include: { recipients: { include: { student: { include: { user: { select: { name: true } } } } } } },
     });
 
-    res.json({ success: true, resource });
+    res.json({ success: true, resource, skipped });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to submit resource' });
   }
 });
 
-// GET /api/faculty/resources — faculty sees their own resources
+// GET /api/faculty/resources — faculty sees their own resources (with recipients)
 router.get('/resources', requireAuth, async (req, res) => {
   try {
     const fp = await prisma.facultyProfile.findUnique({ where: { userId: req.params.userId } });
@@ -669,12 +709,48 @@ router.get('/resources', requireAuth, async (req, res) => {
 
     const resources = await prisma.resource.findMany({
       where: { facultyId: fp.id },
+      include: { recipients: { include: { student: { include: { user: { select: { name: true } } } } } } },
       orderBy: { createdAt: 'desc' },
     });
     res.json(resources);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to fetch resources' });
+  }
+});
+
+// GET /api/faculty/assigned-students — students this faculty may target with
+// resources. Returns the eligibility data the upload modal filters on
+// (subjects / effective plan / grade) so what's listed is what a send accepts.
+router.get('/assigned-students', requireAuth, async (req, res) => {
+  try {
+    const fp = await prisma.facultyProfile.findUnique({ where: { userId: req.params.userId } });
+    if (!fp) return res.json([]);
+
+    const students = await prisma.studentProfile.findMany({
+      where: { OR: [{ mentorId: fp.id }, { plan: 'apex' }] },
+      include: { user: { select: { name: true, email: true } } },
+      orderBy: { user: { name: 'asc' } },
+    });
+
+    const assigned = students
+      .map(sp => ({
+        id: sp.id,
+        name: sp.user.name,
+        email: sp.user.email,
+        plan: getEffectivePlan(sp), // effective plan — what every gate keys off
+        examTarget: sp.examTarget,
+        subjects: EXAM_SUBJECTS[sp.examTarget] || [],
+        grade: sp.grade,
+        isMentee: sp.mentorId === fp.id,
+        isAssigned: sp.mentorId === fp.id || (getEffectivePlan(sp) === 'apex' && assignedTo(fp, sp)),
+      }))
+      .filter(s => s.isAssigned && s.plan !== 'spark'); // free plan can never receive a paid resource
+
+    res.json(assigned);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch assigned students' });
   }
 });
 

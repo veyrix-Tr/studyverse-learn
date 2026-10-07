@@ -3,6 +3,7 @@ const router   = express.Router({ mergeParams: true });
 const prisma   = require('../lib/prisma');
 const { requireAuth, validateUrlUser } = require('../middleware/auth');
 const { getEffectivePlan } = require('../services/planAccessService');
+const { EXAM_SUBJECTS, allowedTypes, gradeFilterFor } = require('../services/resourceAccess');
 const { generateStudyPlan } = require('../lib/studyPlanAlgorithm');
 const zoom     = require('../lib/zoom');
 
@@ -220,12 +221,6 @@ router.get('/scores', requireAuth, async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch scores' });
   }
 });
-
-const EXAM_SUBJECTS = {
-  'JEE Mains':    ['Physics', 'Chemistry', 'Maths'],
-  'JEE Advanced': ['Physics', 'Chemistry', 'Maths'],
-  'NEET':         ['Physics', 'Chemistry', 'Biology'],
-};
 
 // GET /api/student/sessions
 router.get('/sessions', requireAuth, async (req, res) => {
@@ -550,50 +545,73 @@ router.post('/habits', requireAuth, async (req, res) => {
   }
 });
 
-const RESOURCE_TYPES      = ['Study Material', 'Formula Sheet', 'Session Notes'];
-const QUESTION_BANK_TYPES = ['MCQ Bank', 'Previous Year Papers', 'Practice Set'];
+// Two-lane feed shared by /resources and /question-bank:
+//   * targeted  — resources a faculty named THIS student for. No subject/grade
+//     gate (the faculty validated those when picking the student), paywall only.
+//   * broadcast — the original plan/subject/grade rules, and never a resource
+//     that has named recipients — otherwise targeting wouldn't restrict anyone.
+async function fetchResourceFeed(profile, { targetedTypes, broadcastTypes }) {
+  const include = { faculty: { include: { user: { select: { name: true } } } } };
+  const orderBy = { approvedAt: 'desc' };
+  const subjects = EXAM_SUBJECTS[profile.examTarget] || [];
+  const grades   = gradeFilterFor(profile.grade);
 
-// GET /api/student/resources — approved resources matching student's exam subjects (Forge, Apex, Anchor)
+  const [targeted, broadcast] = await Promise.all([
+    targetedTypes.length
+      ? prisma.resource.findMany({
+          where: {
+            status: 'approved',
+            type: { in: targetedTypes },
+            recipients: { some: { studentId: profile.id } },
+          },
+          include, orderBy,
+        })
+      : Promise.resolve([]),
+    broadcastTypes.length && subjects.length
+      ? prisma.resource.findMany({
+          where: {
+            status: 'approved',
+            type: { in: broadcastTypes },
+            subject: { in: subjects },
+            recipients: { none: {} },
+            ...(grades ? { grade: { in: grades } } : {}),
+          },
+          include, orderBy,
+        })
+      : Promise.resolve([]),
+  ]);
+
+  const targetedIds = new Set(targeted.map(r => r.id));
+  const seen = new Set();
+  const merged = [...targeted, ...broadcast].filter(r => {
+    if (seen.has(r.id)) return false;
+    seen.add(r.id);
+    return true;
+  });
+  const ts = r => (r.approvedAt ? new Date(r.approvedAt).getTime() : 0);
+  merged.sort((a, b) => ts(b) - ts(a));
+
+  return { merged, targetedIds };
+}
+
+// GET /api/student/resources — the student's library (targeted + broadcast)
 router.get('/resources', requireAuth, async (req, res) => {
   try {
     const profile = await prisma.studentProfile.findUnique({ where: { userId: req.params.userId } });
     if (!profile) return res.json([]);
 
-    const subjects = EXAM_SUBJECTS[profile.examTarget] || [];
-    if (!subjects.length) return res.json([]);
-
-    // Plan gate (mirrors adminRoutes): Session Notes are Apex-exclusive;
-    // Study Material / Formula Sheet require Forge or Apex. Spark/Free get nothing here.
-    const APEX_ONLY   = ['Session Notes'];
-    const FORGE_ABOVE = ['Study Material', 'Formula Sheet'];
-    const isApex      = getEffectivePlan(profile) === 'apex';
-    const isForge     = getEffectivePlan(profile) === 'forge';
-    if (!isApex && !isForge) return res.json([]);
-
-    const allowedTypes = RESOURCE_TYPES.filter(t =>
-      APEX_ONLY.includes(t)   ? isApex :
-      FORGE_ABOVE.includes(t) ? (isForge || isApex) : false,
-    );
-
-    // Grade filter: Dropper sees both 11 and 12, others see only their grade
-    const allowedGrades = profile.grade === 'Dropper' ? ['11', '12'] : [profile.grade].filter(Boolean);
-
-    const resources = await prisma.resource.findMany({
-      where: {
-        status: 'approved',
-        subject: { in: subjects },
-        type: { in: allowedTypes },
-        ...(allowedGrades.length ? { grade: { in: allowedGrades } } : {}),
-      },
-      include: { faculty: { include: { user: { select: { name: true } } } } },
-      orderBy: { approvedAt: 'desc' },
+    const plan = getEffectivePlan(profile);
+    const { merged, targetedIds } = await fetchResourceFeed(profile, {
+      targetedTypes:  allowedTypes(plan, { targeted: true,  pool: 'library' }),
+      broadcastTypes: allowedTypes(plan, { targeted: false, pool: 'library' }),
     });
 
-    res.json(resources.map(r => ({
+    res.json(merged.map(r => ({
       id: r.id, title: r.title, description: r.description || null,
       subject: r.subject, grade: r.grade, type: r.type,
       cloudinaryUrl: r.cloudinaryUrl, approvedAt: r.approvedAt,
       facultyName: r.faculty.user.name,
+      targeted: targetedIds.has(r.id),
     })));
   } catch (err) {
     console.error(err);
@@ -601,26 +619,24 @@ router.get('/resources', requireAuth, async (req, res) => {
   }
 });
 
-// GET /api/student/question-bank — approved question bank items matching student's exam subjects
+// GET /api/student/question-bank — approved question bank items (targeted + broadcast)
 router.get('/question-bank', requireAuth, async (req, res) => {
   try {
     const profile = await prisma.studentProfile.findUnique({ where: { userId: req.params.userId } });
-    if (!profile || !['forge', 'apex'].includes(getEffectivePlan(profile))) return res.json([]);
+    if (!profile) return res.json([]);
 
-    const subjects = EXAM_SUBJECTS[profile.examTarget] || [];
-    if (!subjects.length) return res.json([]);
-
-    const items = await prisma.resource.findMany({
-      where: { status: 'approved', subject: { in: subjects }, type: { in: QUESTION_BANK_TYPES } },
-      include: { faculty: { include: { user: { select: { name: true } } } } },
-      orderBy: { approvedAt: 'desc' },
+    const plan = getEffectivePlan(profile);
+    const { merged, targetedIds } = await fetchResourceFeed(profile, {
+      targetedTypes:  allowedTypes(plan, { targeted: true,  pool: 'question-bank' }),
+      broadcastTypes: allowedTypes(plan, { targeted: false, pool: 'question-bank' }),
     });
 
-    res.json(items.map(r => ({
+    res.json(merged.map(r => ({
       id: r.id, title: r.title, description: r.description || null,
       subject: r.subject, grade: r.grade, type: r.type,
       cloudinaryUrl: r.cloudinaryUrl, approvedAt: r.approvedAt,
       facultyName: r.faculty.user.name,
+      targeted: targetedIds.has(r.id),
     })));
   } catch (err) {
     console.error(err);

@@ -2092,7 +2092,7 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
                 <div key={r.id} className="res-item">
                   <div className="res-icon">📝</div>
                   <div>
-                    <div className="res-name">{r.title}</div>
+                    <div className="res-name">{r.title} {r.targeted && <span className="pill pill-gold">For you</span>}</div>
                     <div className="res-meta">{r.subject} · Grade {r.grade} · {r.type} · By {r.facultyName}</div>
                     {r.description && <div style={{ fontSize: '12px', color: 'var(--text3)', marginTop: '3px' }}>{r.description}</div>}
                   </div>
@@ -2466,7 +2466,7 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
                   <div key={r.id} className="res-item">
                     <div className="res-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="1.8" strokeLinecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
                     <div>
-                      <div className="res-name">{r.title}</div>
+                      <div className="res-name">{r.title} {r.targeted && <span className="pill pill-gold">For you</span>}</div>
                       <div className="res-meta">{r.subject} · Class {r.grade} · {r.type}</div>
                       {r.description && <div style={{ fontSize: '12px', color: 'var(--text3)', marginTop: '3px' }}>{r.description}</div>}
                     </div>

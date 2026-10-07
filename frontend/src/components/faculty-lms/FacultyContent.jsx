@@ -1,5 +1,10 @@
 import { useState, useEffect, useRef, Fragment } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import {
+  Video, Users, ChevronRight, Pencil, Calendar, Check, MessageSquare,
+  FileText, FilePenLine, HelpCircle, BarChart3, Phone, ClipboardList,
+  Megaphone, Bell,
+} from 'lucide-react';
 
 const fmtTime = (iso) => new Date(iso).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' });
 const fmtDate = (iso) => new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
@@ -429,7 +434,7 @@ const FacultyContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
           </div>
           <div className="db-actions">
             <button className="btn btn-ghost-inv btn-sm" onClick={() => onNav('reports')}>Weekly Report Due Sunday →</button>
-            <button className="btn btn-ghost-inv btn-sm" onClick={() => onOpenModal('broadcast-modal')}>📢 Message Students</button>
+            <button className="btn btn-ghost-inv btn-sm" onClick={() => onOpenModal('broadcast-modal')}>Message Students</button>
             <button className="btn btn-gold btn-sm" onClick={() => onOpenModal('schedule-modal')}>+ Schedule Session</button>
           </div>
         </div>
@@ -558,9 +563,7 @@ const FacultyContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
                             }}
                             title={live ? 'Join Zoom call' : 'Activates 10 min before call'}
                           >
-                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                              <polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/>
-                            </svg>
+                            <Video size={11} strokeWidth={2.4} />
                             {live ? 'Join Now' : 'Join'}
                           </button>
                         )}
@@ -819,7 +822,7 @@ const FacultyContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
       {/* ══════════ RESOURCES ══════════ */}
       <div className={`page${activePage === 'resources' ? ' on' : ''}`}>
         <div style={{ fontSize: '13px', color: 'var(--text2)', marginBottom: '18px', background: 'var(--cream)', border: '1px solid var(--b)', borderRadius: 'var(--r)', padding: '11px 14px' }}>
-          📌 Upload a resource → admin reviews → students in the matching grade see it in their library.
+          Upload a resource → admin reviews → send it to everyone matching the subject & grade, or only to the students you pick.
         </div>
 
         <div className="sh">
@@ -841,7 +844,7 @@ const FacultyContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
                   {group.map(r => (
                     <div key={r.id} className="res-review-item" style={status !== 'pending' ? { opacity: 0.85 } : {}}>
                       <div className="rri-top">
-                        <div className="rri-icon">📄</div>
+                        <div className="rri-icon"><FileText size={18} strokeWidth={1.9} style={{ color: 'var(--gold)' }} /></div>
                         <div style={{ flex: 1 }}>
                           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
                             <div className="rri-name">{r.title}</div>
@@ -853,6 +856,11 @@ const FacultyContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
                         </div>
                       </div>
                       {r.description && <div className="rri-request">{r.description}</div>}
+                      {r.recipients?.length > 0 && (
+                        <div style={{ fontSize: '11.5px', marginTop: '6px', color: 'var(--text3)' }}>
+                          Only {r.recipients.map(rec => rec.student?.user?.name).filter(Boolean).join(', ') || `${r.recipients.length} students`}
+                        </div>
+                      )}
                       {status === 'declined' && r.declineReason && <div style={{ fontSize: '11.5px', color: 'var(--red)', marginTop: '6px' }}>Reason: {r.declineReason}</div>}
                       <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
                         {status === 'approved' && (
@@ -1085,7 +1093,7 @@ const FacultyContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
         </div>
         {parentFeedback.length === 0 ? (
           <div className="card" style={{ textAlign: 'center', padding: '48px 24px' }}>
-            <div style={{ fontSize: '32px', marginBottom: '12px', opacity: 0.25 }}>💬</div>
+            <div style={{ marginBottom: '12px', opacity: 0.3 }}><MessageSquare size={34} strokeWidth={1.4} /></div>
             <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text2)', marginBottom: '4px' }}>No feedback yet</div>
             <div style={{ fontSize: '12px', color: 'var(--text3)' }}>Feedback will appear here after weekly reports are delivered.</div>
           </div>
@@ -1267,10 +1275,7 @@ const MentorPanel = ({ userId, mentorStudents, onMentorStudentUpdated, onShowToa
     return (
       <div className="mp-empty">
         <div className="mp-empty-icon">
-          <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
-            <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
-          </svg>
+          <Users size={30} strokeWidth={1.5} />
         </div>
         <div className="mp-empty-title">No mentees yet</div>
         <div className="mp-empty-sub">When admin assigns you as a mentor to Anchor students, they'll appear here with their reports and progress.</div>
@@ -1301,11 +1306,11 @@ const MentorPanel = ({ userId, mentorStudents, onMentorStudentUpdated, onShowToa
                   <div className="mpsc-sub">{s.examTarget || 'Target not set'}</div>
                   <div className="mpsc-tags">
                     {s.reportedToday && <span className="mpsc-tag mpsc-tag-green">✓ Reported today</span>}
-                    {s.nextCall && <span className="mpsc-tag mpsc-tag-gold">📞 {fmtD(s.nextCall.scheduledAt)}</span>}
+                    {s.nextCall && <span className="mpsc-tag mpsc-tag-gold">{fmtD(s.nextCall.scheduledAt)}</span>}
                     {!s.reportedToday && !s.nextCall && <span className="mpsc-tag mpsc-tag-dim">{s.reportCount || 0} reports</span>}
                   </div>
                 </div>
-                <svg className="mpsc-arrow" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M9 18l6-6-6-6"/></svg>
+                <ChevronRight className="mpsc-arrow" size={13} strokeWidth={2.5} />
               </div>
             );
           })}
@@ -1317,10 +1322,7 @@ const MentorPanel = ({ userId, mentorStudents, onMentorStudentUpdated, onShowToa
         {!selected ? (
           <div className="mp-placeholder">
             <div className="mp-placeholder-icon">
-              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
-                <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
-              </svg>
+              <Users size={26} strokeWidth={1.5} />
             </div>
             <div className="mp-placeholder-title">Select a student</div>
             <div className="mp-placeholder-sub">Choose a mentee to view their progress and send notes or schedule calls.</div>
@@ -1365,7 +1367,7 @@ const MentorPanel = ({ userId, mentorStudents, onMentorStudentUpdated, onShowToa
               <div className="mp-action-card">
                 <div className="mpac-head">
                   <div className="mpac-icon mpac-icon-gold">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                    <Pencil size={14} strokeWidth={2.2} />
                   </div>
                   <div className="mpac-head-text">
                     <div className="mpac-title">Weekly Note</div>
@@ -1391,7 +1393,7 @@ const MentorPanel = ({ userId, mentorStudents, onMentorStudentUpdated, onShowToa
               <div className="mp-action-card">
                 <div className="mpac-head">
                   <div className="mpac-icon mpac-icon-navy">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                    <Calendar size={14} strokeWidth={2.2} />
                   </div>
                   <div className="mpac-head-text">
                     <div className="mpac-title">Schedule Live Session</div>
@@ -1446,7 +1448,7 @@ const MentorPanel = ({ userId, mentorStudents, onMentorStudentUpdated, onShowToa
               <div className="mp-section">
                 {!detail.mentorCalls?.length ? (
                   <div className="mp-empty-tab">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" opacity=".3"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                    <Calendar size={22} strokeWidth={1.5} opacity=".3" />
                     No calls scheduled yet.
                   </div>
                 ) : detail.mentorCalls.map(c => {
@@ -1479,9 +1481,7 @@ const MentorPanel = ({ userId, mentorStudents, onMentorStudentUpdated, onShowToa
                                 }}
                                 title={isLive ? 'Join Zoom call' : 'Activates 10 min before call'}
                               >
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                  <polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/>
-                                </svg>
+                                <Video size={12} strokeWidth={2.4} />
                                 {isLive ? 'Join Now' : 'Join'}
                               </button>
                             )}
@@ -1493,7 +1493,7 @@ const MentorPanel = ({ userId, mentorStudents, onMentorStudentUpdated, onShowToa
                         <div className="mpcc-meta">{c.durationMin} min{c.notes ? ` · ${c.notes}` : ''}</div>
                         {!c.completed && (isLive || isPast) && (
                           <button className="mp-btn mp-btn-green mp-btn-sm" style={{ marginTop: '10px' }} onClick={() => markCallDone(c.id, c.notes || '')}>
-                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+                            <Check size={11} strokeWidth={2.6} />
                             {isLive ? 'End Call' : 'Mark Complete'}
                           </button>
                         )}
@@ -1509,7 +1509,7 @@ const MentorPanel = ({ userId, mentorStudents, onMentorStudentUpdated, onShowToa
               <div className="mp-section">
                 {!detail.mentorNotes?.length ? (
                   <div className="mp-empty-tab">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" opacity=".3"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                    <MessageSquare size={22} strokeWidth={1.5} opacity=".3" />
                     No notes sent yet.
                   </div>
                 ) : detail.mentorNotes.map(n => (
@@ -1557,7 +1557,7 @@ const DailyLogsPage = ({ mentorDailyReports = [], mentorStudents = [] }) => {
   if (mentorDailyReports.length === 0) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '80px 24px', gap: '14px', textAlign: 'center', color: 'var(--text3)' }}>
-        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.3" opacity=".3"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        <FilePenLine size={40} strokeWidth={1.3} opacity=".3" />
         <div style={{ fontFamily: 'var(--fs)', fontSize: '18px', fontWeight: 700, color: 'var(--text)' }}>No daily logs yet</div>
         <div style={{ fontSize: '13px', maxWidth: '300px', lineHeight: 1.7 }}>When your mentees submit their daily reports, they'll all appear here.</div>
       </div>
@@ -1659,13 +1659,13 @@ const DailyLogsPage = ({ mentorDailyReports = [], mentorStudents = [] }) => {
 
 // ── Notifications page ───────────────────────────────────────────────────────
 const TYPE_META = {
-  'Doubt':        { icon: '❓', color: 'var(--red)',   bg: 'rgba(239,68,68,0.08)',   label: 'Doubt',       nav: 'doubts'    },
-  'Resource':     { icon: '📄', color: 'var(--blue)',  bg: 'rgba(59,130,246,0.08)',  label: 'Resource',    nav: 'resources' },
-  'Report':       { icon: '📊', color: 'var(--green)', bg: 'rgba(34,197,94,0.08)',   label: 'Report',      nav: 'reports'   },
-  'Call':         { icon: '📞', color: 'var(--gold)',  bg: 'rgba(232,168,48,0.08)',  label: 'Call',        nav: 'mentor'    },
-  'Mentor Note':  { icon: '💬', color: 'var(--green)', bg: 'rgba(34,197,94,0.08)',   label: 'Mentor Note', nav: 'mentor'    },
-  'Mentor Report':{ icon: '📋', color: 'var(--text3)', bg: 'rgba(15,31,61,0.06)',    label: 'Mentor Report', nav: 'dailylogs'},
-  'Admin':        { icon: '📢', color: 'var(--gold)',  bg: 'rgba(232,168,48,0.08)',  label: 'Admin',       nav: 'dashboard' },
+  'Doubt':        { icon: HelpCircle, color: 'var(--red)',   bg: 'rgba(239,68,68,0.08)',   label: 'Doubt',       nav: 'doubts'    },
+  'Resource':     { icon: FileText, color: 'var(--blue)',  bg: 'rgba(59,130,246,0.08)',  label: 'Resource',    nav: 'resources' },
+  'Report':       { icon: BarChart3, color: 'var(--green)', bg: 'rgba(34,197,94,0.08)',   label: 'Report',      nav: 'reports'   },
+  'Call':         { icon: Phone, color: 'var(--gold)',  bg: 'rgba(232,168,48,0.08)',  label: 'Call',        nav: 'mentor'    },
+  'Mentor Note':  { icon: MessageSquare, color: 'var(--green)', bg: 'rgba(34,197,94,0.08)',   label: 'Mentor Note', nav: 'mentor'    },
+  'Mentor Report':{ icon: ClipboardList, color: 'var(--text3)', bg: 'rgba(15,31,61,0.06)',    label: 'Mentor Report', nav: 'dailylogs'},
+  'Admin':        { icon: Megaphone, color: 'var(--gold)',  bg: 'rgba(232,168,48,0.08)',  label: 'Admin',       nav: 'dashboard' },
 };
 
 
@@ -1686,7 +1686,7 @@ const NotificationsPage = ({ alerts = [], onNav, onMarkAlertRead, onMarkAllAlert
         <div className="sh-t">Notifications</div>
       </div>
       <div className="card" style={{ padding: '64px 32px', textAlign: 'center' }}>
-        <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'var(--cream2)', border: '1.5px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', fontSize: '28px' }}>🔔</div>
+        <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'var(--cream2)', border: '1.5px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', color: 'var(--text3)' }}><Bell size={26} strokeWidth={1.7} /></div>
         <div style={{ fontFamily: 'var(--fs)', fontSize: '18px', fontWeight: 700, color: 'var(--text)', marginBottom: '8px' }}>No notifications yet</div>
         <div style={{ fontSize: '13.5px', color: 'var(--text3)', lineHeight: 1.7, maxWidth: '360px', margin: '0 auto' }}>
           You will be notified here when students submit doubts, admins approve your resources, mentor calls are scheduled, and more.
@@ -1703,7 +1703,7 @@ const NotificationsPage = ({ alerts = [], onNav, onMarkAlertRead, onMarkAllAlert
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
         {alerts.map(a => {
-          const meta = TYPE_META[a.type] || { icon: '🔔', color: 'var(--text3)', bg: 'rgba(15,31,61,0.04)', label: a.type, nav: null };
+          const meta = TYPE_META[a.type] || { icon: Bell, color: 'var(--text3)', bg: 'rgba(15,31,61,0.04)', label: a.type, nav: null };
           const isUnread = !a.readAt;
           return (
             <div
@@ -1720,7 +1720,7 @@ const NotificationsPage = ({ alerts = [], onNav, onMarkAlertRead, onMarkAllAlert
               onMouseOver={e => e.currentTarget.style.borderColor = 'var(--gold)'}
               onMouseOut={e => e.currentTarget.style.borderColor = isUnread ? 'rgba(15,31,61,0.12)' : 'var(--border)'}
             >
-              <div style={{ width: '40px', height: '40px', borderRadius: '11px', flexShrink: 0, background: meta.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>{meta.icon}</div>
+              <div style={{ width: '40px', height: '40px', borderRadius: '11px', flexShrink: 0, background: meta.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', color: meta.color }}><meta.icon size={18} strokeWidth={2} /></div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
                   <span style={{ fontSize: '11px', fontWeight: 700, color: meta.color, background: meta.bg, borderRadius: '20px', padding: '2px 8px' }}>{meta.label}</span>

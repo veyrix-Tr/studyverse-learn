@@ -1072,7 +1072,7 @@ const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
             <div key={r.id} className="res-item">
               <div className="res-icon">📄</div>
               <div>
-                <div className="res-name">{r.title}</div>
+                <div className="res-name">{r.title} {r.targeted && <span className="pill pill-gold">For you</span>}</div>
                 <div className="res-meta">{r.subject} · Grade {r.grade} · {r.type} · By {r.facultyName}</div>
                 {r.description && <div style={{ fontSize: '12px', color: 'var(--text3)', marginTop: '3px' }}>{r.description}</div>}
               </div>
@@ -1104,7 +1104,7 @@ const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
             <div key={r.id} className="res-item">
               <div className="res-icon">📝</div>
               <div>
-                <div className="res-name">{r.title}</div>
+                <div className="res-name">{r.title} {r.targeted && <span className="pill pill-gold">For you</span>}</div>
                 <div className="res-meta">{r.subject} · Grade {r.grade} · {r.type} · By {r.facultyName}</div>
                 {r.description && <div style={{ fontSize: '12px', color: 'var(--text3)', marginTop: '3px' }}>{r.description}</div>}
               </div>

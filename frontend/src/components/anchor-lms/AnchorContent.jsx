@@ -807,7 +807,7 @@ const AnchorContent = ({
             <div key={r.id} className="ac-res-row" style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '14px 16px', borderRadius: 'var(--rl)', background: 'var(--bg2)', border: '1px solid var(--b)', marginBottom: '10px', transition: 'all .15s', cursor: 'pointer' }} onMouseOver={e => { e.currentTarget.style.borderColor = 'var(--b2)'; e.currentTarget.style.background = 'var(--bg3)'; }} onMouseOut={e => { e.currentTarget.style.borderColor = 'var(--b)'; e.currentTarget.style.background = 'var(--bg2)'; }}>
               <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'var(--gd)', border: '1px solid var(--gb)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
               <div className="ac-res-info" style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: '13.5px', fontWeight: 600, color: 'var(--t1)', marginBottom: '2px' }}>{r.title}</div>
+                <div style={{ fontSize: '13.5px', fontWeight: 600, color: 'var(--t1)', marginBottom: '2px' }}>{r.title} {r.targeted && <span className="pill pill-gold">For you</span>}</div>
                 <div style={{ fontSize: '12px', color: 'var(--t3)' }}>{r.subject} · {r.type} · By {r.facultyName}</div>
                 {r.description && <div style={{ fontSize: '11.5px', color: 'var(--t3)', marginTop: '3px', fontStyle: 'italic' }}>{r.description}</div>}
               </div>
