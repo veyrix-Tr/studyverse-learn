@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Check, SearchX, UserRound, X } from 'lucide-react';
 import Modal from '../common/Modal';
-import { facultySubjects, teachesSubject, isActiveFaculty } from './facultyFilters';
+import { facultySubjects, teachesSubject, isActiveFaculty, gradeEligible } from './facultyFilters';
 import './AssignModals.css';
 
 const NEET_SUBJECTS = ['Physics', 'Chemistry', 'Biology'];
@@ -22,13 +22,14 @@ const AdminFacultyAssignModal = ({ student, facultyList, onSave, onClose, saving
   );
 
   // Every active, grade-eligible faculty — no other gate, so nobody can drop out
-  // of a subject section because of a label mismatch.
+  // of a subject section because of a label mismatch. Faculty with unknown grade
+  // history stay eligible for every grade.
   const facultyForSubject = useMemo(() => {
     const map = {};
     subjectList.forEach(subj => {
       map[subj] = facultyList.filter(f => {
         if (activeOnly && !isActiveFaculty(f)) return false;
-        if (grade !== 'all' && !(f.grades || []).map(String).includes(String(grade))) return false;
+        if (!gradeEligible(f, grade)) return false;
         return teachesSubject(f, subj);
       });
     });

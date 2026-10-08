@@ -451,6 +451,7 @@ const FacultyLMS = () => {
         onCloseDetail={() => setDetailOpen(false)}
         onOpenModal={setOpenModal}
         onNav={setActivePage}
+        sessions={sessions}
         onResourceAdded={(r) => setResources(prev => [r, ...prev])}
         onSessionCreated={() => {
           const token = localStorage.getItem('token');

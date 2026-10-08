@@ -27,3 +27,11 @@ export const teachesSubject = (f, target) => {
 };
 
 export const isActiveFaculty = (f) => f.isActive !== false;
+
+// Faculty with no grade history yet (just created, never scheduled) stay
+// eligible for every grade — only faculty with known grades are filtered out.
+export const gradeEligible = (f, grade) => {
+  if (!grade || grade === 'all') return true;
+  const list = (f.grades || []).map(String);
+  return list.length === 0 || list.includes(String(grade));
+};

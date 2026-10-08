@@ -14,6 +14,7 @@ const subjectList = (s) => (s.examTarget || '').toLowerCase().includes('neet')
   ? ['Physics', 'Chemistry', 'Biology']
   : ['Physics', 'Chemistry', 'Maths'];
 const fmtDate = (d) => new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+const fmtDateTime = (d) => new Date(d).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 const DiagnosticModal = ({ modal, loading, onClose, onReset }) => {
   useEffect(() => {
     if (!modal) return;
@@ -528,6 +529,17 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
   const pendingResources = resources.filter(r => r.status === 'pending');
   const approvedResources = resources.filter(r => r.status === 'approved');
   const declinedResources = resources.filter(r => r.status === 'declined');
+
+  // Distribution log — the resource audit trail (faculty → students → when).
+  const [distQuery, setDistQuery] = useState('');
+  const [distFaculty, setDistFaculty] = useState('all');
+  const distQ = distQuery.trim().toLowerCase();
+  const distRows = resources
+    .slice()
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    .filter(r => (distFaculty === 'all' || String(r.facultyId) === distFaculty)
+      && (!distQ || [r.title, r.type, r.subject, r.grade, r.facultyName, r.sessionTitle || '', ...(r.recipients || []).map(x => x.name)]
+        .some(v => String(v).toLowerCase().includes(distQ))));
 
   useEffect(() => {
     if (activePage !== 'messages') setShowHistory(false);
@@ -1336,8 +1348,95 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
                 </div>
               )}
             </div>
-          ));
+          )          );
         })()}
+      </div>
+
+      {/* ══ DISTRIBUTION LOG (resource audit trail) ══ */}
+      <div style={{ marginTop: '26px' }}>
+        <div className="adm-head">
+          <div>
+            <div className="adm-title">Distribution log</div>
+            <div className="adm-sub">Which faculty shared what, with whom, and when — full audit trail</div>
+          </div>
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <select
+              value={distFaculty}
+              onChange={e => setDistFaculty(e.target.value)}
+              style={{ padding: '8px 11px', borderRadius: '9px', border: '1px solid var(--b)', background: 'var(--cream2)', fontSize: '12.5px', fontWeight: 600, color: 'var(--text)', cursor: 'pointer' }}
+            >
+              <option value="all">All faculty</option>
+              {facultyList.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+            </select>
+            <label className="adm-search">
+              <Search size={14} />
+              <input placeholder="Search resource, student, subject…" value={distQuery} onChange={e => setDistQuery(e.target.value)} />
+            </label>
+          </div>
+        </div>
+        <div className="card tbl-wrap" id="dist-log" style={{ padding: 0 }}>
+          {distRows.length === 0 ? (
+            <div className="adm-empty">No distributions match your filters.</div>
+          ) : (
+            <table className="tbl">
+              <thead>
+                <tr>
+                  <th style={{ width: '15%' }}>Faculty</th>
+                  <th style={{ width: '24%' }}>Resource</th>
+                  <th style={{ width: '12%' }}>Subject</th>
+                  <th style={{ width: '15%' }}>Class/session</th>
+                  <th style={{ width: '13%' }}>Shared</th>
+                  <th>Recipients</th>
+                </tr>
+              </thead>
+              <tbody>
+                {distRows.map(r => (
+                  <tr key={r.id}>
+                    <td style={{ fontWeight: 600 }}>{r.facultyName}</td>
+                    <td>
+                      <div style={{ fontWeight: 600 }}>{r.title}</div>
+                      <div style={{ fontSize: '11px', color: 'var(--text3)', marginTop: '2px' }}>
+                        {r.type} · <span style={{
+                          fontWeight: 700,
+                          color: r.status === 'approved' ? 'var(--green)' : r.status === 'declined' ? 'var(--red)' : 'var(--gold)',
+                        }}>{r.status}</span>
+                      </div>
+                    </td>
+                    <td>{r.subject}<div style={{ fontSize: '11px', color: 'var(--text3)' }}>Grade {r.grade}</div></td>
+                    <td>
+                      {r.sessionTitle ? (
+                        <>
+                          <div style={{ fontWeight: 600 }}>{r.sessionTitle}</div>
+                          <div style={{ fontSize: '11px', color: 'var(--text3)' }}>{fmtDateTime(r.sessionAt)}</div>
+                        </>
+                      ) : <span style={{ color: 'var(--text3)' }}>—</span>}
+                    </td>
+                    <td style={{ whiteSpace: 'nowrap' }}>{fmtDateTime(r.createdAt)}</td>
+                    <td>
+                      {r.targeted ? (
+                        <>
+                          <div style={{ fontWeight: 700 }}>{r.recipients.length} student{r.recipients.length !== 1 ? 's' : ''}</div>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '4px' }}>
+                            {r.recipients.map(rec => (
+                              <span key={rec.id} style={{ fontSize: '10.5px', fontWeight: 600, padding: '2px 8px', borderRadius: '99px', background: 'var(--gd)', color: 'var(--gold)', border: '1px solid var(--gb)' }}>
+                                {rec.name}{rec.grade ? ` · ${rec.grade}` : ''}
+                              </span>
+                            ))}
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div style={{ fontWeight: 700 }}>Broadcast</div>
+                          <div style={{ fontSize: '11px', color: 'var(--text3)', marginTop: '2px' }}>{r.audienceCount} eligible now</div>
+                        </>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
       </div>
 
       {/* ══ MESSAGES ══ */}

@@ -11,7 +11,7 @@ const EXAM_SUBJECTS = {
   'NEET':         ['Physics', 'Chemistry', 'Biology'],
 };
 
-const FacultyModals = ({ openModal, onClose, onShowToast, toast, detailOpen, selectedStudent, onCloseDetail, onOpenModal, onNav, onResourceAdded, onSessionCreated, onScoreAdded = () => {}, profile }) => {
+const FacultyModals = ({ openModal, onClose, onShowToast, toast, detailOpen, selectedStudent, onCloseDetail, onOpenModal, onNav, onResourceAdded, onSessionCreated, onScoreAdded = () => {}, profile, sessions = [] }) => {
   const { id: userId } = useParams();
   const isOpen = (id) => openModal === id ? ' open' : '';
   const [broadcastText, setBroadcastText] = useState('');
@@ -182,6 +182,7 @@ const FacultyModals = ({ openModal, onClose, onShowToast, toast, detailOpen, sel
   const [resTargetMode, setResTargetMode] = useState('all');
   const [resSelectedStudents, setResSelectedStudents] = useState([]);
   const [assignedStudents, setAssignedStudents] = useState([]);
+  const [resSessionId, setResSessionId] = useState('');
   const fileInputRef = useRef(null);
 
   useEffect(() => {
@@ -215,7 +216,7 @@ const FacultyModals = ({ openModal, onClose, onShowToast, toast, detailOpen, sel
   const resetResForm = () => {
     setResTitle(''); setResDescription(''); setResSubject(facultySubject || 'Physics');
     setResGrade('11'); setResType(''); setResFile(null);
-    setResTargetMode('all'); setResSelectedStudents([]);
+    setResTargetMode('all'); setResSelectedStudents([]); setResSessionId('');
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -261,6 +262,7 @@ const FacultyModals = ({ openModal, onClose, onShowToast, toast, detailOpen, sel
           cloudinaryUrl: cdnData.secure_url,
           cloudinaryId:  cdnData.public_id,
           studentIds:   targetIds,
+          ...(resSessionId ? { sessionId: Number(resSessionId) } : {}),
         }),
       });
       if (!res.ok) {
@@ -645,6 +647,20 @@ const FacultyModals = ({ openModal, onClose, onShowToast, toast, detailOpen, sel
               <optgroup label="Question Bank">
                 <option>MCQ Bank</option><option>Previous Year Papers</option><option>Practice Set</option>
               </optgroup>
+            </select>
+          </div>
+          <div className="fg">
+            <label>Linked class/session <span style={{ fontWeight: 400, color: 'var(--text3)' }}>(optional)</span></label>
+            <select className="finput" value={resSessionId} onChange={e => setResSessionId(e.target.value)}>
+              <option value="">None</option>
+              {[...sessions]
+                .sort((a, b) => new Date(b.scheduledAt) - new Date(a.scheduledAt))
+                .slice(0, 30)
+                .map(s => (
+                  <option key={s.id} value={s.id}>
+                    {s.title} · {new Date(s.scheduledAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                  </option>
+                ))}
             </select>
           </div>
           <div className="fg">

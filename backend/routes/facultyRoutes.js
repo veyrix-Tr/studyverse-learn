@@ -761,12 +761,22 @@ router.put('/doubts/:id/answer', requireAuth, async (req, res) => {
 // never leak to someone the faculty doesn't teach or paywall-wise shouldn't see it.
 router.post('/resources', requireAuth, async (req, res) => {
   try {
-    const { title, description, subject, grade, type, cloudinaryUrl, cloudinaryId, studentIds } = req.body;
+    const { title, description, subject, grade, type, cloudinaryUrl, cloudinaryId, studentIds, sessionId } = req.body;
     if (!title || !subject || !grade || !type || !cloudinaryUrl || !cloudinaryId)
       return res.status(400).json({ error: 'Missing required fields' });
 
     const fp = await prisma.facultyProfile.findUnique({ where: { userId: req.params.userId } });
     if (!fp) return res.status(403).json({ error: 'Not a faculty member' });
+
+    // Optional link to the class this resource belongs to — must be the
+    // faculty's own session so the admin audit never points at a stranger's class.
+    let sessionLink = null;
+    if (sessionId !== undefined && sessionId !== null && sessionId !== '') {
+      const sid = parseInt(sessionId);
+      const sess = sid ? await prisma.session.findFirst({ where: { id: sid, facultyId: fp.id }, select: { id: true } }) : null;
+      if (!sess) return res.status(400).json({ error: 'Invalid session' });
+      sessionLink = sess.id;
+    }
 
     // De-dupe + sanitise the target list before touching the DB (invalid or
     // duplicate ids would otherwise blow up on the unique(resourceId, studentId)).
@@ -810,6 +820,7 @@ router.post('/resources', requireAuth, async (req, res) => {
         cloudinaryUrl,
         cloudinaryId,
         facultyId: fp.id,
+        sessionId: sessionLink,
         ...(recipients.length ? { recipients: { create: recipients } } : {}),
       },
       include: { recipients: { include: { student: { include: { user: { select: { name: true } } } } } } },

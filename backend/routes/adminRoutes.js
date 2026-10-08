@@ -212,14 +212,14 @@ router.get('/faculty', requireAuth, requireAdmin, async (req, res) => {
         user: { select: { id: true, name: true, email: true, lastLoginAt: true } },
         sessions: { select: { id: true, subject: true, grade: true, scheduledAt: true } },
         weeklyReports: { select: { overallRating: true }, orderBy: { createdAt: 'desc' }, take: 20 },
-        mentorStudents: { select: { id: true } },
+        mentorStudents: { select: { id: true, grade: true } },
       },
       orderBy: { user: { name: 'asc' } },
     });
 
     // Subject-faculty assignments live as { subject: facultyId } maps on
     // students — counted here so the credentials table can show them.
-    const studentMaps = await prisma.studentProfile.findMany({ select: { subjectFaculty: true } });
+    const studentMaps = await prisma.studentProfile.findMany({ select: { subjectFaculty: true, grade: true } });
 
     const result = faculty.map(f => {
       const ratings = f.weeklyReports.map(r => r.overallRating).filter(Boolean);
@@ -229,9 +229,17 @@ router.get('/faculty', requireAuth, requireAdmin, async (req, res) => {
       const recentSessions = f.sessions.filter(s => new Date(s.scheduledAt) >= fourWeeksAgo);
       const sessionsPerWeek = Math.round(recentSessions.length / 4) || 0;
       const uniqueSubjects = [...new Set(f.sessions.map(s => s.subject))];
-      const subjectAssignedCount = studentMaps.filter(sm =>
+      const subjectAssignedStudents = studentMaps.filter(sm =>
         sm.subjectFaculty && typeof sm.subjectFaculty === 'object' && Object.values(sm.subjectFaculty).includes(f.id)
-      ).length;
+      );
+      // Grade eligibility must not depend on session history alone — a faculty
+      // who has never taken a session (or was just created) would otherwise
+      // have no grades and drop out of every grade-filtered dropdown.
+      const grades = [...new Set([
+        ...f.sessions.map(s => s.grade),
+        ...f.mentorStudents.map(s => s.grade),
+        ...subjectAssignedStudents.map(sm => sm.grade),
+      ].filter(Boolean).map(String))];
       return {
         id: f.id,
         userId: f.userId,
@@ -244,13 +252,13 @@ router.get('/faculty', requireAuth, requireAdmin, async (req, res) => {
         isActive: f.isActive,
         createdAt: f.createdAt,
         lastLoginAt: f.user.lastLoginAt || null,
-        grades: [...new Set(f.sessions.map(s => s.grade).filter(Boolean))],
+        grades,
         sessionsPerWeek,
         totalSessions: f.sessions.length,
         avgRating,
         reportCount: f.weeklyReports.length,
         mentorStudentCount: f.mentorStudents.length,
-        subjectAssignedCount,
+        subjectAssignedCount: subjectAssignedStudents.length,
       };
     });
 
@@ -471,7 +479,19 @@ router.post('/faculty', requireAuth, requireAdmin, async (req, res) => {
         name: user.name,
         email: user.email,
         subject,
+        department: department || null,
         qualification: qualification || null,
+        subjects: [subject],
+        grades: [],
+        isActive: true,
+        createdAt: user.facultyProfile.createdAt,
+        lastLoginAt: null,
+        sessionsPerWeek: 0,
+        totalSessions: 0,
+        avgRating: null,
+        reportCount: 0,
+        mentorStudentCount: 0,
+        subjectAssignedCount: 0,
       },
       credentials: { email },
     });
@@ -715,7 +735,19 @@ router.post('/faculty-applications/:id/approve', requireAuth, requireAdmin, asyn
         name: user.name,
         email: user.email,
         subject: application.subject,
+        department: application.department || null,
         qualification: application.qualification || null,
+        subjects: [application.subject].filter(Boolean),
+        grades: [],
+        isActive: true,
+        createdAt: user.facultyProfile.createdAt,
+        lastLoginAt: null,
+        sessionsPerWeek: 0,
+        totalSessions: 0,
+        avgRating: null,
+        reportCount: 0,
+        mentorStudentCount: 0,
+        subjectAssignedCount: 0,
       },
       credentials: { email: application.email },
     });
@@ -1383,22 +1415,37 @@ router.get('/resources', requireAuth, requireAdmin, async (req, res) => {
     const ap = await prisma.adminProfile.findUnique({ where: { userId: req.params.userId } });
     if (!ap) return res.status(403).json({ error: 'Not an admin' });
 
-    const resources = await prisma.resource.findMany({
-      include: {
-        faculty: { include: { user: { select: { name: true } } } },
-        recipients: { include: { student: { include: { user: { select: { name: true } } } } } },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+    const [resources, students] = await Promise.all([
+      prisma.resource.findMany({
+        include: {
+          faculty: { include: { user: { select: { name: true } } } },
+          recipients: { include: { student: { include: { user: { select: { name: true } } } } } },
+          session: { select: { title: true, scheduledAt: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+      // Broadcast resources have no named recipients — count the students who
+      // would actually receive them right now (same rules as the student feed).
+      prisma.studentProfile.findMany({
+        select: { examTarget: true, grade: true, plan: true, planEndDate: true, fallbackPlan: true, fallbackEndDate: true },
+      }),
+    ]);
 
     res.json(resources.map(r => ({
       id: r.id, title: r.title, description: r.description,
       subject: r.subject, grade: r.grade, type: r.type,
       cloudinaryUrl: r.cloudinaryUrl, status: r.status,
       declineReason: r.declineReason, createdAt: r.createdAt, approvedAt: r.approvedAt,
+      facultyId: r.facultyId,
       facultyName: r.faculty.user.name,
-      recipients: r.recipients.map(rec => ({ id: rec.student.id, name: rec.student.user.name })),
+      recipients: r.recipients.map(rec => ({ id: rec.student.id, name: rec.student.user.name, grade: rec.student.grade })),
       targeted: r.recipients.length > 0,
+      audienceCount: r.recipients.length
+        ? null
+        : students.filter(sp => canReceive(sp, { subject: r.subject, grade: r.grade, type: r.type, targeted: false })).length,
+      sessionId: r.sessionId,
+      sessionTitle: r.session?.title || null,
+      sessionAt: r.session?.scheduledAt || null,
     })));
   } catch (err) {
     console.error(err);

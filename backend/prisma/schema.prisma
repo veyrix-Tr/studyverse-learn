@@ -239,6 +239,7 @@ model Session {
   student   StudentProfile? @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   students SessionStudent[]
+  resources Resource[]
 }
 
 model SessionStudent {
@@ -317,6 +318,10 @@ model Resource {
   faculty     FacultyProfile @relation(fields: [facultyId], references: [id], onDelete: Cascade)
   approvedById Int?
   approvedBy   AdminProfile? @relation(fields: [approvedById], references: [id])
+  // Optional link to the class/session it was shared in. SetNull keeps the
+  // distribution audit intact if the session is ever deleted.
+  sessionId   Int?
+  session     Session? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
   recipients  ResourceRecipient[]
 }
 
