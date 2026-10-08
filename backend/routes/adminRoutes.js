@@ -311,7 +311,26 @@ router.get('/faculty/:id/performance', requireAuth, requireAdmin, async (req, re
     const reports = fp.weeklyReports;
     const sentReports = reports.filter(r => r.status === 'sent');
 
-    const assignedStudents = fp.mentorStudents;
+    // Full assigned roster: mentor mentees + students whose subjectFaculty map
+    // points at this faculty. One pass over student profiles, deduped.
+    const mentorIds = new Set(fp.mentorStudents.map(m => m.id));
+    const assignedList = (await prisma.studentProfile.findMany({
+      select: { id: true, plan: true, grade: true, examTarget: true, subjectFaculty: true, user: { select: { name: true } } },
+    }))
+      .map(sp => {
+        const sf = sp.subjectFaculty && typeof sp.subjectFaculty === 'object' ? sp.subjectFaculty : {};
+        const subjects = Object.keys(sf).filter(k => sf[k] === fp.id);
+        const isMentor = mentorIds.has(sp.id);
+        if (!isMentor && !subjects.length) return null;
+        return {
+          id: sp.id, name: sp.user.name, grade: sp.grade, examTarget: sp.examTarget, plan: sp.plan,
+          subjects, via: isMentor && subjects.length ? 'both' : isMentor ? 'mentor' : 'subject',
+        };
+      })
+      .filter(Boolean)
+      .sort((a, b) => a.name.localeCompare(b.name));
+
+    const assignedStudents = assignedList;
     const activeStudents = assignedStudents.filter(s => s.plan === 'apex' || s.plan === 'anchor');
 
     // Distinct students who actually receive this faculty's homework: named
@@ -340,6 +359,8 @@ router.get('/faculty/:id/performance', requireAuth, requireAdmin, async (req, re
       subject: fp.subject,
       department: fp.department,
       qualification: fp.qualification,
+      joinedAt: fp.createdAt,
+      isActive: fp.isActive,
       classActivity: {
         thisWeek: sessionsThisWeek.length,
         thisMonth: sessionsThisMonth.length,
@@ -354,6 +375,11 @@ router.get('/faculty/:id/performance', requireAuth, requireAdmin, async (req, re
         pendingDoubts: pendingDoubts.length,
         resolvedDoubts: resolvedDoubts.length,
         totalDoubts: doubts.length,
+      },
+      assignedList,
+      academicActivity: {
+        doubtsHandled: resolvedDoubts.length,
+        scoresEntered: await prisma.weeklyScore.count({ where: { enteredBy: fp.id } }),
       },
       homeworkActivity: {
         assignmentsGiven: resources.filter(r => r.type === 'Practice Set' || r.type === 'Previous Year Papers').length,

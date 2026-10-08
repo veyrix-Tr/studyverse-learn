@@ -278,6 +278,7 @@ model WeeklyScore {
   name        String? // test/assessment name (e.g. "JEE Mock 4", "School half-yearly")
   source      String   @default("lms") // lms | manual — who recorded it
   rank        Int? // class/all-India rank if applicable
+  enteredBy   Int? // facultyProfile id — which faculty manually recorded this score
   createdAt   DateTime @default(now())
 
   studentId Int

@@ -73,7 +73,16 @@ const FacultyPerformance = ({ faculty, adminId, onClose }) => {
           <div>
             <div className="pf-name">{faculty.name}</div>
             <div className="pf-meta">
-              {[faculty.subject, faculty.department, faculty.email].filter(Boolean).join(' · ')}
+              {[faculty.subject, faculty.department, faculty.qualification, faculty.email].filter(Boolean).join(' · ')}
+            </div>
+            <div className="pf-meta" style={{ marginTop: 3 }}>
+              Joined {faculty.createdAt
+                ? new Date(faculty.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+                : '—'}
+              {'  ·  '}
+              <span style={{ fontWeight: 700, color: faculty.isActive === false ? 'var(--red)' : 'var(--green)' }}>
+                {faculty.isActive === false ? 'Account deactivated' : 'Account active'}
+              </span>
             </div>
           </div>
           <button className="pf-close" onClick={onClose} aria-label="Close">×</button>
@@ -101,9 +110,39 @@ const FacultyPerformance = ({ faculty, adminId, onClose }) => {
                   <Tile n={stu.assigned || 0} label="Students assigned" gold />
                   <Tile n={stu.active || 0} label="Active students" />
                   <Tile n={stu.pendingDoubts || 0} label="Pending doubts" />
-                  <Tile n={stu.resolvedDoubts || 0} label="Doubts resolved" />
+                  <Tile n={stu.resolvedDoubts || 0} label="Doubts handled" />
                   <Tile n={stu.totalDoubts || 0} label="Total doubts" />
                 </div>
+              </Section>
+
+              <Section title="Assigned students" hint={`${(data.assignedList || []).length} total`}>
+                {(data.assignedList || []).length === 0 && (
+                  <div className="pf-state">No students assigned yet — assign this faculty from a student's profile.</div>
+                )}
+                {(data.assignedList || []).length > 0 && (
+                  <div className="pf-list">
+                    {(data.assignedList || []).map(s => (
+                      <div className="pf-res" key={s.id}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div className="pf-res-t">{s.name}</div>
+                          <div className="pf-res-m">
+                            {[s.grade ? `Grade ${s.grade}` : null, s.examTarget,
+                              s.plan ? `${s.plan[0].toUpperCase()}${s.plan.slice(1)} plan` : null]
+                              .filter(Boolean).join(' · ') || '—'}
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', justifyContent: 'flex-end', maxWidth: '52%' }}>
+                          {(s.via === 'mentor' || s.via === 'both') && (
+                            <span className="pf-status">Mentor</span>
+                          )}
+                          {(s.subjects || []).map(sub => (
+                            <span className="pf-status ok" key={sub}>{sub}</span>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </Section>
 
               <Section title="Homework / assignment activity">
@@ -111,6 +150,7 @@ const FacultyPerformance = ({ faculty, adminId, onClose }) => {
                   <Tile n={hw.assignmentsGiven || 0} label="Assignments given" gold />
                   <Tile n={hw.homeworkGiven || 0} label="Homework given" />
                   <Tile n={hw.studentsReceived || 0} label="Students who received" />
+                  <Tile n={data.academicActivity?.scoresEntered || 0} label="Scores entered" />
                   <Tile n={hw.byPeriod?.week || 0} label="Given this week" />
                   <Tile n={hw.byPeriod?.month || 0} label="Given this month" />
                   <Tile n={hw.byPeriod?.year || 0} label="Given this year" />

@@ -479,7 +479,7 @@ router.post('/student/:studentId/scores', requireAuth, async (req, res) => {
     ));
 
     const created = await prisma.weeklyScore.create({
-      data: { studentId: sp.id, subject, score, totalMarks, testDate, name, source: 'manual', rank, weekNumber },
+      data: { studentId: sp.id, subject, score, totalMarks, testDate, name, source: 'manual', rank, weekNumber, enteredBy: fp.id },
     });
     res.status(201).json({ success: true, score: journeyScore(created) });
   } catch (err) {
