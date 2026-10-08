@@ -205,7 +205,10 @@ router.get('/scores', requireAuth, async (req, res) => {
       }
       map[r.weekNumber].totalScore += r.score;
       map[r.weekNumber].totalPossible += r.totalMarks;
-      map[r.weekNumber].subjects.push({ subject: r.subject, score: r.score, totalMarks: r.totalMarks });
+      map[r.weekNumber].subjects.push({
+        subject: r.subject, score: r.score, totalMarks: r.totalMarks,
+        name: r.name, source: r.source, rank: r.rank,
+      });
     }
 
     const weeks = Object.values(map).map(w => ({

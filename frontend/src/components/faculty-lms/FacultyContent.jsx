@@ -141,7 +141,7 @@ const pctColor = (p) => p >= 75 ? 'var(--green)' : p >= 60 ? 'var(--gold)' : p >
 const pctBar   = (p) => p >= 75 ? 'pb-green' : p >= 60 ? 'pb-gold' : p >= 45 ? 'pb-orange' : 'pb-red';
 const pctFlag  = (p) => p >= 75 ? ['On track', 'pp'] : p >= 60 ? ['Progressing', 'po'] : ['Needs support', 'pr'];
 
-const FacultyContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, sessions = [], doubts = [], students = [], resources = [], onDoubtAnswered, onSessionNoteUpdated, onResourceDeleted, onResourceAdded, weeklyReports = [], onReportCreated, onReportUpdated, onReportSubmitted, onReportDeleted, parentFeedback = [], mentorStudents = [], onMentorStudentUpdated, mentorDailyReports = [], alerts = [], onMarkAlertRead, onMarkAllAlertsRead }) => {
+const FacultyContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, sessions = [], doubts = [], students = [], onOpenDetail = () => {}, resources = [], onDoubtAnswered, onSessionNoteUpdated, onResourceDeleted, onResourceAdded, weeklyReports = [], onReportCreated, onReportUpdated, onReportSubmitted, onReportDeleted, parentFeedback = [], mentorStudents = [], onMentorStudentUpdated, mentorDailyReports = [], alerts = [], onMarkAlertRead, onMarkAllAlertsRead }) => {
   const { id: userId } = useParams();
   const navigate = useNavigate();
   const firstName = profile?.name?.split(' ').find(p => !p.startsWith('Dr')) || profile?.name?.split(' ')[0] || 'there';
@@ -595,7 +595,7 @@ const FacultyContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
                 week={ls ? `Week ${ls.weekNumber}` : 'No tests'}
                 base={fs?.score ?? '—'} curr={ls?.score ?? '—'} gain={fs && ls ? ls.score - fs.score : 0}
                 subjects={subjEl} next={nextText} flagClass={flagClass} flag={flag}
-                onDetail={() => {}} />
+                onDetail={() => onOpenDetail(st)} />
             );
           })}
           {students.length === 0 && <div style={{ color: 'var(--text3)', fontSize: '13px' }}>No students assigned yet.</div>}
@@ -756,7 +756,7 @@ const FacultyContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
                   week={ls ? `Week ${ls.weekNumber}` : 'No tests'}
                   base={fs?.score ?? '—'} curr={ls?.score ?? '—'} gain={fs && ls ? ls.score - fs.score : 0}
                   subjects={subjEl} next={nextText} flagClass={flagClass} flag={flag}
-                  onDetail={() => {}} />
+                  onDetail={() => onOpenDetail(st)} />
               );
             })}
           </div>

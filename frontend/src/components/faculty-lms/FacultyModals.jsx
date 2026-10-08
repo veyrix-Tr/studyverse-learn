@@ -11,12 +11,68 @@ const EXAM_SUBJECTS = {
   'NEET':         ['Physics', 'Chemistry', 'Biology'],
 };
 
-const FacultyModals = ({ openModal, onClose, onShowToast, toast, detailOpen, selectedStudent, onCloseDetail, onOpenModal, onNav, onResourceAdded, onSessionCreated, profile }) => {
+const FacultyModals = ({ openModal, onClose, onShowToast, toast, detailOpen, selectedStudent, onCloseDetail, onOpenModal, onNav, onResourceAdded, onSessionCreated, onScoreAdded = () => {}, profile }) => {
   const { id: userId } = useParams();
   const isOpen = (id) => openModal === id ? ' open' : '';
-  const s = selectedStudent || {};
   const [broadcastText, setBroadcastText] = useState('');
   const [broadcasting, setBroadcasting] = useState(false);
+
+  // ── Student detail panel: complete score journey + manual score entry ──
+  const emptyScoreForm = () => ({ name: '', date: new Date().toISOString().slice(0, 10), score: '', total: '', rank: '' });
+  const [journey, setJourney] = useState(null);           // { student, scores } for the open student
+  const [addScoreOpen, setAddScoreOpen] = useState(false);
+  const [scoreForm, setScoreForm] = useState(emptyScoreForm);
+  const [scoreSaving, setScoreSaving] = useState(false);
+
+  // Load the student's complete journey whenever their panel opens. Reset of
+  // the entry form happens in the async callback (not synchronously in-effect).
+  useEffect(() => {
+    if (!detailOpen || !selectedStudent) return;
+    let live = true;
+    fetch(`${import.meta.env.VITE_API_URL}/api/faculty/${userId}/student/${selectedStudent.id}/scores`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (!live) return;
+        setJourney(d || { student: { id: selectedStudent.id }, scores: [] });
+        setAddScoreOpen(false);
+        setScoreForm(emptyScoreForm());
+      })
+      .catch(() => { if (live) setJourney({ student: { id: selectedStudent.id }, scores: [] }); });
+    return () => { live = false; };
+  }, [detailOpen, selectedStudent, userId]);
+
+  const saveScore = async () => {
+    const name = scoreForm.name.trim();
+    if (!name) { onShowToast('Enter the test / assessment name'); return; }
+    if (scoreForm.score === '' || scoreForm.total === '') { onShowToast('Enter marks obtained and maximum marks'); return; }
+    const score = Number(scoreForm.score), total = Number(scoreForm.total);
+    if (!Number.isInteger(score) || !Number.isInteger(total) || total < 1 || score < 0 || score > total) {
+      onShowToast('Marks must be whole numbers between 0 and the maximum'); return;
+    }
+    const rank = scoreForm.rank === '' ? undefined : Number(scoreForm.rank);
+    if (rank !== undefined && (!Number.isInteger(rank) || rank < 1)) { onShowToast('Rank must be a positive number'); return; }
+    setScoreSaving(true);
+    try {
+      const r = await fetch(`${import.meta.env.VITE_API_URL}/api/faculty/${userId}/student/${selectedStudent.id}/scores`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
+        body: JSON.stringify({ name, score, totalMarks: total, testDate: scoreForm.date, rank }),
+      });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(data.error || 'Failed to save score');
+      setJourney(prev => prev ? { ...prev, scores: [data.score, ...prev.scores] } : prev);
+      setScoreForm(emptyScoreForm());
+      setAddScoreOpen(false);
+      onShowToast('Score recorded ✓');
+      onScoreAdded();
+    } catch (e) {
+      onShowToast('Save failed: ' + e.message);
+    } finally {
+      setScoreSaving(false);
+    }
+  };
 
   // Every faculty has one subject on their profile (e.g. "Physics"). Sessions
   // and resources stay tied to it rather than letting the teacher free-pick.
@@ -306,62 +362,136 @@ const FacultyModals = ({ openModal, onClose, onShowToast, toast, detailOpen, sel
 
   return (
     <>
-      {/* Student Detail Panel */}
-      <div className={`detail-panel${detailOpen ? ' open' : ''}`}>
-        <div className="dp-header" style={{ position: 'relative' }}>
-          <div className="dp-close" onClick={onCloseDetail}>
-            <X size={14} strokeWidth={2.4} />
+      {/* Student Detail Panel — complete score journey + manual score entry */}
+      {detailOpen && selectedStudent && (() => {
+        const st = selectedStudent;
+        const scores = journey && journey.student?.id === st.id ? journey.scores : null;
+        const latest = scores?.[0] || null;
+        const first = scores?.[scores.length - 1] || null;
+        const gain = first && latest ? latest.pct - first.pct : null;
+        const pctColor = p => p >= 70 ? 'var(--green)' : p >= 40 ? 'var(--gold)' : 'var(--red)';
+        const fmtD = d => new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: '2-digit' });
+        return (
+        <div className="detail-panel open">
+          <div className="dp-header" style={{ position: 'relative' }}>
+            <div className="dp-close" onClick={onCloseDetail}>
+              <X size={14} strokeWidth={2.4} />
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+              <div className="sc-av" style={{ width: '48px', height: '48px', fontSize: '19px' }}>{(st.name || '?').charAt(0)}</div>
+              <div>
+                <div style={{ fontFamily: 'var(--fs)', fontSize: '18px', fontWeight: 700, color: 'var(--inv)' }}>{st.name}</div>
+                <div style={{ fontSize: '12px', color: 'var(--inv3)' }}>
+                  {[st.examTarget, st.targetYear].filter(Boolean).join(' ')}{st.grade ? ` · Grade ${st.grade}` : ''}
+                </div>
+              </div>
+            </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-            <div className="sc-av" style={{ width: '48px', height: '48px', fontSize: '19px' }}>{s.init}</div>
-            <div>
-              <div style={{ fontFamily: 'var(--fs)', fontSize: '18px', fontWeight: 700, color: 'var(--inv)' }}>{s.name}</div>
-              <div style={{ fontSize: '12px', color: 'var(--inv3)' }}>{s.exam}</div>
+          <div className="dp-content">
+            <div className="journey-mini">
+              <div style={{ fontSize: '11px', color: 'var(--inv3)', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: '10px', fontWeight: 500 }}>Score Journey</div>
+              <div className="jm-scores">
+                <div className="jm-point">
+                  <div className="jm-val" style={{ color: 'var(--inv2)' }}>{first ? `${first.pct}%` : '—'}</div>
+                  <div className="jm-label">Day 1</div>
+                </div>
+                <div className="jm-point">
+                  <div className="jm-val" style={{ color: 'var(--gold)' }}>{latest ? `${latest.pct}%` : '—'}</div>
+                  <div className="jm-label">Latest</div>
+                </div>
+                <div className="jm-point">
+                  <div className="jm-val" style={{ color: 'var(--green)' }}>{gain !== null ? `${gain >= 0 ? '+' : ''}${gain}` : ''}</div>
+                  <div className="jm-label">Points</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="card mb" style={{ padding: '14px 16px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '.07em' }}>All Assessments</div>
+                <button className="btn btn-gold btn-sm" onClick={() => setAddScoreOpen(v => !v)}>{addScoreOpen ? 'Close' : '+ Add Score'}</button>
+              </div>
+
+              {addScoreOpen && (
+                <div className="jl-form">
+                  <div className="jl-form-row">
+                    <input className="jl-input" placeholder="Test / assessment name *" maxLength={120} value={scoreForm.name} onChange={e => setScoreForm(f => ({ ...f, name: e.target.value }))} />
+                    <input className="jl-input" type="date" max={new Date().toISOString().slice(0, 10)} value={scoreForm.date} onChange={e => setScoreForm(f => ({ ...f, date: e.target.value }))} />
+                  </div>
+                  <div className="jl-form-row">
+                    <input className="jl-input" type="number" min="0" placeholder="Marks obtained *" value={scoreForm.score} onChange={e => setScoreForm(f => ({ ...f, score: e.target.value }))} />
+                    <input className="jl-input" type="number" min="1" placeholder="Out of *" value={scoreForm.total} onChange={e => setScoreForm(f => ({ ...f, total: e.target.value }))} />
+                    <input className="jl-input" type="number" min="1" placeholder="Rank (opt.)" value={scoreForm.rank} onChange={e => setScoreForm(f => ({ ...f, rank: e.target.value }))} />
+                  </div>
+                  <div className="jl-form-actions">
+                    <span className="jl-chip">{facultySubject || 'Subject'}</span>
+                    <button className="btn btn-ghost btn-sm" onClick={() => setAddScoreOpen(false)}>Cancel</button>
+                    <button className="btn btn-gold btn-sm" disabled={scoreSaving} onClick={saveScore}>{scoreSaving ? 'Saving…' : 'Save Score'}</button>
+                  </div>
+                </div>
+              )}
+
+              {scores === null ? (
+                <div className="jl-empty">Loading journey…</div>
+              ) : scores.length === 0 ? (
+                <div className="jl-empty">No scores recorded yet — add the first assessment above.</div>
+              ) : (
+                <div className="jl-list">
+                  {scores.map(sc => (
+                    <div key={sc.id} className="jl-row">
+                      <div style={{ minWidth: 0 }}>
+                        <div className="jl-title">
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 170 }}>{sc.name || 'Assessment'}</span>
+                          <span className={`jl-src ${sc.source === 'manual' ? 'manual' : 'lms'}`}>{sc.source === 'manual' ? 'Manual' : 'LMS Test'}</span>
+                          {sc.rank ? <span className="jl-rank">#{sc.rank}</span> : null}
+                        </div>
+                        <div className="jl-meta">{sc.subject} · {fmtD(sc.testDate)} · Week {sc.weekNumber}</div>
+                      </div>
+                      <div className="jl-score">
+                        <div className="jl-pts" style={{ color: pctColor(sc.pct) }}>{sc.pct}%</div>
+                        <div className="jl-frac">{sc.score}/{sc.totalMarks}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="card mb" style={{ padding: '14px 16px' }}>
+              <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: '10px' }}>Student</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 12px' }}>
+                <div>
+                  <div style={{ fontSize: '11px', color: 'var(--text3)' }}>Grade</div>
+                  <div style={{ fontSize: '13.5px', fontWeight: 600 }}>{st.grade || '—'}</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '11px', color: 'var(--text3)' }}>Plan</div>
+                  <div style={{ fontSize: '13.5px', fontWeight: 600, textTransform: 'capitalize' }}>{st.plan || '—'}</div>
+                </div>
+                <div style={{ gridColumn: '1 / -1' }}>
+                  <div style={{ fontSize: '11px', color: 'var(--text3)' }}>Next session</div>
+                  <div style={{ fontSize: '13px', fontWeight: 500 }}>
+                    {st.nextSession
+                      ? `${st.nextSession.title} · ${new Date(st.nextSession.scheduledAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}`
+                      : 'None scheduled'}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="card" style={{ padding: '14px 16px' }}>
+              <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: '10px' }}>Quick Actions</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <button className="btn btn-gold btn-full" onClick={() => { onOpenModal('schedule-modal'); onCloseDetail(); }}>+ Schedule Session</button>
+                <button className="btn btn-ghost btn-full" onClick={() => { onOpenModal('suggest-res-modal'); onCloseDetail(); }}>Suggest Resource</button>
+                <button className="btn btn-ghost btn-full" onClick={() => { onNav('reports'); onCloseDetail(); }}>Draft Weekly Report</button>
+              </div>
             </div>
           </div>
         </div>
-        <div className="dp-content">
-          <div className="journey-mini">
-            <div style={{ fontSize: '11px', color: 'var(--inv3)', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: '10px', fontWeight: 500 }}>Score Journey</div>
-            <div className="jm-scores">
-              <div className="jm-point">
-                <div className="jm-val" style={{ color: 'var(--inv2)' }}>{s.base}</div>
-                <div className="jm-label">Day 1</div>
-              </div>
-              <div className="jm-point">
-                <div className="jm-val" style={{ color: 'var(--gold)' }}>{s.curr}</div>
-                <div className="jm-label">Today</div>
-              </div>
-              <div className="jm-point">
-                <div className="jm-val" style={{ color: 'var(--green)' }}>{s.gain ? `+${s.gain}` : ''}</div>
-                <div className="jm-label">Gained</div>
-              </div>
-            </div>
-          </div>
-
-          <div className="card mb" style={{ padding: '14px 16px' }}>
-            <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: '10px' }}>Current Focus</div>
-            <div style={{ fontSize: '13.5px', fontWeight: 500, color: 'var(--text)' }}>{s.topic}</div>
-            <div style={{ fontSize: '12px', color: 'var(--text3)', marginTop: '3px' }}>{s.subject}</div>
-          </div>
-
-          <div className="card mb" style={{ padding: '14px 16px' }}>
-            <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: '12px' }}>Quick Actions</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <button className="btn btn-gold btn-full" onClick={() => { onOpenModal('schedule-modal'); onCloseDetail(); }}>+ Schedule Session</button>
-              <button className="btn btn-ghost btn-full" onClick={() => { onOpenModal('suggest-res-modal'); onCloseDetail(); }}>Suggest Resource</button>
-              <button className="btn btn-ghost btn-full" onClick={() => { onNav('reports'); onCloseDetail(); }}>Draft Weekly Report</button>
-            </div>
-          </div>
-
-          <div className="card" style={{ padding: '14px 16px' }}>
-            <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '.07em', marginBottom: '10px' }}>Session Note</div>
-            <textarea className="sn-textarea" rows="3" placeholder="Quick note after this student's last session — feeds into their weekly report..."></textarea>
-            <button className="btn btn-gold btn-sm" style={{ marginTop: '8px', width: '100%', justifyContent: 'center' }} onClick={() => { onShowToast('Note saved ✓'); onCloseDetail(); }}>Save Note</button>
-          </div>
-        </div>
-      </div>
-      <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,31,61,0.3)', display: detailOpen ? 'block' : 'none', zIndex: 140 }} onClick={onCloseDetail} />
+        );
+      })()}
+      <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,31,61,0.3)', display: detailOpen && selectedStudent ? 'block' : 'none', zIndex: 140 }} onClick={onCloseDetail} />
 
       {/* Schedule Modal */}
       <div className={`overlay${isOpen('schedule-modal')}`} onClick={e => e.target.classList.contains('overlay') && onClose()}>

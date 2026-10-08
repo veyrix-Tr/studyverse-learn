@@ -358,14 +358,19 @@ router.get('/students', requireAuth, async (req, res) => {
 
     const now = new Date();
     const result = await Promise.all(relevant.map(async (sp) => {
+      // Full history (no take limit) so "Day 1 → Today" gain is the student's
+      // real baseline, not just a 4-test window.
       const scores = await prisma.weeklyScore.findMany({
         where: { studentId: sp.id, subject: fp.subject },
         orderBy: { testDate: 'desc' },
-        take: 4,
       });
       const nextSession = await prisma.session.findFirst({
         where: { facultyId: fp.id, grade: sp.grade, subject: fp.subject, scheduledAt: { gt: now } },
         orderBy: { scheduledAt: 'asc' },
+      });
+      const mapScore = sc => ({
+        score: sc.score, totalMarks: sc.totalMarks, testDate: sc.testDate, weekNumber: sc.weekNumber,
+        name: sc.name, source: sc.source, rank: sc.rank,
       });
       return {
         id: sp.id,
@@ -374,8 +379,8 @@ router.get('/students', requireAuth, async (req, res) => {
         targetYear: sp.targetYear,
         grade: sp.grade,
         plan: sp.plan,
-        latestScore: scores[0] ? { score: scores[0].score, totalMarks: scores[0].totalMarks, testDate: scores[0].testDate, weekNumber: scores[0].weekNumber } : null,
-        allScores: scores.map(s => ({ score: s.score, totalMarks: s.totalMarks, testDate: s.testDate, weekNumber: s.weekNumber })),
+        latestScore: scores[0] ? mapScore(scores[0]) : null,
+        allScores: scores.map(mapScore),
         nextSession: nextSession ? { scheduledAt: nextSession.scheduledAt, title: nextSession.title } : null,
       };
     }));
@@ -384,6 +389,102 @@ router.get('/students', requireAuth, async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to fetch students' });
+  }
+});
+
+// Ownership check shared by the score-journey endpoints below: a faculty sees a
+// student's scores only when an admin assigned them for a subject, or they are
+// the student's mentor.
+const ownsStudent = async (req, res) => {
+  const fp = await prisma.facultyProfile.findUnique({ where: { userId: req.params.userId } });
+  if (!fp) { res.status(403).json({ error: 'Not a faculty account' }); return null; }
+  const sp = await prisma.studentProfile.findUnique({
+    where: { id: parseInt(req.params.studentId) },
+    include: { user: { select: { name: true, email: true } } },
+  });
+  if (!sp) { res.status(404).json({ error: 'Student not found' }); return null; }
+  if (!assignedTo(fp, sp) && sp.mentorId !== fp.id) {
+    res.status(403).json({ error: 'This student is not assigned to you' });
+    return null;
+  }
+  return { fp, sp };
+};
+
+const journeyScore = sc => ({
+  id: sc.id, name: sc.name, subject: sc.subject, score: sc.score, totalMarks: sc.totalMarks,
+  pct: sc.totalMarks > 0 ? Math.round((sc.score / sc.totalMarks) * 100) : 0,
+  testDate: sc.testDate, weekNumber: sc.weekNumber, source: sc.source, rank: sc.rank,
+});
+
+// GET /api/faculty/student/:studentId/scores — the student's COMPLETE score
+// journey (every subject, every test — LMS and manual) for the assigned faculty.
+router.get('/student/:studentId/scores', requireAuth, async (req, res) => {
+  try {
+    const owned = await ownsStudent(req, res);
+    if (!owned) return;
+    const scores = await prisma.weeklyScore.findMany({
+      where: { studentId: owned.sp.id },
+      orderBy: [{ testDate: 'desc' }, { id: 'desc' }],
+    });
+    res.json({
+      student: { id: owned.sp.id, name: owned.sp.user.name, grade: owned.sp.grade, examTarget: owned.sp.examTarget },
+      scores: scores.map(journeyScore),
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch score journey' });
+  }
+});
+
+// POST /api/faculty/student/:studentId/scores — manual score entry for offline
+// tests, school exams, external papers, or faculty-conducted assessments.
+// Stored with source:'manual' so the journey can tell it apart from LMS scores.
+router.post('/student/:studentId/scores', requireAuth, async (req, res) => {
+  try {
+    const owned = await ownsStudent(req, res);
+    if (!owned) return;
+    const { fp, sp } = owned;
+
+    const name = typeof req.body.name === 'string' ? req.body.name.trim() : '';
+    if (!name || name.length > 120) return res.status(400).json({ error: 'Test/assessment name is required (max 120 characters)' });
+
+    const totalMarks = Number(req.body.totalMarks);
+    if (!Number.isInteger(totalMarks) || totalMarks < 1 || totalMarks > 10000)
+      return res.status(400).json({ error: 'Maximum marks must be an integer between 1 and 10000' });
+
+    const score = Number(req.body.score);
+    if (!Number.isInteger(score) || score < 0 || score > totalMarks)
+      return res.status(400).json({ error: 'Marks obtained must be an integer between 0 and maximum marks' });
+
+    const testDate = new Date(req.body.testDate);
+    if (!req.body.testDate || isNaN(testDate.getTime())
+        || testDate.getTime() < Date.UTC(2020, 0, 1)
+        || testDate.getTime() > Date.now() + 86400000)
+      return res.status(400).json({ error: 'Test date must be a valid date and not in the future' });
+
+    let rank = null;
+    if (req.body.rank !== undefined && req.body.rank !== null && req.body.rank !== '') {
+      const r = Number(req.body.rank);
+      if (!Number.isInteger(r) || r < 1 || r > 1000000)
+        return res.status(400).json({ error: 'Rank must be a positive integer' });
+      rank = r;
+    }
+
+    const subject = (typeof req.body.subject === 'string' && req.body.subject.trim())
+      ? req.body.subject.trim().slice(0, 40)
+      : fp.subject;
+
+    const weekNumber = Math.max(1, Math.ceil(
+      (testDate.getTime() - new Date(sp.createdAt).getTime()) / 604800000
+    ));
+
+    const created = await prisma.weeklyScore.create({
+      data: { studentId: sp.id, subject, score, totalMarks, testDate, name, source: 'manual', rank, weekNumber },
+    });
+    res.status(201).json({ success: true, score: journeyScore(created) });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to save score' });
   }
 });
 

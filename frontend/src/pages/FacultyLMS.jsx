@@ -11,7 +11,7 @@ const FacultyLMS = () => {
   const [navOpen, setNavOpen] = useState(false);
   const [openModal, setOpenModal] = useState(null);
   const [detailOpen, setDetailOpen] = useState(false);
-  const [selectedStudent] = useState(null);
+  const [selectedStudent, setSelectedStudent] = useState(null);
   const [toast, setToast] = useState({ show: false, msg: '' });
   const [profile, setProfile] = useState(null);
   const [mentorStudents, setMentorStudents] = useState([]);
@@ -408,6 +408,7 @@ const FacultyLMS = () => {
           sessions={sessions}
           doubts={doubts}
           students={students}
+          onOpenDetail={(st) => { setSelectedStudent(st); setDetailOpen(true); }}
           onDoubtAnswered={(id, answeredAt, answer, helpful) =>
             setDoubts(prev => prev.map(d => d.id === id ? { ...d, answeredAt, answer, helpful } : d))
           }
@@ -456,6 +457,13 @@ const FacultyLMS = () => {
           fetch(`${import.meta.env.VITE_API_URL}/api/faculty/${userId}/sessions`, { headers: { Authorization: `Bearer ${token}` } })
             .then(r => r.ok ? r.json() : null)
             .then(data => { if (Array.isArray(data)) setSessions(data); })
+            .catch(() => {});
+        }}
+        onScoreAdded={() => {
+          const token = localStorage.getItem('token');
+          fetch(`${import.meta.env.VITE_API_URL}/api/faculty/${userId}/students`, { headers: { Authorization: `Bearer ${token}` } })
+            .then(r => r.ok ? r.json() : null)
+            .then(data => { if (Array.isArray(data)) setStudents(data); })
             .catch(() => {});
         }}
       />

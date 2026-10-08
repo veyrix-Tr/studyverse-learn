@@ -2901,12 +2901,21 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
                   const isFirst = i === arr.length - 1;
                   const dateStr = new Date(w.testDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
                   return (
-                    <WeeklyReport key={w.weekNumber} week={`Week ${w.weekNumber} — ${dateStr}`} meta={w.subjects.map(s => s.subject).join(' + ')} score={wMarks} change={isFirst ? 'Start' : delta >= 0 ? `+${delta}` : `${delta}`} changeClass={isFirst ? 'start' : delta >= 0 ? 'up' : 'down'} isOpen={openWR.has(i)} onToggle={() => toggleWR(i)}>
-                      {w.subjects.map(s => {
+                    <WeeklyReport key={w.weekNumber} week={`Week ${w.weekNumber} — ${dateStr}`} meta={[...new Set(w.subjects.map(s => s.subject))].join(' + ')} score={wMarks} change={isFirst ? 'Start' : delta >= 0 ? `+${delta}` : `${delta}`} changeClass={isFirst ? 'start' : delta >= 0 ? 'up' : 'down'} isOpen={openWR.has(i)} onToggle={() => toggleWR(i)}>
+                      {w.subjects.map((s, si) => {
                         const pct = s.totalMarks > 0 ? Math.round(s.score / s.totalMarks * 100) : 0;
                         return (
-                          <div key={s.subject} className="subj-row">
-                            <div className="subj-name">{s.subject}</div>
+                          <div key={`${s.subject}-${si}`} className="subj-row" style={{ alignItems: 'center' }}>
+                            <div style={{ flex: '1 1 150px', minWidth: 0 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
+                                <span className="subj-name" style={{ marginBottom: 0, width: 'auto' }}>{s.subject}</span>
+                                <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '.07em', textTransform: 'uppercase', padding: '2px 6px', borderRadius: 5, background: s.source === 'manual' ? 'rgba(99,102,241,.12)' : 'rgba(245,200,66,.18)', color: s.source === 'manual' ? '#6366f1' : '#a1791a', flexShrink: 0 }}>
+                                  {s.source === 'manual' ? 'Manual' : 'LMS Test'}
+                                </span>
+                                {s.rank ? <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 5, background: 'rgba(15,31,61,.08)', color: 'var(--navy)', flexShrink: 0 }}>#{s.rank}</span> : null}
+                              </div>
+                              {s.name ? <div style={{ fontSize: 11.5, color: 'var(--text3)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.name}</div> : null}
+                            </div>
                             <div className="subj-bar"><div className="pbar"><div className="pbar-inner pbar-gold" style={{ width: `${pct}%` }}></div></div></div>
                             <div className="subj-score">{pct}%</div>
                           </div>
@@ -3002,12 +3011,21 @@ const FreeContent = ({ activePage, onNav, onOpenModal, onShowToast, profile, hab
             const change = isLast ? 'Start' : delta >= 0 ? `+${delta}%` : `${delta}%`;
             const changeClass = isLast ? 'start' : delta >= 0 ? 'up' : 'down';
             return (
-              <WeeklyReport key={w.weekNumber} week={`Week ${w.weekNumber} — ${dateStr}`} meta={w.subjects.map(s => s.subject).join(' + ')} score={`${avg}%`} change={change} changeClass={changeClass} isOpen={openWR.has(i + 100)} onToggle={() => toggleWR(i + 100)}>
-                {w.subjects.map(s => {
+              <WeeklyReport key={w.weekNumber} week={`Week ${w.weekNumber} — ${dateStr}`} meta={[...new Set(w.subjects.map(s => s.subject))].join(' + ')} score={`${avg}%`} change={change} changeClass={changeClass} isOpen={openWR.has(i + 100)} onToggle={() => toggleWR(i + 100)}>
+                {w.subjects.map((s, si) => {
                   const pct = s.totalMarks > 0 ? Math.round(s.score / s.totalMarks * 100) : 0;
                   return (
-                    <div key={s.subject} className="subj-row">
-                      <div className="subj-name">{s.subject}</div>
+                    <div key={`${s.subject}-${si}`} className="subj-row" style={{ alignItems: 'center' }}>
+                      <div style={{ flex: '1 1 150px', minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
+                          <span className="subj-name" style={{ marginBottom: 0, width: 'auto' }}>{s.subject}</span>
+                          <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '.07em', textTransform: 'uppercase', padding: '2px 6px', borderRadius: 5, background: s.source === 'manual' ? 'rgba(99,102,241,.12)' : 'rgba(245,200,66,.18)', color: s.source === 'manual' ? '#6366f1' : '#a1791a', flexShrink: 0 }}>
+                            {s.source === 'manual' ? 'Manual' : 'LMS Test'}
+                          </span>
+                          {s.rank ? <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 5, background: 'rgba(15,31,61,.08)', color: 'var(--navy)', flexShrink: 0 }}>#{s.rank}</span> : null}
+                        </div>
+                        {s.name ? <div style={{ fontSize: 11.5, color: 'var(--text3)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.name}</div> : null}
+                      </div>
                       <div className="subj-bar"><div className="pbar"><div className="pbar-inner pbar-gold" style={{ width: `${pct}%` }} /></div></div>
                       <div className="subj-score">{pct}%</div>
                     </div>

@@ -650,18 +650,27 @@ const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
               <WeeklyReport
                 key={w.weekNumber}
                 week={`Week ${w.weekNumber} — ${dateStr}`}
-                meta={w.subjects.map(s => s.subject).join(' + ')}
+                meta={[...new Set(w.subjects.map(s => s.subject))].join(' + ')}
                 score={wMarks}
                 change={isFirst ? 'Start' : delta >= 0 ? `+${delta}` : `${delta}`}
                 changeClass={isFirst ? 'start' : delta >= 0 ? 'up' : 'down'}
                 isOpen={openWR.has(i)}
                 onToggle={() => toggleWR(i)}
               >
-                {w.subjects.map(s => {
+                {w.subjects.map((s, si) => {
                   const pct = s.totalMarks > 0 ? Math.round(s.score / s.totalMarks * 100) : 0;
                   return (
-                    <div key={s.subject} className="subj-row" style={{ padding: '8px 0' }}>
-                      <div className="subj-name">{s.subject}</div>
+                    <div key={`${s.subject}-${si}`} className="subj-row" style={{ padding: '8px 0', alignItems: 'center' }}>
+                      <div style={{ flex: '1 1 150px', minWidth: 0 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
+                          <span className="subj-name" style={{ marginBottom: 0, width: 'auto' }}>{s.subject}</span>
+                          <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '.07em', textTransform: 'uppercase', padding: '2px 6px', borderRadius: 5, background: s.source === 'manual' ? 'rgba(99,102,241,.12)' : 'rgba(245,200,66,.18)', color: s.source === 'manual' ? '#6366f1' : '#a1791a', flexShrink: 0 }}>
+                            {s.source === 'manual' ? 'Manual' : 'LMS Test'}
+                          </span>
+                          {s.rank ? <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 5, background: 'rgba(15,31,61,.08)', color: 'var(--navy)', flexShrink: 0 }}>#{s.rank}</span> : null}
+                        </div>
+                        {s.name ? <div style={{ fontSize: 11.5, color: 'var(--text3)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.name}</div> : null}
+                      </div>
                       <div className="subj-bar"><div className="pbar"><div className="pbar-inner pbar-gold" style={{ width: `${pct}%` }}></div></div></div>
                       <div className="subj-score">{pct}%</div>
                     </div>
@@ -728,6 +737,13 @@ const StudentContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, 
                       <div className="subj-row" key={w.weekNumber} style={{ animationDelay: `${i * 40}ms` }}>
                         <div className="subj-row-title">
                           Week {String(w.weekNumber).slice(-2)}
+                          {s?.name ? <span style={{ fontSize: 11.5, fontWeight: 500, color: 'var(--text3)', marginLeft: 6 }}>{s.name}</span> : null}
+                          {s?.source ? (
+                            <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '.07em', textTransform: 'uppercase', padding: '2px 6px', borderRadius: 5, background: s.source === 'manual' ? 'rgba(99,102,241,.12)' : 'rgba(245,200,66,.18)', color: s.source === 'manual' ? '#6366f1' : '#a1791a', marginLeft: 6 }}>
+                              {s.source === 'manual' ? 'Manual' : 'LMS'}
+                            </span>
+                          ) : null}
+                          {s?.rank ? <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 5px', borderRadius: 5, background: 'rgba(15,31,61,.08)', color: 'var(--navy)', marginLeft: 5 }}>#{s.rank}</span> : null}
                           {w.testDate ? <span className="subj-row-meta" style={{ marginLeft: 6, fontWeight: 400 }}>· {fmtDate(w.testDate)}</span> : null}
                         </div>
                         <div className="subj-row-meta" style={{ fontWeight: 700, color: pct >= 70 ? 'var(--green)' : pct >= 40 ? 'var(--gold)' : 'var(--red)' }}>{pct}%</div>

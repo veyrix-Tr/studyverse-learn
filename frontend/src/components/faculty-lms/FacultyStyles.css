@@ -361,6 +361,29 @@ body.faculty-mode #root {
 .jm-val{font-family:var(--fs);font-size:18px;font-weight:700}
 .jm-label{font-size:10px;color:var(--inv3);margin-top:2px}
 
+/* score journey list + manual entry (detail panel) */
+.jl-list{display:flex;flex-direction:column;gap:8px;max-height:340px;overflow-y:auto;padding-right:2px}
+.jl-list::-webkit-scrollbar{width:6px}
+.jl-list::-webkit-scrollbar-thumb{background:var(--b);border-radius:3px}
+.jl-row{display:flex;justify-content:space-between;gap:10px;align-items:center;background:var(--cream2);border:1px solid var(--b);border-radius:10px;padding:10px 12px;animation:jlIn .18s ease backwards}
+@keyframes jlIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.jl-title{font-size:13px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:7px;min-width:0}
+.jl-src{font-size:9px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;padding:2px 6px;border-radius:5px;background:rgba(99,102,241,.12);color:#6366f1;flex-shrink:0}
+.jl-src.lms{background:rgba(245,200,66,.18);color:#a1791a}
+.jl-rank{font-size:10.5px;font-weight:700;padding:2px 6px;border-radius:5px;background:rgba(15,31,61,.08);color:var(--navy);flex-shrink:0}
+.jl-meta{font-size:11.5px;color:var(--text3);margin-top:3px}
+.jl-score{text-align:right;flex-shrink:0}
+.jl-pts{font-family:var(--fs);font-size:16px;font-weight:700;line-height:1}
+.jl-frac{font-size:11px;color:var(--text3);margin-top:3px}
+.jl-empty{font-size:12.5px;color:var(--text3);text-align:center;padding:18px 8px}
+.jl-form{background:var(--cream2);border:1px solid var(--b);border-radius:10px;padding:12px;margin-bottom:10px}
+.jl-form-row{display:flex;gap:8px;margin-bottom:8px}
+.jl-form-row .jl-input{flex:1;min-width:0}
+.jl-input{padding:8px 10px;background:var(--cream);border:1px solid var(--b);border-radius:8px;color:var(--text);font-family:var(--fb);font-size:12.5px;outline:none;width:100%;transition:border-color .15s}
+.jl-input:focus{border-color:var(--gold)}
+.jl-form-actions{display:flex;align-items:center;gap:8px;justify-content:flex-end}
+.jl-chip{margin-right:auto;font-size:11px;font-weight:600;color:var(--text2);background:var(--cream);border:1px solid var(--b);padding:4px 9px;border-radius:20px}
+
 /* ── MODALS ── */
 .overlay{position:fixed;inset:0;background:rgba(15,31,61,0.52);display:none;align-items:center;justify-content:center;z-index:200;backdrop-filter:blur(4px)}
 .overlay.open{display:flex}
