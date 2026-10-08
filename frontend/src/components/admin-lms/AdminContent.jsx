@@ -314,7 +314,13 @@ const fmtWeekRange = (weekStartDate) => {
   return `${fmt(mon)} – ${fmt(sun)}`;
 };
 
-const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, students = [], facultyList = [], onOpenMessage, isSuperAdmin, adminAccounts = [], onDeactivateAdmin, onReactivateAdmin, resources = [], onApproveResource, onDeclineResource, sentMessages = [], onSendMessage, parentReports = [], onApproveReport, onRejectReport, onSendReports, onApproveAllReports, onStudentMentorUpdated, onStudentSubjectFacultyUpdated, onStudentPlanUpdated, sessionRequests = [], onSessionRequestsUpdated, adminNotifications = [], onMarkNotifRead, onMarkAllNotifsRead, analytics = null, accessLog = [], facultyApplications = [], onFacultyStatusUpdated }) => {
+const FP_LABELS = {
+  sessions: 'Classes', doubts: 'Doubts', resources: 'Resources', reports: 'Weekly reports',
+  mentorNotes: 'Mentor notes', mentorCalls: 'Mentor calls', alerts: 'Alerts', notifications: 'Notifications',
+  mentees: 'Mentees', scoresEntered: 'Scores entered', sessionRequests: 'Session requests', subjectAssigned: 'Subject assignments',
+};
+
+const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, students = [], facultyList = [], onOpenMessage, isSuperAdmin, adminAccounts = [], onDeactivateAdmin, onReactivateAdmin, resources = [], onApproveResource, onDeclineResource, sentMessages = [], onSendMessage, parentReports = [], onApproveReport, onRejectReport, onSendReports, onApproveAllReports, onStudentMentorUpdated, onStudentSubjectFacultyUpdated, onStudentPlanUpdated, sessionRequests = [], onSessionRequestsUpdated, adminNotifications = [], onMarkNotifRead, onMarkAllNotifsRead, analytics = null, accessLog = [], facultyApplications = [], onFacultyStatusUpdated, onFacultyUpdated, onFacultyDeleted }) => {
   const firstName = profile?.name?.split(' ')[0] || 'there';
   const [stuQuery, setStuQuery] = useState('');
   const [stuPlan, setStuPlan] = useState('all');
@@ -322,6 +328,13 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
   const [planGrantStudent, setPlanGrantStudent] = useState(null);
   const [perfFaculty, setPerfFaculty] = useState(null);
   const [resetResult, setResetResult] = useState(null); // one-time { email, password }
+  const [editFaculty, setEditFaculty] = useState(null);
+  const [editForm, setEditForm] = useState(null);
+  const [editBusy, setEditBusy] = useState(false);
+  const [delFaculty, setDelFaculty] = useState(null);
+  const [delName, setDelName] = useState('');
+  const [delError, setDelError] = useState(null); // { message, footprint? } from 409
+  const [delBusy, setDelBusy] = useState(false);
 
   const handleFacultyResetPassword = async (f) => {
     if (!window.confirm(`Generate a temporary password for ${f.name}? Their old password will stop working immediately.`)) return;
@@ -357,6 +370,59 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
       onShowToast?.(`${f.name} ${next ? 'reactivated' : 'deactivated'} ✓`);
     } catch (e) {
       onShowToast?.('Update failed: ' + e.message);
+    }
+  };
+
+  const openFacultyEdit = f => {
+    setEditFaculty(f);
+    setEditForm({ name: f.name || '', subject: f.subject || '', department: f.department || '', qualification: f.qualification || '' });
+  };
+
+  const handleFacultyEditSubmit = async () => {
+    setEditBusy(true);
+    try {
+      const token = localStorage.getItem('token');
+      const r = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/${profile?.id}/faculty/${editFaculty.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(editForm),
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error || 'Failed');
+      onFacultyUpdated?.(data.faculty);
+      onShowToast?.(`${data.faculty.name} updated ✓`);
+      setEditFaculty(null);
+    } catch (e) {
+      onShowToast?.('Update failed: ' + e.message);
+    } finally {
+      setEditBusy(false);
+    }
+  };
+
+  const handleFacultyDelete = async () => {
+    setDelBusy(true);
+    setDelError(null);
+    try {
+      const token = localStorage.getItem('token');
+      const r = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/${profile?.id}/faculty/${delFaculty.id}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ confirm: delName }),
+      });
+      const data = await r.json().catch(() => ({}));
+      if (r.status === 409) {
+        setDelError({ message: data.message || data.error, footprint: data.footprint });
+        return;
+      }
+      if (!r.ok) throw new Error(data.error || 'Failed');
+      onFacultyDeleted?.(delFaculty.id);
+      onShowToast?.(`${delFaculty.name} deleted ✓`);
+      setDelFaculty(null);
+      setDelName('');
+    } catch (e) {
+      setDelError({ message: e.message });
+    } finally {
+      setDelBusy(false);
     }
   };
 
@@ -1045,11 +1111,13 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
                   </td>
                   <td className="ar">
                     <div style={{ display: 'flex', gap: '7px', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                      <button className="btn btn-ghost btn-md" onClick={() => openFacultyEdit(f)}>Edit</button>
                       <button className="btn btn-ghost btn-md" onClick={() => handleFacultyResetPassword(f)}>Reset password</button>
                       {f.isActive === false
-                        ? <button className="btn btn-green btn-md" onClick={() => handleFacultyStatusToggle(f)}>Reactivate</button>
-                        : <button className="btn btn-red btn-md" onClick={() => handleFacultyStatusToggle(f)}>Deactivate</button>}
-                      <button className="btn btn-green btn-md" onClick={() => setPerfFaculty(f)}>View performance</button>
+                        ? <button className="btn btn-ghost btn-md" style={{ color: '#059669', borderColor: '#d1fae5', background: '#ecfdf5' }} onClick={() => handleFacultyStatusToggle(f)}>Reactivate</button>
+                        : <button className="btn btn-ghost btn-md" style={{ color: '#dc2626', borderColor: '#ff92e2', background: '#fef2f2' }} onClick={() => handleFacultyStatusToggle(f)}>Deactivate</button>}
+                      <button className="btn btn-ghost btn-md" style={{ color: '#059669', borderColor: '#d1fefe5', background: '#d8ebe4' }} onClick={() => setPerfFaculty(f)}>View performance</button>
+                      <button className="btn btn-red btn-md" onClick={() => { setDelFaculty(f); setDelName(''); setDelError(null); }}>Delete</button>
                     </div>
                   </td>
                 </tr>
@@ -1825,6 +1893,79 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
               }}>Copy credentials</button>
               <button className="btn btn-ghost btn-sm" onClick={() => setResetResult(null)}>Done</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════ EDIT FACULTY ══════════ */}
+      {editFaculty && editForm && (
+        <div className="overlay open" onClick={e => { if (e.target.classList.contains('overlay')) setEditFaculty(null); }}>
+          <div className="modal">
+            <div className="mt">Edit {editFaculty.name}</div>
+            <div className="ms">The login email stays unchanged. Updates appear immediately in the faculty list and profile.</div>
+            <div className="fg"><label>Full Name *</label>
+              <input className="fi" type="text" value={editForm.name} onChange={e => setEditForm(p => ({ ...p, name: e.target.value }))} /></div>
+            <div className="fg"><label>Subject</label>
+              <input className="fi" type="text" value={editForm.subject} onChange={e => setEditForm(p => ({ ...p, subject: e.target.value }))} /></div>
+            <div className="fg"><label>Department</label>
+              <input className="fi" type="text" value={editForm.department} onChange={e => setEditForm(p => ({ ...p, department: e.target.value }))} /></div>
+            <div className="fg"><label>Qualification</label>
+              <input className="fi" type="text" placeholder="Ph.D, M.Sc..." value={editForm.qualification} onChange={e => setEditForm(p => ({ ...p, qualification: e.target.value }))} /></div>
+            <div className="ma">
+              <button className="btn btn-gold btn-sm" disabled={editBusy || !editForm.name.trim()} onClick={handleFacultyEditSubmit}>
+                {editBusy ? 'Saving…' : 'Save changes'}</button>
+              <button className="btn btn-ghost btn-sm" onClick={() => setEditFaculty(null)}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════ DELETE FACULTY (confirmation) ══════════ */}
+      {delFaculty && (
+        <div className="overlay open" onClick={e => { if (e.target.classList.contains('overlay')) { setDelFaculty(null); setDelName(''); setDelError(null); } }}>
+          <div className="modal">
+            <div className="mt">Delete {delFaculty.name}?</div>
+            {delError ? (
+              <>
+                <div className="ms" style={{ color: 'var(--red)' }}>{delError.message}</div>
+                {delError.footprint && (
+                  <div style={{ background: 'var(--cream2)', border: '1px solid var(--b)', borderRadius: 'var(--r)', padding: '14px 16px', marginBottom: '16px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 14px', fontSize: '13px' }}>
+                    {Object.entries(delError.footprint)
+                      .filter(([, v]) => v > 0)
+                      .map(([k, v]) => (
+                        <div key={k} style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                          <span style={{ color: 'var(--text3)' }}>{FP_LABELS[k] || k}</span>
+                          <b>{v}</b>
+                        </div>
+                      ))}
+                  </div>
+                )}
+                <div className="ma">
+                  <button className="btn btn-red btn-sm" onClick={() => {
+                    const f = delFaculty;
+                    setDelFaculty(null); setDelName(''); setDelError(null);
+                    handleFacultyStatusToggle(f);
+                  }}>Deactivate instead</button>
+                  <button className="btn btn-ghost btn-sm" onClick={() => { setDelFaculty(null); setDelName(''); setDelError(null); }}>Close</button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="ms">
+                  Permanent removal — this cannot be undone. Allowed only while the account has no classes, assignments, doubts or student records.
+                  If this faculty has history, <b>Deactivate</b> instead: it blocks login and keeps every record.
+                </div>
+                <div className="fg">
+                  <label>Type <b>{delFaculty.name}</b> to confirm</label>
+                  <input className="fi" type="text" placeholder={delFaculty.name} value={delName} onChange={e => setDelName(e.target.value)} />
+                </div>
+                <div className="ma">
+                  <button className="btn btn-red btn-sm" disabled={delBusy || delName.trim() !== delFaculty.name} onClick={handleFacultyDelete}>
+                    {delBusy ? 'Deleting…' : 'Delete permanently'}</button>
+                  <button className="btn btn-ghost btn-sm" onClick={() => { setDelFaculty(null); setDelName(''); setDelError(null); }}>Cancel</button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

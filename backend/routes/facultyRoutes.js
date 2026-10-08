@@ -356,22 +356,39 @@ router.get('/students', requireAuth, async (req, res) => {
 
     const relevant = relevantApex;
 
+    // Two batched queries for the whole roster — per-student parallel queries
+    // starve the Supabase pooler at scale.
     const now = new Date();
-    const result = await Promise.all(relevant.map(async (sp) => {
-      // Full history (no take limit) so "Day 1 → Today" gain is the student's
-      // real baseline, not just a 4-test window.
-      const scores = await prisma.weeklyScore.findMany({
-        where: { studentId: sp.id, subject: fp.subject },
-        orderBy: { testDate: 'desc' },
-      });
-      const nextSession = await prisma.session.findFirst({
-        where: { facultyId: fp.id, grade: sp.grade, subject: fp.subject, scheduledAt: { gt: now } },
+    const ids = relevant.map(sp => sp.id);
+    const [allScores, futureSessions] = await Promise.all([
+      ids.length
+        ? prisma.weeklyScore.findMany({
+            where: { studentId: { in: ids }, subject: fp.subject },
+            orderBy: { testDate: 'desc' },
+          })
+        : Promise.resolve([]),
+      prisma.session.findMany({
+        where: { facultyId: fp.id, subject: fp.subject, scheduledAt: { gt: now } },
         orderBy: { scheduledAt: 'asc' },
-      });
-      const mapScore = sc => ({
-        score: sc.score, totalMarks: sc.totalMarks, testDate: sc.testDate, weekNumber: sc.weekNumber,
-        name: sc.name, source: sc.source, rank: sc.rank,
-      });
+      }),
+    ]);
+    const scoresBy = new Map();
+    for (const sc of allScores) {
+      if (!scoresBy.has(sc.studentId)) scoresBy.set(sc.studentId, []);
+      scoresBy.get(sc.studentId).push(sc);
+    }
+    const nextByGrade = new Map(); // ordered asc → first per grade wins
+    for (const se of futureSessions) {
+      const g = se.grade ?? null;
+      if (!nextByGrade.has(g)) nextByGrade.set(g, se);
+    }
+    const mapScore = sc => ({
+      score: sc.score, totalMarks: sc.totalMarks, testDate: sc.testDate, weekNumber: sc.weekNumber,
+      name: sc.name, source: sc.source, rank: sc.rank,
+    });
+    const result = relevant.map(sp => {
+      const scores = scoresBy.get(sp.id) || [];
+      const nextSession = nextByGrade.get(sp.grade ?? null) || null;
       return {
         id: sp.id,
         name: sp.user.name,
@@ -383,7 +400,7 @@ router.get('/students', requireAuth, async (req, res) => {
         allScores: scores.map(mapScore),
         nextSession: nextSession ? { scheduledAt: nextSession.scheduledAt, title: nextSession.title } : null,
       };
-    }));
+    });
 
     res.json(result);
   } catch (err) {

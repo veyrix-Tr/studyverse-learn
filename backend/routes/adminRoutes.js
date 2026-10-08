@@ -531,6 +531,120 @@ router.put('/faculty/:id/status', requireAuth, requireAdmin, async (req, res) =>
   }
 });
 
+// PUT /api/admin/faculty/:id — edit faculty basics (name / subject / department / qualification).
+router.put('/faculty/:id', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const fp = await prisma.facultyProfile.findUnique({
+      where: { id },
+      include: { user: { select: { id: true, name: true, email: true } } },
+    });
+    if (!fp) return res.status(404).json({ error: 'Faculty not found' });
+
+    const { name, subject, department, qualification } = req.body || {};
+    const userData = {};
+    const profileData = {};
+    if (name !== undefined) {
+      if (typeof name !== 'string' || !name.trim() || name.trim().length > 120) {
+        return res.status(400).json({ error: 'Name must be 1-120 characters' });
+      }
+      userData.name = name.trim();
+    }
+    if (subject !== undefined) profileData.subject = String(subject).trim().slice(0, 80) || fp.subject;
+    if (department !== undefined) profileData.department = department ? String(department).trim().slice(0, 80) : null;
+    if (qualification !== undefined) profileData.qualification = qualification ? String(qualification).trim().slice(0, 120) : null;
+    if (!Object.keys(userData).length && !Object.keys(profileData).length) {
+      return res.status(400).json({ error: 'Nothing to update' });
+    }
+
+    if (Object.keys(userData).length) await prisma.user.update({ where: { id: fp.userId }, data: userData });
+    if (Object.keys(profileData).length) await prisma.facultyProfile.update({ where: { id }, data: profileData });
+
+    logAction({ adminUserId: req.params.userId, action: 'faculty.edit', target: userData.name || fp.user.name, metadata: { email: fp.user.email } });
+    res.json({
+      success: true,
+      faculty: {
+        id, userId: fp.userId,
+        name: userData.name ?? fp.user.name,
+        email: fp.user.email,
+        subject: profileData.subject ?? fp.subject,
+        department: profileData.department !== undefined ? profileData.department : fp.department,
+        qualification: profileData.qualification !== undefined ? profileData.qualification : fp.qualification,
+        isActive: fp.isActive,
+        createdAt: fp.createdAt,
+      },
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to update faculty' });
+  }
+});
+
+// DELETE /api/admin/faculty/:id — permanent removal with typed confirmation,
+// but ONLY for accounts with zero historical footprint. Classes, doubts,
+// resources, reports, mentor notes/calls and alerts all CASCADE on faculty
+// deletion, so a faculty with any history must be DEACTIVATED instead —
+// deactivation blocks login while keeping every record intact.
+router.delete('/faculty/:id', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const fp = await prisma.facultyProfile.findUnique({
+      where: { id },
+      include: { user: { select: { name: true, email: true } } },
+    });
+    if (!fp) return res.status(404).json({ error: 'Faculty not found' });
+
+    // Single round-trip footprint scan: parallel bursts starve the Supabase
+    // pooler (P1001), and history tables are required to be preserved, not
+    // cascaded away. subjectFaculty is a JSON map { subject: facultyId }.
+    const [row] = await prisma.$queryRaw`
+      SELECT
+        (SELECT count(*) FROM "Session"             WHERE "facultyId" = ${id})::int AS sessions,
+        (SELECT count(*) FROM "Doubt"               WHERE "facultyId" = ${id})::int AS doubts,
+        (SELECT count(*) FROM "Resource"            WHERE "facultyId" = ${id})::int AS resources,
+        (SELECT count(*) FROM "WeeklyReport"        WHERE "facultyId" = ${id})::int AS reports,
+        (SELECT count(*) FROM "MentorNote"          WHERE "mentorId"  = ${id})::int AS mentor_notes,
+        (SELECT count(*) FROM "MentorCall"          WHERE "mentorId"  = ${id})::int AS mentor_calls,
+        (SELECT count(*) FROM "FacultyAlert"        WHERE "facultyId" = ${id})::int AS alerts,
+        (SELECT count(*) FROM "FacultyNotification" WHERE "facultyId" = ${id})::int AS notifications,
+        (SELECT count(*) FROM "StudentProfile"      WHERE "mentorId"  = ${id})::int AS mentees,
+        (SELECT count(*) FROM "WeeklyScore"         WHERE "enteredBy" = ${id})::int AS scores_entered,
+        (SELECT count(*) FROM "SessionRequest"      WHERE "facultyId" = ${id})::int AS session_requests,
+        (SELECT COALESCE(SUM(CASE WHEN jsonb_typeof(s."subjectFaculty") = 'object' THEN
+            (SELECT count(*) FROM jsonb_each(s."subjectFaculty") e
+              WHERE e.value #>> '{}' = ${String(id)}) ELSE 0 END), 0)
+          FROM "StudentProfile" s WHERE s."subjectFaculty" IS NOT NULL)::int AS subject_assigned
+    `;
+    const footprint = {
+      sessions: row?.sessions ?? 0, doubts: row?.doubts ?? 0, resources: row?.resources ?? 0,
+      reports: row?.reports ?? 0, mentorNotes: row?.mentor_notes ?? 0, mentorCalls: row?.mentor_calls ?? 0,
+      alerts: row?.alerts ?? 0, notifications: row?.notifications ?? 0, mentees: row?.mentees ?? 0,
+      scoresEntered: row?.scores_entered ?? 0, sessionRequests: row?.session_requests ?? 0,
+      subjectAssigned: row?.subject_assigned ?? 0,
+    };
+    const total = Object.values(footprint).reduce((a, b) => a + b, 0);
+    if (total > 0) {
+      return res.status(409).json({
+        error: 'This faculty has historical data that deletion would erase.',
+        footprint, total, hint: 'deactivate',
+        message: 'Deactivate instead — it blocks login while keeping classes, assignments, doubts and student records intact.',
+      });
+    }
+
+    const confirm = req.body?.confirm;
+    if (typeof confirm !== 'string' || confirm.trim() !== fp.user.name) {
+      return res.status(400).json({ error: `Type "${fp.user.name}" exactly to confirm permanent deletion.` });
+    }
+
+    await prisma.user.delete({ where: { id: fp.userId } });
+    logAction({ adminUserId: req.params.userId, action: 'faculty.delete', target: fp.user.name, metadata: { email: fp.user.email } });
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to delete faculty' });
+  }
+});
+
 // GET /api/admin/faculty-applications — list faculty self-enrollment applications
 router.get('/faculty-applications', requireAuth, requireAdmin, async (req, res) => {
   try {
