@@ -45,8 +45,11 @@ model StudentProfile {
   diagnosticScore   Int?
   diagnosticTakenAt DateTime?
   diagnosticAnswers Json?
+  // Admin deactivation blocks login while every record stays intact
+  // (mirrors FacultyProfile.isActive).
+  isActive          Boolean  @default(true)
   createdAt       DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  updatedAt       DateTime  @updatedAt
 
   mentorId             Int?
   mentor               FacultyProfile?        @relation("MentorAssignment", fields: [mentorId], references: [id])

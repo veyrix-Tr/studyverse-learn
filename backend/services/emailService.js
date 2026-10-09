@@ -253,4 +253,45 @@ const sendStudentWelcomeEmail = async (toEmail, name, password) => {
   }
 };
 
-module.exports = { sendOtpEmail, sendReceiptEmail, sendFacultyWelcomeEmail, sendFacultyApprovalEmail, sendFacultyPasswordResetEmail, sendStudentWelcomeEmail };
+const sendStudentPasswordResetEmail = async (toEmail, name, password) => {
+  try {
+    await axios.post(
+      'https://api.brevo.com/v3/smtp/email',
+      {
+        sender: {
+          name:  'Studyverse',
+          email: process.env.BREVO_SENDER_EMAIL,
+        },
+        to: [{ email: toEmail }],
+        subject: 'Your Studyverse Password Has Been Reset',
+        htmlContent: `
+        <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px;">
+          <h2 style="color:#0F1F3D;margin-bottom:8px;">Password reset, ${name}</h2>
+          <p style="color:#4A5568;margin-bottom:24px;">An administrator generated a temporary password for your Studyverse account. Use it to sign in.</p>
+          <div style="background:#F5EFE3;border-radius:10px;padding:24px;margin-bottom:24px;">
+            <div style="color:#8896B3;font-size:13px;margin-bottom:6px;">Email</div>
+            <div style="font-size:16px;font-weight:700;color:#0F1F3D;margin-bottom:16px;">${toEmail}</div>
+            <div style="color:#8896B3;font-size:13px;margin-bottom:6px;">Temporary Password</div>
+            <div style="font-size:16px;font-weight:700;color:#0F1F3D;">${password}</div>
+          </div>
+          <p style="color:#4A5568;margin-bottom:24px;">Your old password no longer works. Please change this password after logging in.</p>
+          <p style="color:#8896B3;font-size:13px;">If you did not expect this, contact the Studyverse admin team.</p>
+        </div>`,
+      },
+      {
+        headers: {
+          'api-key':      process.env.BREVO_API_KEY,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    console.log(`Student password reset email sent to ${toEmail}`);
+    return true;
+  } catch (error) {
+    console.error('Student password reset email failed:', error.response?.data || error.message);
+    return false;
+  }
+};
+
+module.exports = { sendOtpEmail, sendReceiptEmail, sendFacultyWelcomeEmail, sendFacultyApprovalEmail, sendFacultyPasswordResetEmail, sendStudentWelcomeEmail, sendStudentPasswordResetEmail };

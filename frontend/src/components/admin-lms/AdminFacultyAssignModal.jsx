@@ -75,7 +75,7 @@ const AdminFacultyAssignModal = ({ student, facultyList, onSave, onClose, saving
       headerExtra={(
         <div className="am-progress">
           <span className="track">
-            <i style={{ width: `${(assignedCount / totalSubjects) * 100}%` }} />
+            <i style={{ width: `${Math.min(100, (assignedCount / totalSubjects) * 100)}%` }} />
           </span>
           <span className="label">{assignedCount}/{totalSubjects} assigned</span>
         </div>
@@ -118,7 +118,9 @@ const AdminFacultyAssignModal = ({ student, facultyList, onSave, onClose, saving
             ? opts.filter(f => f.name.toLowerCase().includes(filteredSearch))
             : opts;
           const selId = selections[subj] || null;
-          const selFaculty = opts.find(f => f.id === selId);
+          // Look up the pick in the full list so the name shows even when the
+          // current assignee is filtered out of this section's options.
+          const selFaculty = facultyList.find(f => f.id === selId);
 
           return (
             <div className="am-subject" key={subj} style={{ animationDelay: `${si * 0.05}s` }}>

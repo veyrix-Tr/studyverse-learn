@@ -61,6 +61,8 @@ router.get('/students', requireAuth, requireAdmin, async (req, res) => {
         id: s.id, userId: s.userId,
         name: s.user.name,
         plan: s.plan, planEndDate: s.planEndDate, examTarget: s.examTarget, grade: s.grade,
+        isActive: s.isActive,
+        parentPhone: s.parentPhone,
         diagnosticScore: s.diagnosticScore,
         diagnosticTakenAt: s.diagnosticTakenAt,
         mentorId: s.mentorId || null,
@@ -213,13 +215,35 @@ router.get('/faculty', requireAuth, requireAdmin, async (req, res) => {
         sessions: { select: { id: true, subject: true, grade: true, scheduledAt: true } },
         weeklyReports: { select: { overallRating: true }, orderBy: { createdAt: 'desc' }, take: 20 },
         mentorStudents: { select: { id: true, grade: true } },
+        resources: { select: { type: true, status: true } },
+        doubts: { select: { answer: true } },
       },
       orderBy: { user: { name: 'asc' } },
     });
 
     // Subject-faculty assignments live as { subject: facultyId } maps on
     // students — counted here so the credentials table can show them.
-    const studentMaps = await prisma.studentProfile.findMany({ select: { subjectFaculty: true, grade: true } });
+    const studentMaps = await prisma.studentProfile.findMany({ select: { id: true, subjectFaculty: true, grade: true } });
+
+    // Scores entered attribution (Req 7) — one grouped query for all faculty.
+    const scoreCounts = faculty.length
+      ? await prisma.weeklyScore.groupBy({
+          by: ['enteredBy'],
+          where: { enteredBy: { in: faculty.map(f => f.id) } },
+          _count: { _all: true },
+        })
+      : [];
+    const scoreMap = new Map(scoreCounts.map(r => [r.enteredBy, r._count._all]));
+
+    // Monitoring ranges — same bounded [start, end) semantics as the
+    // per-faculty performance detail so summary and detail always agree.
+    const now = new Date();
+    const startOfWeek = new Date(now); startOfWeek.setHours(0, 0, 0, 0); startOfWeek.setDate(startOfWeek.getDate() - ((startOfWeek.getDay() + 6) % 7));
+    const endOfWeek = new Date(startOfWeek); endOfWeek.setDate(startOfWeek.getDate() + 7);
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    const ASSIGNMENT_TYPES = ['Practice Set', 'Previous Year Papers'];
+    const HOMEWORK_TYPES = ['Study Material', 'Formula Sheet'];
 
     const result = faculty.map(f => {
       const ratings = f.weeklyReports.map(r => r.overallRating).filter(Boolean);
@@ -240,6 +264,12 @@ router.get('/faculty', requireAuth, requireAdmin, async (req, res) => {
         ...f.mentorStudents.map(s => s.grade),
         ...subjectAssignedStudents.map(sm => sm.grade),
       ].filter(Boolean).map(String))];
+      // Req 13 — monitoring summary (bounded windows, status-aware).
+      const scheduled = f.sessions.map(s => new Date(s.scheduledAt));
+      const studentsCount = new Set([
+        ...f.mentorStudents.map(s => s.id),
+        ...subjectAssignedStudents.map(sm => sm.id),
+      ]).size;
       return {
         id: f.id,
         userId: f.userId,
@@ -259,6 +289,15 @@ router.get('/faculty', requireAuth, requireAdmin, async (req, res) => {
         reportCount: f.weeklyReports.length,
         mentorStudentCount: f.mentorStudents.length,
         subjectAssignedCount: subjectAssignedStudents.length,
+        studentsCount,
+        classesThisWeek: scheduled.filter(d => d >= startOfWeek && d < endOfWeek).length,
+        classesThisMonth: scheduled.filter(d => d >= startOfMonth && d < endOfMonth).length,
+        assignments: f.resources.filter(r => ASSIGNMENT_TYPES.includes(r.type)).length,
+        homework: f.resources.filter(r => HOMEWORK_TYPES.includes(r.type)).length,
+        resourcesShared: f.resources.filter(r => r.status === 'approved').length,
+        doubtsPending: f.doubts.filter(d => !d.answer).length,
+        doubtsResolved: f.doubts.filter(d => !!d.answer).length,
+        scoresUpdated: scoreMap.get(f.id) || 0,
       };
     });
 
@@ -292,21 +331,26 @@ router.get('/faculty/:id/performance', requireAuth, requireAdmin, async (req, re
 
     const now = new Date();
     const startOfWeek = new Date(now); startOfWeek.setHours(0, 0, 0, 0); startOfWeek.setDate(startOfWeek.getDate() - ((startOfWeek.getDay() + 6) % 7));
+    const endOfWeek = new Date(startOfWeek); endOfWeek.setDate(startOfWeek.getDate() + 7);
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
     const startOfYear = new Date(now.getFullYear(), 0, 1);
+    const endOfYear = new Date(now.getFullYear() + 1, 0, 1);
 
-    const inRange = (d, start) => new Date(d) >= start;
+    // Bounded [start, end) ranges — a session next Monday must not count as
+    // "this week", and next month's schedule must not leak into "this month".
+    const inRange = (d, start, end) => new Date(d) >= start && new Date(d) < end;
 
     const sessions = fp.sessions;
     const conductedSessions = sessions.filter(s => new Date(s.scheduledAt) <= now);
     const period = (arr, dateOf) => ({
-      week:   arr.filter(x => inRange(dateOf(x), startOfWeek)).length,
-      month:  arr.filter(x => inRange(dateOf(x), startOfMonth)).length,
-      year:   arr.filter(x => inRange(dateOf(x), startOfYear)).length,
+      week:   arr.filter(x => inRange(dateOf(x), startOfWeek, endOfWeek)).length,
+      month:  arr.filter(x => inRange(dateOf(x), startOfMonth, endOfMonth)).length,
+      year:   arr.filter(x => inRange(dateOf(x), startOfYear, endOfYear)).length,
     });
-    const sessionsThisWeek = sessions.filter(s => inRange(s.scheduledAt, startOfWeek));
-    const sessionsThisMonth = sessions.filter(s => inRange(s.scheduledAt, startOfMonth));
-    const sessionsThisYear = sessions.filter(s => inRange(s.scheduledAt, startOfYear));
+    const sessionsThisWeek = sessions.filter(s => inRange(s.scheduledAt, startOfWeek, endOfWeek));
+    const sessionsThisMonth = sessions.filter(s => inRange(s.scheduledAt, startOfMonth, endOfMonth));
+    const sessionsThisYear = sessions.filter(s => inRange(s.scheduledAt, startOfYear, endOfYear));
 
     const doubts = fp.doubts;
     const pendingDoubts = doubts.filter(d => !d.answer);
@@ -1205,6 +1249,182 @@ router.get('/student/:studentUserId/plan-grants', requireAuth, requireAdmin, asy
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to fetch plan history' });
+  }
+});
+
+// PUT /api/admin/student/:studentUserId — edit student basics (parity with faculty edit).
+router.put('/student/:studentUserId', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const profile = await prisma.studentProfile.findUnique({
+      where: { userId: req.params.studentUserId },
+      include: { user: { select: { id: true, name: true, email: true } } },
+    });
+    if (!profile) return res.status(404).json({ error: 'Student not found' });
+
+    const { name, grade, examTarget, phone } = req.body || {};
+    const userData = {};
+    const profileData = {};
+    if (name !== undefined) {
+      if (typeof name !== 'string' || !name.trim() || name.trim().length > 120) {
+        return res.status(400).json({ error: 'Name must be 1-120 characters' });
+      }
+      userData.name = name.trim();
+    }
+    if (grade !== undefined) {
+      if (typeof grade !== 'string' || !grade.trim() || grade.trim().length > 20) {
+        return res.status(400).json({ error: 'Grade must be 1-20 characters' });
+      }
+      profileData.grade = grade.trim();
+    }
+    if (examTarget !== undefined) {
+      const EXAMS = ['JEE Mains', 'JEE Advanced', 'NEET'];
+      if (!EXAMS.includes(examTarget)) return res.status(400).json({ error: 'Invalid course / exam target' });
+      profileData.examTarget = examTarget;
+    }
+    if (phone !== undefined) {
+      const digits = String(phone || '').replace(/\D/g, '');
+      if (phone && !(digits.length === 10 || (digits.length === 12 && digits.startsWith('91')))) {
+        return res.status(400).json({ error: 'Mobile number must be 10 digits' });
+      }
+      profileData.parentPhone = phone ? digits.slice(-10) : null;
+    }
+    if (!Object.keys(userData).length && !Object.keys(profileData).length) {
+      return res.status(400).json({ error: 'Nothing to update' });
+    }
+
+    if (Object.keys(userData).length) await prisma.user.update({ where: { id: profile.userId }, data: userData });
+    if (Object.keys(profileData).length) await prisma.studentProfile.update({ where: { id: profile.id }, data: profileData });
+
+    logAction({ adminUserId: req.params.userId, action: 'student.edit', target: userData.name || profile.user.name, metadata: { email: profile.user.email } });
+    res.json({
+      success: true,
+      student: {
+        userId: profile.userId,
+        name: userData.name ?? profile.user.name,
+        grade: profileData.grade ?? profile.grade,
+        examTarget: profileData.examTarget ?? profile.examTarget,
+        parentPhone: profileData.parentPhone !== undefined ? profileData.parentPhone : profile.parentPhone,
+        isActive: profile.isActive,
+      },
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to update student' });
+  }
+});
+
+// PUT /api/admin/student/:studentUserId/status — activate/deactivate a student
+// account. Deactivation blocks login at the auth layer; every record stays.
+router.put('/student/:studentUserId/status', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const { isActive } = req.body;
+    if (typeof isActive !== 'boolean') return res.status(400).json({ error: 'isActive must be boolean' });
+    const profile = await prisma.studentProfile.findUnique({
+      where: { userId: req.params.studentUserId },
+      include: { user: { select: { name: true, email: true } } },
+    });
+    if (!profile) return res.status(404).json({ error: 'Student not found' });
+
+    await prisma.studentProfile.update({ where: { id: profile.id }, data: { isActive } });
+    logAction({ adminUserId: req.params.userId, action: isActive ? 'student.reactivate' : 'student.deactivate', target: profile.user.name, metadata: { email: profile.user.email } });
+    res.json({ success: true, isActive });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to update account status' });
+  }
+});
+
+// POST /api/admin/student/:studentUserId/reset-password — generate a temporary
+// password (parity with the faculty reset: bcrypt-hashed, shown once, emailed).
+router.post('/student/:studentUserId/reset-password', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const profile = await prisma.studentProfile.findUnique({
+      where: { userId: req.params.studentUserId },
+      include: { user: { select: { id: true, name: true, email: true } } },
+    });
+    if (!profile) return res.status(404).json({ error: 'Student not found' });
+
+    const password = Math.random().toString(36).slice(2, 10) + Math.random().toString(36).slice(2, 6).toUpperCase() + '!';
+    const bcrypt = require('bcrypt');
+    const hashed = await bcrypt.hash(password, 10);
+    await prisma.user.update({ where: { id: profile.userId }, data: { password: hashed } });
+
+    const { sendStudentPasswordResetEmail } = require('../services/emailService');
+    sendStudentPasswordResetEmail(profile.user.email, profile.user.name, password).catch(() => {});
+
+    logAction({ adminUserId: req.params.userId, action: 'student.password_reset', target: profile.user.name, metadata: { email: profile.user.email } });
+    res.json({ success: true, email: profile.user.email, password, emailed: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to reset password' });
+  }
+});
+
+// DELETE /api/admin/student/:studentUserId — permanent removal, but ONLY for
+// accounts with zero historical footprint (scores, doubts, classes, reports,
+// payments, plan grants … all CASCADE and must be preserved). Accounts with
+// history must be DEACTIVATED instead.
+router.delete('/student/:studentUserId', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const profile = await prisma.studentProfile.findUnique({
+      where: { userId: req.params.studentUserId },
+      include: { user: { select: { name: true, email: true } } },
+    });
+    if (!profile) return res.status(404).json({ error: 'Student not found' });
+    const id = profile.id;
+
+    // Single round-trip footprint scan (parallel bursts starve the pooler).
+    const [row] = await prisma.$queryRaw`
+      SELECT
+        (SELECT count(*) FROM "WeeklyScore"      WHERE "studentId" = ${id})::int AS scores,
+        (SELECT count(*) FROM "Doubt"            WHERE "studentId" = ${id})::int AS doubts,
+        (SELECT count(*) FROM "Session"          WHERE "studentId" = ${id})::int AS sessions,
+        (SELECT count(*) FROM "SessionStudent"   WHERE "studentId" = ${id})::int AS enrollments,
+        (SELECT count(*) FROM "SessionRequest"   WHERE "studentId" = ${id})::int AS session_requests,
+        (SELECT count(*) FROM "WeeklyReport"     WHERE "studentId" = ${id})::int AS weekly_reports,
+        (SELECT count(*) FROM "DailyReport"      WHERE "studentId" = ${id})::int AS daily_reports,
+        (SELECT count(*) FROM "ParentFeedback"   WHERE "studentId" = ${id})::int AS feedback,
+        (SELECT count(*) FROM "CompletedTopic"   WHERE "studentId" = ${id})::int AS topics,
+        (SELECT count(*) FROM "HabitLog"         WHERE "studentId" = ${id})::int AS habit_logs,
+        (SELECT count(*) FROM "MentorNote"       WHERE "studentId" = ${id})::int AS mentor_notes,
+        (SELECT count(*) FROM "MentorCall"       WHERE "studentId" = ${id})::int AS mentor_calls,
+        (SELECT count(*) FROM "Payment"          WHERE "studentId" = ${id})::int AS payments,
+        (SELECT count(*) FROM "PlanGrant"        WHERE "studentId" = ${id})::int AS plan_grants,
+        (SELECT count(*) FROM "AdminMessage"     WHERE "studentId" = ${id})::int AS messages,
+        (SELECT count(*) FROM "ResourceRecipient" WHERE "studentId" = ${id})::int AS resources,
+        (SELECT count(*) FROM "FacultyNotification" WHERE "studentId" = ${id})::int AS notifications,
+        (CASE WHEN ${profile.diagnosticTakenAt}::timestamptz IS NOT NULL THEN 1 ELSE 0 END)::int AS diagnostic
+    `;
+    const footprint = {
+      scores: row?.scores ?? 0, doubts: row?.doubts ?? 0, sessions: row?.sessions ?? 0,
+      enrollments: row?.enrollments ?? 0, sessionRequests: row?.session_requests ?? 0,
+      weeklyReports: row?.weekly_reports ?? 0, dailyReports: row?.daily_reports ?? 0,
+      feedback: row?.feedback ?? 0, topics: row?.topics ?? 0, habitLogs: row?.habit_logs ?? 0,
+      mentorNotes: row?.mentor_notes ?? 0, mentorCalls: row?.mentor_calls ?? 0,
+      payments: row?.payments ?? 0, planGrants: row?.plan_grants ?? 0,
+      messages: row?.messages ?? 0, resources: row?.resources ?? 0,
+      notifications: row?.notifications ?? 0, diagnostic: row?.diagnostic ?? 0,
+    };
+    const total = Object.values(footprint).reduce((a, b) => a + b, 0);
+    if (total > 0) {
+      return res.status(409).json({
+        error: 'This student has historical data that deletion would erase.',
+        footprint, total, hint: 'deactivate',
+        message: 'Deactivate instead — it blocks login while keeping scores, doubts, classes, reports and payment records intact.',
+      });
+    }
+
+    const confirm = req.body?.confirm;
+    if (typeof confirm !== 'string' || confirm.trim() !== profile.user.name) {
+      return res.status(400).json({ error: `Type "${profile.user.name}" exactly to confirm permanent deletion.` });
+    }
+
+    await prisma.user.delete({ where: { id: profile.userId } });
+    logAction({ adminUserId: req.params.userId, action: 'student.delete', target: profile.user.name, metadata: { email: profile.user.email } });
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to delete student' });
   }
 });
 

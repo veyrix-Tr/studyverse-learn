@@ -93,6 +93,11 @@ const login = async (req, res) => {
       return res.status(403).json({ error: 'Your account has been deactivated. Please contact your administrator.' });
     }
 
+    // Block deactivated student accounts
+    if (user.role === 'student' && user.studentProfile?.isActive === false) {
+      return res.status(403).json({ error: 'Your account has been deactivated. Please contact your administrator.' });
+    }
+
     // Create a JWT token with user id, role, and plan inside
     const plan = planClaim(user);
     const token = jwt.sign(

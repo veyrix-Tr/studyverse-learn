@@ -319,9 +319,12 @@ const FP_LABELS = {
   sessions: 'Classes', doubts: 'Doubts', resources: 'Resources', reports: 'Weekly reports',
   mentorNotes: 'Mentor notes', mentorCalls: 'Mentor calls', alerts: 'Alerts', notifications: 'Notifications',
   mentees: 'Mentees', scoresEntered: 'Scores entered', sessionRequests: 'Session requests', subjectAssigned: 'Subject assignments',
+  scores: 'Scores', enrollments: 'Class enrollments', weeklyReports: 'Weekly reports', dailyReports: 'Daily reports',
+  feedback: 'Parent feedback', topics: 'Completed topics', habitLogs: 'Habit logs', payments: 'Payments',
+  planGrants: 'Plan grants', messages: 'Messages sent', diagnostic: 'Diagnostic taken',
 };
 
-const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, students = [], facultyList = [], onOpenMessage, isSuperAdmin, adminAccounts = [], onDeactivateAdmin, onReactivateAdmin, resources = [], onApproveResource, onDeclineResource, sentMessages = [], onSendMessage, parentReports = [], onApproveReport, onRejectReport, onSendReports, onApproveAllReports, onStudentMentorUpdated, onStudentSubjectFacultyUpdated, onStudentPlanUpdated, sessionRequests = [], onSessionRequestsUpdated, adminNotifications = [], onMarkNotifRead, onMarkAllNotifsRead, analytics = null, accessLog = [], facultyApplications = [], onFacultyStatusUpdated, onFacultyUpdated, onFacultyDeleted }) => {
+const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, students = [], facultyList = [], onOpenMessage, isSuperAdmin, adminAccounts = [], onDeactivateAdmin, onReactivateAdmin, resources = [], onApproveResource, onDeclineResource, sentMessages = [], onSendMessage, parentReports = [], onApproveReport, onRejectReport, onSendReports, onApproveAllReports, onStudentMentorUpdated, onStudentSubjectFacultyUpdated, onStudentPlanUpdated, onStudentUpdated, onStudentDeleted, sessionRequests = [], onSessionRequestsUpdated, adminNotifications = [], onMarkNotifRead, onMarkAllNotifsRead, analytics = null, accessLog = [], facultyApplications = [], onFacultyStatusUpdated, onFacultyUpdated, onFacultyDeleted }) => {
   const firstName = profile?.name?.split(' ')[0] || 'there';
   const [stuQuery, setStuQuery] = useState('');
   const [stuPlan, setStuPlan] = useState('all');
@@ -333,9 +336,12 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
   const [editForm, setEditForm] = useState(null);
   const [editBusy, setEditBusy] = useState(false);
   const [delFaculty, setDelFaculty] = useState(null);
+  const [delStudent, setDelStudent] = useState(null);
   const [delName, setDelName] = useState('');
   const [delError, setDelError] = useState(null); // { message, footprint? } from 409
   const [delBusy, setDelBusy] = useState(false);
+  const [editStudent, setEditStudent] = useState(null);
+  const [editStudentForm, setEditStudentForm] = useState(null);
 
   const handleFacultyResetPassword = async (f) => {
     if (!window.confirm(`Generate a temporary password for ${f.name}? Their old password will stop working immediately.`)) return;
@@ -419,6 +425,101 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
       onFacultyDeleted?.(delFaculty.id);
       onShowToast?.(`${delFaculty.name} deleted ✓`);
       setDelFaculty(null);
+      setDelName('');
+    } catch (e) {
+      setDelError({ message: e.message });
+    } finally {
+      setDelBusy(false);
+    }
+  };
+
+  const openStudentEdit = s => {
+    setEditStudent(s);
+    setEditStudentForm({
+      name: s.name || '',
+      grade: s.grade || '',
+      examTarget: s.examTarget || 'NEET',
+      phone: s.parentPhone || '',
+    });
+  };
+
+  const handleStudentEditSubmit = async () => {
+    setEditBusy(true);
+    try {
+      const token = localStorage.getItem('token');
+      const r = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/${profile?.id}/student/${editStudent.userId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(editStudentForm),
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error || 'Failed');
+      onStudentUpdated?.(editStudent.userId, data.student);
+      onShowToast?.(`${data.student.name} updated ✓`);
+      setEditStudent(null);
+    } catch (e) {
+      onShowToast?.('Update failed: ' + e.message);
+    } finally {
+      setEditBusy(false);
+    }
+  };
+
+  const handleStudentResetPassword = async (s) => {
+    if (!window.confirm(`Generate a temporary password for ${s.name}? Their old password will stop working immediately.`)) return;
+    const token = localStorage.getItem('token');
+    try {
+      const r = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/${profile?.id}/student/${s.userId}/reset-password`, {
+        method: 'POST', headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error || 'Failed');
+      setResetResult(data);
+      onShowToast?.('Temporary password generated and emailed to student ✓');
+    } catch (e) {
+      onShowToast?.('Reset failed: ' + e.message);
+    }
+  };
+
+  const handleStudentStatusToggle = async (s) => {
+    const next = s.isActive === false;
+    if (!window.confirm(next
+      ? `Reactivate ${s.name}'s account? They will be able to log in again.`
+      : `Deactivate ${s.name}'s account? They will not be able to log in.`)) return;
+    const token = localStorage.getItem('token');
+    try {
+      const r = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/${profile?.id}/student/${s.userId}/status`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ isActive: next }),
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error || 'Failed');
+      onStudentUpdated?.(s.userId, { isActive: data.isActive });
+      onShowToast?.(`${s.name} ${data.isActive ? 'reactivated' : 'deactivated'} ✓`);
+    } catch (e) {
+      onShowToast?.('Failed: ' + e.message);
+    }
+  };
+
+  const handleStudentDelete = async () => {
+    setDelBusy(true);
+    setDelError(null);
+    try {
+      const token = localStorage.getItem('token');
+      const r = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/${profile?.id}/student/${delStudent.userId}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ confirm: delName }),
+      });
+      const data = await r.json().catch(() => ({}));
+      if (r.status === 409) {
+        setDelError({ message: data.message || data.error, footprint: data.footprint });
+        return;
+      }
+      if (!r.ok) throw new Error(data.error || 'Failed');
+      onStudentDeleted?.(delStudent.userId);
+      onShowToast?.(`${delStudent.name} deleted ✓`);
+      setDelStudent(null);
       setDelName('');
     } catch (e) {
       setDelError({ message: e.message });
@@ -1010,7 +1111,7 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
                                 <div className="st-cell">
                                   <div className="av">{s.name?.[0]?.toUpperCase() || '?'}</div>
                                   <div>
-                                    <div className="st-name">{s.name}</div>
+                                    <div className="st-name">{s.name}{s.isActive === false && <span className="am-tag" style={{ marginLeft: 7 }}>Inactive</span>}</div>
                                     <div className="st-sub">{s.examTarget || 'Exam not set'}{s.grade ? ` · Grade ${s.grade}` : ''}</div>
                                   </div>
                                 </div>
@@ -1044,9 +1145,16 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
                               </td>
                               <td>{s.diagnosticScore != null ? <span className="st-val">{s.diagnosticScore}%</span> : <span className="st-na">Pending</span>}</td>
                               <td className="ar">
-                                {s.diagnosticScore != null && <button className="btn btn-ghost btn-sm" onClick={() => openDiagModal(s.userId, s.name)}>Diagnostic</button>}
-                                {isSuperAdmin && <button className="btn btn-ghost btn-sm" onClick={() => setPlanGrantStudent(s)}>Plan</button>}
-                                <button className="btn btn-ghost btn-sm" onClick={() => onOpenMessage(s.id)}>Message</button>
+                                <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                                  <button className="btn btn-ghost btn-sm" onClick={() => openStudentEdit(s)}>Edit</button>
+                                  <button className="btn btn-ghost btn-sm" onClick={() => handleStudentResetPassword(s)}>Reset password</button>
+                                  {s.isActive === false &&
+                                    <button className="btn btn-ghost btn-sm" style={{ color: '#059669', borderColor: '#d1fae5', background: '#ecfdf5' }} onClick={() => handleStudentStatusToggle(s)}>Reactivate</button>}
+                                  {s.diagnosticScore != null && <button className="btn btn-ghost btn-sm" onClick={() => openDiagModal(s.userId, s.name)}>Diagnostic</button>}
+                                  {isSuperAdmin && <button className="btn btn-ghost btn-sm" onClick={() => setPlanGrantStudent(s)}>Plan</button>}
+                                  <button className="btn btn-ghost btn-sm" onClick={() => onOpenMessage(s.id)}>Message</button>
+                                  <button className="btn btn-red btn-sm" onClick={() => { setDelStudent(s); setDelName(''); setDelError(null); }}>Delete</button>
+                                </div>
                               </td>
                             </tr>
                           );
@@ -1122,14 +1230,14 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
                       : <span className="st-na">Never</span>}
                   </td>
                   <td className="ar">
-                    <div style={{ display: 'flex', gap: '7px', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-                      <button className="btn btn-ghost btn-md" onClick={() => openFacultyEdit(f)}>Edit</button>
-                      <button className="btn btn-ghost btn-md" onClick={() => handleFacultyResetPassword(f)}>Reset password</button>
+                    <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                      <button className="btn btn-ghost btn-sm" onClick={() => openFacultyEdit(f)}>Edit</button>
+                      <button className="btn btn-ghost btn-sm" onClick={() => handleFacultyResetPassword(f)}>Reset password</button>
                       {f.isActive === false
-                        ? <button className="btn btn-ghost btn-md" style={{ color: '#059669', borderColor: '#d1fae5', background: '#ecfdf5' }} onClick={() => handleFacultyStatusToggle(f)}>Reactivate</button>
-                        : <button className="btn btn-ghost btn-md" style={{ color: '#dc2626', borderColor: '#ff92e2', background: '#fef2f2' }} onClick={() => handleFacultyStatusToggle(f)}>Deactivate</button>}
-                      <button className="btn btn-ghost btn-md" style={{ color: '#059669', borderColor: '#d1fefe5', background: '#d8ebe4' }} onClick={() => setPerfFaculty(f)}>View performance</button>
-                      <button className="btn btn-red btn-md" onClick={() => { setDelFaculty(f); setDelName(''); setDelError(null); }}>Delete</button>
+                        ? <button className="btn btn-ghost btn-sm" style={{ color: '#059669', borderColor: '#d1fae5', background: '#ecfdf5' }} onClick={() => handleFacultyStatusToggle(f)}>Reactivate</button>
+                        : <button className="btn btn-ghost btn-sm" style={{ color: '#dc2626', borderColor: '#fecaca', background: '#fef2f2' }} onClick={() => handleFacultyStatusToggle(f)}>Deactivate</button>}
+                      <button className="btn btn-ghost btn-sm" style={{ color: 'var(--gold)', borderColor: 'rgba(212,175,55,0.45)' }} onClick={() => setPerfFaculty(f)}>View performance</button>
+                      <button className="btn btn-red btn-sm" onClick={() => { setDelFaculty(f); setDelName(''); setDelError(null); }}>Delete</button>
                     </div>
                   </td>
                 </tr>
@@ -1139,6 +1247,61 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* Faculty monitoring — overall activity at a glance (Req 13) */}
+        <div id="faculty-monitoring" style={{ marginTop: '26px' }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', marginBottom: '12px' }}>
+            <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text)' }}>Activity at a glance</span>
+            <span style={{ fontSize: '12px', color: 'var(--text3)' }}>click a faculty member for their full history</span>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '12px' }}>
+            {facultyList.map(f => {
+              const metrics = [
+                ['Students', f.studentsCount ?? 0],
+                ['Classes this week', f.classesThisWeek ?? 0],
+                ['Classes this month', f.classesThisMonth ?? 0],
+                ['Assignments', f.assignments ?? 0],
+                ['Homework', f.homework ?? 0],
+                ['Resources shared', f.resourcesShared ?? 0],
+                ['Doubts pending', f.doubtsPending ?? 0],
+                ['Doubts resolved', f.doubtsResolved ?? 0],
+                ['Scores updated', f.scoresUpdated ?? 0],
+              ];
+              return (
+                <button
+                  key={f.id}
+                  type="button"
+                  onClick={() => setPerfFaculty(f)}
+                  className="card"
+                  style={{ textAlign: 'left', cursor: 'pointer', padding: '13px 15px', opacity: f.isActive === false ? 0.62 : 1 }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '9px', marginBottom: '11px' }}>
+                    <span className="av" style={{ width: 26, height: 26, fontSize: 12 }}>{f.name?.charAt(0)}</span>
+                    <span style={{ flex: 1, minWidth: 0 }}>
+                      <span style={{ display: 'block', fontWeight: 700, fontSize: '13.5px', lineHeight: 1.2 }}>
+                        {f.name}
+                        {f.isActive === false && <span className="am-tag" style={{ marginLeft: 6 }}>Inactive</span>}
+                      </span>
+                      <span style={{ display: 'block', fontSize: '11px', color: 'var(--text3)' }}>{f.subject || '—'}</span>
+                    </span>
+                    <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--gold)', whiteSpace: 'nowrap' }}>Full history →</span>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(76px, 1fr))', gap: '7px 4px' }}>
+                    {metrics.map(([label, value]) => (
+                      <span key={label}>
+                        <span style={{ display: 'block', fontSize: '13.5px', fontWeight: 700, lineHeight: 1.15, color: value ? 'var(--text)' : 'var(--text3)' }}>{value}</span>
+                        <span style={{ display: 'block', fontSize: '8.5px', fontWeight: 600, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '.04em', marginTop: '1px' }}>{label}</span>
+                      </span>
+                    ))}
+                  </div>
+                </button>
+              );
+            })}
+            {facultyList.length === 0 && (
+              <div className="adm-empty">No faculty yet — add the first account to start monitoring.</div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -1348,7 +1511,7 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
                 </div>
               )}
             </div>
-          )          );
+          ));
         })()}
       </div>
 
@@ -2069,6 +2232,83 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
         </div>
       )}
 
+      {/* ══════════ EDIT STUDENT ══════════ */}
+      {editStudent && editStudentForm && (
+        <div className="overlay open" onClick={e => { if (e.target.classList.contains('overlay')) setEditStudent(null); }}>
+          <div className="modal">
+            <div className="mt">Edit {editStudent.name}</div>
+            <div className="ms">The login email stays unchanged. Updates appear immediately in the students list.</div>
+            <div className="fg"><label>Full Name *</label>
+              <input className="fi" type="text" value={editStudentForm.name} onChange={e => setEditStudentForm(p => ({ ...p, name: e.target.value }))} /></div>
+            <div className="fg"><label>Grade</label>
+              <input className="fi" type="text" placeholder="e.g. 11, 12" value={editStudentForm.grade} onChange={e => setEditStudentForm(p => ({ ...p, grade: e.target.value }))} /></div>
+            <div className="fg"><label>Course / Exam</label>
+              <select className="fi" value={editStudentForm.examTarget} onChange={e => setEditStudentForm(p => ({ ...p, examTarget: e.target.value }))}>
+                <option value="JEE Mains">JEE Mains</option>
+                <option value="JEE Advanced">JEE Advanced</option>
+                <option value="NEET">NEET</option>
+              </select></div>
+            <div className="fg"><label>Parent phone</label>
+              <input className="fi" type="tel" placeholder="10-digit mobile" value={editStudentForm.phone} onChange={e => setEditStudentForm(p => ({ ...p, phone: e.target.value }))} /></div>
+            <div className="ma">
+              <button className="btn btn-gold btn-sm" disabled={editBusy || !editStudentForm.name.trim()} onClick={handleStudentEditSubmit}>
+                {editBusy ? 'Saving…' : 'Save changes'}</button>
+              <button className="btn btn-ghost btn-sm" onClick={() => setEditStudent(null)}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════ DELETE STUDENT (confirmation) ══════════ */}
+      {delStudent && (
+        <div className="overlay open" onClick={e => { if (e.target.classList.contains('overlay')) { setDelStudent(null); setDelName(''); setDelError(null); } }}>
+          <div className="modal">
+            <div className="mt">Delete {delStudent.name}?</div>
+            {delError ? (
+              <>
+                <div className="ms" style={{ color: 'var(--red)' }}>{delError.message}</div>
+                {delError.footprint && (
+                  <div style={{ background: 'var(--cream2)', border: '1px solid var(--b)', borderRadius: 'var(--r)', padding: '14px 16px', marginBottom: '16px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 14px', fontSize: '13px' }}>
+                    {Object.entries(delError.footprint)
+                      .filter(([, v]) => v > 0)
+                      .map(([k, v]) => (
+                        <div key={k} style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                          <span style={{ color: 'var(--text3)' }}>{FP_LABELS[k] || k}</span>
+                          <b>{v}</b>
+                        </div>
+                      ))}
+                  </div>
+                )}
+                <div className="ma">
+                  <button className="btn btn-red btn-sm" onClick={() => {
+                    const s = delStudent;
+                    setDelStudent(null); setDelName(''); setDelError(null);
+                    handleStudentStatusToggle(s);
+                  }}>Deactivate instead</button>
+                  <button className="btn btn-ghost btn-sm" onClick={() => { setDelStudent(null); setDelName(''); setDelError(null); }}>Close</button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="ms">
+                  Permanent removal — this cannot be undone. Allowed only while the account has no scores, classes, doubts, reports or payment history.
+                  If this student has history, <b>Deactivate</b> instead: it blocks login and keeps every record.
+                </div>
+                <div className="fg">
+                  <label>Type <b>{delStudent.name}</b> to confirm</label>
+                  <input className="fi" type="text" placeholder={delStudent.name} value={delName} onChange={e => setDelName(e.target.value)} />
+                </div>
+                <div className="ma">
+                  <button className="btn btn-red btn-sm" disabled={delBusy || delName.trim() !== delStudent.name} onClick={handleStudentDelete}>
+                    {delBusy ? 'Deleting…' : 'Delete permanently'}</button>
+                  <button className="btn btn-ghost btn-sm" onClick={() => { setDelStudent(null); setDelName(''); setDelError(null); }}>Cancel</button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* ══════════ SESSION REQUESTS ══════════ */}
       {activePage === 'session-requests' && (
         <SessionRequestsPage
@@ -2139,7 +2379,12 @@ const AdminContent = ({ activePage, onOpenModal, onNav, onShowToast, profile, st
             setSavingFaculty(true);
             try {
               const token = localStorage.getItem('token');
-              const entries = Object.entries(selections);
+              // Also send removed subjects as null so clears persist (backend deletes the key)
+              const base = facultyModalStudent.subjectFaculty || {};
+              const entries = [
+                ...Object.entries(selections),
+                ...Object.keys(base).filter(k => !(k in selections)).map(k => [k, null]),
+              ];
               for (const [subject, facultyId] of entries) {
                 const r = await fetch(`${import.meta.env.VITE_API_URL}/api/admin/${profile?.id}/student/${facultyModalStudent.userId}/subject-faculty`, {
                   method: 'PUT',
